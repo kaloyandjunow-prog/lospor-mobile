@@ -12,7 +12,7 @@ import { apiFetch } from "@/lib/api"
 // ─── Shared schema (same as new.tsx) ─────────────────────────────────────────
 
 const schema = z.object({
-  ageYears:         z.number({ invalid_type_error: "Required" }).min(0).max(120),
+  ageYears:         z.number({ error: "Required" }).min(0).max(120),
   sex:              z.enum(["MALE", "FEMALE", "OTHER"]),
   heightCm:         z.number().min(50).max(250).optional(),
   weightKg:         z.number().min(1).max(300).optional(),
