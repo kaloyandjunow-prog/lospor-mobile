@@ -15,15 +15,15 @@ Status legend: ⬜ pending · 🔄 in progress · ✅ done
 
 ## Phase 2 — PWA (Vercel)
 
-- ⬜ `npm run export:web` → build `dist/`
-- ⬜ Create second Vercel project from lospor-mobile GitHub repo
+- ✅ `npm run export:web` → build `dist/`
+- ✅ Create second Vercel project from lospor-mobile GitHub repo
   - Build command: `npm run export:web`
   - Output directory: `dist`
   - Install command: `npm install --legacy-peer-deps`
   - Env var: `EXPO_PUBLIC_API_BASE=https://app.lospor.org`
-- ⬜ Add custom domain `pwa.lospor.org` → CNAME to Vercel
-- ⬜ Set `MOBILE_PWA_URL=https://pwa.lospor.org` in lospor-app Vercel env vars
-- ⬜ Redeploy lospor-app
+- ✅ Add custom domain `pwa.lospor.org` → CNAME to Vercel
+- ✅ Set `MOBILE_PWA_URL=https://pwa.lospor.org` in lospor-app Vercel env vars
+- ✅ Redeploy lospor-app
 
 ## Phase 3 — Android / Google Play
 

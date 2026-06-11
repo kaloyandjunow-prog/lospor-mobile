@@ -7,11 +7,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#090b0c"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "org.lospor.mobile"
@@ -26,7 +21,9 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["android.permission.CAMERA"]
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -52,7 +49,16 @@
           "photosPermission": "LOSPOR uses camera to scan lab reports and monitor readings.",
           "cameraPermission": "LOSPOR uses camera to scan lab reports and monitor readings."
         }
-      ]
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#090b0c"
+        }
+      ],
+      "expo-font"
     ],
     "extra": {
       "router": {},

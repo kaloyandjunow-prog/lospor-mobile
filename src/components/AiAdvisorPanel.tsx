@@ -1,12 +1,8 @@
-import { useEffect, useState } from "react"
-import {
-  View, Text, ScrollView, Switch, ActivityIndicator, type TextStyle,
-} from "react-native"
-import { useLocalSearchParams, Stack } from "expo-router"
-import { apiFetch, apiJson } from "@/lib/api"
-import { SectionHeader, Card, PrimaryButton } from "@/components/ui"
-import { colors } from "@/theme/colors"
-import { usePreferences } from "@/lib/preferences-context"
+import { View, Text, Switch, ActivityIndicator, type TextStyle } from "react-native"
+import Ionicons from "@expo/vector-icons/Ionicons"
+import { Card, PrimaryButton, SectionHeader } from "@/components/ui"
+import { colors, withAlpha } from "@/theme/colors"
+import type { ClinicalStringKey } from "@/lib/preferences-context"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -122,7 +118,7 @@ function GdprCard({
         <Switch
           value={aiOptIn}
           onValueChange={onToggle}
-          trackColor={{ false: "#374151", true: "#7c3aed" }}
+          trackColor={{ false: colors.borderStrong, true: colors.agent }}
           thumbColor="#fff"
         />
       </View>
@@ -130,10 +126,33 @@ function GdprCard({
   )
 }
 
+function DisclaimerBanner({ text }: { text: string }) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 8,
+        backgroundColor: withAlpha(colors.warning, "1A"),
+        borderWidth: 1,
+        borderColor: withAlpha(colors.warning, "40"),
+        borderRadius: 12,
+        borderCurve: "continuous",
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        marginBottom: 12,
+      }}
+    >
+      <Ionicons name="alert-circle-outline" size={16} color={colors.warning} style={{ marginTop: 1 }} />
+      <Text style={{ flex: 1, color: colors.warning, fontSize: 12, lineHeight: 17 }}>{text}</Text>
+    </View>
+  )
+}
+
 function AnalysingState({ label }: { label: string }) {
   return (
     <View className="flex-row items-center gap-3 py-6 justify-center">
-      <ActivityIndicator color="#7c3aed" />
+      <ActivityIndicator color={colors.agent} />
       <Text className="text-slate-400 text-sm italic">{label}</Text>
     </View>
   )
@@ -154,7 +173,7 @@ function ErrorCard({
   )
 }
 
-function SectionCard({ title, body }: ParsedSection) {
+function AiResultCard({ title, body }: ParsedSection) {
   return (
     <Card className="px-4 py-4 mb-3">
       <Text className="text-blue-400 font-semibold text-sm mb-3">{title}</Text>
@@ -163,120 +182,66 @@ function SectionCard({ title, body }: ParsedSection) {
   )
 }
 
-// ─── Screen ───────────────────────────────────────────────────────────────────
+// ─── Panel ────────────────────────────────────────────────────────────────────
 
-export default function AIAdvisorScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>()
-  const { tc } = usePreferences()
-
-  const [caseData, setCaseData]       = useState<any>(null)
-  const [loading, setLoading]         = useState(true)
-  const [aiOptIn, setAiOptIn]         = useState(false)
-  const [analysing, setAnalysing]     = useState(false)
-  const [streamedText, setStreamedText] = useState("")
-  const [error, setError]             = useState<string | null>(null)
-
-  useEffect(() => {
-    apiJson<any>(`/api/cases/${id}`)
-      .then((data: any) => setCaseData(data?.preop ?? data))
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false))
-  }, [id])
-
-  async function runAnalysis() {
-    if (!aiOptIn || !caseData) return
-    setError(null)
-    setStreamedText("")
-    setAnalysing(true)
-
-    try {
-      const res = await apiFetch("/api/ai/advise", {
-        method: "POST",
-        body: JSON.stringify({ ...caseData, aiOptIn: true }),
-      })
-
-      if (!res.ok) {
-        if (res.status === 429) {
-          throw new Error(tc("aiRateLimit"))
-        }
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.error ?? tc("aiRequestFailed"))
-      }
-
-      const reader = res.body?.getReader()
-      if (!reader) throw new Error("No response stream available.")
-
-      const decoder = new TextDecoder()
-      let text = ""
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        text += decoder.decode(value, { stream: true })
-        setStreamedText(text)
-      }
-    } catch (err: any) {
-      setError(err.message ?? tc("aiRequestFailed"))
-    } finally {
-      setAnalysing(false)
-    }
-  }
-
-  // ── Loading case data ──────────────────────────────────────────────────────
-
-  if (loading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator color="#7c3aed" />
-      </View>
-    )
-  }
-
-  // ── Render ────────────────────────────────────────────────────────────────
-
+export function AiAdvisorPanel({
+  aiOptIn,
+  onToggleOptIn,
+  analysing,
+  streamedText,
+  error,
+  onRun,
+  tc,
+}: {
+  aiOptIn: boolean
+  onToggleOptIn: (v: boolean) => void
+  analysing: boolean
+  streamedText: string
+  error: string | null
+  onRun: () => void
+  tc: (key: ClinicalStringKey) => string
+}) {
   const sections = parseSections(streamedText)
 
   return (
-    <>
-      <Stack.Screen options={{ title: "AI Advisor" }} />
-      <ScrollView
-        style={{ flex: 1, backgroundColor: colors.background, paddingHorizontal: 16, paddingTop: 16 }}
-        contentContainerStyle={{ paddingBottom: 40 }}
-      >
-        <SectionHeader title={tc("aiPrivacySection")} />
+    <View>
+      <GdprCard
+        aiOptIn={aiOptIn}
+        onToggle={onToggleOptIn}
+        privacyNote={tc("aiPrivacyNote")}
+        enableLabel={tc("aiEnableLabel")}
+      />
 
-        <GdprCard
-          aiOptIn={aiOptIn}
-          onToggle={setAiOptIn}
-          privacyNote={tc("aiPrivacyNote")}
-          enableLabel={tc("aiEnableLabel")}
-        />
-
-        <View className="mb-6">
+      {aiOptIn && (
+        <View className="mb-3">
           <PrimaryButton
             label={tc("aiAnalyseBtn")}
             color="violet"
-            onPress={runAnalysis}
-            disabled={!aiOptIn || analysing}
+            onPress={onRun}
+            disabled={analysing}
             loading={false}
           />
         </View>
+      )}
 
-        {analysing && <AnalysingState label={tc("aiAnalysing")} />}
+      {(analysing || sections.length > 0) && (
+        <DisclaimerBanner text={tc("aiDisclaimer")} />
+      )}
 
-        {error && !analysing && (
-          <ErrorCard message={error} onRetry={runAnalysis} />
-        )}
+      {analysing && <AnalysingState label={tc("aiAnalysing")} />}
 
-        {sections.length > 0 && (
-          <>
-            <SectionHeader title={tc("aiAnalysisSection")} />
-            {sections.map((s, i) => (
-              <SectionCard key={i} title={s.title} body={s.body} />
-            ))}
-          </>
-        )}
-      </ScrollView>
-    </>
+      {error && !analysing && (
+        <ErrorCard message={error} onRetry={onRun} />
+      )}
+
+      {sections.length > 0 && (
+        <>
+          <SectionHeader title={tc("aiAnalysisSection")} />
+          {sections.map((s, i) => (
+            <AiResultCard key={i} title={s.title} body={s.body} />
+          ))}
+        </>
+      )}
+    </View>
   )
 }

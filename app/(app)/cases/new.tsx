@@ -43,6 +43,7 @@ import {
 import { SearchTagInput } from "@/components/SearchTagInput"
 import { ClinicalNumberInput } from "@/components/ClinicalNumberInput"
 import { LabScanPanel } from "@/components/LabScanPanel"
+import { AiAdvisorPanel } from "@/components/AiAdvisorPanel"
 import { AppHeader } from "@/components/AppHeader"
 import { EditWindowBanner } from "@/components/EditWindowBanner"
 import { LAB_CATEGORIES, getLabOutOfRange, searchLabs, type LabTest } from "@/lib/labs"
@@ -843,21 +844,6 @@ function ManualLabPanel({ value, onChange, labelManualLabEntry = "Manual lab ent
   )
 }
 
-function AiAdvisorPanel({ enabled, loading, text, error, onRun, labelAsking = "Asking Mistral…", labelAsk = "Ask AI advisor" }: { enabled: boolean; loading: boolean; text: string; error: string; onRun: () => void; labelAsking?: string; labelAsk?: string }) {
-  if (!enabled) return null
-  return (
-    <View style={{ marginTop: 12, gap: 10 }}>
-      <PrimaryButton label={loading ? labelAsking : labelAsk} onPress={onRun} loading={loading} color="violet" />
-      {error ? <Text style={{ color: colors.danger, fontSize: 12, fontWeight: "800" }}>{error}</Text> : null}
-      {text ? (
-        <View style={{ backgroundColor: withAlpha(colors.agent, "12"), borderWidth: 1, borderColor: withAlpha(colors.agent, "55"), borderRadius: 14, padding: 12 }}>
-          <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 19 }}>{text}</Text>
-        </View>
-      ) : null}
-    </View>
-  )
-}
-
 // Map server preop data back into the new-case form fields
 
 // For comma-separated fields (allergyDetails, currentMedications)
@@ -1471,12 +1457,24 @@ export default function NewCaseScreen() {
         }),
       })
       if (!res.ok) {
+        if (res.status === 429) throw new Error(tc("aiRateLimit"))
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.error ?? `HTTP ${res.status}`)
+        throw new Error(body.error ?? tc("aiRequestFailed"))
       }
-      setAiText(await res.text())
+
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error("No response stream available.")
+
+      const decoder = new TextDecoder()
+      let text = ""
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        text += decoder.decode(value, { stream: true })
+        setAiText(text)
+      }
     } catch (error) {
-      setAiError(error instanceof Error ? error.message : "Could not ask AI advisor.")
+      setAiError(error instanceof Error ? error.message : tc("aiRequestFailed"))
     } finally {
       setAiLoading(false)
     }
@@ -1984,8 +1982,17 @@ export default function NewCaseScreen() {
                 <ScoreBadge label="Apfel" score={apfelScore} max={4} riskLabel={apfelRiskLabel(apfelScore, tc)} />
                 <ScoreBadge label="STOP-BANG" score={stopBangScore} max={8} riskLabel={stopBangRiskLabel(stopBangScore, tc)} />
               </View>
-              <Controller control={control} name="aiOptIn" render={({ field }) => <ClinicalSwitchRow label={tc("useAIAdvisor")} value={!!field.value} onValueChange={field.onChange} activeColor={colors.agent} />} />
-              <AiAdvisorPanel enabled={!!aiOptIn} loading={aiLoading} text={aiText} error={aiError} onRun={runAdvisor} labelAsking={tc("aiAsking")} labelAsk={tc("aiAsk")} />
+              <Controller control={control} name="aiOptIn" render={({ field }) => (
+                <AiAdvisorPanel
+                  aiOptIn={!!field.value}
+                  onToggleOptIn={field.onChange}
+                  analysing={aiLoading}
+                  streamedText={aiText}
+                  error={aiError}
+                  onRun={runAdvisor}
+                  tc={tc}
+                />
+              )} />
             </SectionCard>
 
             <PrimaryButton label={tc("continueIntraop")} onPress={handleSubmit(onSubmit, (invalid) => Alert.alert(tc("requiredFieldsMissing"), Object.keys(invalid).join(", ") || "Check the highlighted fields."))} loading={saving} />

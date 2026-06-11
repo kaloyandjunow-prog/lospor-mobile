@@ -147,9 +147,6 @@ export const CLINICAL_STRINGS = {
     asaSuggestedReview:  "— review and confirm",
     emergencySuffix:     "Emergency surgery — ASA class will be suffixed with E",
     notesLabel:          "Notes",
-    useAIAdvisor:        "Use AI pre-op advisor",
-    aiAsking:            "Asking Mistral…",
-    aiAsk:               "Ask AI advisor",
     continueIntraop:     "Continue to intraoperative",
 
     // Draft status
@@ -362,7 +359,6 @@ export const CLINICAL_STRINGS = {
     actionPreop:         "Preop",
     actionIntraop:       "Intraop",
     actionPostop:        "Postop",
-    actionAIAdvisor:     "AI Advisor",
     actionHandover:      "Handover",
     actionPrintPDF:      "🖨 Print PDF",
     actionUnfinalize:    "🔓 Unfinalize",
@@ -379,6 +375,7 @@ export const CLINICAL_STRINGS = {
     aiPrivacySection:    "Privacy",
     aiAnalysisSection:   "Analysis",
     aiPrivacyNote:       "AI analysis sends your case data to Mistral AI (EU-hosted). Free-text fields are never included.",
+    aiDisclaimer:        "AI-generated summary for review by the responsible anaesthesiologist. Does not constitute clinical advice. Full clinical responsibility remains with the treating anaesthesiologist.",
     aiEnableLabel:       "Enable AI analysis for this case",
     aiAnalysing:         "Analysing…",
     aiAnalyseBtn:        "Analyse with AI",
@@ -659,9 +656,6 @@ export const CLINICAL_STRINGS = {
     asaSuggestedReview:  "— прегледайте и потвърдете",
     emergencySuffix:     "Спешна операция — АСА класът ще бъде с наставка Е",
     notesLabel:          "Бележки",
-    useAIAdvisor:        "Използвай AI предоперативен съветник",
-    aiAsking:            "Анализира с Mistral…",
-    aiAsk:               "AI съветник",
     continueIntraop:     "Продължи към интраоперативно",
 
     // Draft status
@@ -874,7 +868,6 @@ export const CLINICAL_STRINGS = {
     actionPreop:         "Предоп.",
     actionIntraop:       "Интраоп.",
     actionPostop:        "Следоп.",
-    actionAIAdvisor:     "AI съветник",
     actionHandover:      "Предаване",
     actionPrintPDF:      "🖨 Печат / PDF",
     actionUnfinalize:    "🔓 Отвори отново",
@@ -891,6 +884,7 @@ export const CLINICAL_STRINGS = {
     aiPrivacySection:    "Поверителност",
     aiAnalysisSection:   "Анализ",
     aiPrivacyNote:       "AI анализът изпраща данните на случая до Mistral AI (хостван в ЕС). Полетата за свободен текст не се включват.",
+    aiDisclaimer:        "Генерирано от AI резюме за преглед от отговорния анестезиолог. Не представлява клиничен съвет. Пълната клинична отговорност остава при лекуващия анестезиолог.",
     aiEnableLabel:       "Активирай AI анализ за този случай",
     aiAnalysing:         "Анализира…",
     aiAnalyseBtn:        "Анализирай с AI",
