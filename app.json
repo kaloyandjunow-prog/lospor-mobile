@@ -1,31 +1,65 @@
 {
   "expo": {
-    "name": "lospor-mobile",
+    "name": "LOSPOR",
     "slug": "lospor-mobile",
     "version": "1.0.0",
     "scheme": "lospor",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#090b0c"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "org.lospor.mobile"
     },
     "android": {
+      "package": "org.lospor.mobile",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#090b0c",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["android.permission.CAMERA"]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single",
+      "name": "LOSPOR",
+      "shortName": "LOSPOR",
+      "description": "Large Open Source Perioperative Register — clinical anaesthesia documentation",
+      "themeColor": "#090b0c",
+      "backgroundColor": "#090b0c",
+      "lang": "en",
+      "scope": "/",
+      "startUrl": "/"
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-status-bar"
-    ]
+      "expo-status-bar",
+      "expo-dev-client",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "LOSPOR uses camera to scan lab reports and monitor readings.",
+          "cameraPermission": "LOSPOR uses camera to scan lab reports and monitor readings."
+        }
+      ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4b87b715-f0c9-4c6f-b40c-4ade6693b77d"
+      }
+    },
+    "owner": "kaloyandzhunov"
   }
 }

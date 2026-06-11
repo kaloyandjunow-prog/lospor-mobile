@@ -1,76 +1,524 @@
-import { View, Text, TouchableOpacity, Alert, Linking } from "react-native"
-import { Stack } from "expo-router"
+import { useEffect, useRef, useState } from "react"
+import {
+  View, Alert, Linking, Platform, ScrollView, Text, Switch,
+  TouchableOpacity, TextInput, Modal, FlatList, ActivityIndicator,
+} from "react-native"
+import * as SecureStore from "expo-secure-store"
+import { Stack, useRouter } from "expo-router"
 import { useAuth } from "@/lib/auth-context"
+import {
+  API_BASE, apiFetch, apiJson, decodeTokenPayload,
+  getLastApiError, getLastOkRequest, getToken, isTokenExpired,
+} from "@/lib/api"
+import { flushAllQueuedCasePatches, getQueuedCasePatchSummary } from "@/lib/offline-case-patches"
+import { usePreferences } from "@/lib/preferences-context"
+import { Card, SectionHeader, SettingsRow } from "@/components/ui"
+import { colors, withAlpha } from "@/theme/colors"
+import { AppHeader } from "@/components/AppHeader"
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type Institution = { id: string; name: string; city: string }
+
+type ProfileData = {
+  firstName?: string | null
+  lastName?: string | null
+  title?: string | null
+  role?: string | null
+  institution?: Institution | null
+}
+
+// ─── Institution picker modal ─────────────────────────────────────────────────
+
+function InstitutionPicker({
+  visible,
+  current,
+  onClose,
+  onSelect,
+  searchLabel,
+}: {
+  visible: boolean
+  current?: Institution | null
+  onClose: () => void
+  onSelect: (inst: Institution | null) => void
+  searchLabel: string
+}) {
+  const [query, setQuery]   = useState("")
+  const [all, setAll]       = useState<Institution[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!visible) return
+    setQuery("")
+    setLoading(true)
+    apiJson<Institution[]>("/api/institutions")
+      .then(setAll)
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [visible])
+
+  const filtered = query.length >= 1
+    ? all.filter(i => `${i.name} ${i.city}`.toLowerCase().includes(query.toLowerCase()))
+    : all
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}>
+        <View style={{
+          backgroundColor: colors.surfaceRaised, borderTopLeftRadius: 22, borderTopRightRadius: 22,
+          padding: 20, paddingBottom: 40, maxHeight: "80%",
+        }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "700" }}>
+              {searchLabel}
+            </Text>
+            <TouchableOpacity onPress={onClose}>
+              <Text style={{ color: colors.textMuted, fontSize: 20 }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder={searchLabel}
+            placeholderTextColor={colors.textMuted}
+            autoFocus
+            style={{
+              backgroundColor: colors.background, color: colors.textPrimary,
+              borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
+              fontSize: 14, borderWidth: 1, borderColor: colors.border, marginBottom: 12,
+            }}
+          />
+          {loading ? (
+            <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />
+          ) : (
+            <FlatList
+              data={filtered}
+              keyExtractor={i => i.id}
+              renderItem={({ item }) => {
+                const selected = current?.id === item.id
+                return (
+                  <TouchableOpacity
+                    onPress={() => onSelect(item)}
+                    style={{
+                      paddingVertical: 12, paddingHorizontal: 4,
+                      borderBottomWidth: 1, borderBottomColor: colors.border,
+                      flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+                    }}
+                  >
+                    <View>
+                      <Text style={{ color: selected ? colors.primary : colors.textPrimary, fontSize: 14, fontWeight: selected ? "700" : "500" }}>
+                        {item.name}
+                      </Text>
+                      <Text style={{ color: colors.textMuted, fontSize: 12 }}>{item.city}</Text>
+                    </View>
+                    {selected && <Text style={{ color: colors.primary, fontSize: 16 }}>✓</Text>}
+                  </TouchableOpacity>
+                )
+              }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            />
+          )}
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function SettingsScreen() {
   const { logout } = useAuth()
+  const router  = useRouter()
+  const { language, setLanguage, theme, setTheme, preopLayout, setPreopLayout, t } = usePreferences()
 
-  function handleLogout() {
-    Alert.alert(
-      "Sign out",
-      "Are you sure you want to sign out?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Sign out", style: "destructive", onPress: logout },
-      ]
+  // Which panel is showing: "main" or the settings sub-screen
+  const [view, setView] = useState<"main" | "settings">("main")
+
+  // ── Profile ──────────────────────────────────────────────────────────────────
+  const [profile, setProfile]             = useState<ProfileData | null>(null)
+  const [pickerOpen, setPickerOpen]       = useState(false)
+  const [institutionSaving, setInstitutionSaving] = useState(false)
+
+  // ── Automation toggles ───────────────────────────────────────────────────────
+  const [autoFillVitals, setAutoFillVitalsState] = useState(false)
+  const [autoFillBP,     setAutoFillBPState]     = useState(false)
+  const [autoFillBg,     setAutoFillBgState]     = useState(false)
+
+  // ── Diagnostics ──────────────────────────────────────────────────────────────
+  const [diag, setDiag] = useState<{
+    hasToken: boolean; expired: boolean; role?: string; userId?: string
+    institution?: string; expiresAt?: string
+    lastOk?: string | null; lastError?: string | null; queuedSaves: number
+  } | null>(null)
+
+  // ── Load on mount ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    loadProfile()
+    loadAutomation()
+    refreshDiagnostics()
+  }, [])
+
+  async function loadProfile() {
+    try {
+      const data = await apiJson<ProfileData>("/api/user")
+      setProfile(data)
+    } catch {
+      // Fallback: decode from JWT (no round-trip needed for display)
+      const token = await getToken()
+      const p = decodeTokenPayload(token)
+      if (p) {
+        setProfile({
+          firstName: p.firstName, lastName: p.lastName, title: p.title,
+          role: p.role, institution: p.institutionName
+            ? { id: p.institutionId ?? "", name: p.institutionName, city: "" }
+            : null,
+        })
+      }
+    }
+  }
+
+  function loadAutomation() {
+    SecureStore.getItemAsync("intraop_autofill_vitals").then(v => setAutoFillVitalsState(v === "on"))
+    SecureStore.getItemAsync("intraop_autofill_bp").then(v => setAutoFillBPState(v === "on"))
+    SecureStore.getItemAsync("intraop_autofill_bg").then(v => setAutoFillBgState(v === "on"))
+  }
+
+  async function refreshDiagnostics() {
+    const token = await getToken()
+    const payload = decodeTokenPayload(token)
+    setDiag({
+      hasToken: !!token,
+      expired: isTokenExpired(token),
+      role: payload?.role,
+      userId: payload?.id,
+      institution: payload?.institutionName ?? payload?.institutionId,
+      expiresAt: payload?.exp ? new Date(Number(payload.exp) * 1000).toLocaleString() : undefined,
+      lastOk: await getLastOkRequest(),
+      lastError: await getLastApiError(),
+      queuedSaves: (await getQueuedCasePatchSummary()).count,
+    })
+  }
+
+  async function retryQueuedSaves() {
+    await flushAllQueuedCasePatches()
+    await refreshDiagnostics()
+  }
+
+  // ── Automation setters ───────────────────────────────────────────────────────
+  function setAutoFillVitals(v: boolean) {
+    setAutoFillVitalsState(v)
+    SecureStore.setItemAsync("intraop_autofill_vitals", v ? "on" : "off")
+    if (!v) { setAutoFillBPState(false); SecureStore.setItemAsync("intraop_autofill_bp", "off") }
+  }
+  function setAutoFillBP(v: boolean) {
+    setAutoFillBPState(v)
+    SecureStore.setItemAsync("intraop_autofill_bp", v ? "on" : "off")
+  }
+  function setAutoFillBg(v: boolean) {
+    setAutoFillBgState(v)
+    SecureStore.setItemAsync("intraop_autofill_bg", v ? "on" : "off")
+  }
+
+  // ── Institution update ───────────────────────────────────────────────────────
+  async function handleSelectInstitution(inst: Institution | null) {
+    setPickerOpen(false)
+    setInstitutionSaving(true)
+    try {
+      const res = await apiFetch("/api/user", {
+        method: "PATCH",
+        body: JSON.stringify({ institutionId: inst?.id ?? "" }),
+      })
+      if (!res.ok) throw new Error()
+      setProfile(prev => prev ? { ...prev, institution: inst } : prev)
+    } catch {
+      Alert.alert(t("error"), "Could not update institution.")
+    } finally {
+      setInstitutionSaving(false)
+    }
+  }
+
+  // ── Sign-out / delete ────────────────────────────────────────────────────────
+  function handleSignOut() {
+    if (Platform.OS === "web") { logout(); return }
+    Alert.alert(t("signOutConfirmTitle"), t("signOutConfirmMsg"), [
+      { text: t("cancel"), style: "cancel" },
+      { text: t("signOut"), style: "destructive", onPress: logout },
+    ])
+  }
+
+  function handleDeleteAccount() {
+    Alert.alert(t("deleteAccountTitle"), t("deleteAccountMsg"), [
+      { text: t("cancel"), style: "cancel" },
+      { text: t("deleteAccountConfirm"), style: "destructive", onPress: confirmDeleteAccount },
+    ])
+  }
+
+  async function confirmDeleteAccount() {
+    try {
+      const res = await apiFetch("/api/user/delete", { method: "POST" })
+      if (!res.ok) throw new Error()
+      await logout()
+    } catch {
+      Alert.alert(t("error"), t("deleteAccountError"))
+    }
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  const displayName = [profile?.title, profile?.firstName, profile?.lastName]
+    .filter(Boolean).join(" ") || "—"
+
+  const isAdmin = (profile?.role ?? diag?.role) === "ADMIN"
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // MAIN VIEW
+  // ─────────────────────────────────────────────────────────────────────────────
+  if (view === "main") {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <AppHeader eyebrow="LOSPOR" title={t("settings")} showNewCase={false} />
+
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 60, paddingTop: 12 }}
+        >
+          {/* Profile card */}
+          <SectionHeader title="Profile" />
+          <Card>
+            {/* Name */}
+            <View style={{
+              paddingHorizontal: 16, paddingVertical: 16,
+              borderBottomWidth: 1, borderBottomColor: colors.border,
+            }}>
+              <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4 }}>
+                Name
+              </Text>
+              <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "700" }}>
+                {displayName}
+              </Text>
+            </View>
+
+            {/* Institution */}
+            <View style={{
+              paddingHorizontal: 16, paddingVertical: 14,
+              borderBottomWidth: 1, borderBottomColor: colors.border,
+              flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+            }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3 }}>
+                  Institution
+                </Text>
+                {institutionSaving ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: "500" }}>
+                    {profile?.institution?.name ?? t("noInstitution")}
+                    {profile?.institution?.city ? ` · ${profile.institution.city}` : ""}
+                  </Text>
+                )}
+              </View>
+              <TouchableOpacity
+                onPress={() => setPickerOpen(true)}
+                disabled={institutionSaving}
+                style={{
+                  paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8,
+                  backgroundColor: withAlpha(colors.primary, "20"),
+                  borderWidth: 1, borderColor: withAlpha(colors.primary, "55"),
+                  opacity: institutionSaving ? 0.4 : 1,
+                }}
+              >
+                <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>
+                  {t("editInstitution")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* View profile — not yet implemented */}
+            <View style={{ paddingHorizontal: 16, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Text style={{ color: colors.textMuted, fontSize: 14, fontWeight: "500" }}>
+                {t("viewProfile")}
+              </Text>
+              <Text style={{ color: colors.textMuted, fontSize: 11 }}>Coming soon</Text>
+            </View>
+          </Card>
+
+          {/* Settings nav row */}
+          <SectionHeader title=" " />
+          <Card>
+            <SettingsRow
+              label={t("settings")}
+              subtitle="UI, Automation, Privacy & Data"
+              onPress={() => setView("settings")}
+            />
+            {isAdmin && (
+              <SettingsRow
+                label={t("adminConsole")}
+                subtitle={t("adminConsoleSub")}
+                onPress={() => router.push("/(app)/admin" as any)}
+              />
+            )}
+            <SettingsRow
+              label={t("auditLogs")}
+              subtitle={t("auditLogsSub")}
+              onPress={() => router.push("/(app)/audit-logs" as any)}
+              last
+            />
+          </Card>
+
+          {/* Sign out — standalone destructive button */}
+          <View style={{ marginTop: 32 }}>
+            <TouchableOpacity
+              onPress={handleSignOut}
+              style={{
+                paddingVertical: 14, borderRadius: 14, alignItems: "center",
+                backgroundColor: withAlpha(colors.danger, "15"),
+                borderWidth: 1, borderColor: withAlpha(colors.danger, "55"),
+              }}
+            >
+              <Text style={{ color: colors.danger, fontSize: 15, fontWeight: "700" }}>
+                {t("signOut")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+
+        <InstitutionPicker
+          visible={pickerOpen}
+          current={profile?.institution}
+          onClose={() => setPickerOpen(false)}
+          onSelect={handleSelectInstitution}
+          searchLabel={t("institutionSearch")}
+        />
+      </View>
     )
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // SETTINGS SUB-SCREEN
+  // ─────────────────────────────────────────────────────────────────────────────
   return (
-    <>
-      <Stack.Screen options={{ title: "Settings" }} />
-      <View className="flex-1 bg-slate-900 px-5 pt-6">
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <AppHeader eyebrow="LOSPOR" title={t("settings")} showNewCase={false} onBack={() => setView("main")} />
 
-        <Text className="text-blue-400 text-xs font-semibold uppercase tracking-widest mb-3">
-          Account
-        </Text>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 60, paddingTop: 12 }}
+      >
+        {/* ── UI ───────────────────────────────────────────────────────────────── */}
+        <SectionHeader title="UI" />
+        <Card>
+          <SettingsRow
+            label={t("theme")}
+            subtitle={theme === "light" ? t("lightTheme") : t("darkTheme")}
+            onPress={() => setTheme(theme === "light" ? "dark" : "light")}
+          />
+          <SettingsRow
+            label={t("language")}
+            subtitle={language === "bg" ? t("bulgarian") : t("english")}
+            onPress={() => setLanguage(language === "bg" ? "en" : "bg")}
+          />
+          <SettingsRow
+            label={t("preopLayout")}
+            subtitle={preopLayout === "sections" ? t("preopLayoutSections") : t("preopLayoutScroll")}
+            onPress={() => setPreopLayout(preopLayout === "sections" ? "scroll" : "sections")}
+            last
+          />
+        </Card>
 
-        <View className="bg-slate-800 rounded-xl overflow-hidden mb-6">
-          <TouchableOpacity
-            className="px-4 py-4 border-b border-slate-700"
-            onPress={() => Linking.openURL("https://app.lospor.org/settings")}
-          >
-            <Text className="text-white text-sm font-medium">Profile &amp; password</Text>
-            <Text className="text-slate-400 text-xs mt-0.5">Manage on the web app</Text>
-          </TouchableOpacity>
+        {/* ── Automation ───────────────────────────────────────────────────────── */}
+        <SectionHeader title={t("intraoperative")} />
+        <Card>
+          <SettingsRow
+            label={t("autoFillVitals")}
+            subtitle={t("autoFillVitalsSub")}
+            rightElement={
+              <Switch
+                value={autoFillVitals}
+                onValueChange={setAutoFillVitals}
+                trackColor={{ false: colors.border, true: colors.primarySoft }}
+                thumbColor={autoFillVitals ? colors.primary : colors.textMuted}
+              />
+            }
+          />
+          {autoFillVitals && (
+            <SettingsRow
+              label={t("autoFillBpHr")}
+              subtitle={t("autoFillBpHrSub")}
+              rightElement={
+                <Switch
+                  value={autoFillBP}
+                  onValueChange={setAutoFillBP}
+                  trackColor={{ false: colors.border, true: colors.primarySoft }}
+                  thumbColor={autoFillBP ? colors.primary : colors.textMuted}
+                />
+              }
+            />
+          )}
+          <SettingsRow
+            label={t("backgroundAutoFill")}
+            subtitle={t("backgroundAutoFillSub")}
+            last
+            rightElement={
+              <Switch
+                value={autoFillBg}
+                onValueChange={setAutoFillBg}
+                trackColor={{ false: colors.border, true: colors.primarySoft }}
+                thumbColor={autoFillBg ? colors.primary : colors.textMuted}
+              />
+            }
+          />
+        </Card>
 
-          <TouchableOpacity
-            className="px-4 py-4 border-b border-slate-700"
-            onPress={() => Linking.openURL("https://app.lospor.org/settings")}
-          >
-            <Text className="text-white text-sm font-medium">Institution &amp; role</Text>
-            <Text className="text-slate-400 text-xs mt-0.5">Manage on the web app</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity className="px-4 py-4" onPress={handleLogout}>
-            <Text className="text-red-400 text-sm font-medium">Sign out</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text className="text-blue-400 text-xs font-semibold uppercase tracking-widest mb-3">
-          About
-        </Text>
-
-        <View className="bg-slate-800 rounded-xl overflow-hidden mb-6">
-          <TouchableOpacity
-            className="px-4 py-4 border-b border-slate-700"
+        {/* ── Privacy & Data ───────────────────────────────────────────────────── */}
+        <SectionHeader title={t("privacyData")} />
+        <Card>
+          <SettingsRow
+            label={t("privacyPolicy")}
             onPress={() => Linking.openURL("https://app.lospor.org/privacy")}
-          >
-            <Text className="text-white text-sm font-medium">Privacy policy</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            className="px-4 py-4"
+          />
+          <SettingsRow
+            label={t("terms")}
             onPress={() => Linking.openURL("https://app.lospor.org/terms")}
-          >
-            <Text className="text-white text-sm font-medium">Terms of use</Text>
-          </TouchableOpacity>
-        </View>
+          />
+          <SettingsRow
+            label={t("about")}
+            subtitle="LOSPOR v1.0.0 — Large Open Source Perioperative Register"
+          />
+          <SettingsRow
+            label={t("docs")}
+            onPress={() => Linking.openURL("https://docs.lospor.org")}
+          />
+          <SettingsRow
+            label={t("reportBug")}
+            subtitle="Not yet available"
+            // greyed — no onPress
+          />
+          <SettingsRow
+            label={t("deleteAccount")}
+            danger
+            onPress={handleDeleteAccount}
+          />
+        </Card>
 
-        <Text className="text-slate-600 text-xs text-center mt-auto mb-6">
-          LOSPOR — Large Open Source Perioperative Register
-        </Text>
-      </View>
-    </>
+        {/* ── Diagnostics ──────────────────────────────────────────────────────── */}
+        <SectionHeader title={t("diagnostics")} />
+        <Card>
+          <SettingsRow label={t("diagApiBase")} subtitle={API_BASE} />
+          <SettingsRow label={t("diagAuthToken")} subtitle={diag?.hasToken ? (diag.expired ? t("diagTokenPresentExpired") : t("diagTokenPresentValid")) : t("diagTokenMissing")} />
+          <SettingsRow label={t("diagRole")} subtitle={diag?.role ?? t("diagUnknown")} />
+          <SettingsRow label={t("diagInstitution")} subtitle={diag?.institution ?? t("diagUnknown")} />
+          <SettingsRow label={t("diagUserId")} subtitle={diag?.userId ?? t("diagUnknown")} />
+          <SettingsRow label={t("diagExpires")} subtitle={diag?.expiresAt ?? t("diagUnknown")} />
+          <SettingsRow label={t("diagQueuedSaves")} subtitle={diag ? String(diag.queuedSaves) : t("diagUnknown")} onPress={retryQueuedSaves} />
+          <SettingsRow label={t("diagLastOk")} subtitle={diag?.lastOk ? new Date(diag.lastOk).toLocaleString() : t("diagNoneYet")} />
+          <SettingsRow label={t("diagLastError")} subtitle={diag?.lastError ?? t("diagNone")} onPress={refreshDiagnostics} last />
+          <Text style={{ color: colors.textMuted, fontSize: 11, paddingHorizontal: 16, paddingBottom: 12 }}>
+            {t("diagRefreshHint")}
+          </Text>
+        </Card>
+      </ScrollView>
+    </View>
   )
 }

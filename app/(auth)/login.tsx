@@ -3,10 +3,14 @@ import {
   View, Text, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
 } from "react-native"
+import { useRouter } from "expo-router"
 import { useAuth } from "@/lib/auth-context"
+import { colors, withAlpha } from "@/theme/colors"
+import { AuthBackdrop, AuthBrand } from "@/components/AuthBrand"
 
 export default function LoginScreen() {
   const { login } = useAuth()
+  const router = useRouter()
   const [email, setEmail]       = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading]   = useState(false)
@@ -25,18 +29,20 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-slate-900"
+      style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <View className="flex-1 justify-center px-6">
-        <Text className="text-3xl font-bold text-white mb-1">LOSPOR</Text>
-        <Text className="text-slate-400 mb-8">Perioperative case log</Text>
+      <AuthBackdrop />
+      <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 24 }}>
+        <View style={{ marginBottom: 30 }}>
+          <AuthBrand />
+        </View>
 
-        <Text className="text-slate-300 text-sm mb-1">Email</Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 14, marginBottom: 6 }}>Email</Text>
         <TextInput
-          className="bg-slate-800 text-white rounded-lg px-4 py-3 mb-4 text-base"
+          style={{ backgroundColor: colors.surface, color: colors.textPrimary, borderRadius: 14, borderCurve: "continuous", paddingHorizontal: 14, paddingVertical: 13, marginBottom: 16, fontSize: 16, borderWidth: 1, borderColor: colors.border }}
           placeholder="you@hospital.org"
-          placeholderTextColor="#64748b"
+          placeholderTextColor={colors.textMuted}
           autoCapitalize="none"
           keyboardType="email-address"
           autoComplete="email"
@@ -44,11 +50,11 @@ export default function LoginScreen() {
           onChangeText={setEmail}
         />
 
-        <Text className="text-slate-300 text-sm mb-1">Password</Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 14, marginBottom: 6 }}>Password</Text>
         <TextInput
-          className="bg-slate-800 text-white rounded-lg px-4 py-3 mb-6 text-base"
+          style={{ backgroundColor: colors.surface, color: colors.textPrimary, borderRadius: 14, borderCurve: "continuous", paddingHorizontal: 14, paddingVertical: 13, marginBottom: 22, fontSize: 16, borderWidth: 1, borderColor: colors.border }}
           placeholder="••••••••"
-          placeholderTextColor="#64748b"
+          placeholderTextColor={colors.textMuted}
           secureTextEntry
           value={password}
           onChangeText={setPassword}
@@ -56,19 +62,25 @@ export default function LoginScreen() {
         />
 
         <TouchableOpacity
-          className="bg-blue-500 rounded-lg py-3.5 items-center"
+          style={{ backgroundColor: colors.primary, borderRadius: 12, borderCurve: "continuous", paddingVertical: 15, alignItems: "center", borderWidth: 1, borderColor: withAlpha(colors.primary, "99") }}
           onPress={handleLogin}
           disabled={loading}
         >
           {loading
             ? <ActivityIndicator color="#fff" />
-            : <Text className="text-white font-semibold text-base">Sign in</Text>
+            : <Text style={{ color: colors.background, fontWeight: "900", fontSize: 16 }}>Sign in</Text>
           }
         </TouchableOpacity>
 
-        <Text className="text-slate-500 text-xs text-center mt-8">
-          Register at app.lospor.org — admin approval required
-        </Text>
+        <TouchableOpacity
+          style={{ marginTop: 28, alignItems: "center" }}
+          onPress={() => router.push("/(auth)/register")}
+        >
+          <Text style={{ color: colors.textMuted, fontSize: 14 }}>
+            Don't have an account?{" "}
+            <Text style={{ color: colors.primary, fontWeight: "800" }}>Register</Text>
+          </Text>
+        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   )

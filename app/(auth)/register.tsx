@@ -1,0 +1,435 @@
+import { useEffect, useState } from "react"
+import {
+  View, Text, TouchableOpacity, ScrollView,
+  KeyboardAvoidingView, Platform, Linking,
+} from "react-native"
+import { Stack, useRouter } from "expo-router"
+import { useForm, Controller } from "react-hook-form"
+import { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Field, StyledInput, SectionHeader, PrimaryButton, SingleToggle, Chip } from "@/components/ui"
+import { API_BASE } from "@/lib/api"
+import { AuthBackdrop, AuthBrand } from "@/components/AuthBrand"
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface Institution {
+  id: string
+  name: string
+  city: string
+}
+
+// ─── Schema ───────────────────────────────────────────────────────────────────
+
+const schema = z.object({
+  firstName:     z.string().min(1, "Required"),
+  lastName:      z.string().min(1, "Required"),
+  title:         z.string().optional(),
+  email:         z.string().email("Invalid email"),
+  password:      z.string().min(8, "Min 8 characters"),
+  institutionId: z.string().optional(),
+  acceptTerms:   z.literal(true, { error: "You must accept the terms" }),
+})
+
+type FormValues = z.infer<typeof schema>
+
+// ─── Title options ────────────────────────────────────────────────────────────
+
+const TITLE_OPTIONS = [
+  { v: "Dr.", label: "Dr." },
+  { v: "Assoc. Prof.", label: "Assoc. Prof." },
+  { v: "Prof.", label: "Prof." },
+  { v: "Nurse", label: "Nurse" },
+  { v: "Other", label: "Other" },
+]
+
+// ─── Password strength ────────────────────────────────────────────────────────
+
+function getPasswordStrength(pw: string): { score: number; color: string; label: string } {
+  const criteria = [
+    pw.length >= 8,
+    /[A-Z]/.test(pw),
+    /[0-9]/.test(pw),
+    /[^A-Za-z0-9]/.test(pw),
+  ]
+  const score = criteria.filter(Boolean).length
+  if (pw.length === 0) return { score: 0, color: "#2e2e2e", label: "" }
+  if (score < 2)       return { score, color: "#ef4444", label: "Weak" }
+  if (score < 4)       return { score, color: "#f59e0b", label: "Fair" }
+  return                      { score, color: "#22c55e", label: "Strong" }
+}
+
+function PasswordStrengthBar({ password }: { password: string }) {
+  const { score, color, label } = getPasswordStrength(password)
+  if (!password) return null
+  const segments = [1, 2, 3, 4]
+  return (
+    <View className="mt-2">
+      <View className="flex-row gap-1">
+        {segments.map(seg => (
+          <View
+            key={seg}
+            style={{
+              flex: 1,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: score >= seg ? color : "#2e2e2e",
+            }}
+          />
+        ))}
+      </View>
+      {label ? (
+        <Text style={{ color, fontSize: 11, marginTop: 4 }}>{label}</Text>
+      ) : null}
+    </View>
+  )
+}
+
+// ─── Institution picker ───────────────────────────────────────────────────────
+
+function InstitutionPicker({
+  value,
+  onChange,
+}: {
+  value: string | undefined
+  onChange: (id: string | undefined) => void
+}) {
+  const [institutions, setInstitutions] = useState<Institution[]>([])
+  const [query, setQuery] = useState("")
+  const [selectedName, setSelectedName] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/institutions`)
+      .then(r => r.json())
+      .then((data: Institution[]) => setInstitutions(data))
+      .catch(() => {})
+  }, [])
+
+  const filtered = institutions.filter(inst =>
+    !query || inst.name.toLowerCase().includes(query.toLowerCase()) ||
+    inst.city.toLowerCase().includes(query.toLowerCase())
+  )
+
+  function select(inst: Institution) {
+    onChange(inst.id)
+    setSelectedName(inst.name)
+    setQuery("")
+  }
+
+  function deselect() {
+    onChange(undefined)
+    setSelectedName(null)
+    setQuery("")
+  }
+
+  return (
+    <View>
+      {selectedName ? (
+        <View className="flex-row flex-wrap">
+          <Chip label={selectedName} onRemove={deselect} />
+        </View>
+      ) : (
+        <>
+          <StyledInput
+            placeholder="Search by name or city…"
+            value={query}
+            onChangeText={setQuery}
+            autoCapitalize="none"
+          />
+          {query.length > 0 && (
+            <View className="mt-1 bg-[#1c1c1c] border border-[#2e2e2e] rounded-xl overflow-hidden max-h-48">
+              {filtered.length === 0 ? (
+                <View className="px-4 py-3">
+                  <Text className="text-slate-500 text-sm">No results</Text>
+                </View>
+              ) : (
+                filtered.slice(0, 8).map((inst, idx) => (
+                  <TouchableOpacity
+                    key={inst.id}
+                    onPress={() => select(inst)}
+                    className={`px-4 py-3 ${idx < filtered.slice(0, 8).length - 1 ? "border-b border-[#2e2e2e]" : ""}`}
+                  >
+                    <Text className="text-white text-sm">{inst.name}</Text>
+                    <Text className="text-slate-500 text-xs mt-0.5">{inst.city}</Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+          )}
+        </>
+      )}
+    </View>
+  )
+}
+
+// ─── Success state ────────────────────────────────────────────────────────────
+
+function SuccessView() {
+  const router = useRouter()
+  return (
+    <View className="flex-1 bg-[#111111] justify-center items-center px-8">
+      <Text style={{ fontSize: 72, color: "#22c55e", marginBottom: 16 }}>✓</Text>
+      <Text className="text-white text-2xl font-bold text-center mb-3">Account created</Text>
+      <Text className="text-slate-400 text-sm text-center mb-10 leading-relaxed">
+        Your account is pending admin approval. You'll be able to log in once approved.
+      </Text>
+      <TouchableOpacity
+        className="bg-blue-600 rounded-xl py-3.5 px-8 items-center"
+        onPress={() => router.replace("/(auth)/login")}
+      >
+        <Text className="text-white font-semibold text-base">Back to login</Text>
+      </TouchableOpacity>
+    </View>
+  )
+}
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
+
+export default function RegisterScreen() {
+  const router = useRouter()
+  const [success, setSuccess] = useState(false)
+  const [serverError, setServerError] = useState<string | null>(null)
+
+  const {
+    control,
+    handleSubmit,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      firstName:     "",
+      lastName:      "",
+      title:         undefined,
+      email:         "",
+      password:      "",
+      institutionId: undefined,
+      acceptTerms:   undefined as unknown as true,
+    },
+  })
+
+  const passwordValue = watch("password") ?? ""
+
+  async function onSubmit(data: FormValues) {
+    setServerError(null)
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName:     data.firstName,
+          lastName:      data.lastName,
+          title:         data.title,
+          email:         data.email,
+          password:      data.password,
+          institutionId: data.institutionId,
+          acceptTerms:   true,
+        }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setServerError((body as { error?: string }).error ?? "Registration failed. Please try again.")
+        return
+      }
+      setSuccess(true)
+    } catch {
+      setServerError("Network error. Please check your connection.")
+    }
+  }
+
+  if (success) return <SuccessView />
+
+  return (
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <KeyboardAvoidingView
+        className="flex-1 bg-[#111111]"
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+      >
+        <AuthBackdrop />
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={{ marginTop: 24, marginBottom: 30 }}>
+            <AuthBrand />
+            <Text className="text-slate-400 text-sm text-center mt-3">Create your clinical log account</Text>
+          </View>
+
+          {/* ── Personal details ── */}
+          <SectionHeader title="Personal details" />
+
+          <Controller
+            control={control}
+            name="firstName"
+            render={({ field: { value, onChange, onBlur } }) => (
+              <Field label="First name" required error={errors.firstName?.message}>
+                <StyledInput
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="First name"
+                  autoCapitalize="words"
+                  autoComplete="given-name"
+                />
+              </Field>
+            )}
+          />
+
+          <Controller
+            control={control}
+            name="lastName"
+            render={({ field: { value, onChange, onBlur } }) => (
+              <Field label="Last name" required error={errors.lastName?.message}>
+                <StyledInput
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="Last name"
+                  autoCapitalize="words"
+                  autoComplete="family-name"
+                />
+              </Field>
+            )}
+          />
+
+          <Controller
+            control={control}
+            name="title"
+            render={({ field: { value, onChange } }) => (
+              <Field label="Professional title">
+                <SingleToggle
+                  options={TITLE_OPTIONS}
+                  value={value}
+                  onChange={onChange}
+                />
+              </Field>
+            )}
+          />
+
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { value, onChange, onBlur } }) => (
+              <Field label="Email" required error={errors.email?.message}>
+                <StyledInput
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="you@hospital.org"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                />
+              </Field>
+            )}
+          />
+
+          <Controller
+            control={control}
+            name="password"
+            render={({ field: { value, onChange, onBlur } }) => (
+              <Field label="Password" required error={errors.password?.message}>
+                <StyledInput
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="Min 8 chars, uppercase, number, symbol"
+                  secureTextEntry
+                  autoComplete="new-password"
+                />
+                <PasswordStrengthBar password={passwordValue} />
+              </Field>
+            )}
+          />
+
+          {/* ── Institution ── */}
+          <SectionHeader title="Institution (optional)" />
+
+          <Controller
+            control={control}
+            name="institutionId"
+            render={({ field: { value, onChange } }) => (
+              <Field label="Institution">
+                <InstitutionPicker value={value} onChange={onChange} />
+              </Field>
+            )}
+          />
+
+          {/* ── Terms ── */}
+          <SectionHeader title="Terms" />
+
+          <Controller
+            control={control}
+            name="acceptTerms"
+            render={({ field: { value, onChange } }) => (
+              <View className="mb-4">
+                <TouchableOpacity
+                  className="flex-row items-start"
+                  onPress={() => onChange(value ? (undefined as unknown as true) : true)}
+                  activeOpacity={0.7}
+                >
+                  <View
+                    className="mt-0.5 mr-3 items-center justify-center"
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 4,
+                      borderWidth: 2,
+                      borderColor: value ? "#3b82f6" : "#4b5563",
+                      backgroundColor: value ? "#3b82f6" : "transparent",
+                    }}
+                  >
+                    {value && <Text style={{ color: "#fff", fontSize: 13, lineHeight: 16 }}>✓</Text>}
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-slate-300 text-sm leading-relaxed">
+                      {"I accept the "}
+                      <Text
+                        className="text-blue-400 underline"
+                        onPress={() => Linking.openURL("https://app.lospor.org/terms")}
+                      >
+                        Terms of Use and Privacy Policy
+                      </Text>
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+                {errors.acceptTerms && (
+                  <Text className="text-red-400 text-xs mt-1 ml-8">
+                    {errors.acceptTerms.message as string}
+                  </Text>
+                )}
+              </View>
+            )}
+          />
+
+          {/* ── Server error ── */}
+          {serverError && (
+            <View className="mb-4 bg-red-900/30 border border-red-700/50 rounded-xl px-4 py-3">
+              <Text className="text-red-300 text-sm">{serverError}</Text>
+            </View>
+          )}
+
+          {/* ── Submit ── */}
+          <PrimaryButton
+            label="Create account"
+            onPress={handleSubmit(onSubmit)}
+            loading={isSubmitting}
+          />
+
+          <TouchableOpacity
+            className="mt-5 items-center"
+            onPress={() => router.back()}
+          >
+            <Text className="text-slate-500 text-sm">
+              Already have an account?{" "}
+              <Text className="text-blue-400">Sign in</Text>
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </>
+  )
+}

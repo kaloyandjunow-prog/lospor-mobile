@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react"
-import { getToken, login as apiLogin, logout as apiLogout } from "./api"
+import { getToken, isTokenExpired, login as apiLogin, logout as apiLogout, onAuthExpired } from "./api"
 
 type AuthState = "loading" | "unauthenticated" | "authenticated"
 
@@ -15,9 +15,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>("loading")
 
   useEffect(() => {
-    getToken().then(token => {
-      setState(token ? "authenticated" : "unauthenticated")
+    const unsubscribe = onAuthExpired(() => setState("unauthenticated"))
+    getToken().then(async token => {
+      if (!token || isTokenExpired(token)) {
+        if (token) await apiLogout()
+        setState("unauthenticated")
+        return
+      }
+      setState("authenticated")
     })
+    return unsubscribe
   }, [])
 
   async function login(email: string, password: string) {
