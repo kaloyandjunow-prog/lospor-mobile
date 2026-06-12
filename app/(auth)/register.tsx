@@ -19,16 +19,35 @@ interface Institution {
   city: string
 }
 
+const COUNTRIES = [
+  "Bulgaria", "Romania", "Greece", "Turkey", "Serbia",
+  "North Macedonia", "Germany", "United Kingdom", "France",
+  "Italy", "Spain", "Portugal", "Netherlands", "Belgium",
+  "Austria", "Switzerland", "Poland", "Czech Republic",
+  "Hungary", "Croatia", "Slovenia", "Slovakia", "Other",
+] as const
+
 // ─── Schema ───────────────────────────────────────────────────────────────────
+
+const passwordSchema = z.string()
+  .min(8, "At least 8 characters")
+  .regex(/[A-Z]/, "At least one uppercase letter")
+  .regex(/[0-9]/, "At least one number")
+  .regex(/[^A-Za-z0-9]/, "At least one special character")
 
 const schema = z.object({
   firstName:     z.string().min(1, "Required"),
   lastName:      z.string().min(1, "Required"),
   title:         z.string().optional(),
   email:         z.string().email("Invalid email"),
-  password:      z.string().min(8, "Min 8 characters"),
+  country:       z.string().min(1, "Select a country"),
   institutionId: z.string().optional(),
-  acceptTerms:   z.literal(true, { error: "You must accept the terms" }),
+  password:      passwordSchema,
+  confirmPassword: z.string().min(1, "Confirm your password"),
+  acceptedTerms: z.boolean().refine(value => value === true, "You must accept the terms"),
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
 })
 
 type FormValues = z.infer<typeof schema>
@@ -87,10 +106,101 @@ function PasswordStrengthBar({ password }: { password: string }) {
 
 // ─── Institution picker ───────────────────────────────────────────────────────
 
-function InstitutionPicker({
+function CountryPicker({
   value,
   onChange,
 }: {
+  value: string
+  onChange: (country: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState("")
+  const filtered = COUNTRIES.filter(country =>
+    !query || country.toLowerCase().includes(query.trim().toLowerCase())
+  )
+
+  function select(country: string) {
+    onChange(country)
+    setOpen(false)
+    setQuery("")
+  }
+
+  return (
+    <View>
+      <TouchableOpacity
+        onPress={() => setOpen(current => !current)}
+        activeOpacity={0.75}
+        style={{
+          minHeight: 50,
+          backgroundColor: "#1c1c1c",
+          borderColor: open ? "#3b82f6" : "#2e2e2e",
+          borderWidth: 1,
+          borderRadius: 14,
+          paddingHorizontal: 14,
+          paddingVertical: 12,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Text style={{ color: value ? "#f8fafc" : "#64748b", fontSize: 16 }}>
+          {value || "Select country"}
+        </Text>
+        <Text style={{ color: "#94a3b8", fontSize: 14 }}>{open ? "^" : "v"}</Text>
+      </TouchableOpacity>
+
+      {open && (
+        <View
+          style={{
+            marginTop: 6,
+            maxHeight: 260,
+            backgroundColor: "#1c1c1c",
+            borderColor: "#2e2e2e",
+            borderWidth: 1,
+            borderRadius: 14,
+            overflow: "hidden",
+          }}
+        >
+          <View style={{ padding: 8, borderBottomWidth: 1, borderBottomColor: "#2e2e2e" }}>
+            <StyledInput
+              placeholder="Search countries..."
+              value={query}
+              onChangeText={setQuery}
+              autoCapitalize="words"
+              style={{ paddingVertical: 9 }}
+            />
+          </View>
+          <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
+            {filtered.map(country => (
+              <TouchableOpacity
+                key={country}
+                onPress={() => select(country)}
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  borderBottomWidth: country === filtered[filtered.length - 1] ? 0 : 1,
+                  borderBottomColor: "#2e2e2e",
+                  backgroundColor: country === value ? "#172554" : "transparent",
+                }}
+              >
+                <Text style={{ color: country === value ? "#60a5fa" : "#e2e8f0", fontSize: 15 }}>
+                  {country}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+    </View>
+  )
+}
+
+function InstitutionPicker({
+  country,
+  value,
+  onChange,
+}: {
+  country: string
   value: string | undefined
   onChange: (id: string | undefined) => void
 }) {
@@ -105,10 +215,32 @@ function InstitutionPicker({
       .catch(() => {})
   }, [])
 
-  const filtered = institutions.filter(inst =>
-    !query || inst.name.toLowerCase().includes(query.toLowerCase()) ||
+  const otherInstitution = institutions.find(inst =>
+    inst.name === "Other / Private" || inst.name === "Друго"
+  )
+  const availableInstitutions = country === "Bulgaria"
+    ? institutions.filter(inst => inst.id !== otherInstitution?.id)
+    : []
+  const filtered = availableInstitutions.filter(inst =>
+    !query ||
+    inst.name.toLowerCase().includes(query.toLowerCase()) ||
     inst.city.toLowerCase().includes(query.toLowerCase())
   )
+
+  useEffect(() => {
+    if (!country) return
+    if (country === "Bulgaria") {
+      if (value === otherInstitution?.id) {
+        onChange(undefined)
+        setSelectedName(null)
+      }
+      return
+    }
+    if (otherInstitution && value !== otherInstitution.id) {
+      onChange(otherInstitution.id)
+      setSelectedName(otherInstitution.name)
+    }
+  }, [country, onChange, otherInstitution, value])
 
   function select(inst: Institution) {
     onChange(inst.id)
@@ -120,6 +252,26 @@ function InstitutionPicker({
     onChange(undefined)
     setSelectedName(null)
     setQuery("")
+  }
+
+  if (country !== "Bulgaria") {
+    return (
+      <View
+        style={{
+          minHeight: 50,
+          justifyContent: "center",
+          backgroundColor: "#1c1c1c",
+          borderColor: "#2e2e2e",
+          borderWidth: 1,
+          borderRadius: 14,
+          paddingHorizontal: 14,
+        }}
+      >
+        <Text style={{ color: "#94a3b8", fontSize: 15 }}>
+          {otherInstitution?.name ?? "Other / Private"}
+        </Text>
+      </View>
+    )
   }
 
   return (
@@ -193,6 +345,7 @@ export default function RegisterScreen() {
   const {
     control,
     handleSubmit,
+    setValue,
     watch,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
@@ -202,9 +355,11 @@ export default function RegisterScreen() {
       lastName:      "",
       title:         undefined,
       email:         "",
+      country:       "",
       password:      "",
+      confirmPassword: "",
       institutionId: undefined,
-      acceptTerms:   undefined as unknown as true,
+      acceptedTerms: false,
     },
   })
 
@@ -223,7 +378,7 @@ export default function RegisterScreen() {
           email:         data.email,
           password:      data.password,
           institutionId: data.institutionId,
-          acceptTerms:   true,
+          acceptedTerms: data.acceptedTerms,
         }),
       })
       const body = await res.json().catch(() => ({}))
@@ -329,6 +484,22 @@ export default function RegisterScreen() {
 
           <Controller
             control={control}
+            name="country"
+            render={({ field: { value, onChange } }) => (
+              <Field label="Country" required error={errors.country?.message}>
+                <CountryPicker
+                  value={value}
+                  onChange={country => {
+                    onChange(country)
+                    setValue("institutionId", undefined)
+                  }}
+                />
+              </Field>
+            )}
+          />
+
+          <Controller
+            control={control}
             name="password"
             render={({ field: { value, onChange, onBlur } }) => (
               <Field label="Password" required error={errors.password?.message}>
@@ -345,30 +516,74 @@ export default function RegisterScreen() {
             )}
           />
 
-          {/* ── Institution ── */}
-          <SectionHeader title="Institution (optional)" />
-
           <Controller
             control={control}
-            name="institutionId"
-            render={({ field: { value, onChange } }) => (
-              <Field label="Institution">
-                <InstitutionPicker value={value} onChange={onChange} />
+            name="confirmPassword"
+            render={({ field: { value, onChange, onBlur } }) => (
+              <Field label="Confirm password" required error={errors.confirmPassword?.message}>
+                <StyledInput
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="Repeat password"
+                  secureTextEntry
+                  autoComplete="new-password"
+                />
               </Field>
             )}
           />
+
+          {/* ── Institution ── */}
+          <SectionHeader title="Institution (optional)" />
+
+          {watch("country") ? (
+            <Controller
+              control={control}
+              name="institutionId"
+              render={({ field: { value, onChange } }) => (
+                <Field label="Institution">
+                  <InstitutionPicker
+                    country={watch("country")}
+                    value={value}
+                    onChange={onChange}
+                  />
+                </Field>
+              )}
+            />
+          ) : (
+            <Text style={{ color: "#64748b", fontSize: 13, marginBottom: 16 }}>
+              Select a country to choose an institution.
+            </Text>
+          )}
 
           {/* ── Terms ── */}
           <SectionHeader title="Terms" />
 
           <Controller
             control={control}
-            name="acceptTerms"
+            name="acceptedTerms"
             render={({ field: { value, onChange } }) => (
               <View className="mb-4">
+                <View
+                  style={{
+                    backgroundColor: "#1c1c1c",
+                    borderColor: "#2e2e2e",
+                    borderWidth: 1,
+                    borderRadius: 12,
+                    padding: 12,
+                    marginBottom: 12,
+                  }}
+                >
+                  <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "700", marginBottom: 4 }}>
+                    Clinical registry account
+                  </Text>
+                  <Text style={{ color: "#94a3b8", fontSize: 12, lineHeight: 17 }}>
+                    LOSPOR stores clinical registry data under its Terms of Use and Privacy Policy.
+                  </Text>
+                </View>
                 <TouchableOpacity
                   className="flex-row items-start"
-                  onPress={() => onChange(value ? (undefined as unknown as true) : true)}
+                  onPress={() => onChange(!value)}
                   activeOpacity={0.7}
                 >
                   <View
@@ -396,9 +611,9 @@ export default function RegisterScreen() {
                     </Text>
                   </View>
                 </TouchableOpacity>
-                {errors.acceptTerms && (
+                {errors.acceptedTerms && (
                   <Text className="text-red-400 text-xs mt-1 ml-8">
-                    {errors.acceptTerms.message as string}
+                    {errors.acceptedTerms.message as string}
                   </Text>
                 )}
               </View>
