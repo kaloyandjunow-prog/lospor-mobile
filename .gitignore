@@ -52,10 +52,10 @@ yarn-error.*
 *.log
 logs/
 screenshots/
-android-*.png
-ios-*.png
-emulator-*.png
-emulator-*.mp4
+/android-*.png
+/ios-*.png
+/emulator-*.png
+/emulator-*.mp4
 
 # Temporary scripts (one-off DB cleanup etc.)
 scripts/clean-dev-db.ts
