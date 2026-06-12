@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.0.0-hotfix2] - 2026-06-12
+
+### Changed
+- Aligned the PWA/native registration flow with the web app by adding country selection, country-aware institution handling, password confirmation, and the full production password policy.
+- Standardized registration consent on the backend-compatible `acceptedTerms` field.
+
+### Fixed
+- PWA/native account creation no longer fails with `Invalid input: expected boolean, received undefined` after accepting the Terms of Use and Privacy Policy.
+- Anchored development screenshot ignore patterns to the repository root so EAS Build includes the adaptive Android icon assets during prebuild.
+
+---
+
 ## [1.0.1] — 2026-06-09
 
 ### Added
