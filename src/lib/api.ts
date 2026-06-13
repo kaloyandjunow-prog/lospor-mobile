@@ -123,6 +123,14 @@ export async function login(email: string, password: string): Promise<void> {
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
+    if (res.status === 401) {
+      const check = await fetch(`${API_BASE}/api/auth/check-pending?email=${encodeURIComponent(email)}`)
+        .then(r => r.json())
+        .catch(() => ({ pending: false }))
+      if (check.pending) {
+        throw new Error("Your account is awaiting admin approval. You'll be able to sign in once an administrator approves it.")
+      }
+    }
     throw new Error(body.error ?? "Login failed")
   }
   const { access_token } = await res.json()
