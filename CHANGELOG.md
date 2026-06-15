@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.0] - 2026-06-15
+
+### Added
+- **Case reminders (notifications)** — opt-in reminders during an active case. When enabled, you get a "vitals due" reminder every few minutes that resets whenever you chart a set of vitals. Settings → Notifications has a toggle, an interval picker (3/5/10/15 min), a live permission-status line, and a "Send test notification" button. Native uses on-device scheduled notifications (fire even when backgrounded); the PWA uses browser notifications over HTTPS.
+
+### Changed
+- **Offline intraoperative events** now replay automatically when the connection returns (idempotency-keyed, so nothing is duplicated or lost), not only while the case screen is open.
+- **Sign out** now revokes the session on the server, so a token can't be reused after logout.
+- Offline "saved/discarded" sync counts are reported accurately.
+
+### Fixed
+- Infusion rate changes now show the correct rate for each time slot on the running-infusion pill (previously it kept showing the starting rate).
+
+---
+
 ## [1.0.0-hotfix2] - 2026-06-12
 
 ### Changed
