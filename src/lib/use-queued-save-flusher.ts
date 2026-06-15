@@ -1,5 +1,6 @@
 import { useCallback, useRef } from "react"
 import { flushAllQueuedCasePatches, getQueuedCasePatchSummary, reconcileQueue } from "./offline-case-patches"
+import { flushPendingIntraopEvents } from "./pending-intraop-events"
 import { getAllLocalCaseDrafts, deleteLocalCaseDraft } from "./local-case-store"
 import { buildPreopPayload } from "./preop-payload"
 import { apiFetch } from "./api"
@@ -38,6 +39,8 @@ export function useQueuedSaveFlusher(enabled: boolean, onChange?: (count: number
     await flushLocalCaseDrafts()
     // Flush queued patches for existing server cases
     await flushAllQueuedCasePatches()
+    // Replay any intraop events captured offline (idempotent server-side)
+    await flushPendingIntraopEvents()
     if (onChange) {
       const summary = await getQueuedCasePatchSummary()
       onChange(summary.count)

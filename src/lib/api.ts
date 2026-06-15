@@ -138,5 +138,18 @@ export async function login(email: string, password: string): Promise<void> {
 }
 
 export async function logout(): Promise<void> {
+  // Best-effort server-side revocation so a token can't be replayed after logout
+  // (e.g. on a lost device). Clear locally regardless of the network result.
+  try {
+    const token = await getToken()
+    if (token) {
+      await fetch(`${API_BASE}/api/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    }
+  } catch {
+    /* offline or server unreachable — local clear below still logs the user out */
+  }
   await clearToken()
 }

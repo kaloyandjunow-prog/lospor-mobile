@@ -199,9 +199,9 @@ export async function flushQueuedCasePatch(caseId: string, section: CasePatchSec
   }
 }
 
-export async function flushAllQueuedCasePatches(): Promise<{ saved: number; failed: number }> {
+export async function flushAllQueuedCasePatches(): Promise<{ saved: number; failed: number; discarded: number }> {
   const entries = await loadQueueIndex()
-  if (entries.length === 0) return { saved: 0, failed: 0 }
+  if (entries.length === 0) return { saved: 0, failed: 0, discarded: 0 }
 
   // Group by caseId so all sections for a case are sent in a single PATCH request.
   const byCaseId = new Map<string, QueueEntry[]>()
@@ -213,21 +213,28 @@ export async function flushAllQueuedCasePatches(): Promise<{ saved: number; fail
 
   let saved = 0
   let failed = 0
+  let discarded = 0
+  // "empty" means the patch was dropped (stale 404/403 or no data) — that's a
+  // discard, not a successful save, so count it separately instead of inflating
+  // the saved tally.
+  const tally = (result: CasePatchResult) => {
+    if (result === "saved") saved += 1
+    else if (result === "empty") discarded += 1
+    else failed += 1
+  }
   // Flush each case's sections as a merged batch (one PATCH per case)
   await Promise.all([...byCaseId.entries()].map(async ([, caseEntries]) => {
     if (caseEntries.length === 1) {
       // Single section: use existing per-section flush path
       const result = await flushQueuedCasePatch(caseEntries[0].caseId, caseEntries[0].section)
-      if (result.result === "saved" || result.result === "empty") saved += 1
-      else failed += 1
+      tally(result.result)
       return
     }
     // Multiple sections: flush sequentially per case to respect ordering
     for (const entry of caseEntries) {
       const result = await flushQueuedCasePatch(entry.caseId, entry.section)
-      if (result.result === "saved" || result.result === "empty") saved += 1
-      else failed += 1
+      tally(result.result)
     }
   }))
-  return { saved, failed }
+  return { saved, failed, discarded }
 }

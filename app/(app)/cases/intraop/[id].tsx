@@ -8,6 +8,8 @@ import { useLocalSearchParams, useRouter, Stack } from "expo-router"
 import * as Haptics from "expo-haptics"
 import * as SecureStore from "expo-secure-store"
 import { apiFetch, apiJson } from "@/lib/api"
+import { markPendingIntraopCase } from "@/lib/pending-intraop-events"
+import { useCaseReminders } from "@/lib/use-case-reminders"
 import { usePreferences, type ClinicalStringKey } from "@/lib/preferences-context"
 import { useCaseLiveUpdates } from "@/lib/use-case-live-updates"
 import { IntraopTimetable, emptyTimetable, type TimetableData, type VitalsEntry } from "@/components/IntraopTimetable"
@@ -1199,9 +1201,12 @@ async function loadPendingEvents(caseId: string): Promise<LogEvent[]> {
 async function storePendingEvents(caseId: string, events: LogEvent[]) {
   if (events.length === 0) {
     await SecureStore.deleteItemAsync(pendingKey(caseId))
+    // Keep the shared index in sync so the global flusher stops tracking this case.
+    await markPendingIntraopCase(caseId, false)
     return
   }
   await SecureStore.setItemAsync(pendingKey(caseId), JSON.stringify(events))
+  await markPendingIntraopCase(caseId, true)
 }
 
 function mergeLogWithPending(serverLog: LogEvent[], pending: LogEvent[]): LogEvent[] {
@@ -1433,6 +1438,9 @@ export default function IntraopLiveScreen() {
   const [caseEnded, setCaseEnded] = useState(false)
   const caseEndedAtRef = useRef<Date | null>(null)
   const [resumeSecsLeft, setResumeSecsLeft] = useState(0)
+
+  // Vitals reminder notifications (opt-in; reset on each manual vitals entry)
+  const { noteVitals } = useCaseReminders(!caseEnded)
 
   // Complications
   const [compOpen,             setCompOpen]             = useState(false)
@@ -1816,6 +1824,8 @@ export default function IntraopLiveScreen() {
       if (!silent) {
         setUndoEv(eventForServer(ev))
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
+        // Manually charting vitals resets the "vitals due" reminder countdown.
+        if (ev.type === "vital") noteVitals()
       }
     } catch {
       setLog(prev => prev.map(item => item.id === ev.id ? { ...item, syncStatus: "failed" } : item))
@@ -2684,7 +2694,14 @@ export default function IntraopLiveScreen() {
       if (col >= a.startCol && col <= a.endCol) items.push({ id:`agent-${a.name}`, label:a.name, color:a.color })
     }
     for (const i of timetable.infusions) {
-      if (col >= i.startCol && col <= i.endCol) items.push({ id:`inf-${i.id}`, label:`${i.name} ${i.rate}`, color:i.color })
+      if (col >= i.startCol && col <= i.endCol) {
+        // Show the rate ACTIVE at this column, not the initial rate: apply the
+        // latest rateChange at or before `col`, falling back to the base rate.
+        const sorted = (i.rateChanges ?? []).slice().sort((a, b) => a.col - b.col)
+        const active = sorted.filter(rc => rc.col <= col).pop()
+        const curRate = active?.rate ?? i.rate
+        items.push({ id:`inf-${i.id}`, label:`${i.name} ${curRate}`, color:i.color })
+      }
     }
     for (const f of timetable.fluids) {
       if (col >= f.startCol && col <= f.endCol) items.push({ id:`fluid-${f.id}`, label:`${f.name} ${f.volume}mL`, color:f.color })

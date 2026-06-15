@@ -12,6 +12,8 @@ import {
 } from "@/lib/api"
 import { flushAllQueuedCasePatches, getQueuedCasePatchSummary } from "@/lib/offline-case-patches"
 import { usePreferences } from "@/lib/preferences-context"
+import { ensurePermission, presentNow, getStatus, type NotifStatus } from "@/lib/notifications"
+import { REMINDERS_KEY, VITALS_INTERVAL_KEY, DEFAULT_INTERVAL_MIN } from "@/lib/use-case-reminders"
 import { Card, SectionHeader, SettingsRow } from "@/components/ui"
 import { colors, withAlpha } from "@/theme/colors"
 import { AppHeader } from "@/components/AppHeader"
@@ -145,6 +147,14 @@ export default function SettingsScreen() {
   const [autoFillBP,     setAutoFillBPState]     = useState(false)
   const [autoFillBg,     setAutoFillBgState]     = useState(false)
 
+  // ── Notification reminders ─────────────────────────────────────────────────
+  const [remindersOn,   setRemindersOnState]   = useState(false)
+  const [vitalsInterval, setVitalsIntervalState] = useState(DEFAULT_INTERVAL_MIN)
+  const [notifStatus,   setNotifStatus]        = useState<NotifStatus | null>(null)
+  const [notifMsg,      setNotifMsg]           = useState<string | null>(null)
+  const INTERVAL_CHOICES = [3, 5, 10, 15]
+  function refreshNotifStatus() { getStatus().then(setNotifStatus).catch(() => {}) }
+
   // ── Diagnostics ──────────────────────────────────────────────────────────────
   const [diag, setDiag] = useState<{
     hasToken: boolean; expired: boolean; role?: string; userId?: string
@@ -182,6 +192,11 @@ export default function SettingsScreen() {
     SecureStore.getItemAsync("intraop_autofill_vitals").then(v => setAutoFillVitalsState(v === "on"))
     SecureStore.getItemAsync("intraop_autofill_bp").then(v => setAutoFillBPState(v === "on"))
     SecureStore.getItemAsync("intraop_autofill_bg").then(v => setAutoFillBgState(v === "on"))
+    SecureStore.getItemAsync(REMINDERS_KEY).then(v => setRemindersOnState(v === "on"))
+    SecureStore.getItemAsync(VITALS_INTERVAL_KEY).then(v => {
+      const n = Number(v); if (Number.isFinite(n) && n > 0) setVitalsIntervalState(n)
+    })
+    refreshNotifStatus()
   }
 
   async function refreshDiagnostics() {
@@ -218,6 +233,50 @@ export default function SettingsScreen() {
   function setAutoFillBg(v: boolean) {
     setAutoFillBgState(v)
     SecureStore.setItemAsync("intraop_autofill_bg", v ? "on" : "off")
+  }
+
+  // ── Notification setters ─────────────────────────────────────────────────────
+  async function setRemindersOn(v: boolean) {
+    setNotifMsg(null)
+    if (v) {
+      const status = await getStatus()
+      setNotifStatus(status)
+      if (!status.supported) {
+        setNotifMsg(status.reason ?? "Notifications aren't available here.")
+        return
+      }
+      const ok = await ensurePermission()
+      refreshNotifStatus()
+      if (!ok) {
+        setNotifMsg("Permission was not granted. Allow notifications for LOSPOR in your device/browser settings, then try again.")
+        return
+      }
+    }
+    setRemindersOnState(v)
+    SecureStore.setItemAsync(REMINDERS_KEY, v ? "on" : "off")
+  }
+  function cycleVitalsInterval() {
+    const idx = INTERVAL_CHOICES.indexOf(vitalsInterval)
+    const next = INTERVAL_CHOICES[(idx + 1) % INTERVAL_CHOICES.length]
+    setVitalsIntervalState(next)
+    SecureStore.setItemAsync(VITALS_INTERVAL_KEY, String(next))
+  }
+  async function sendTestNotification() {
+    setNotifMsg(null)
+    const status = await getStatus()
+    setNotifStatus(status)
+    if (!status.supported) {
+      setNotifMsg(status.reason ?? "Notifications aren't available here.")
+      return
+    }
+    const ok = await ensurePermission()
+    refreshNotifStatus()
+    if (!ok) {
+      setNotifMsg("Permission was not granted. Allow notifications for LOSPOR in your device/browser settings first.")
+      return
+    }
+    await presentNow("LOSPOR", "Test notification — reminders are working.")
+    setNotifMsg("Sent. If you didn't see it, check your device/browser notification settings for this site.")
   }
 
   // ── Institution update ───────────────────────────────────────────────────────
@@ -471,6 +530,55 @@ export default function SettingsScreen() {
           />
         </Card>
 
+        {/* ── Notifications ────────────────────────────────────────────────────── */}
+        <SectionHeader title="Notifications" />
+        <Card>
+          <SettingsRow
+            label="Case reminders"
+            subtitle={
+              "Remind me to chart vitals during an active case" +
+              (notifStatus
+                ? !notifStatus.supported
+                  ? "  ·  Status: not available here"
+                  : notifStatus.permission === "granted" ? "  ·  Status: allowed"
+                  : notifStatus.permission === "denied"  ? "  ·  Status: blocked in settings"
+                  : "  ·  Status: not asked yet"
+                : "")
+            }
+            rightElement={
+              <Switch
+                value={remindersOn}
+                onValueChange={setRemindersOn}
+                trackColor={{ false: colors.border, true: colors.primarySoft }}
+                thumbColor={remindersOn ? colors.primary : colors.textMuted}
+              />
+            }
+          />
+          {notifMsg && (
+            <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>{notifMsg}</Text>
+            </View>
+          )}
+          {remindersOn && (
+            <SettingsRow
+              label="Vitals reminder interval"
+              subtitle="Tap to change how often you're reminded"
+              onPress={cycleVitalsInterval}
+              rightElement={
+                <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 15 }}>
+                  {vitalsInterval} min
+                </Text>
+              }
+            />
+          )}
+          <SettingsRow
+            label="Send test notification"
+            subtitle="Check that notifications are allowed on this device"
+            last
+            onPress={sendTestNotification}
+          />
+        </Card>
+
         {/* ── Privacy & Data ───────────────────────────────────────────────────── */}
         <SectionHeader title={t("privacyData")} />
         <Card>
@@ -484,7 +592,7 @@ export default function SettingsScreen() {
           />
           <SettingsRow
             label={t("about")}
-            subtitle="LOSPOR v1.0.0 — Large Open Source Perioperative Register"
+            subtitle="LOSPOR v1.1.0 — Large Open Source Perioperative Register"
           />
           <SettingsRow
             label={t("docs")}

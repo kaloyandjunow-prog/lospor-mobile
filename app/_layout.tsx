@@ -12,6 +12,7 @@ import {
 import { AuthProvider, useAuth } from "@/lib/auth-context"
 import { useQueuedSaveFlusher } from "@/lib/use-queued-save-flusher"
 import { PreferencesProvider } from "@/lib/preferences-context"
+import { configureForeground } from "@/lib/notifications"
 import { BootAnimation } from "@/components/BootAnimation"
 
 const appFontFamily = "Roboto_400Regular"
@@ -63,6 +64,9 @@ export default function RootLayout() {
   })
   // Root layout mounts once per cold launch, so warm resumes do not replay it.
   const [bootDone, setBootDone] = useState(false)
+
+  // Set the notification foreground handler / Android channel once at startup.
+  useEffect(() => { configureForeground() }, [])
 
   if (!fontsLoaded) return null
 

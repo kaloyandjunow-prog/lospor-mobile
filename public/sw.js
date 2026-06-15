@@ -3,8 +3,8 @@
 //   - App shell (index.html): cache on install, serve from cache as offline fallback
 //   - Static JS/CSS/fonts (/_expo/static/*, /assets/*): cache-first after first fetch
 //   - API calls (/api/*): always network-only — clinical data must be live
-const CACHE = "lospor-shell-v3"
-const STATIC_CACHE = "lospor-static-v3"
+const CACHE = "lospor-shell-v4"
+const STATIC_CACHE = "lospor-static-v4"
 
 self.addEventListener("install", e => {
   e.waitUntil(
@@ -56,4 +56,17 @@ self.addEventListener("fetch", e => {
       fetch(e.request).catch(() => caches.match("/index.html"))
     )
   }
+})
+
+// Focus (or open) the app when a reminder notification is tapped.
+self.addEventListener("notificationclick", e => {
+  e.notification.close()
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
+      for (const client of list) {
+        if ("focus" in client) return client.focus()
+      }
+      if (self.clients.openWindow) return self.clients.openWindow("/")
+    })
+  )
 })

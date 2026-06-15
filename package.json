@@ -1,6 +1,6 @@
 {
   "name": "lospor-mobile",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "license": "AGPL-3.0-or-later",
   "main": "expo-router/entry",
   "dependencies": {
@@ -15,6 +15,7 @@
     "expo-haptics": "~56.0.3",
     "expo-image-picker": "~56.0.17",
     "expo-linking": "~56.0.14",
+    "expo-notifications": "~56.0.17",
     "expo-router": "~56.2.10",
     "expo-secure-store": "~56.0.4",
     "expo-splash-screen": "~56.0.10",
