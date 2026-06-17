@@ -67,6 +67,29 @@ function eventForServer(ev: any) {
   return clean
 }
 
+// A small log of events the server permanently rejected (400/403/404). We drop
+// them from the active queue so they aren't retried forever, but record them here
+// so clinical data is never *silently* discarded — it can be surfaced/recovered.
+const DROPPED_KEY = "lospor_intraop_dropped"
+
+async function recordDroppedEvent(caseId: string, ev: any, status: number): Promise<void> {
+  try {
+    const raw = await SecureStore.getItemAsync(DROPPED_KEY)
+    const list = raw ? (JSON.parse(raw) as any[]) : []
+    list.push({ caseId, event: eventForServer(ev), status, droppedAt: new Date().toISOString() })
+    await SecureStore.setItemAsync(DROPPED_KEY, JSON.stringify(list.slice(-200)))
+  } catch {
+    /* best-effort — never let logging a drop throw */
+  }
+}
+
+/** Events the server permanently rejected (kept for visibility/recovery). */
+export async function getDroppedIntraopEvents(): Promise<any[]> {
+  const raw = await SecureStore.getItemAsync(DROPPED_KEY)
+  if (!raw) return []
+  try { const l = JSON.parse(raw); return Array.isArray(l) ? l : [] } catch { return [] }
+}
+
 /**
  * Replay any persisted intraop events that haven't reached the server yet.
  * Safe to call repeatedly (idempotent server-side). Returns counts for diagnostics.
@@ -101,10 +124,20 @@ export async function flushPendingIntraopEvents(): Promise<{ saved: number; fail
           body: JSON.stringify(eventForServer(ev)),
         })
         if (res.ok) { saved += 1; continue }
-        // 4xx (stale case, no access, invalid) — drop it; retrying won't help.
-        if (res.status >= 400 && res.status < 500) { failed += 1; continue }
-        // 5xx — keep for a later attempt.
-        stillPending.push(ev); failed += 1
+        if (res.status === 401) {
+          // Auth expired — this is transient. Keep the event (it succeeds after
+          // re-login) and stop hitting the server for the rest of this batch so we
+          // don't burn through every queued event on the same expired token.
+          stillPending.push(ev); failed += 1; networkDown = true; continue
+        }
+        if (res.status >= 500) {
+          // Server error — keep for a later attempt.
+          stillPending.push(ev); failed += 1; continue
+        }
+        // Permanent 4xx (400 invalid/PII, 403 finalised/forbidden, 404 gone) — can
+        // never succeed; record it so it isn't silently lost, then drop it.
+        await recordDroppedEvent(caseId, ev, res.status)
+        failed += 1
       } catch (err) {
         // Network error — stop hitting the network for this case and keep the rest.
         if (err instanceof ApiError && err.code === "NETWORK") networkDown = true

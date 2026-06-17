@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.1] - 2026-06-17
+
+### Fixed
+- **Offline intraoperative events are no longer lost on a transient sign-in expiry.** A `401` while replaying queued events now keeps them for retry after you sign in again, instead of discarding them. Events the server permanently rejects (invalid, finalised, or deleted case) are recorded for visibility rather than silently dropped.
+
+### Changed
+- Android `versionCode` bumped to 3.
+
+---
+
 ## [1.1.0] - 2026-06-15
 
 ### Added

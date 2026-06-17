@@ -1,5 +1,9 @@
 # LOSPOR Mobile v1.0.0 Release Plan
 
+> **Historical.** This is the original v1.0.0 launch checklist. The app has since
+> shipped v1.0.1 and the v1.1.x series (current: **v1.1.1**, Android `versionCode 3`).
+> See `CHANGELOG.md` for the up-to-date release history.
+
 Status legend: ⬜ pending · 🔄 in progress · ✅ done
 
 ---

@@ -592,7 +592,7 @@ export default function SettingsScreen() {
           />
           <SettingsRow
             label={t("about")}
-            subtitle="LOSPOR v1.1.0 — Large Open Source Perioperative Register"
+            subtitle="LOSPOR v1.1.1 — Large Open Source Perioperative Register"
           />
           <SettingsRow
             label={t("docs")}
