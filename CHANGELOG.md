@@ -9,9 +9,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 - **Offline intraoperative events are no longer lost on a transient sign-in expiry.** A `401` while replaying queued events now keeps them for retry after you sign in again, instead of discarding them. Events the server permanently rejects (invalid, finalised, or deleted case) are recorded for visibility rather than silently dropped.
+- **Unfinalize ("undo finalise") now works** — the button called the wrong HTTP method (`PATCH`) for the server, which only accepts `POST`. It now uses `POST`.
 
 ### Changed
-- Android `versionCode` bumped to 3.
+- Android `versionCode` bumped to 4.
 
 ---
 

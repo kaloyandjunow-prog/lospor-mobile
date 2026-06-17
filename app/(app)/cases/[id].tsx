@@ -1455,7 +1455,7 @@ export default function CaseSummaryScreen() {
           onPress: async () => {
             setUnfinalizing(true)
             try {
-              await apiFetch(`/api/cases/${id}/unfinalize`, { method: "PATCH" })
+              await apiFetch(`/api/cases/${id}/unfinalize`, { method: "POST" })
               await loadCase()
             } catch {
               Alert.alert(tc("errorLabel"), t("couldNotUnfinalize"))
