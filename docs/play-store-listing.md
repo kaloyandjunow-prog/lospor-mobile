@@ -45,7 +45,7 @@ Built for real clinical workflow
 • Audit log of every change for accountability
 
 PRIVACY BY DESIGN
-LOSPOR never asks for or stores patient names, national IDs, or other direct identifiers — printed protocols leave a blank field for these to be filled in by hand, in line with GDPR. Optional AI features (lab scan, monitor scan, pre-op advisor) use Mistral AI's EU infrastructure and are entirely opt-in, using only the data you choose to send.
+LOSPOR never asks for or stores patient names, national IDs, or other direct identifiers — printed protocols leave a blank field for these to be filled in by hand, following GDPR's data-minimisation principle. Optional AI features (lab scan, monitor scan, pre-op advisor) use Mistral AI's EU infrastructure and are entirely opt-in, using only the data you choose to send.
 
 OPEN SOURCE
 LOSPOR is free and open source under the AGPL-3.0 licence. Source code, documentation, and self-hosting instructions are available at lospor.org.
