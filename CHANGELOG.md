@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.0] - 2026-06-18
+
+### Changed
+- Version aligned to **1.2.0** (Android `versionCode` 5). The v1.2 work — storing
+  clinical data as queryable database rows — is entirely server-side; the app sends
+  the same data and behaves identically, so there is no functional change here.
+
+---
+
 ## [1.1.1] - 2026-06-17
 
 ### Fixed
