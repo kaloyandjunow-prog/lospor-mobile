@@ -925,7 +925,7 @@ export default function NewCaseScreen() {
   const router = useRouter()
   const { continue: continueId, localId: localIdParam } = useLocalSearchParams<{ continue?: string; localId?: string }>()
   const insets = useSafeAreaInsets()
-  const { preopLayout, tc } = usePreferences()
+  const { preopLayout, tc, language } = usePreferences()
 
   // Build translated section labels from tc() — must be inside component
   // Pill rail labels (shorter) vs full section card titles
@@ -1789,7 +1789,7 @@ export default function NewCaseScreen() {
 
             <SectionCard title={tc("sectionCaseDetails")} onLayout={(y) => { sectionY.current.case = y }} visible={showSection("case")}>
               <Controller control={control} name="diagnoses" render={({ field }) => (
-                <SearchTagInput label={tc("diagnosisLabel")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, label: item.label })))} endpoint="/api/search/icd10" placeholder={tc("diagnosisPlaceholder")} onFocus={() => scrollToSection("case", 60)} />
+                <SearchTagInput label={tc("diagnosisLabel")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, label: item.label })))} endpoint={`/api/search/icd10?locale=${language}`} placeholder={tc("diagnosisPlaceholder")} onFocus={() => scrollToSection("case", 60)} />
               )} />
               <Controller control={control} name="procedures" render={({ field }) => (
                 <SearchTagInput label={tc("procedureLabel")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, label: item.label })))} endpoint="/api/search/procedures" placeholder="Search procedure..." onFocus={() => scrollToSection("case", 160)} />
@@ -1806,7 +1806,7 @@ export default function NewCaseScreen() {
             <SectionCard title={tc("sectionHistory")} subtitle={tc("historySubtitle")} onLayout={(y) => { sectionY.current.history = y }} visible={showSection("history")}>
               <Controller control={control} name="comorbidities" render={({ field }) => (
                 <>
-                  <SearchTagInput label={tc("activeComorbidities")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, label: item.label })))} endpoint="/api/search/icd10" placeholder={tc("searchComorbidities")} onFocus={() => scrollToSection("history", 80)} />
+                  <SearchTagInput label={tc("activeComorbidities")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, label: item.label })))} endpoint={`/api/search/icd10?locale=${language}`} placeholder={tc("searchComorbidities")} onFocus={() => scrollToSection("history", 80)} />
                   <ComorbiditiesBySystem
                     items={field.value ?? []}
                     onRemove={(label) => field.onChange((field.value ?? []).filter((c: { label: string }) => c.label !== label))}
