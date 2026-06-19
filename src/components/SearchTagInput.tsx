@@ -12,7 +12,7 @@ import { usePreferences } from "@/lib/preferences-context"
 import { Chip } from "@/components/ui"
 import { colors, withAlpha } from "@/theme/colors"
 
-export type TagItem = { code: string; label: string; sub?: string }
+export type TagItem = { code: string; label: string; sub?: string; system?: string; labelEn?: string; labelBg?: string }
 
 type Props = {
   label: string
@@ -70,7 +70,14 @@ export function SearchTagInput({
             // ICD diagnosis / comorbidity result — format matches web: "K37 — Unspecified appendicitis"
             if (d.code && d.description && !d.group && !d.domain) {
               const displayLabel = (language === "bg" && d.descriptionBg) ? d.descriptionBg : d.description
-              return { code: d.code, label: `${d.code} — ${displayLabel}`, sub: d.code }
+              return {
+                code: d.code,
+                label: `${d.code} — ${displayLabel}`,
+                sub: d.code,
+                system: d.system ?? "ICD-10",
+                labelEn: d.description,
+                labelBg: d.descriptionBg,
+              }
             }
             // Procedure result (group + domain) or drug / fallback
             return {
@@ -86,7 +93,7 @@ export function SearchTagInput({
         setLoading(false)
       }
     }, 300)
-  }, [endpoint, queryParam, extraParams])
+  }, [endpoint, queryParam, extraParams, language])
 
   function handleChange(q: string) {
     setQuery(q)

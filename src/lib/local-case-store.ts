@@ -74,3 +74,10 @@ export async function getAllLocalCaseDrafts(): Promise<LocalCaseDraft[]> {
   const drafts = await Promise.all(ids.map(id => loadLocalCaseDraft(id)))
   return drafts.filter((d): d is LocalCaseDraft => d !== null)
 }
+
+export async function clearAllLocalCaseDrafts(): Promise<number> {
+  const ids = await loadIndex()
+  await Promise.all(ids.map(id => SecureStore.deleteItemAsync(caseKey(id)).catch(() => {})))
+  await SecureStore.deleteItemAsync(INDEX_KEY).catch(() => {})
+  return ids.length
+}

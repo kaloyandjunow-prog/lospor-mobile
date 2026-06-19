@@ -11,6 +11,7 @@ import {
   getLastApiError, getLastOkRequest, getToken, isTokenExpired,
 } from "@/lib/api"
 import { flushAllQueuedCasePatches, getQueuedCasePatchSummary } from "@/lib/offline-case-patches"
+import { clearLocalClinicalCache } from "@/lib/local-clinical-cache"
 import { usePreferences } from "@/lib/preferences-context"
 import { ensurePermission, presentNow, getStatus, type NotifStatus } from "@/lib/notifications"
 import { REMINDERS_KEY, VITALS_INTERVAL_KEY, DEFAULT_INTERVAL_MIN } from "@/lib/use-case-reminders"
@@ -18,7 +19,7 @@ import { Card, SectionHeader, SettingsRow } from "@/components/ui"
 import { colors, withAlpha } from "@/theme/colors"
 import { AppHeader } from "@/components/AppHeader"
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// --- Types --------------------------------------------------------------------
 
 type Institution = { id: string; name: string; city: string }
 
@@ -30,7 +31,7 @@ type ProfileData = {
   institution?: Institution | null
 }
 
-// ─── Institution picker modal ─────────────────────────────────────────────────
+// --- Institution picker modal -------------------------------------------------
 
 function InstitutionPicker({
   visible,
@@ -75,7 +76,7 @@ function InstitutionPicker({
               {searchLabel}
             </Text>
             <TouchableOpacity onPress={onClose}>
-              <Text style={{ color: colors.textMuted, fontSize: 20 }}>✕</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 20 }}>×</Text>
             </TouchableOpacity>
           </View>
           <TextInput
@@ -127,7 +128,7 @@ function InstitutionPicker({
   )
 }
 
-// ─── Main screen ──────────────────────────────────────────────────────────────
+// --- Main screen --------------------------------------------------------------
 
 export default function SettingsScreen() {
   const { logout } = useAuth()
@@ -137,17 +138,17 @@ export default function SettingsScreen() {
   // Which panel is showing: "main" or the settings sub-screen
   const [view, setView] = useState<"main" | "settings">("main")
 
-  // ── Profile ──────────────────────────────────────────────────────────────────
+  // -- Profile ------------------------------------------------------------------
   const [profile, setProfile]             = useState<ProfileData | null>(null)
   const [pickerOpen, setPickerOpen]       = useState(false)
   const [institutionSaving, setInstitutionSaving] = useState(false)
 
-  // ── Automation toggles ───────────────────────────────────────────────────────
+  // -- Automation toggles -------------------------------------------------------
   const [autoFillVitals, setAutoFillVitalsState] = useState(false)
   const [autoFillBP,     setAutoFillBPState]     = useState(false)
   const [autoFillBg,     setAutoFillBgState]     = useState(false)
 
-  // ── Notification reminders ─────────────────────────────────────────────────
+  // -- Notification reminders -------------------------------------------------
   const [remindersOn,   setRemindersOnState]   = useState(false)
   const [vitalsInterval, setVitalsIntervalState] = useState(DEFAULT_INTERVAL_MIN)
   const [notifStatus,   setNotifStatus]        = useState<NotifStatus | null>(null)
@@ -155,14 +156,14 @@ export default function SettingsScreen() {
   const INTERVAL_CHOICES = [3, 5, 10, 15]
   function refreshNotifStatus() { getStatus().then(setNotifStatus).catch(() => {}) }
 
-  // ── Diagnostics ──────────────────────────────────────────────────────────────
+  // -- Diagnostics --------------------------------------------------------------
   const [diag, setDiag] = useState<{
     hasToken: boolean; expired: boolean; role?: string; userId?: string
     institution?: string; expiresAt?: string
     lastOk?: string | null; lastError?: string | null; queuedSaves: number
   } | null>(null)
 
-  // ── Load on mount ────────────────────────────────────────────────────────────
+  // -- Load on mount ------------------------------------------------------------
   useEffect(() => {
     loadProfile()
     loadAutomation()
@@ -220,7 +221,27 @@ export default function SettingsScreen() {
     await refreshDiagnostics()
   }
 
-  // ── Automation setters ───────────────────────────────────────────────────────
+  async function clearClinicalCache() {
+    const run = async () => {
+      const cleared = await clearLocalClinicalCache()
+      await refreshDiagnostics()
+      Alert.alert(
+        "Local clinical cache cleared",
+        `Removed ${cleared.drafts} draft(s), ${cleared.patches} queued save(s), and ${cleared.intraopQueues} intraoperative queue(s) from this device.`
+      )
+    }
+    if (Platform.OS === "web") { await run(); return }
+    Alert.alert(
+      "Clear local clinical cache?",
+      "This removes offline drafts and queued clinical saves from this device only. Synced cases in the server database are not deleted.",
+      [
+        { text: t("cancel"), style: "cancel" },
+        { text: "Clear cache", style: "destructive", onPress: run },
+      ]
+    )
+  }
+
+  // -- Automation setters -------------------------------------------------------
   function setAutoFillVitals(v: boolean) {
     setAutoFillVitalsState(v)
     SecureStore.setItemAsync("intraop_autofill_vitals", v ? "on" : "off")
@@ -235,7 +256,7 @@ export default function SettingsScreen() {
     SecureStore.setItemAsync("intraop_autofill_bg", v ? "on" : "off")
   }
 
-  // ── Notification setters ─────────────────────────────────────────────────────
+  // -- Notification setters -----------------------------------------------------
   async function setRemindersOn(v: boolean) {
     setNotifMsg(null)
     if (v) {
@@ -279,7 +300,7 @@ export default function SettingsScreen() {
     setNotifMsg("Sent. If you didn't see it, check your device/browser notification settings for this site.")
   }
 
-  // ── Institution update ───────────────────────────────────────────────────────
+  // -- Institution update -------------------------------------------------------
   async function handleSelectInstitution(inst: Institution | null) {
     setPickerOpen(false)
     setInstitutionSaving(true)
@@ -297,7 +318,7 @@ export default function SettingsScreen() {
     }
   }
 
-  // ── Sign-out / delete ────────────────────────────────────────────────────────
+  // -- Sign-out / delete --------------------------------------------------------
   function handleSignOut() {
     if (Platform.OS === "web") { logout(); return }
     Alert.alert(t("signOutConfirmTitle"), t("signOutConfirmMsg"), [
@@ -323,15 +344,15 @@ export default function SettingsScreen() {
     }
   }
 
-  // ── Helpers ──────────────────────────────────────────────────────────────────
+  // -- Helpers ------------------------------------------------------------------
   const displayName = [profile?.title, profile?.firstName, profile?.lastName]
     .filter(Boolean).join(" ") || "—"
 
   const isAdmin = (profile?.role ?? diag?.role) === "ADMIN"
 
-  // ─────────────────────────────────────────────────────────────────────────────
+  // -----------------------------------------------------------------------------
   // MAIN VIEW
-  // ─────────────────────────────────────────────────────────────────────────────
+  // -----------------------------------------------------------------------------
   if (view === "main") {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -453,9 +474,9 @@ export default function SettingsScreen() {
     )
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
+  // -----------------------------------------------------------------------------
   // SETTINGS SUB-SCREEN
-  // ─────────────────────────────────────────────────────────────────────────────
+  // -----------------------------------------------------------------------------
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -465,7 +486,7 @@ export default function SettingsScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 60, paddingTop: 12 }}
       >
-        {/* ── UI ───────────────────────────────────────────────────────────────── */}
+        {/* -- UI ----------------------------------------------------------------- */}
         <SectionHeader title="UI" />
         <Card>
           <SettingsRow
@@ -486,7 +507,7 @@ export default function SettingsScreen() {
           />
         </Card>
 
-        {/* ── Automation ───────────────────────────────────────────────────────── */}
+        {/* -- Automation --------------------------------------------------------- */}
         <SectionHeader title={t("intraoperative")} />
         <Card>
           <SettingsRow
@@ -530,7 +551,7 @@ export default function SettingsScreen() {
           />
         </Card>
 
-        {/* ── Notifications ────────────────────────────────────────────────────── */}
+        {/* -- Notifications ------------------------------------------------------ */}
         <SectionHeader title="Notifications" />
         <Card>
           <SettingsRow
@@ -579,7 +600,7 @@ export default function SettingsScreen() {
           />
         </Card>
 
-        {/* ── Privacy & Data ───────────────────────────────────────────────────── */}
+        {/* -- Privacy & Data ----------------------------------------------------- */}
         <SectionHeader title={t("privacyData")} />
         <Card>
           <SettingsRow
@@ -592,7 +613,13 @@ export default function SettingsScreen() {
           />
           <SettingsRow
             label={t("about")}
-            subtitle="LOSPOR v1.2.0 — Large Open Source Perioperative Register"
+            subtitle="LOSPOR v2.1.1 — Large Open Source Perioperative Register"
+          />
+          <SettingsRow
+            label="Clear local clinical cache"
+            subtitle="Removes offline drafts and queued saves from this device only"
+            danger
+            onPress={clearClinicalCache}
           />
           <SettingsRow
             label={t("docs")}
@@ -610,7 +637,7 @@ export default function SettingsScreen() {
           />
         </Card>
 
-        {/* ── Diagnostics ──────────────────────────────────────────────────────── */}
+        {/* -- Diagnostics -------------------------------------------------------- */}
         <SectionHeader title={t("diagnostics")} />
         <Card>
           <SettingsRow label={t("diagApiBase")} subtitle={API_BASE} />
@@ -630,3 +657,4 @@ export default function SettingsScreen() {
     </View>
   )
 }
+

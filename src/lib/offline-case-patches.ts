@@ -39,6 +39,13 @@ export async function getQueuedCaseIds(): Promise<string[]> {
   return [...new Set(entries.map(e => e.caseId))]
 }
 
+export async function clearAllQueuedCasePatches(): Promise<number> {
+  const entries = await loadQueueIndex()
+  await Promise.all(entries.map(e => SecureStore.deleteItemAsync(patchKey(e.caseId, e.section)).catch(() => {})))
+  await SecureStore.deleteItemAsync(INDEX_KEY).catch(() => {})
+  return entries.length
+}
+
 async function storeQueueIndex(entries: QueueEntry[]) {
   if (entries.length === 0) {
     await SecureStore.deleteItemAsync(INDEX_KEY)

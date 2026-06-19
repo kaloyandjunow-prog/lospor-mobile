@@ -90,6 +90,14 @@ export async function getDroppedIntraopEvents(): Promise<any[]> {
   try { const l = JSON.parse(raw); return Array.isArray(l) ? l : [] } catch { return [] }
 }
 
+export async function clearAllPendingIntraopEvents(): Promise<number> {
+  const ids = await loadIndex()
+  await Promise.all(ids.map(id => SecureStore.deleteItemAsync(pendingKey(id)).catch(() => {})))
+  await SecureStore.deleteItemAsync(INDEX_KEY).catch(() => {})
+  await SecureStore.deleteItemAsync(DROPPED_KEY).catch(() => {})
+  return ids.length
+}
+
 /**
  * Replay any persisted intraop events that haven't reached the server yet.
  * Safe to call repeatedly (idempotent server-side). Returns counts for diagnostics.

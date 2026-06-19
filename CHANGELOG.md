@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.1.1] — 2026-06-19
+
+### Changed
+- Version aligned to **2.1.1** (Android `versionCode` 8).
+- Bulgarian ICD-10 diagnosis and comorbidity search now uses the shared language-aware API path and stores code-first tags with English/Bulgarian label snapshots.
+- Added a Settings control to clear local clinical cache: offline drafts, queued preop/postop saves, pending intraoperative event queues, and dropped-event recovery logs.
+- Settings/About now reports the current 2.1.1 release line.
+- Privacy posture aligned with the web app: local offline data is explicit and user-clearable.
+
 ## [1.2.0] - 2026-06-18
 
 ### Changed
@@ -178,3 +187,4 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 - `Haptics.notificationAsync` crash on Android (dev builds without full native linking) — error silently ignored, save completes normally
 - Scroll-to-top on validation failure in the preop form
+
