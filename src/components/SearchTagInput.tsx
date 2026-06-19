@@ -69,7 +69,8 @@ export function SearchTagInput({
           data.map((d) => {
             // ICD diagnosis / comorbidity result — format matches web: "K37 — Unspecified appendicitis"
             if (d.code && d.description && !d.group && !d.domain) {
-              return { code: d.code, label: `${d.code} — ${d.description}`, sub: d.code }
+              const displayLabel = (language === "bg" && d.descriptionBg) ? d.descriptionBg : d.description
+              return { code: d.code, label: `${d.code} — ${displayLabel}`, sub: d.code }
             }
             // Procedure result (group + domain) or drug / fallback
             return {
