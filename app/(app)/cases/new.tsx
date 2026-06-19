@@ -406,7 +406,7 @@ const BODY_SYSTEM_TC: Record<string, ClinicalStringKey> = {
   "Other":                      "sysOther",
 }
 
-// ── ICD-11 body-system classification (mirrors web lib/icd11-categories.ts) ──
+// ── ICD-10 body-system classification (mirrors web lib/icd-categories.ts) ──
 type BodySystem = "Cardiovascular"|"Respiratory"|"Neurological / Psychiatric"|"Endocrine / Metabolic"|"Gastrointestinal / Hepatic"|"Renal / Urological"|"Haematological"|"Musculoskeletal"|"Neoplasms"|"Infectious diseases"|"Ophthalmological / ENT"|"Obstetric"|"Congenital"|"Other"
 
 const SYSTEM_ORDER: BodySystem[] = [
@@ -435,21 +435,7 @@ const SYSTEM_HEX: Record<BodySystem, string> = {
 function getBodySystem(code: string): BodySystem {
   if (!code) return "Other"
   const p2 = code.substring(0, 2).toUpperCase()
-  // ICD-11 two-character chapter prefixes
-  if (["BA","BB","BC","BD","BE"].includes(p2)) return "Cardiovascular"
-  if (["CA","CB","CC","CD","CE","CF","CG","CH"].includes(p2)) return "Respiratory"
-  if (["1A","1B","1C","1D","1E","1F","1G","1H"].includes(p2)) return "Infectious diseases"
-  if (["2A","2B","2C","2D","2E","2F"].includes(p2)) return "Neoplasms"
-  if (["3A","3B","3C"].includes(p2)) return "Haematological"
-  if (["5A","5B","5C","5D"].includes(p2)) return "Endocrine / Metabolic"
-  if (["6A","6B","6C","6D","6E","6F","6G","7A","7B","8A","8B","8C","8D","8E"].includes(p2)) return "Neurological / Psychiatric"
-  if (["9A","9B","9C","9D","9E","AA","AB","AC"].includes(p2)) return "Ophthalmological / ENT"
-  if (["DA","DB","DC","DD","DE"].includes(p2)) return "Gastrointestinal / Hepatic"
-  if (["FA","FB","FC"].includes(p2)) return "Musculoskeletal"
-  if (["GA","GB","GC"].includes(p2)) return "Renal / Urological"
-  if (["JA","JB"].includes(p2)) return "Obstetric"
-  if (["KA","KB","KC","KD","LA","LB","LC","LD"].includes(p2)) return "Congenital"
-  // ICD-10 single-letter fallback
+  // ICD-10 single-letter classification
   const p1 = p2.charAt(0), num = parseInt(code.substring(1, 3), 10) || 0
   if (p1 === "I") return "Cardiovascular"
   if (p1 === "J") return "Respiratory"
@@ -1803,7 +1789,7 @@ export default function NewCaseScreen() {
 
             <SectionCard title={tc("sectionCaseDetails")} onLayout={(y) => { sectionY.current.case = y }} visible={showSection("case")}>
               <Controller control={control} name="diagnoses" render={({ field }) => (
-                <SearchTagInput label={tc("diagnosisLabel")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, label: item.label })))} endpoint="/api/search/icd11" placeholder={tc("diagnosisPlaceholder")} onFocus={() => scrollToSection("case", 60)} />
+                <SearchTagInput label={tc("diagnosisLabel")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, label: item.label })))} endpoint="/api/search/icd10" placeholder={tc("diagnosisPlaceholder")} onFocus={() => scrollToSection("case", 60)} />
               )} />
               <Controller control={control} name="procedures" render={({ field }) => (
                 <SearchTagInput label={tc("procedureLabel")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, label: item.label })))} endpoint="/api/search/procedures" placeholder="Search procedure..." onFocus={() => scrollToSection("case", 160)} />
@@ -1820,7 +1806,7 @@ export default function NewCaseScreen() {
             <SectionCard title={tc("sectionHistory")} subtitle={tc("historySubtitle")} onLayout={(y) => { sectionY.current.history = y }} visible={showSection("history")}>
               <Controller control={control} name="comorbidities" render={({ field }) => (
                 <>
-                  <SearchTagInput label={tc("activeComorbidities")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, label: item.label })))} endpoint="/api/search/icd11" placeholder={tc("searchComorbidities")} onFocus={() => scrollToSection("history", 80)} />
+                  <SearchTagInput label={tc("activeComorbidities")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, label: item.label })))} endpoint="/api/search/icd10" placeholder={tc("searchComorbidities")} onFocus={() => scrollToSection("history", 80)} />
                   <ComorbiditiesBySystem
                     items={field.value ?? []}
                     onRemove={(label) => field.onChange((field.value ?? []).filter((c: { label: string }) => c.label !== label))}

@@ -24,7 +24,7 @@ export const LAB_CATEGORIES: LabCategory[] = [
       { name: "Platelets", unit: "×10⁹/L", refLow: 150, refHigh: 400 },
       { name: "MCV", unit: "fL", refLow: 80, refHigh: 100 },
       { name: "MCH", unit: "pg", refLow: 27, refHigh: 33 },
-      { name: "MCHC", unit: "g/dL", refLow: 32, refHigh: 36 },
+      { name: "MCHC", unit: "g/L", refLow: 320, refHigh: 360 },
       { name: "Neutrophils", unit: "%", refLow: 40, refHigh: 75 },
       { name: "Lymphocytes", unit: "%", refLow: 20, refHigh: 45 },
       { name: "Monocytes", unit: "%", refLow: 2, refHigh: 10 },

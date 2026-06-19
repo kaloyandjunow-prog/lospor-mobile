@@ -25,7 +25,7 @@ KEY FEATURES
 Preoperative assessment
 • Structured history, physical exam, and airway assessment
 • Built-in risk scores: ASA, RCRI, Apfel PONV, STOP-BANG
-• Diagnosis and procedure search (ICD-11, PCS)
+• Diagnosis and procedure search (ICD-10, PCS)
 • Optional AI lab report scan — photograph a lab printout and extracted values are pre-filled for your review
 
 Intraoperative documentation

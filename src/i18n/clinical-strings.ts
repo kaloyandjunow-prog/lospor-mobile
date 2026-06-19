@@ -32,8 +32,8 @@ export const CLINICAL_STRINGS = {
     teamNotesPlaceholder:"Roles, theatre number, any reminders — do not include names",
 
     // Search placeholders
-    diagnosisPlaceholder:"No patient-identifying information — diagnosis or ICD-11 code…",
-    historySubtitle:     "Search by condition name or ICD-11 code. Tagged conditions are grouped by body system below.",
+    diagnosisPlaceholder:"No patient-identifying information — diagnosis or ICD-10 code…",
+    historySubtitle:     "Search by condition name or ICD-10 code. Tagged conditions are grouped by body system below.",
     labsPrivacyNote:     "Lab report images are sent to Mistral AI (EU) for text extraction. Before uploading, crop out all patient names, date of birth, ID or MRN numbers, and any other identifying information. Do not upload the image if patient identifiers cannot be removed.",
 
     // ── Patient ───────────────────────────────────────────────────────────
