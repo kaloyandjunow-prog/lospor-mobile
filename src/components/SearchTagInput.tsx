@@ -12,7 +12,19 @@ import { usePreferences } from "@/lib/preferences-context"
 import { Chip } from "@/components/ui"
 import { colors, withAlpha } from "@/theme/colors"
 
-export type TagItem = { code: string; label: string; sub?: string; system?: string; labelEn?: string; labelBg?: string }
+export type TagItem = { code: string; label: string; sub?: string; system?: string; labelEn?: string; labelBg?: string; inn?: string; atcCode?: string }
+type SearchResult = {
+  code?: string
+  description?: string
+  descriptionBg?: string
+  group?: string
+  domain?: string
+  system?: string
+  inn?: string
+  atcCode?: string
+  name?: string
+  term?: string
+}
 
 type Props = {
   label: string
@@ -64,7 +76,7 @@ export function SearchTagInput({
         const mergedParams: Record<string, string> = { [queryParam]: q, ...extraParams }
         if (endpoint.includes("icd11") || endpoint.includes("icd10")) mergedParams.locale = language
         const params = new URLSearchParams(mergedParams)
-        const data = await apiJson<any[]>(`${endpoint}?${params}`)
+        const data = await apiJson<SearchResult[]>(`${endpoint}?${params}`)
         setResults(
           data.map((d) => {
             // ICD diagnosis / comorbidity result — format matches web: "K37 — Unspecified appendicitis"
@@ -72,7 +84,7 @@ export function SearchTagInput({
               const displayLabel = (language === "bg" && d.descriptionBg) ? d.descriptionBg : d.description
               return {
                 code: d.code,
-                label: `${d.code} — ${displayLabel}`,
+                label: displayLabel,
                 sub: d.code,
                 system: d.system ?? "ICD-10",
                 labelEn: d.description,
@@ -84,6 +96,8 @@ export function SearchTagInput({
               code: d.code ?? d.inn ?? d.name ?? d.term ?? "",
               label: d.group ?? d.description ?? d.name ?? d.term ?? d.code ?? "",
               sub: d.domain ? `${d.code ?? ""}${d.code ? " · " : ""}${d.domain}` : undefined,
+              inn: d.inn ?? undefined,
+              atcCode: d.atcCode ?? undefined,
             }
           })
         )

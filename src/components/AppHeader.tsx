@@ -3,6 +3,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { colors, withAlpha } from "@/theme/colors"
+import { OfflineLibraryBanner } from "@/components/OfflineLibraryBanner"
 
 type Props = {
   eyebrow?: string
@@ -81,6 +82,7 @@ export function AppHeader({ eyebrow = "LOSPOR", title, showNewCase = true, onSea
           <HeaderButton kind="settings" onPress={() => router.push("/(app)/settings")} />
         </View>
       </View>
+      <OfflineLibraryBanner />
     </View>
   )
 }

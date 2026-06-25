@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   View, Alert, Linking, Platform, ScrollView, Text, Switch,
   TouchableOpacity, TextInput, Modal, FlatList, ActivityIndicator,
 } from "react-native"
 import * as SecureStore from "expo-secure-store"
-import { Stack, useRouter } from "expo-router"
+import { Stack, useRouter, type Href } from "expo-router"
 import { useAuth } from "@/lib/auth-context"
 import {
   API_BASE, apiFetch, apiJson, decodeTokenPayload,
@@ -133,7 +133,10 @@ function InstitutionPicker({
 export default function SettingsScreen() {
   const { logout } = useAuth()
   const router  = useRouter()
-  const { language, setLanguage, theme, setTheme, preopLayout, setPreopLayout, t } = usePreferences()
+  const {
+    language, setLanguage, theme, setTheme, preopLayout, setPreopLayout, t,
+    heightUnit, setHeightUnit, weightUnit, setWeightUnit, temperatureUnit, setTemperatureUnit, etco2Unit, setEtco2Unit,
+  } = usePreferences()
 
   // Which panel is showing: "main" or the settings sub-screen
   const [view, setView] = useState<"main" | "settings">("main")
@@ -164,12 +167,6 @@ export default function SettingsScreen() {
   } | null>(null)
 
   // -- Load on mount ------------------------------------------------------------
-  useEffect(() => {
-    loadProfile()
-    loadAutomation()
-    refreshDiagnostics()
-  }, [])
-
   async function loadProfile() {
     try {
       const data = await apiJson<ProfileData>("/api/user")
@@ -179,17 +176,21 @@ export default function SettingsScreen() {
       const token = await getToken()
       const p = decodeTokenPayload(token)
       if (p) {
+        const institutionName = typeof p.institutionName === "string" ? p.institutionName : null
         setProfile({
-          firstName: p.firstName, lastName: p.lastName, title: p.title,
-          role: p.role, institution: p.institutionName
-            ? { id: p.institutionId ?? "", name: p.institutionName, city: "" }
+          firstName: typeof p.firstName === "string" ? p.firstName : undefined,
+          lastName: typeof p.lastName === "string" ? p.lastName : undefined,
+          title: typeof p.title === "string" ? p.title : undefined,
+          role: typeof p.role === "string" ? p.role : undefined,
+          institution: institutionName
+            ? { id: typeof p.institutionId === "string" ? p.institutionId : "", name: institutionName, city: "" }
             : null,
         })
       }
     }
   }
 
-  function loadAutomation() {
+  const loadAutomation = useCallback(() => {
     SecureStore.getItemAsync("intraop_autofill_vitals").then(v => setAutoFillVitalsState(v === "on"))
     SecureStore.getItemAsync("intraop_autofill_bp").then(v => setAutoFillBPState(v === "on"))
     SecureStore.getItemAsync("intraop_autofill_bg").then(v => setAutoFillBgState(v === "on"))
@@ -198,7 +199,7 @@ export default function SettingsScreen() {
       const n = Number(v); if (Number.isFinite(n) && n > 0) setVitalsIntervalState(n)
     })
     refreshNotifStatus()
-  }
+  }, [])
 
   async function refreshDiagnostics() {
     const token = await getToken()
@@ -206,15 +207,21 @@ export default function SettingsScreen() {
     setDiag({
       hasToken: !!token,
       expired: isTokenExpired(token),
-      role: payload?.role,
-      userId: payload?.id,
-      institution: payload?.institutionName ?? payload?.institutionId,
+      role: typeof payload?.role === "string" ? payload.role : undefined,
+      userId: typeof payload?.id === "string" ? payload.id : undefined,
+      institution: typeof payload?.institutionName === "string" ? payload.institutionName : typeof payload?.institutionId === "string" ? payload.institutionId : undefined,
       expiresAt: payload?.exp ? new Date(Number(payload.exp) * 1000).toLocaleString() : undefined,
       lastOk: await getLastOkRequest(),
       lastError: await getLastApiError(),
       queuedSaves: (await getQueuedCasePatchSummary()).count,
     })
   }
+
+  useEffect(() => {
+    loadProfile()
+    loadAutomation()
+    refreshDiagnostics()
+  }, [loadAutomation])
 
   async function retryQueuedSaves() {
     await flushAllQueuedCasePatches()
@@ -435,13 +442,13 @@ export default function SettingsScreen() {
               <SettingsRow
                 label={t("adminConsole")}
                 subtitle={t("adminConsoleSub")}
-                onPress={() => router.push("/(app)/admin" as any)}
+                onPress={() => router.push("/(app)/admin" as Href)}
               />
             )}
             <SettingsRow
               label={t("auditLogs")}
               subtitle={t("auditLogsSub")}
-              onPress={() => router.push("/(app)/audit-logs" as any)}
+              onPress={() => router.push("/(app)/audit-logs" as Href)}
               last
             />
           </Card>
@@ -503,6 +510,36 @@ export default function SettingsScreen() {
             label={t("preopLayout")}
             subtitle={preopLayout === "sections" ? t("preopLayoutSections") : t("preopLayoutScroll")}
             onPress={() => setPreopLayout(preopLayout === "sections" ? "scroll" : "sections")}
+            last
+          />
+        </Card>
+
+        {/* -- Units of measurement ------------------------------------------------
+            Display-only preferences — the database always stores the canonical
+            value (cm/kg/°C/mmHg); changing these just converts what's shown and
+            typed in vitals entry. Drugs, infusions, fluids, and labs are not
+            affected by this section. */}
+        <SectionHeader title="Units of measurement" />
+        <Card>
+          <SettingsRow
+            label="Height"
+            subtitle={heightUnit === "cm" ? "Centimetres (cm)" : "Inches (in)"}
+            onPress={() => setHeightUnit(heightUnit === "cm" ? "in" : "cm")}
+          />
+          <SettingsRow
+            label="Weight"
+            subtitle={weightUnit === "kg" ? "Kilograms (kg)" : "Pounds (lb)"}
+            onPress={() => setWeightUnit(weightUnit === "kg" ? "lb" : "kg")}
+          />
+          <SettingsRow
+            label="Temperature"
+            subtitle={temperatureUnit === "C" ? "Celsius (°C)" : "Fahrenheit (°F)"}
+            onPress={() => setTemperatureUnit(temperatureUnit === "C" ? "F" : "C")}
+          />
+          <SettingsRow
+            label="EtCO₂"
+            subtitle={etco2Unit === "mmHg" ? "mmHg" : "kPa"}
+            onPress={() => setEtco2Unit(etco2Unit === "mmHg" ? "kPa" : "mmHg")}
             last
           />
         </Card>
@@ -613,7 +650,7 @@ export default function SettingsScreen() {
           />
           <SettingsRow
             label={t("about")}
-            subtitle="LOSPOR v2.1.1 — Large Open Source Perioperative Register"
+            subtitle="LOSPOR v3.0.0 — Large Open Source Perioperative Register"
           />
           <SettingsRow
             label="Clear local clinical cache"

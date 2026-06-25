@@ -50,7 +50,7 @@ export async function getLastApiError(): Promise<string | null> {
   return SecureStore.getItemAsync(LAST_ERROR_KEY)
 }
 
-export function decodeTokenPayload(token: string | null): Record<string, any> | null {
+export function decodeTokenPayload(token: string | null): Record<string, unknown> | null {
   if (!token) return null
   try {
     const payload = token.split(".")[1]

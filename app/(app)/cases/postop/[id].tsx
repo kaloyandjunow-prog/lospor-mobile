@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   View, Text, ScrollView, TextInput, TouchableOpacity,
   ActivityIndicator, Alert, Switch, KeyboardAvoidingView, Platform,
@@ -14,10 +14,12 @@ import { ScreenState } from "@/components/clinical-ui"
 import { AppHeader } from "@/components/AppHeader"
 import { EditWindowBanner } from "@/components/EditWindowBanner"
 import { VitalNumber } from "@/components/VitalStepper"
+import { convertedMeasurement } from "@/lib/use-converted-measurement"
 import { colors, withAlpha } from "@/theme/colors"
 import { useCaseLock } from "@/lib/use-case-lock"
 import { WatchingOverlay } from "@/components/WatchingOverlay"
 import { usePreferences, type ClinicalStringKey } from "@/lib/preferences-context"
+import { useRangeSpec } from "@/lib/use-option-library"
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -34,6 +36,10 @@ const schema = z.object({
   temperatureCelsius:   z.number().optional(),
   painScoreNRS:       z.number().min(0).max(10).optional(),
   ponv:               z.boolean().default(false),
+  recoveryBpUnobtainable:          z.boolean().default(false),
+  recoveryHeartRateUnobtainable:   z.boolean().default(false),
+  recoverySpO2Unobtainable:        z.boolean().default(false),
+  recoveryTemperatureUnobtainable: z.boolean().default(false),
   disposition:        z.enum(["WARD", "PACU", "ICU"]).optional(),
   dispositionNotes:   z.string().optional(),
   handoverItems:      z.array(z.string()).default([]),
@@ -133,7 +139,7 @@ const HANDOVER_GROUPS: HandoverGroup[] = [
       { v: "alert_bp",     label: "Blood pressure — target range communicated" },
       { v: "temp_monitor", label: "Temperature monitoring / active warming" },
       { v: "urine_output", label: "Urine output monitoring (IDC in situ)" },
-      { v: "glucose",      label: "Blood glucose monitoring" },
+      { v: "glucose",      label: "Serum/peripheral glucose monitoring" },
     ],
   },
   {
@@ -240,33 +246,9 @@ function Field({ label, error, children }: { label: string; error?: string; chil
   )
 }
 
-function StyledInput({ value, onChangeText, placeholder, keyboardType, ...rest }: any) {
-  return (
-    <TextInput
-      placeholderTextColor={colors.textMuted}
-      placeholder={placeholder}
-      keyboardType={keyboardType ?? "default"}
-      value={value}
-      onChangeText={onChangeText}
-      style={{
-        backgroundColor: colors.surface,
-        color: colors.textPrimary,
-        borderRadius: 14,
-        borderCurve: "continuous",
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        fontSize: 16,
-        borderWidth: 1,
-        borderColor: colors.border,
-      }}
-      {...rest}
-    />
-  )
-}
-
 // 3-button row for 0 / 1 / 2 Aldrete scores
 function ScoreRow({
-  label,
+  label: _label,
   value,
   onChange,
   descriptions,
@@ -437,7 +419,7 @@ function HandoverChecklist({
               </Text>
               <Text style={{ color: colors.textMuted, fontSize: 13 }}>{isOpen ? "▲" : "▼"}</Text>
             </TouchableOpacity>
-            {isOpen && group.items.map((opt, idx) => {
+            {isOpen && group.items.map((opt) => {
               const checked = value.includes(opt.v)
               return (
                 <TouchableOpacity
@@ -504,7 +486,14 @@ function RecoverySummary({
 export default function PostopFormScreen() {
   const { id, continuedItems } = useLocalSearchParams<{ id: string; continuedItems?: string }>()
   const router    = useRouter()
-  const { tc, t } = usePreferences()
+  const { tc, t, heightUnit, weightUnit, temperatureUnit, etco2Unit } = usePreferences()
+  const unitPrefs = { heightUnit, weightUnit, temperatureUnit, etco2Unit }
+  const recoveryBpSystolicRange  = useRangeSpec("BP_SYSTOLIC_RANGE")
+  const recoveryBpDiastolicRange = useRangeSpec("BP_DIASTOLIC_RANGE")
+  const recoveryHeartRateRange   = useRangeSpec("HEART_RATE_RANGE")
+  const recoverySpo2Range        = useRangeSpec("SPO2_RANGE")
+  const recoveryTemperatureRange = useRangeSpec("TEMPERATURE_RANGE")
+  const _painNrsRange            = useRangeSpec("PAIN_NRS_RANGE")
   const { isWatching, takeover } = useCaseLock(id, true)
   const [saving, setSaving]   = useState(false)
   const [loading, setLoading] = useState(true)
@@ -549,7 +538,7 @@ export default function PostopFormScreen() {
     },
   ]
 
-  const { control, handleSubmit, reset, getValues, formState: { errors } } = useForm<FormInput, any, FormData>({
+  const { control, handleSubmit, reset, getValues, setValue } = useForm<FormInput, unknown, FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       aldreteActivity:      0,
@@ -569,9 +558,17 @@ export default function PostopFormScreen() {
   const aldreteConsciousness = useWatch({ control, name: "aldreteConsciousness" })
   const aldreteSpO2          = useWatch({ control, name: "aldreteSpO2" })
   const disposition        = useWatch({ control, name: "disposition" })
+  const handoverItems      = useWatch({ control, name: "handoverItems" }) ?? []
+  const dispositionNotes   = useWatch({ control, name: "dispositionNotes" })
   const painScoreNRS       = useWatch({ control, name: "painScoreNRS" })
   const ponv               = useWatch({ control, name: "ponv" })
   const formValues         = useWatch({ control })
+
+  useEffect(() => {
+    if (disposition === "WARD" || disposition === "PACU") return
+    if (handoverItems.length) setValue("handoverItems", [], { shouldDirty: true })
+    if (dispositionNotes) setValue("dispositionNotes", "", { shouldDirty: true })
+  }, [disposition, dispositionNotes, handoverItems.length, setValue])
 
   const aldreteTotal =
     (aldreteActivity ?? 0) +
@@ -587,7 +584,18 @@ export default function PostopFormScreen() {
       ? tc("summaryMonitor")
       : tc("summaryContinueRecovery")
 
-  function valuesFromPostop(p: any): FormData {
+  type PostopRecord = Partial<FormData> & {
+    activityScore?: number
+    respirationScore?: number
+    circulationScore?: number
+    consciousnessScore?: number
+    spO2Score?: number
+    temperaturePostop?: number
+    updatedAt?: string
+  }
+  type CaseResponse = { postop?: PostopRecord; finalizedAt?: string | null; status?: string }
+
+  const valuesFromPostop = useCallback((p: PostopRecord): FormData => {
     return {
       aldreteActivity:      p.aldreteActivity      ?? p.activityScore      ?? 0,
       aldreteRespiration:   p.aldreteRespiration   ?? p.respirationScore   ?? 0,
@@ -600,15 +608,19 @@ export default function PostopFormScreen() {
       recoveryHeartRate:    p.recoveryHeartRate   ?? (Math.floor(Math.random() * 31) + 60),
       recoverySpO2:         p.recoverySpO2        ?? (Math.floor(Math.random() * 5)  + 95),
       temperatureCelsius:   p.temperatureCelsius  ?? p.temperaturePostop ?? parseFloat((36 + Math.random()).toFixed(1)),
+      recoveryBpUnobtainable:          p.recoveryBpUnobtainable          ?? false,
+      recoveryHeartRateUnobtainable:   p.recoveryHeartRateUnobtainable   ?? false,
+      recoverySpO2Unobtainable:        p.recoverySpO2Unobtainable        ?? false,
+      recoveryTemperatureUnobtainable: p.recoveryTemperatureUnobtainable ?? false,
       painScoreNRS:       p.painScoreNRS,
       ponv:               p.ponv               ?? false,
       disposition:        p.disposition,
       dispositionNotes:   p.dispositionNotes   ?? "",
       handoverItems:      normaliseHandoverCodes(Array.isArray(p.handoverItems) ? p.handoverItems : []),
     }
-  }
+  }, [])
 
-  function totalFrom(data: Partial<FormData>) {
+  const totalFrom = useCallback((data: Partial<FormData>) => {
     return (
       (data.aldreteActivity ?? 0) +
       (data.aldreteRespiration ?? 0) +
@@ -616,13 +628,19 @@ export default function PostopFormScreen() {
       (data.aldreteConsciousness ?? 0) +
       (data.aldreteSpO2 ?? 0)
     )
-  }
+  }, [])
 
-  function payloadFrom(data: FormData) {
-    return { ...data, aldreteTotal: totalFrom(data) }
-  }
+  const payloadFrom = useCallback((data: FormData) => {
+    const handoverAllowed = data.disposition === "WARD" || data.disposition === "PACU"
+    return {
+      ...data,
+      handoverItems: handoverAllowed ? data.handoverItems : [],
+      dispositionNotes: handoverAllowed ? data.dispositionNotes : "",
+      aldreteTotal: totalFrom(data),
+    }
+  }, [totalFrom])
 
-  function markSaveResult(result: CasePatchResult, response?: CasePatchResponse) {
+  const markSaveResult = useCallback((result: CasePatchResult, response?: CasePatchResponse) => {
     if (result === "saved") {
       baseUpdatedAtRef.current = response?.postopUpdatedAt ?? baseUpdatedAtRef.current
       setLastSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
@@ -630,15 +648,15 @@ export default function PostopFormScreen() {
     } else if (result === "queued" || result === "failed") {
       setAutosaveState("queued")
     }
-  }
+  }, [])
 
-  async function persistPostop(data: FormData, force = false): Promise<CasePatchResult> {
+  const persistPostop = useCallback(async (data: FormData, force = false): Promise<CasePatchResult> => {
     const payload = payloadFrom(data)
     const { result, response } = await saveCasePatchWithQueue(id, "postop", payload, force ? null : baseUpdatedAtRef.current)
     lastSavedJsonRef.current = JSON.stringify(payload)
     markSaveResult(result, response)
     return result
-  }
+  }, [id, markSaveResult, payloadFrom])
 
   function overwriteWithMine() {
     Alert.alert(
@@ -666,7 +684,7 @@ export default function PostopFormScreen() {
   async function reloadLatest() {
     setLoading(true)
     try {
-      const c = await apiJson<any>(`/api/cases/${id}`)
+      const c = await apiJson<CaseResponse>(`/api/cases/${id}`)
       const p = c.postop ?? {}
       const nextValues = valuesFromPostop(p)
       baseUpdatedAtRef.current = p.updatedAt ?? null
@@ -681,8 +699,8 @@ export default function PostopFormScreen() {
   }
 
   useEffect(() => {
-    apiJson<any>(`/api/cases/${id}`)
-      .then(async (c: any) => {
+    apiJson<CaseResponse>(`/api/cases/${id}`)
+      .then(async (c) => {
         const p = c.postop ?? {}
         const nextValues = valuesFromPostop(p)
         baseUpdatedAtRef.current = p.updatedAt ?? null
@@ -702,7 +720,7 @@ export default function PostopFormScreen() {
       })
       .catch((err: Error) => Alert.alert(tc("errorLabel"), err.message))
       .finally(() => setLoading(false))
-  }, [id])
+  }, [continuedItems, id, markSaveResult, payloadFrom, reset, t, tc, valuesFromPostop])
 
   useEffect(() => {
     if (loading) return
@@ -726,7 +744,7 @@ export default function PostopFormScreen() {
     return () => {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
     }
-  }, [formValues, loading])
+  }, [formValues, getValues, loading, persistPostop, payloadFrom])
 
   useLiveRefresh(async () => {
     const result = await flushQueuedCasePatch(id, "postop")
@@ -742,8 +760,8 @@ export default function PostopFormScreen() {
       } else {
         Alert.alert(t("savedLocally"), t("savedLocallyMsg"))
       }
-    } catch (err: any) {
-      Alert.alert(tc("errorLabel"), err.message ?? t("couldNotOverwrite"))
+    } catch (err) {
+      Alert.alert(tc("errorLabel"), err instanceof Error ? err.message : t("couldNotOverwrite"))
     } finally {
       setSaving(false)
     }
@@ -840,26 +858,37 @@ export default function PostopFormScreen() {
           <View style={{ flexDirection: "row", gap: 10 }}>
             <View style={{ flex: 1 }}>
               <Controller control={control} name="recoveryBpSystolic" render={({ field }) => (
-                <VitalNumber label={tc("sbpLabel")} unit="mmHg" value={field.value} onChange={field.onChange} min={0} max={260} />
+                <Controller control={control} name="recoveryBpUnobtainable" render={({ field: uto }) => (
+                  <VitalNumber label={tc("sbpLabel")} unit="mmHg" value={field.value} onChange={field.onChange} min={recoveryBpSystolicRange?.min ?? 1} max={recoveryBpSystolicRange?.max ?? 300} step={recoveryBpSystolicRange?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} />
+                )} />
               )} />
             </View>
             <View style={{ flex: 1 }}>
               <Controller control={control} name="recoveryBpDiastolic" render={({ field }) => (
-                <VitalNumber label={tc("dbpLabel")} unit="mmHg" value={field.value} onChange={field.onChange} min={0} max={160} />
+                <Controller control={control} name="recoveryBpUnobtainable" render={({ field: uto }) => (
+                  <VitalNumber label={tc("dbpLabel")} unit="mmHg" value={field.value} onChange={field.onChange} min={recoveryBpDiastolicRange?.min ?? 1} max={recoveryBpDiastolicRange?.max ?? 200} step={recoveryBpDiastolicRange?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} />
+                )} />
               )} />
             </View>
           </View>
 
           <Controller control={control} name="recoveryHeartRate" render={({ field }) => (
-            <VitalNumber label={tc("heartRateLabel")} unit="bpm" value={field.value} onChange={field.onChange} min={0} max={250} />
+            <Controller control={control} name="recoveryHeartRateUnobtainable" render={({ field: uto }) => (
+              <VitalNumber label={tc("heartRateLabel")} unit="bpm" value={field.value} onChange={field.onChange} min={recoveryHeartRateRange?.min ?? 1} max={recoveryHeartRateRange?.max ?? 300} step={recoveryHeartRateRange?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} />
+            )} />
           )} />
 
           <Controller control={control} name="recoverySpO2" render={({ field }) => (
-            <VitalNumber label={tc("spO2Label")} unit="%" value={field.value} onChange={field.onChange} min={50} max={100} />
+            <Controller control={control} name="recoverySpO2Unobtainable" render={({ field: uto }) => (
+              <VitalNumber label={tc("spO2Label")} unit="%" value={field.value} onChange={field.onChange} min={recoverySpo2Range?.min ?? 0} max={recoverySpo2Range?.max ?? 100} step={recoverySpo2Range?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} />
+            )} />
           )} />
 
           <Controller control={control} name="temperatureCelsius" render={({ field }) => (
-            <VitalNumber label={tc("temperatureLabel")} unit="°C" value={field.value} onChange={field.onChange} min={30} max={42} step={0.1} precision={1} />
+            <Controller control={control} name="recoveryTemperatureUnobtainable" render={({ field: uto }) => {
+              const cv = convertedMeasurement("temperature", unitPrefs, field.value, field.onChange, recoveryTemperatureRange?.min ?? 0, recoveryTemperatureRange?.max ?? 45, recoveryTemperatureRange?.step ?? 0.1)
+              return <VitalNumber label={tc("temperatureLabel")} unit={cv.unit} value={cv.value} onChange={cv.onChange} min={cv.min} max={cv.max} step={cv.step} precision={cv.precision || 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} />
+            }} />
           )} />
 
           <Field label={tc("painNRS")}>
@@ -901,7 +930,13 @@ export default function PostopFormScreen() {
               render={({ field: { onChange, value } }) => (
                 <DispositionPicker
                   value={value}
-                  onChange={onChange}
+                  onChange={(next) => {
+                    onChange(next)
+                    if (next !== "WARD" && next !== "PACU") {
+                      setValue("handoverItems", [], { shouldDirty: true })
+                      setValue("dispositionNotes", "", { shouldDirty: true })
+                    }
+                  }}
                   wardLabel={tc("dispWard")}
                   pacuLabel={tc("dispPACU")}
                   icuLabel={tc("dispICU")}
@@ -910,6 +945,7 @@ export default function PostopFormScreen() {
             />
           </View>
 
+          {(disposition === "WARD" || disposition === "PACU") && (
           <Field label={tc("dispNotes")}>
             <Controller
               control={control}
@@ -938,6 +974,7 @@ export default function PostopFormScreen() {
               )}
             />
           </Field>
+          )}
 
           {/* ── Handover checklist ─────────────────────────────────── */}
           {(disposition === "WARD" || disposition === "PACU") && (

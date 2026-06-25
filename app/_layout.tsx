@@ -50,7 +50,7 @@ function Guard() {
     } else if (state === "authenticated" && inAuth) {
       router.replace("/(app)/")
     }
-  }, [state, segments])
+  }, [router, state, segments])
 
   return <Slot />
 }

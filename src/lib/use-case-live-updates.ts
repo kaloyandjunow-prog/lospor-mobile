@@ -7,6 +7,10 @@ type Options = {
   pollIntervalMs?: number
 }
 
+type ReadableResponseBody = {
+  getReader?: () => ReadableStreamDefaultReader<Uint8Array>
+}
+
 export function useCaseLiveUpdates(caseId: string | undefined, refresh: () => void | Promise<void>, options: Options = {}) {
   const { enabled = true, pollIntervalMs = 10_000 } = options
   const refreshRef = useRef(refresh)
@@ -42,7 +46,7 @@ export function useCaseLiveUpdates(caseId: string | undefined, refresh: () => vo
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
           signal: controller.signal,
         })
-        const reader = (res.body as any)?.getReader?.()
+        const reader = (res.body as ReadableResponseBody | null)?.getReader?.()
         if (!res.ok || !reader) throw new Error("SSE stream unavailable")
 
         streamingRef.current = true

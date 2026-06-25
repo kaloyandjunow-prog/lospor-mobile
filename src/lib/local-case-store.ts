@@ -18,7 +18,7 @@ export function makeLocalCaseId(): string {
 
 export type LocalCaseDraft = {
   localId: string
-  formValues: Record<string, any>
+  formValues: Record<string, unknown>
   createdAt: string
 }
 
@@ -41,7 +41,7 @@ async function storeIndex(ids: string[]): Promise<void> {
  */
 export async function saveLocalCaseDraft(
   localId: string,
-  formValues: Record<string, any>,
+  formValues: Record<string, unknown>,
 ): Promise<boolean> {
   const draft: LocalCaseDraft = { localId, formValues, createdAt: new Date().toISOString() }
   try {

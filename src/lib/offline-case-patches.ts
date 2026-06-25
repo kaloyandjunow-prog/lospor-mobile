@@ -1,12 +1,13 @@
 import * as SecureStore from "expo-secure-store"
 import { ApiError, apiFetch } from "./api"
 
-export type CasePatchSection = "preop" | "postop"
+export type CasePatchSection = "preop" | "postop" | "intraop"
 export type CasePatchResult = "saved" | "queued" | "empty" | "failed"
 export type CasePatchResponse = {
   updatedAt?: string
   preopUpdatedAt?: string
   postopUpdatedAt?: string
+  intraopUpdatedAt?: string
 }
 type QueueEntry = { caseId: string; section: CasePatchSection }
 export type QueueSummary = { count: number; entries: QueueEntry[] }
@@ -68,7 +69,29 @@ async function removeQueueIndexEntry(caseId: string, section: CasePatchSection) 
 export async function queueCasePatch(caseId: string, section: CasePatchSection, payload: unknown, baseUpdatedAt?: string | null) {
   // Write patch data BEFORE updating the index so a crash between the two
   // leaves a repairable orphan rather than an index entry with no data.
-  await SecureStore.setItemAsync(patchKey(caseId, section), JSON.stringify({ payload, baseUpdatedAt, queuedAt: new Date().toISOString() }))
+  const key = patchKey(caseId, section)
+  const existingRaw = await SecureStore.getItemAsync(key).catch(() => null)
+  let nextPayload = payload
+  let nextBaseUpdatedAt = baseUpdatedAt
+  if (existingRaw) {
+    try {
+      const existing = JSON.parse(existingRaw) as { payload?: unknown; baseUpdatedAt?: string | null }
+      if (
+        payload &&
+        existing.payload &&
+        typeof payload === "object" &&
+        typeof existing.payload === "object" &&
+        !Array.isArray(payload) &&
+        !Array.isArray(existing.payload)
+      ) {
+        nextPayload = { ...(existing.payload as Record<string, unknown>), ...(payload as Record<string, unknown>) }
+      }
+      nextBaseUpdatedAt = existing.baseUpdatedAt ?? baseUpdatedAt
+    } catch {
+      nextPayload = payload
+    }
+  }
+  await SecureStore.setItemAsync(key, JSON.stringify({ payload: nextPayload, baseUpdatedAt: nextBaseUpdatedAt, queuedAt: new Date().toISOString() }))
   await addQueueIndexEntry(caseId, section)
 }
 
@@ -94,7 +117,7 @@ export async function queueCasePatch(caseId: string, section: CasePatchSection, 
  */
 export async function reconcileQueue(): Promise<void> {
   const entries = await loadQueueIndex()
-  const ALL_SECTIONS: CasePatchSection[] = ["preop", "postop"]
+  const ALL_SECTIONS: CasePatchSection[] = ["preop", "postop", "intraop"]
 
   // Collect all (caseId, section) pairs known from the current index.
   // We will check every combination so we can catch orphans where the index
@@ -155,7 +178,16 @@ export async function loadQueuedCasePatch<T = unknown>(caseId: string, section: 
 }
 
 async function patchCase(caseId: string, section: CasePatchSection, payload: unknown, baseUpdatedAt?: string | null): Promise<CasePatchResponse> {
-  const headerName = section === "preop" ? "x-lospor-preop-updated-at" : "x-lospor-postop-updated-at"
+  // No idempotency key here, unlike pending-intraop-events.ts's POST calls:
+  // this PATCH replaces the whole section with the latest local payload, so
+  // a retried/replayed request converges to the same end state instead of
+  // creating a duplicate row the way replaying an event-create POST would.
+  // The x-lospor-*-updated-at header below is the actual conflict guard
+  // (stale-write detection), not a dedup key.
+  const headerName =
+    section === "preop" ? "x-lospor-preop-updated-at" :
+    section === "postop" ? "x-lospor-postop-updated-at" :
+    "x-lospor-intraop-updated-at"
   const res = await apiFetch(`/api/cases/${caseId}`, {
     method: "PATCH",
     headers: baseUpdatedAt ? { [headerName]: baseUpdatedAt } : undefined,
@@ -202,6 +234,10 @@ export async function flushQueuedCasePatch(caseId: string, section: CasePatchSec
       await clearQueuedCasePatch(caseId, section)
       return { result: "empty" }
     }
+    // 401 (auth expired) falls through here explicitly, same as network/server
+    // errors: keep the patch queued, never discard it. apiFetch already fires
+    // the global onAuthExpired signal on a 401, so the app prompts re-login;
+    // a later flush pass retries this same patch once a fresh token exists.
     return { result: "failed" }
   }
 }

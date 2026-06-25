@@ -5,7 +5,7 @@ import { apiJson } from "@/lib/api"
 import { colors, withAlpha } from "@/theme/colors"
 
 // Lazy require — native module is only present after a full expo run:android build.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+ 
 function getImagePicker(): typeof ImagePickerModule | null {
   try { return require("expo-image-picker") } catch { return null }
 }

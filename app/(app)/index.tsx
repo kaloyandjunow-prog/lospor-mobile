@@ -12,8 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native"
-import { Stack, useRouter } from "expo-router"
-import * as SecureStore from "expo-secure-store"
+import { Stack, useRouter, type Href } from "expo-router"
 import { ApiError, apiFetch, apiJson, decodeTokenPayload, getToken } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { useLiveRefresh } from "@/lib/use-live-refresh"
@@ -21,7 +20,7 @@ import { getQueuedCasePatchSummary, getQueuedCaseIds, clearAllQueuedPatchesForCa
 import { getAllLocalCaseDrafts, type LocalCaseDraft } from "@/lib/local-case-store"
 import { usePreferences } from "@/lib/preferences-context"
 import { ASABadge, DispositionBadge, StatusBadge } from "@/components/ui"
-import { ActionTile, ScreenState, WorkflowPill } from "@/components/clinical-ui"
+import { ScreenState, WorkflowPill } from "@/components/clinical-ui"
 import { AppHeader } from "@/components/AppHeader"
 import { colors, withAlpha } from "@/theme/colors"
 
@@ -117,7 +116,7 @@ function nextActionKey(item: CaseItem): "reviewCase" | "openIntraop" | "awaiting
   return preopComplete ? "awaitingAllocation" : "continuePreop"
 }
 
-function routeFor(item: CaseItem): string {
+function routeFor(item: CaseItem): Href {
   // Postop filled → full case summary hub
   if (item.postop || item.status === "COMPLETE" || item.status === "AWAITING_REVIEW") {
     return `/(app)/cases/${item.id}`
@@ -144,7 +143,6 @@ export default function DashboardScreen() {
   const [actioningTransfer, setActioningTransfer] = useState<string | null>(null)
   const [queuedSaveCount, setQueuedSaveCount] = useState(0)
   const [queuedCaseIds, setQueuedCaseIds] = useState<Set<string>>(new Set())
-  const [hasLocalDraft, setHasLocalDraft] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [menuCase, setMenuCase] = useState<CaseItem | null>(null)
   const [menuMode, setMenuMode] = useState<"menu" | "assign" | "confirmDelete">("menu")
@@ -214,7 +212,7 @@ export default function DashboardScreen() {
     load()
     getToken().then((token) => {
       const payload = decodeTokenPayload(token)
-      userRoleRef.current = payload?.role ?? null
+      userRoleRef.current = typeof payload?.role === "string" ? payload.role : null
     })
   }, [load])
 
@@ -233,12 +231,12 @@ export default function DashboardScreen() {
     return cardScales.current.get(id)!
   }
 
-  function handleLongPress(item: CaseItem) {
+  const handleLongPress = useCallback((item: CaseItem) => {
     const scale = getCardScale(item.id)
     Animated.spring(scale, { toValue: 0.95, useNativeDriver: true, speed: 50, bounciness: 0 }).start()
     setMenuCase(item)
     setMenuMode("menu")
-  }
+  }, [])
 
   function closeMenu() {
     if (menuCase) {
@@ -324,7 +322,7 @@ export default function DashboardScreen() {
   const totalCount = cases.length
   const todayCount = cases.filter((c) => isToday(c.createdAt)).length
   const thisMonthCount = cases.filter((c) => isThisMonth(c.createdAt)).length
-  const icuCount = cases.filter((c) => c.postop?.disposition === "ICU").length
+  const _icuCount = cases.filter((c) => c.postop?.disposition === "ICU").length
   const activeCount = cases.filter((c) => c.status !== "COMPLETE").length
   const draftCount = cases.filter((c) => c.status === "DRAFT").length
   const awaitingPostopCount = cases.filter((c) => c.status !== "COMPLETE" && !!c.intraop).length
@@ -377,7 +375,7 @@ const tabCounts: Record<FilterTab, number> = {
           borderWidth: 1,
           borderColor: colors.border,
         }}
-        onPress={() => router.push(routeFor(item) as any)}
+        onPress={() => router.push(routeFor(item))}
         onLongPress={() => handleLongPress(item)}
         delayLongPress={400}
         activeOpacity={0.75}
@@ -405,7 +403,7 @@ const tabCounts: Record<FilterTab, number> = {
       </TouchableOpacity>
       </Animated.View>
     )
-  }, [cases, queuedCaseIds, router, colors])
+  }, [queuedCaseIds, router, handleLongPress, t])
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -432,8 +430,13 @@ const tabCounts: Record<FilterTab, number> = {
           ListHeaderComponent={
             <>
 {localDrafts.map(draft => {
-                const diag = (draft.formValues?.diagnoses as any[])?.[0]?.label
-                  ?? (draft.formValues?.procedures as any[])?.[0]?.label
+                const diagnoses = Array.isArray(draft.formValues?.diagnoses) ? draft.formValues.diagnoses : []
+                const procedures = Array.isArray(draft.formValues?.procedures) ? draft.formValues.procedures : []
+                const firstLabel = (items: unknown[]) => {
+                  const first = items[0]
+                  return first && typeof first === "object" && "label" in first && typeof first.label === "string" ? first.label : undefined
+                }
+                const diag = firstLabel(diagnoses) ?? firstLabel(procedures)
                   ?? t("unsyncedDraftTitle")
                 const age = draft.formValues?.ageYears
                 const sex = draft.formValues?.sex
@@ -442,7 +445,7 @@ const tabCounts: Record<FilterTab, number> = {
                 return (
                   <TouchableOpacity
                     key={draft.localId}
-                    onPress={() => router.push({ pathname: "/(app)/cases/new", params: { localId: draft.localId } } as any)}
+                    onPress={() => router.push({ pathname: "/(app)/cases/new", params: { localId: draft.localId } } as Href)}
                     style={{ backgroundColor: withAlpha(colors.warning, "12"), borderColor: withAlpha(colors.warning, "55"), borderWidth: 1, borderRadius: 14, borderCurve: "continuous", padding: 12, marginBottom: 10, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
                   >
                     <View style={{ flex: 1 }}>
@@ -655,7 +658,7 @@ const tabCounts: Record<FilterTab, number> = {
                   {t("deleteCaseTitle")}
                 </Text>
                 <Text style={{ color: colors.textMuted, fontSize: 13, marginBottom: 20 }} numberOfLines={2}>
-                  {getCaseLabel(menuCase ?? undefined as any)}
+                  {menuCase ? getCaseLabel(menuCase) : ""}
                 </Text>
                 <TouchableOpacity
                   style={{ paddingVertical: 16, borderTopWidth: 1, borderTopColor: colors.border, alignItems: "center", backgroundColor: "rgba(220,38,38,0.08)", borderRadius: 10, marginBottom: 8 }}
@@ -701,7 +704,7 @@ const tabCounts: Record<FilterTab, number> = {
               <ScrollView style={{ maxHeight: 380 }} keyboardShouldPersistTaps="handled">
                 {filteredCases.slice(0, 20).map(c => (
                   <TouchableOpacity key={c.id}
-                    onPress={() => { setSearchOpen(false); router.push(routeFor(c) as any) }}
+                    onPress={() => { setSearchOpen(false); router.push(routeFor(c)) }}
                     style={{ paddingVertical: 12, borderTopWidth: 1, borderTopColor: colors.border }}>
                     <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: "700" }} numberOfLines={1}>
                       {getCaseLabel(c)}

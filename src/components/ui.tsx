@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Switch } from "react-native"
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Switch, type TextInputProps } from "react-native"
 import { colors, withAlpha } from "@/theme/colors"
 
 // ─── Colors (match web dark mode exactly) ────────────────────────────────────
@@ -25,7 +25,7 @@ export function Field({
 }
 
 // ─── Styled text input ────────────────────────────────────────────────────────
-export function StyledInput({ value, onChangeText, placeholder, keyboardType, multiline, numberOfLines, style, ...rest }: any) {
+export function StyledInput({ value, onChangeText, placeholder, keyboardType, multiline, numberOfLines, style, ...rest }: TextInputProps) {
   return (
     <TextInput
       placeholderTextColor={colors.textMuted}
@@ -260,21 +260,28 @@ export function ChecklistRow({
   onPress,
   muted = false,
   last = false,
+  hint,
 }: {
   label: string
   checked: boolean
   onPress?: () => void
   muted?: boolean
   last?: boolean
+  hint?: string
 }) {
   const content = (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: last ? 0 : 1, borderBottomColor: colors.border, opacity: muted ? 0.78 : 1 }}>
       <View style={{ width: 24, height: 24, borderRadius: 8, borderCurve: "continuous", borderWidth: 2, borderColor: checked ? colors.primary : colors.borderStrong, backgroundColor: checked ? colors.primary : "transparent", alignItems: "center", justifyContent: "center" }}>
         {checked && <Text style={{ color: colors.background, fontSize: 14, fontWeight: "900", lineHeight: 16 }}>✓</Text>}
       </View>
-      <Text style={{ color: muted ? colors.textMuted : colors.textSecondary, fontSize: 14, lineHeight: 19, flex: 1, fontWeight: checked ? "800" : "600" }}>
-        {label}
-      </Text>
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: muted ? colors.textMuted : colors.textSecondary, fontSize: 14, lineHeight: 19, fontWeight: checked ? "800" : "600" }}>
+          {label}
+        </Text>
+        {hint && !checked && (
+          <Text style={{ color: colors.warning, fontSize: 11, lineHeight: 14, marginTop: 2 }}>{hint}</Text>
+        )}
+      </View>
     </View>
   )
 

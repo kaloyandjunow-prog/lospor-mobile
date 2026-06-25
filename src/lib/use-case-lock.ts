@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { AppState, type AppStateStatus } from "react-native"
 import * as SecureStore from "expo-secure-store"
 import { apiFetch } from "@/lib/api"
@@ -31,14 +31,14 @@ export function useCaseLock(caseId: string, enabled = true): {
     if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null }
   }
 
-  async function releaseLock(deviceId: string) {
+  const releaseLock = useCallback(async (deviceId: string) => {
     try {
       await apiFetch(`/api/cases/${caseId}/lock`, {
         method: "DELETE",
         body: JSON.stringify({ deviceId }),
       })
     } catch {}
-  }
+  }, [caseId])
 
   useEffect(() => {
     if (!enabled) { setLockState("idle"); return }
@@ -112,7 +112,7 @@ export function useCaseLock(caseId: string, enabled = true): {
       const deviceId = deviceIdRef.current
       if (deviceId) releaseLock(deviceId)
     }
-  }, [caseId, enabled])
+  }, [caseId, enabled, releaseLock])
 
   // Called directly by the UI after it handles its own confirmation — no Alert here
   async function takeover() {

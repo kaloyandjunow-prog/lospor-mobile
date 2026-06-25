@@ -1,9 +1,68 @@
-# Changelog — LOSPOR Mobile
+# Changelog - LOSPOR Mobile
 
+## [3.0.0] - 2026-06-25
+
+### Summary
+- Promotes the accumulated mobile work to **v3.0.0** and aligns with the web/API v3.0 canonical data contract.
+- App metadata now uses Expo `version: 3.0.0`; Android `versionCode` is `10`; package metadata is `3.0.0`.
+
+### Added - Mobile/web parity
+- Mobile now maps payloads to canonical web/API field names before saving, instead of behaving like an independent schema.
+- Case detail actions now cover the web-parity surfaces: printable protocol, share summary, audit logs, admin console, handover, postop, AI advisor, and intraop timetable.
+- Dashboard scopes and statistics now match the web defaults and filter behavior.
+- Live refresh and queued-save states make web-side changes visible on mobile and mobile-side changes visible on web.
+
+### Added - Offline-safe shared libraries
+- Intraop option lists now come from the shared web `OptionLibrary` endpoint: positions, techniques, airway management, ventilation, monitoring, premedication, bolus drugs, infusions, inhalational agents, fluids, clinical events, handover items, numeric ranges, and postop/preop pickers.
+- First-install/offline fallback uses a bundled option-library snapshot; cached/bundled data is visible through an offline-library banner and refreshes automatically when the live API is reachable.
+- EAS and PWA export can fetch the fallback snapshot from the protected web endpoint before build.
+
+### Changed - Preop UX and canonical data
+- Preop entry was rebuilt into a section-based mobile form with universal app header, sticky section rail, side scroll rail, inline autocomplete, and context-specific clinical number entry.
+- Diagnosis and comorbidity search use the shared Bulgarian/English ICD-10 API and store code-first tags with both labels.
+- Procedure search uses the shared API and displays the web/API `group` as the primary label.
+- AI lab scan uses the same canonical lab catalogue, canonical units, LOINC mappings, and normal ranges as web.
+- Medication allergy saves as `Medication.kind = ALLERGY`; deselecting the allergy boolean clears the associated text/row state.
+- Difficult-airway notes, team notes, physical exam report, and event complication notes are limited to 500 characters and cleared when disabled.
+
+### Changed - Intraop timetable
+- Drug, infusion, fluid, agent, event, vitals, glucose, and gas entries use the shared canonical library metadata and event API.
+- Fresh gas flow has its own entry path and timeline lane; FiO2 is clamped to 21-100%, O2-only is represented as FiO2 100%, and Air/N2O fractions are calculated and persisted.
+- Running infusion, fluid, agent, and gas lanes extend after reopening a live case instead of freezing at last save.
+- General inhalational anaesthesia auto-selects SpO2, NBP, ECG, temperature, and EtCO2 monitoring.
+- Serum/peripheral glucose is available as a timed intraop vital with canonical `mmol/L` and LOINC `2345-7` on the backend.
+
+### Reliability and tooling
+- Offline case-section saves queue and flush safely; intraop events retain idempotent queued replay behavior.
+- Added baseline ESLint, TypeScript typecheck, and Vitest test suites for mobile logic/components.
+- Cleared current lint errors/warnings targeted during the v3.0 pass.
+
+---
 All notable changes to the Expo mobile companion app are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+
+## [2.3.0] — 2026-06-20
+
+### Changed
+- Version aligned to **2.3.0** (Android `versionCode` 9).
+- Intraop option lists (positions, technique tree, airway management/instruments, monitoring, premedication drugs, intraop drugs, infusions, inhalational agents, fluids, clinical events) now come from the shared `OptionLibrary` API instead of being hardcoded separately in `IntraopTimetable.tsx` and the intraop case screen — this fixes a real drift where those two mobile surfaces had different drug/infusion/fluid lists from each other, and where mobile's technique codes didn't match web's for the same techniques.
+- Monitoring now uses a genuine `respiratory` group (capnography, temperature) shared with web, instead of a mobile-only distinction the web app didn't have.
+- Mobile's airway instrument list grew from 6 to 8 options (now matches web's full set automatically, since both read the same library).
+- `offline-case-patches.ts`: 401 handling during a flush is now explicit and documented (patches were already correctly preserved on auth expiry, just not clearly so); idempotency keys were evaluated but intentionally not added here — unlike the events queue, a case-section PATCH naturally converges to the same result on retry, so a dedup key isn't needed the same way.
+
+### Added — Offline-safe option library
+- The app now falls back to a snapshot of the option library bundled into the app itself if a device has never successfully synced and has no SecureStore cache either (first install + no connectivity) — previously this showed silently empty pickers with no fallback at all.
+- A visible banner appears in the app header whenever any picker is running on cached or bundled (non-live) data, so a clinician never silently trusts a list without knowing it might be stale; a background retry every 30s swaps in live data the moment connectivity returns, no restart needed.
+- The bundled snapshot (`src/data/option-library-fallback.json`) is now fetched automatically from `lospor-app`'s shared-secret-protected snapshot endpoint via the `eas-build-pre-install` lifecycle hook (`scripts/fetch-fallback-snapshot.mjs`) before every EAS build and before `npm run export:web` — requires `EXPO_PUBLIC_API_BASE` and `OPTION_LIBRARY_SNAPSHOT_SECRET` set as EAS secrets (see `lospor-app/docs/post-migration-seeds.md`); without them, the hook logs a warning and keeps whatever snapshot is already committed, rather than failing the build.
+
+### Changed — Code quality
+- `IntraopTimetable.tsx` and the intraop case screen no longer populate option-library data by mutating module-level arrays inside `useMemo`. Every category (drugs, infusions, fluids, agents, clinical events, positions, monitoring, technique tree, airway, premedication) is now a plain `useMemo`-derived value scoped to the component itself, removing the only place in this codebase doing side effects inside `useMemo`. Two dead helper functions (`findTechNode`, and web's equivalent `labelFor`) were found and removed along the way.
+
+### Fixed
+- A case closed mid-infusion (or mid-fluid, mid-agent) and reopened later now shows the running bar correctly extended to the current time, instead of frozen wherever it was at the last save — the same backend fix web got, since both apps load a case through the same endpoint.
+- `package-lock.json` was still pinned at `2.1.1` despite `package.json` reading `2.3.0`.
 
 ## [2.1.1] — 2026-06-19
 

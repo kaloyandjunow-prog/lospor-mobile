@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, Modal,
-  TextInput, Alert, FlatList,
+  TextInput, Alert,
 } from "react-native"
 
 // ─── Types (API-compatible with web timetable) ────────────────────────────────
@@ -14,15 +14,17 @@ export type TimetableDrug = { colIdx: number; name: string; dose: string; unit: 
 export type TimetableFluid = { id: string; name: string; category: string; volume: string; color: string; startCol: number; endCol: number }
 export type TimetableInfusion = { id: string; name: string; rate: string; unit: string; startCol: number; endCol: number; color: string; rateChanges?: { col: number; rate: string; unit: string }[] }
 export type AgentSegment = { name: string; color: string; startCol: number; endCol: number }
+export type GasSettingsSegment = { id: string; startCol: number; endCol: number; stopped?: boolean; fgf: number; carrierGas: string | null; fio2: number; fiAir?: number; fiN2O?: number; settingsChanges?: { col: number; fgf: number; carrierGas: string | null; fio2: number; fiAir?: number; fiN2O?: number }[] }
 export type TimetableData = {
   vitals:    VitalsEntry[]
   drugs:     TimetableDrug[]
   fluids:    TimetableFluid[]
   infusions: TimetableInfusion[]
   agents:    AgentSegment[]
+  gasSettings?: GasSettingsSegment[]
 }
 export function emptyTimetable(): TimetableData {
-  return { vitals: [], drugs: [], fluids: [], infusions: [], agents: [] }
+  return { vitals: [], drugs: [], fluids: [], infusions: [], agents: [], gasSettings: [] }
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -85,10 +87,10 @@ const VITAL_DEFS: { key: keyof VitalsEntry; label: string; color: string }[] = [
   {key:"systolic",  label:"BP Sys", color:"#ef4444"},
   {key:"diastolic", label:"BP Dia", color:"#f87171"},
   {key:"heartRate", label:"HR",     color:"#22c55e"},
-  {key:"spO2",      label:"SpO₂",  color:"#06b6d4"},
-  {key:"etco2",     label:"EtCO₂", color:"#f59e0b"},
+  {key:"spO2",      label:"SpO2",  color:"#06b6d4"},
+  {key:"etco2",     label:"EtCO2", color:"#f59e0b"},
   {key:"temp",      label:"Temp",   color:"#a78bfa"},
-  {key:"bgl",       label:"BGL",    color:"#34d399"},
+  {key:"bgl",       label:"Serum/peripheral glucose", color:"#34d399"},
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -248,7 +250,7 @@ function BottomSheet({ visible, onClose, title, children }: {
         <View style={{ flexDirection:"row", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
           <Text style={{ color:"#fff", fontSize:16, fontWeight:"600" }}>{title}</Text>
           <TouchableOpacity onPress={onClose}>
-            <Text style={{ color:"#64748b", fontSize:16 }}>✕</Text>
+            <Text style={{ color:"#64748b", fontSize:16 }}>x</Text>
           </TouchableOpacity>
         </View>
         {children}
@@ -268,18 +270,22 @@ interface TimetableProps {
   showAgents?:      boolean
   colOffset?:       number   // first column index (for paginated chart view)
   showActions?:     boolean  // false hides the add-drug/infusion/fluid/agent bar
-  /** Called when an infusion bar cell is tapped — parent uses this to set entryTs before opening manage modal */
+  /** Called when an infusion bar cell is tapped - parent uses this to set entryTs before opening manage modal */
   onInfusionBarTap?: (infId: string, col: number) => void
-  endTime?:         string   // ISO string or HH:MM — dims cells past the end
+  onGasCellTap?:    (col: number, segment: GasSettingsSegment | null) => void
+  onGasStop?:       (segment: GasSettingsSegment) => void
+  endTime?:         string   // ISO string or HH:MM - dims cells past the end
   onResumeCase?:    () => void
 }
 
-export function IntraopTimetable({ startTime, colCount, onColCountChange, data, onChange, showAgents, colOffset = 0, showActions = true, onInfusionBarTap, endTime, onResumeCase }: TimetableProps) {
+type AddTab = "drug" | "infusion" | "fluid" | "agent"
+
+export function IntraopTimetable({ startTime, colCount, onColCountChange, data, onChange, showAgents, colOffset = 0, showActions = true, onInfusionBarTap, onGasCellTap, onGasStop, endTime, onResumeCase: _onResumeCase }: TimetableProps) {
   const cols = useMemo(() => Array.from({ length: colCount }, (_, i) => i + colOffset), [colCount, colOffset])
 
   const endCol = useMemo(() => {
     if (!endTime) return null
-    // endTime arrives as full ISO string "2000-01-01THH:MM:00.000Z" — extract HH:MM via UTC
+    // endTime arrives as full ISO string "2000-01-01THH:MM:00.000Z" - extract HH:MM via UTC
     let hhmm = endTime
     if (endTime.includes("T")) {
       const d = new Date(endTime)
@@ -303,7 +309,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
   const [addOpen, setAddOpen]     = useState(false)
   const [addTab, setAddTab]       = useState<"drug"|"infusion"|"fluid"|"agent">("drug")
 
-  // Drug steps: pick → dose
+  // Drug steps: pick -> dose
   const [drugStep, setDrugStep]   = useState<"pick"|"dose">("pick")
   const [pickedDrug, setPickedDrug] = useState<{ name:string; unit:string } | null>(null)
   const [drugDose, setDrugDose]   = useState("")
@@ -325,12 +331,13 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
   const [vVal, setVVal]           = useState("")
 
   // Bar options (delete / extend)
-  const [selBar, setSelBar]       = useState<{ type:"infusion"|"fluid"|"agent"; id:string } | null>(null)
+  const [selBar, setSelBar]       = useState<{ type:"infusion"|"fluid"|"agent"|"gas"; id:string } | null>(null)
   const [barOpts, setBarOpts]     = useState(false)
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   function openAdd(tab: typeof addTab, col?: number) {
+    if (!showActions) return
     if (col !== undefined) setSelCol(col)
     setAddTab(tab)
     setDrugStep("pick"); setPickedDrug(null); setDrugDose("")
@@ -389,6 +396,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
   }
 
   function openVitals(colIdx: number, key: keyof VitalsEntry) {
+    if (!showActions) return
     setVModal({ colIdx, key })
     setVVal(String(data.vitals[colIdx]?.[key] ?? ""))
   }
@@ -403,7 +411,8 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
     setVModal(null)
   }
 
-  function extendBar(type: "infusion"|"fluid"|"agent", id: string) {
+  function extendBar(type: "infusion"|"fluid"|"agent"|"gas", id: string) {
+    if (type === "gas") return
     if (type === "infusion") {
       onChange({ ...data, infusions: data.infusions.map(inf => inf.id === id ? { ...inf, endCol: inf.endCol + EXTEND } : inf) })
     } else if (type === "fluid") {
@@ -413,7 +422,8 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
     }
   }
 
-  function deleteBar(type: "infusion"|"fluid"|"agent", id: string) {
+  function deleteBar(type: "infusion"|"fluid"|"agent"|"gas", id: string) {
+    if (type === "gas") return
     if (type === "infusion") {
       onChange({ ...data, infusions: data.infusions.filter(inf => inf.id !== id) })
     } else if (type === "fluid") {
@@ -424,9 +434,14 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
     setBarOpts(false); setSelBar(null)
   }
 
-  function tapBar(type: "infusion"|"fluid"|"agent", id: string, col?: number) {
+  function tapBar(type: "infusion"|"fluid"|"agent"|"gas", id: string, col?: number) {
+    if (type === "gas") return
     if (type === "infusion" && col !== undefined) onInfusionBarTap?.(id, col)
     setSelBar({ type, id }); setBarOpts(true)
+  }
+
+  function gasSegmentAt(col: number): GasSettingsSegment | null {
+    return (data.gasSettings ?? []).find(g => col >= g.startCol && col <= g.endCol) ?? null
   }
 
   // ── Grid rendering helpers ────────────────────────────────────────────────
@@ -447,7 +462,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
     label: string; labelColor: string; id: string
     startCol: number; endCol: number; barColor: string
     rate?: string; name?: string
-    type: "infusion"|"fluid"|"agent"
+    type: "infusion"|"fluid"|"agent"|"gas"
     rateChanges?: { col: number; rate: string; unit: string }[]
   }) {
     const isSelected = selBar?.id === id && selBar?.type === type
@@ -473,7 +488,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
           return (
             <TouchableOpacity
               key={col}
-              onPress={() => inRange ? tapBar(type, id, col) : undefined}
+              onPress={() => inRange && type !== "gas" ? tapBar(type, id, col) : undefined}
               style={{ width: COL_W, height: CELL_H, backgroundColor: bg, justifyContent:"center", alignItems:"center",
                 borderTopLeftRadius: isFirst ? 6 : 0, borderBottomLeftRadius: isFirst ? 6 : 0,
                 borderTopRightRadius: isLast ? 6 : 0, borderBottomRightRadius: isLast ? 6 : 0,
@@ -486,7 +501,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
                   {activeRate ?? name ?? label}
                 </Text>
               )}
-              {isLast && !isFirst && !isRateSegStart && (
+              {type !== "gas" && isLast && !isFirst && !isRateSegStart && (
                 <TouchableOpacity onPress={() => extendBar(type, id)} hitSlop={{ top:6, bottom:6, left:6, right:6 }}>
                   <Text style={{ color: barColor, fontSize: 12, fontWeight:"800" }}>+</Text>
                 </TouchableOpacity>
@@ -511,7 +526,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
           backgroundColor:"#0a0f1a" }}
       >
         <Text style={{ color:"#64748b", fontSize:10, fontWeight:"600", letterSpacing:1, textTransform:"uppercase" }}>Vitals Chart</Text>
-        <Text style={{ color:"#475569", fontSize:12 }}>{chartVisible ? "▲" : "▼"}</Text>
+        <Text style={{ color:"#475569", fontSize:12 }}>{chartVisible ? "^" : "v"}</Text>
       </TouchableOpacity>
 
       {/* Horizontal scrollable grid */}
@@ -532,7 +547,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
               return (
                 <TouchableOpacity
                   key={col}
-                  onPress={() => { setSelCol(col); openAdd("drug", col) }}
+                  onPress={() => { if (showActions) { setSelCol(col); openAdd("drug", col) } }}
                   style={{ width: COL_W, height:30, justifyContent:"center", alignItems:"center",
                     backgroundColor: isSelected ? "#1e3a5f" : "transparent",
                     borderRightWidth: col % 3 === 2 ? 1 : 0, borderRightColor:"#2e2e2e",
@@ -540,7 +555,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
                   }}
                 >
                   <Text style={{ color: isSelected ? "#93c5fd" : "#475569", fontSize: isLabel ? 9 : 7 }}>
-                    {isLabel ? colToTime(startTime, col) : "·"}
+                    {isLabel ? colToTime(startTime, col) : "-"}
                   </Text>
                   {col === endCol && (
                     <View style={{ position:"absolute", right:0, top:0, bottom:0, width:2, backgroundColor:"#22c55e", zIndex:10 }} />
@@ -568,7 +583,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
                     }}
                   >
                     <Text style={{ color: val != null ? vd.color : "#334155", fontSize: val != null ? 11 : 9, fontWeight: val != null ? "600" : "400" }}>
-                      {val != null ? String(val) : "·"}
+                      {val != null ? String(val) : "-"}
                     </Text>
                   </TouchableOpacity>
                 )
@@ -587,7 +602,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
               return (
                 <TouchableOpacity
                   key={col}
-                  onPress={() => { setSelCol(col); openAdd("drug", col) }}
+                  onPress={() => { if (showActions) { setSelCol(col); openAdd("drug", col) } }}
                   style={{ width: COL_W, minHeight: DRUGS_MIN_H, paddingTop:4, paddingBottom:4, paddingHorizontal:2,
                     backgroundColor: isSelected ? "#1e3a5f22" : "transparent",
                     borderRightWidth: col % 3 === 2 ? 1 : 0, borderRightColor:"#2e2e2e",
@@ -624,6 +639,60 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
           ))}
 
           {/* ── Infusion bars ─────────────────────────────────────── */}
+          {(showAgents || (data.gasSettings ?? []).length > 0) && (
+            <View style={{ flexDirection:"row", height: CELL_H, borderBottomWidth:1, borderBottomColor:"#2e2e2e" }}>
+              <LabelCell label="Gas" color="#818cf8" />
+              {cols.map(col => {
+                const seg = gasSegmentAt(col)
+                const isStart = seg?.startCol === col
+                const isEnd = !!seg && seg.endCol === col
+                const change = seg?.settingsChanges?.filter(c => c.col <= col).sort((a, b) => a.col - b.col).pop()
+                const fgf = change?.fgf ?? seg?.fgf
+                const carrierGas = change?.carrierGas ?? seg?.carrierGas
+                const fio2 = change?.fio2 ?? seg?.fio2
+                const isLabel = !!seg && (isStart || change?.col === col)
+                const isPastEnd = endCol !== null && col > endCol
+                return (
+                  <TouchableOpacity
+                    key={col}
+                    onPress={() => onGasCellTap?.(col, seg)}
+                    style={{
+                      width: COL_W,
+                      height: CELL_H,
+                      justifyContent:"center",
+                      alignItems:"center",
+                      backgroundColor: seg
+                        ? isPastEnd ? "#818cf822" : "#818cf855"
+                        : isPastEnd ? "rgba(0,0,0,0.25)" : "transparent",
+                      borderRightWidth: col % 3 === 2 ? 1 : 0,
+                      borderRightColor:"#2e2e2e",
+                      borderLeftWidth: change?.col === col ? 2 : 0,
+                      borderLeftColor:"#818cf8",
+                    }}
+                  >
+                    {seg && isLabel ? (
+                      <Text style={{ color:"#c4b5fd", fontSize:8, fontWeight:"700" }} numberOfLines={1}>
+                        FGF {fgf} · FiO2 {fio2}%{carrierGas ? ` · ${carrierGas.toUpperCase()}` : ""}
+                      </Text>
+                    ) : !seg ? (
+                      <Text style={{ color:"#1e2d40", fontSize:12 }}>+</Text>
+                    ) : null}
+                    {seg && isEnd && !seg.stopped && onGasStop ? (
+                      <TouchableOpacity
+                        onPress={(event) => { event.stopPropagation?.(); onGasStop(seg) }}
+                        hitSlop={{ top:6, bottom:6, left:6, right:6 }}
+                        style={{ position:"absolute", right:2, top:2, borderRadius:6, backgroundColor:"#1e1010", paddingHorizontal:3, paddingVertical:1 }}
+                      >
+                        <Text style={{ color:"#ef4444", fontSize:8, fontWeight:"800" }}>Stop</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          )}
+
+
           {data.infusions.map(inf => (
             <BarRow key={inf.id} label={inf.name} labelColor={inf.color}
               id={inf.id} type="infusion" startCol={inf.startCol} endCol={inf.endCol}
@@ -631,7 +700,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
             />
           ))}
 
-          {/* ── Fluid bars — lane-packed by category for parallel display ── */}
+          {/* ── Fluid bars - lane-packed by category for parallel display ── */}
           {computeFluidRows(data.fluids).map(row => (
             row.segs.map(fl => (
               <BarRow key={fl.id} label={row.label} labelColor={row.color}
@@ -646,10 +715,10 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
 
       {/* ── Action bar ─────────────────────────────────────────────── */}
       {showActions && <View style={{ flexDirection:"row", padding:10, gap:8, flexWrap:"wrap", borderTopWidth:1, borderTopColor:"#2e2e2e" }}>
-        {["drug","infusion","fluid","agent"].map(tab => (
+        {(["drug","infusion","fluid","agent"] satisfies AddTab[]).map(tab => (
           <TouchableOpacity
             key={tab}
-            onPress={() => openAdd(tab as any)}
+            onPress={() => openAdd(tab)}
             style={{ flexDirection:"row", alignItems:"center", gap:4, backgroundColor:"#1c1c1c", borderRadius:8, paddingHorizontal:10, paddingVertical:6, borderWidth:1, borderColor:"#2e2e2e" }}
           >
             <Text style={{ color:"#94a3b8", fontSize:12 }}>

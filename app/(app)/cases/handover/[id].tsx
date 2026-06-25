@@ -34,7 +34,7 @@ export default function HandoverScreen() {
       .then(setColleagues)
       .catch((err: Error) => Alert.alert(tc("errorLabel"), err.message))
       .finally(() => setLoading(false))
-  }, [])
+  }, [tc])
 
   const filtered = filter.trim().length > 0
     ? colleagues.filter(c => c.name.toLowerCase().includes(filter.toLowerCase()))
@@ -62,8 +62,8 @@ export default function HandoverScreen() {
           { text: "OK", onPress: () => router.back() },
         ])
       }
-    } catch (err: any) {
-      Alert.alert(tc("errorLabel"), err.message ?? tc("handoverError"))
+    } catch (err) {
+      Alert.alert(tc("errorLabel"), err instanceof Error ? err.message : tc("handoverError"))
     } finally {
       setSending(false)
     }

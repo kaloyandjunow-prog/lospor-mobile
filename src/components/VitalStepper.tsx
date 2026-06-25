@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { View, Text, Pressable, Modal, PanResponder, useWindowDimensions } from "react-native"
 import { hapticKey, hapticTick } from "@/lib/haptic"
 import { colors, withAlpha } from "@/theme/colors"
@@ -18,7 +18,7 @@ function formatClinicalValue(value: number | undefined, precision: number) {
   return precision > 0 ? value.toFixed(precision).replace(/\.0+$/, "") : String(Math.round(value))
 }
 
-export function VitalStepper({ value, onChange, min, max, step = 1, precision = 0, unit, placeholder = "-" }: {
+export function VitalStepper({ value, onChange, min, max, step = 1, precision = 0, unit, placeholder = "-", disabled = false }: {
   value?: number
   onChange: (value: number | undefined) => void
   min: number
@@ -27,6 +27,7 @@ export function VitalStepper({ value, onChange, min, max, step = 1, precision = 
   precision?: number
   unit?: string
   placeholder?: string
+  disabled?: boolean
 }) {
   const [keypadOpen, setKeypadOpen] = useState(false)
   const [keypadText, setKeypadText] = useState("")
@@ -37,11 +38,12 @@ export function VitalStepper({ value, onChange, min, max, step = 1, precision = 
   const holdTimer = useRef<{ initial: ReturnType<typeof setTimeout> | null; repeat: ReturnType<typeof setInterval> | null }>({ initial: null, repeat: null })
   const { height: screenHeight, width: screenWidth } = useWindowDimensions()
 
-  function commit(next: number | undefined) {
+  const commit = useCallback((next: number | undefined) => {
+    if (disabled) return
     hapticTick()
     if (next == null) { onChange(undefined); return }
     onChange(clampNumber(roundToStep(next, step, precision), min, max))
-  }
+  }, [disabled, max, min, onChange, precision, step])
 
   function nudge(direction: -1 | 1) {
     commit((value ?? min) + direction * step)
@@ -63,19 +65,20 @@ export function VitalStepper({ value, onChange, min, max, step = 1, precision = 
 
   useEffect(() => stopHold, [])
 
-  function setFromPageX(pageX: number) {
+  const setFromPageX = useCallback((pageX: number) => {
     const ratio = clampNumber((pageX - trackXRef.current) / Math.max(1, trackWidth), 0, 1)
     commit(min + ratio * (max - min))
-  }
+  }, [commit, max, min, trackWidth])
 
   const panResponder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
     onPanResponderGrant: (event) => { setFromPageX(event.nativeEvent.pageX) },
     onPanResponderMove: (_, gesture) => { setFromPageX(gesture.moveX) },
-  }), [max, min, step, precision, trackWidth, value])
+  }), [setFromPageX])
 
   function openKeypad() {
+    if (disabled) return
     setKeypadText(value != null ? formatClinicalValue(value, precision) : "")
     fieldRef.current?.measureInWindow((x, y, width, height) => {
       setAnchor({ x, y, width, height })
@@ -114,15 +117,16 @@ export function VitalStepper({ value, onChange, min, max, step = 1, precision = 
     <View style={{ gap: 9 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
         <Pressable
+          disabled={disabled}
           onPressIn={() => startHold(-1)}
           onPressOut={stopHold}
-          style={{ width: 44, height: 44, borderRadius: 12, borderCurve: "continuous", alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border }}
+          style={{ width: 44, height: 44, borderRadius: 12, borderCurve: "continuous", alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border, opacity: disabled ? 0.45 : 1 }}
         >
           <Text style={{ color: colors.textPrimary, fontSize: 24, fontWeight: "900" }}>-</Text>
         </Pressable>
 
         <View ref={fieldRef} collapsable={false} style={{ flex: 1 }}>
-          <Pressable onPress={openKeypad} style={{ minHeight: 44, alignItems: "center", justifyContent: "center", borderBottomWidth: 2, borderBottomColor: colors.borderStrong }}>
+          <Pressable disabled={disabled} onPress={openKeypad} style={{ minHeight: 44, alignItems: "center", justifyContent: "center", borderBottomWidth: 2, borderBottomColor: colors.borderStrong, opacity: disabled ? 0.65 : 1 }}>
             <Text style={{ color: value == null ? colors.textMuted : colors.textPrimary, fontSize: 22, fontWeight: "900", fontVariant: ["tabular-nums"] }}>
               {value == null ? placeholder : formatClinicalValue(value, precision)}{unit ? <Text style={{ color: colors.textMuted, fontSize: 13 }}> {unit}</Text> : null}
             </Text>
@@ -130,9 +134,10 @@ export function VitalStepper({ value, onChange, min, max, step = 1, precision = 
         </View>
 
         <Pressable
+          disabled={disabled}
           onPressIn={() => startHold(1)}
           onPressOut={stopHold}
-          style={{ width: 44, height: 44, borderRadius: 12, borderCurve: "continuous", alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border }}
+          style={{ width: 44, height: 44, borderRadius: 12, borderCurve: "continuous", alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border, opacity: disabled ? 0.45 : 1 }}
         >
           <Text style={{ color: colors.textPrimary, fontSize: 24, fontWeight: "900" }}>+</Text>
         </Pressable>
@@ -145,7 +150,7 @@ export function VitalStepper({ value, onChange, min, max, step = 1, precision = 
         }}
         onLayout={(event) => setTrackWidth(Math.max(1, event.nativeEvent.layout.width))}
         style={{ height: 28, justifyContent: "center" }}
-        {...panResponder.panHandlers}
+        {...(disabled ? {} : panResponder.panHandlers)}
       >
         <View style={{ height: 5, borderRadius: 999, backgroundColor: colors.borderStrong }} />
         <View style={{ position: "absolute", left: `${ratio * 100}%`, width: 10, height: 22, marginLeft: -5, borderRadius: 5, backgroundColor: colors.textSecondary }} />

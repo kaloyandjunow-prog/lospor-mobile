@@ -20,8 +20,8 @@ export default function LoginScreen() {
     setLoading(true)
     try {
       await login(email.trim().toLowerCase(), password)
-    } catch (err: any) {
-      const message: string = err.message ?? "Please check your credentials."
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Please check your credentials."
       const title = message.startsWith("Your account is awaiting admin approval")
         ? "Pending approval"
         : "Login failed"

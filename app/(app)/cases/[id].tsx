@@ -9,7 +9,7 @@ import { AppHeader } from "@/components/AppHeader"
 import { EditWindowBanner } from "@/components/EditWindowBanner"
 import { STATUS_META } from "@/components/ui"
 import { colors, withAlpha } from "@/theme/colors"
-import { usePreferences, type ClinicalStringKey } from "@/lib/preferences-context"
+import { usePreferences, type ClinicalStringKey, type TranslationKey } from "@/lib/preferences-context"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -22,7 +22,7 @@ type VascularAccess = {
 }
 type KeyEvent = {
   type: string; name?: string; dose?: number | string; unit?: string
-  infId?: string; rate?: number | string; col?: number; timestamp?: number | string
+  infId?: string; fluidId?: string; rate?: number | string; col?: number; timestamp?: number | string
 }
 
 type CaseData = {
@@ -59,8 +59,7 @@ type CaseData = {
     techniques?: string[]; positions?: string[]; ventilationModes?: string[]
     airwayTools?: string[]; airwayDevices?: string[]
     tubeSize?: number; cuffed?: boolean; dltType?: string; dltSide?: string; dltSize?: number
-    volatileAgent?: string; n2oPercent?: number; o2Percent?: number
-    fgfLitersPerMin?: number; carrierGas?: "air" | "n2o"; fio2Percent?: number
+    volatileAgent?: string
     ecg?: boolean; spO2Monitor?: boolean; nbpMonitor?: boolean; etco2Monitor?: boolean
     tempMonitor?: boolean; invasiveBP?: boolean; cvpMonitor?: boolean; paCatheter?: boolean
     tee?: boolean; bis?: boolean; entropyMonitor?: boolean; nirsMonitor?: boolean
@@ -153,14 +152,14 @@ const MONITOR_MAP: { key: MonitorKey; label: string }[] = [
   { key: "tee", label: "TEE" }, { key: "bis", label: "BIS" },
   { key: "entropyMonitor", label: "Entropy" }, { key: "nirsMonitor", label: "NIRS" },
   { key: "evokedPotentials", label: "SSEP/MEP" }, { key: "tofMonitor", label: "TOF/NMT" },
-  { key: "bglMonitor", label: "BGL" }, { key: "bloodGasMonitor", label: "ABG" },
+  { key: "bglMonitor", label: "Serum/peripheral glucose" }, { key: "bloodGasMonitor", label: "ABG" },
   { key: "urinaryCatheter", label: "Urine" }, { key: "stomachTube", label: "NGT" },
 ]
 
 const HANDOVER_LABELS: Record<string, string> = {
   analgesia: "Analgesia", nausea: "Nausea / PONV", fluids: "IV fluids",
   obs_freq: "Obs frequency", drain: "Drain", catheter: "Catheter",
-  antibiotics: "Antibiotics", glucose: "Glucose monitoring", o2: "Oxygen therapy",
+  antibiotics: "Antibiotics", glucose: "Serum/peripheral glucose monitoring", o2: "Oxygen therapy",
   positioning: "Positioning", diet: "Diet restrictions", follow_up: "Follow-up",
   other: "Other",
 }
@@ -175,23 +174,9 @@ function techniqueLabel(code: string): string {
 
 function getBodySystem(code: string): string {
   if (!code) return "Other"
-  const p2 = code.substring(0, 2).toUpperCase()
-  // ICD-11 two-character chapter prefixes
-  if (["BA","BB","BC","BD","BE"].includes(p2)) return "Cardiovascular"
-  if (["CA","CB","CC","CD","CE","CF","CG","CH"].includes(p2)) return "Respiratory"
-  if (["1A","1B","1C","1D","1E","1F","1G","1H"].includes(p2)) return "Infectious diseases"
-  if (["2A","2B","2C","2D","2E","2F"].includes(p2)) return "Neoplasms"
-  if (["3A","3B","3C"].includes(p2)) return "Haematological"
-  if (["5A","5B","5C","5D"].includes(p2)) return "Endocrine / Metabolic"
-  if (["6A","6B","6C","6D","6E","6F","6G","7A","7B","8A","8B","8C","8D","8E"].includes(p2)) return "Neurological / Psychiatric"
-  if (["9A","9B","9C","9D","9E","AA","AB","AC"].includes(p2)) return "Ophthalmological / ENT"
-  if (["DA","DB","DC","DD","DE"].includes(p2)) return "Gastrointestinal / Hepatic"
-  if (["FA","FB","FC"].includes(p2)) return "Musculoskeletal"
-  if (["GA","GB","GC"].includes(p2)) return "Renal / Urological"
-  if (["JA","JB"].includes(p2)) return "Obstetric"
-  if (["KA","KB","KC","KD","LA","LB","LC","LD"].includes(p2)) return "Congenital"
-  // ICD-10 single-letter fallback
-  const p1 = p2.charAt(0), n = parseInt(code.substring(1, 3), 10) || 0
+  // ICD-10 single-letter chapter prefixes (the app moved off ICD-11; codes
+  // are always ICD-10-shaped now).
+  const p1 = code.charAt(0).toUpperCase(), n = parseInt(code.substring(1, 3), 10) || 0
   if (p1 === "I") return "Cardiovascular"
   if (p1 === "J") return "Respiratory"
   if (p1 === "G" || p1 === "F") return "Neurological / Psychiatric"
@@ -547,7 +532,7 @@ function AldreteRow({
 
 // ─── Card 1: Preoperative ─────────────────────────────────────────────────────
 
-function PreopCard({ preop, tc, t }: { preop: CaseData["preop"]; tc: (key: ClinicalStringKey) => string; t: (key: any) => string }) {
+function PreopCard({ preop, tc, t }: { preop: CaseData["preop"]; tc: (key: ClinicalStringKey) => string; t: (key: TranslationKey) => string }) {
   if (!preop) {
     return (
       <SummaryCard title={tc("cardPreop")}>
@@ -694,6 +679,24 @@ function PreopCard({ preop, tc, t }: { preop: CaseData["preop"]; tc: (key: Clini
 
 function MedicalHistoryCard({ preop, tc }: { preop: CaseData["preop"]; tc: (key: ClinicalStringKey) => string }) {
   const comorbidities = preop?.comorbidities ?? []
+  const currentMedicationsText = (() => {
+    const raw = preop?.currentMedications
+    if (!raw) return null
+    const trimmed = raw.trim()
+    if (trimmed.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(trimmed) as unknown[]
+        return parsed
+          .map((item) => {
+            const med = item as { label?: unknown; inn?: unknown; name?: unknown }
+            return med.label ?? med.inn ?? med.name
+          })
+          .filter((label): label is string => typeof label === "string" && label.length > 0)
+          .join(", ")
+      } catch {}
+    }
+    return raw
+  })()
 
   const flags: { label: string; color: string }[] = []
   if (preop?.allergies) flags.push({ label: tc("summaryAllergy"), color: colors.danger })
@@ -705,7 +708,7 @@ function MedicalHistoryCard({ preop, tc }: { preop: CaseData["preop"]; tc: (key:
   if (preop?.looseTeeth) flags.push({ label: tc("summaryLooseTeeth"), color: colors.warning })
 
   const hasContent = comorbidities.length > 0 || flags.length > 0
-    || !!preop?.currentMedications || !!preop?.allergyDetails
+    || !!currentMedicationsText || !!preop?.allergyDetails
     || !!preop?.familyAnesthesiaDetails
 
   if (!hasContent) {
@@ -770,7 +773,7 @@ function MedicalHistoryCard({ preop, tc }: { preop: CaseData["preop"]; tc: (key:
         </View>
       ) : null}
 
-      {preop?.currentMedications ? (
+      {currentMedicationsText ? (
         <View style={{ marginTop: 8 }}>
           <Text style={{
             color: colors.textMuted, fontSize: 11, textTransform: "uppercase",
@@ -779,7 +782,7 @@ function MedicalHistoryCard({ preop, tc }: { preop: CaseData["preop"]; tc: (key:
             {tc("summaryCurrentMeds")}
           </Text>
           <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 18 }}>
-            {preop.currentMedications}
+            {currentMedicationsText}
           </Text>
         </View>
       ) : null}
@@ -896,7 +899,35 @@ function AirwayCard({ preop, tc }: { preop: CaseData["preop"]; tc: (key: Clinica
 
 // ─── Card 4: Intraoperative ───────────────────────────────────────────────────
 
-function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intraop"]; preop?: CaseData["preop"]; tc: (key: ClinicalStringKey) => string; t: (key: any) => string }) {
+function legacyKeyEventsToSummaryLog(keyEvents: unknown): KeyEvent[] {
+  const kev = (keyEvents ?? {}) as Record<string, unknown>
+  const asRecord = (value: unknown): Record<string, unknown> => value && typeof value === "object" ? value as Record<string, unknown> : {}
+  const out: KeyEvent[] = []
+  if (Array.isArray(kev.drugs)) {
+    kev.drugs.forEach(item => {
+      const d = asRecord(item)
+      out.push({ type: "drug", name: d.name as string | undefined, dose: d.dose as number | string | undefined, unit: d.unit as string | undefined, col: Number(d.colIdx ?? 0) })
+    })
+  }
+  if (Array.isArray(kev.infusions)) {
+    kev.infusions.forEach(item => {
+      const inf = asRecord(item)
+      const infId = String(inf.id ?? inf.name ?? "")
+      if (!infId) return
+      out.push({ type: "infusion_start", infId, name: inf.name as string | undefined, rate: inf.rate as number | string | undefined, unit: inf.unit as string | undefined, col: Number(inf.startCol ?? 0) })
+      if (Array.isArray(inf.rateChanges)) {
+        inf.rateChanges.forEach(changeItem => {
+          const change = asRecord(changeItem)
+          out.push({ type: "infusion_rate", infId, name: inf.name as string | undefined, rate: change.rate as number | string | undefined, unit: (change.unit ?? inf.unit) as string | undefined, col: Number(change.col ?? inf.startCol ?? 0) })
+        })
+      }
+      if (inf.stopped) out.push({ type: "infusion_stop", infId, name: inf.name as string | undefined, col: Number(inf.endCol ?? inf.startCol ?? 0) })
+    })
+  }
+  return out.sort((a, b) => (b.col ?? 0) - (a.col ?? 0))
+}
+
+function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intraop"]; preop?: CaseData["preop"]; tc: (key: ClinicalStringKey) => string; t: (key: TranslationKey) => string }) {
   if (!intraop) {
     return (
       <SummaryCard title={tc("cardIntraop")}>
@@ -905,7 +936,7 @@ function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intraop"]; 
     )
   }
 
-  const log = intraop.keyEvents?.log ?? []
+  const log = intraop.keyEvents?.log ?? legacyKeyEventsToSummaryLog(intraop.keyEvents)
   const drugTotals = calcDrugTotals(log)
   const activeInfusions = getActiveInfusions(log)
 
@@ -1000,9 +1031,6 @@ function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intraop"]; 
 
       {ventText ? <InfoRow label={tc("summaryVentilation")} value={ventText} /> : null}
       {volatileStr ? <InfoRow label={tc("summaryAgent")} value={volatileStr} valueColor={colors.agent} /> : null}
-      {intraop.fgfLitersPerMin != null ? <InfoRow label={t("freshGasFlow")} value={`${intraop.fgfLitersPerMin} L/min`} /> : null}
-      {intraop.carrierGas ? <InfoRow label={t("carrierGas")} value={`O₂ + ${intraop.carrierGas === "n2o" ? "N₂O" : "Air"}`} /> : null}
-      {intraop.fio2Percent != null ? <InfoRow label={t("fio2Label")} value={`${intraop.fio2Percent}%`} /> : null}
 
       {positions.length > 0 && (
         <View style={{ marginBottom: 8 }}>
@@ -1176,7 +1204,7 @@ type AldreteCriterion = {
   descriptions: [string, string, string]
 }
 
-function PostopCard({ postop, tc, t }: { postop: CaseData["postop"]; tc: (key: ClinicalStringKey) => string; t: (key: any) => string }) {
+function PostopCard({ postop, tc, t }: { postop: CaseData["postop"]; tc: (key: ClinicalStringKey) => string; t: (key: TranslationKey) => string }) {
   const ALDRETE_CRITERIA: AldreteCriterion[] = [
     { field: "aldreteActivity", label: tc("aldreteActivity"), descriptions: [tc("aldreteNoMovement"), tc("aldrete2Extremities"), tc("aldreteAllExtremities")] },
     { field: "aldreteRespiration", label: tc("aldreteRespiration"), descriptions: [tc("aldreteApnoeic"), tc("aldreteShallow"), tc("aldreteDeepBreath")] },
@@ -1425,7 +1453,7 @@ export default function CaseSummaryScreen() {
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [id, tc])
 
   useEffect(() => { loadCase() }, [loadCase])
 
@@ -1435,13 +1463,6 @@ export default function CaseSummaryScreen() {
   }, [caseData?.finalizedAt])
 
   const canEdit = caseData?.status !== "COMPLETE" || editWindowOpen
-
-  const minutesLeft = useMemo(() => {
-    if (!caseData?.finalizedAt || !editWindowOpen) return 0
-    return Math.ceil(
-      (30 * 60 * 1000 - (Date.now() - new Date(caseData.finalizedAt).getTime())) / 60000
-    )
-  }, [caseData?.finalizedAt, editWindowOpen])
 
   const handleUnfinalize = useCallback(() => {
     Alert.alert(
@@ -1466,7 +1487,7 @@ export default function CaseSummaryScreen() {
         },
       ]
     )
-  }, [id, loadCase])
+  }, [id, loadCase, t, tc])
 
   const handleDelete = useCallback(() => {
     Alert.alert(
@@ -1488,7 +1509,7 @@ export default function CaseSummaryScreen() {
         },
       ]
     )
-  }, [id, router])
+  }, [id, router, t, tc])
 
   const screenTitle = caseData?.caseCode ?? (loading ? "…" : tc("cardPreop"))
 
