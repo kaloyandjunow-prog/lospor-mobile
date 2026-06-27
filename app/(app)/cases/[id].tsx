@@ -484,26 +484,6 @@ function Divider() {
   return <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 10 }} />
 }
 
-function ActionButton({
-  label, onPress, disabled, color = colors.primary,
-}: { label: string; onPress: () => void; disabled?: boolean; color?: string }) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={disabled}
-      style={{
-        opacity: disabled ? 0.4 : 1,
-        paddingHorizontal: 16, paddingVertical: 10,
-        borderRadius: 999,
-        backgroundColor: withAlpha(color, "22"),
-        borderWidth: 1, borderColor: withAlpha(color, "66"),
-        marginRight: 8,
-      }}
-    >
-      <Text style={{ color, fontSize: 12, fontWeight: "800" }}>{label}</Text>
-    </TouchableOpacity>
-  )
-}
 
 function AldreteRow({
   label, value, descriptions,
@@ -760,7 +740,23 @@ function MedicalHistoryCard({ preop, tc }: { preop: CaseData["preop"]; tc: (key:
       {preop?.allergyDetails ? (
         <View style={{ marginTop: 6 }}>
           <Text style={{ color: colors.danger, fontSize: 12 }}>
-            {tc("summaryAllergyDetails")}: {preop.allergyDetails}
+            {tc("summaryAllergyDetails")}: {(() => {
+              const raw = preop.allergyDetails!
+              const trimmed = raw.trim()
+              if (trimmed.startsWith("[")) {
+                try {
+                  const parsed = JSON.parse(trimmed) as unknown[]
+                  const labels = parsed
+                    .map((item) => {
+                      const m = item as { label?: unknown; name?: unknown }
+                      return m.label ?? m.name
+                    })
+                    .filter((l): l is string => typeof l === "string" && l.length > 0)
+                  if (labels.length > 0) return labels.join(", ")
+                } catch {}
+              }
+              return raw
+            })()}
           </Text>
         </View>
       ) : null}
@@ -1511,6 +1507,45 @@ export default function CaseSummaryScreen() {
     )
   }, [id, router, t, tc])
 
+  const handlePrint = useCallback(async () => {
+    try {
+      const res = await apiFetch(`/api/cases/${id}/print-token`, { method: "POST" })
+      if (res.ok) {
+        const { url } = await res.json()
+        Linking.openURL(url).catch(() => Alert.alert(tc("errorLabel"), "Could not open browser"))
+        return
+      }
+    } catch { /* fall through */ }
+    Linking.openURL(`${API_BASE}/cases/${id}`).catch(() => Alert.alert(tc("errorLabel"), "Could not open browser"))
+  }, [id, tc])
+
+  const [finalizing, setFinalizing] = useState(false)
+
+  const handleFinalize = useCallback(() => {
+    Alert.alert(
+      tc("actionFinalise"),
+      tc("finalisePrintPrompt"),
+      [
+        { text: tc("cancelLabel"), style: "cancel" },
+        {
+          text: tc("actionFinalise"),
+          onPress: async () => {
+            setFinalizing(true)
+            try {
+              const res = await apiFetch(`/api/cases/${id}/finalize`, { method: "POST" })
+              const body = await res.json().catch(() => null)
+              setCaseData(prev => prev ? { ...prev, status: "COMPLETE", finalizedAt: body?.finalizedAt ?? new Date().toISOString() } : prev)
+            } catch {
+              Alert.alert(tc("errorLabel"), "Could not finalise case.")
+            } finally {
+              setFinalizing(false)
+            }
+          },
+        },
+      ]
+    )
+  }, [id, tc])
+
   const screenTitle = caseData?.caseCode ?? (loading ? "…" : tc("cardPreop"))
 
   const procedureTitle = caseData?.preop?.proceduresJson?.[0]?.label
@@ -1665,86 +1700,108 @@ export default function CaseSummaryScreen() {
           <EditWindowBanner finalizedAt={caseData.finalizedAt} />
         )}
 
-        {/* ── Action rail ────────────────────────────────────────────────────── */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ marginBottom: 16 }}
-          contentContainerStyle={{ paddingRight: 8 }}
-        >
-          <ActionButton
-            label={`✏️ ${tc("actionPreop")}`}
-            onPress={() => router.push(`/(app)/cases/new?continue=${id}`)}
-            disabled={!canEdit}
-          />
-          <ActionButton
-            label={`⚕️ ${tc("actionIntraop")}`}
-            onPress={() => router.push(`/(app)/cases/intraop/${id}`)}
-            disabled={!canEdit}
-          />
-          <ActionButton
-            label={`🏥 ${tc("actionPostop")}`}
-            onPress={() => router.push(`/(app)/cases/postop/${id}`)}
-            disabled={!canEdit}
-          />
-          <ActionButton
-            label={tc("actionPrintPDF")}
-            onPress={() => {
-              async function doPrint() {
-                // Get a short-lived print token so the browser doesn't need a web login
-                try {
-                  const res = await apiFetch(`/api/cases/${id}/print-token`, { method: "POST" })
-                  if (res.ok) {
-                    const { url } = await res.json()
-                    Linking.openURL(url).catch(() => Alert.alert(tc("errorLabel"), "Could not open browser"))
-                    return
-                  }
-                } catch { /* fall through to direct URL */ }
-                // Fallback: direct URL (requires web session)
-                Linking.openURL(`${API_BASE}/cases/${id}`).catch(() => Alert.alert(tc("errorLabel"), "Could not open browser"))
-              }
-
-              if (caseData?.status !== "COMPLETE") {
-                Alert.alert(
-                  tc("actionFinalise"),
-                  tc("finalisePrintPrompt"),
-                  [
-                    { text: tc("cancelLabel"), style: "cancel" },
-                    {
-                      text: tc("actionFinalisePrint"),
-                      onPress: async () => {
-                        try {
-                          const res = await apiFetch(`/api/cases/${id}/finalize`, { method: "POST" })
-                          const body = await res.json().catch(() => null)
-                          setCaseData(prev => prev ? { ...prev, status: "COMPLETE", finalizedAt: body?.finalizedAt ?? new Date().toISOString() } : prev)
-                        } catch { /* best-effort */ }
-                        doPrint()
-                      },
-                    },
-                  ]
+        {/* ── Review bar ─────────────────────────────────────────────────────── */}
+        <View style={{
+          marginBottom: 16, borderRadius: 12,
+          borderWidth: 1, borderColor: withAlpha(sc, "44"),
+          backgroundColor: withAlpha(sc, "0d"),
+          overflow: "hidden",
+        }}>
+          {/* Edit row */}
+          {canEdit && (
+            <View style={{ flexDirection: "row", padding: 12, paddingBottom: 8, gap: 8 }}>
+              <Text style={{ color: colors.textMuted, fontSize: 11, alignSelf: "center", marginRight: 2 }}>
+                Edit:
+              </Text>
+              {(["Preop", "Intraop", "Postop"] as const).map((section) => {
+                const onPress = () => {
+                  if (section === "Preop")   router.push(`/(app)/cases/new?continue=${id}`)
+                  if (section === "Intraop") router.push(`/(app)/cases/intraop/${id}`)
+                  if (section === "Postop")  router.push(`/(app)/cases/postop/${id}`)
+                }
+                return (
+                  <TouchableOpacity
+                    key={section}
+                    onPress={onPress}
+                    style={{
+                      paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8,
+                      borderWidth: 1, borderColor: withAlpha(sc, "66"),
+                      backgroundColor: withAlpha(sc, "11"),
+                    }}
+                  >
+                    <Text style={{ color: sc, fontSize: 12, fontWeight: "700" }}>{section}</Text>
+                  </TouchableOpacity>
                 )
-              } else {
-                doPrint()
-              }
-            }}
-            color={colors.textSecondary}
-          />
-          {caseData.status === "COMPLETE" && (
-            <ActionButton
-              label={unfinalizing ? `⏳ ${t("unfinalizing")}` : tc("actionUnfinalize")}
-              onPress={handleUnfinalize}
-              disabled={unfinalizing}
-              color={colors.warning}
-            />
+              })}
+            </View>
           )}
-          {caseData.status !== "COMPLETE" && (
-            <ActionButton
-              label={tc("actionDelete")}
-              onPress={handleDelete}
-              color={colors.danger}
-            />
-          )}
-        </ScrollView>
+
+          {/* Action row */}
+          <View style={{ flexDirection: "row", flexWrap: "wrap", padding: 12, paddingTop: canEdit ? 0 : 12, gap: 8 }}>
+            {caseData.status !== "COMPLETE" && (
+              <TouchableOpacity
+                onPress={handleFinalize}
+                disabled={finalizing}
+                style={{
+                  flex: 1, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10,
+                  backgroundColor: finalizing ? withAlpha(colors.warning, "55") : colors.warning,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#fff", fontSize: 13, fontWeight: "800" }}>
+                  {finalizing ? "Finalising…" : tc("actionFinalise")}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              onPress={handlePrint}
+              style={{
+                flex: 1, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10,
+                borderWidth: 1, borderColor: withAlpha(colors.textSecondary, "55"),
+                backgroundColor: withAlpha(colors.textSecondary, "0d"),
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: "700" }}>
+                {tc("actionPrintPDF")}
+              </Text>
+            </TouchableOpacity>
+
+            {caseData.status === "COMPLETE" && (
+              <TouchableOpacity
+                onPress={handleUnfinalize}
+                disabled={unfinalizing}
+                style={{
+                  paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10,
+                  borderWidth: 1, borderColor: withAlpha(colors.warning, "66"),
+                  backgroundColor: withAlpha(colors.warning, "0d"),
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: colors.warning, fontSize: 13, fontWeight: "700" }}>
+                  {unfinalizing ? `⏳ ${t("unfinalizing")}` : tc("actionUnfinalize")}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {caseData.status !== "COMPLETE" && (
+              <TouchableOpacity
+                onPress={handleDelete}
+                style={{
+                  paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10,
+                  borderWidth: 1, borderColor: withAlpha(colors.danger, "66"),
+                  backgroundColor: withAlpha(colors.danger, "0d"),
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: colors.danger, fontSize: 13, fontWeight: "700" }}>
+                  {tc("actionDelete")}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
 
         {/* ── Six summary cards ──────────────────────────────────────────────── */}
         <PreopCard preop={caseData.preop} tc={tc} t={t} />

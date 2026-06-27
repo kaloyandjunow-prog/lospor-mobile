@@ -1,5 +1,14 @@
 # Changelog - LOSPOR Mobile
 
+## [3.3.0] - 2026-06-27
+
+### Fixed
+- Allergy details on the case summary now displays drug names (e.g. "Analgin") instead of raw JSON (`[{"label":"Analgin",...}]`). Parsing matches the existing behaviour for current medications.
+
+### UX
+- Case detail action area redesigned from a scrollable horizontal pill row into a structured review bar. The bar shows the case status, inline edit shortcuts (Preop / Intraop / Postop), a prominent Finalise Now button for non-COMPLETE cases, Print PDF, Unfinalize (when COMPLETE), and Delete. All previous actions are preserved.
+- Print PDF now uses a dedicated `handlePrint` function (print token + browser open) extracted from the old inline handler, making it callable independently of finalization state.
+
 ## [3.2.2] - 2026-06-27
 
 ### Fixed
