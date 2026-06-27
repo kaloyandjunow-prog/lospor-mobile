@@ -1,5 +1,20 @@
 # Changelog - LOSPOR Mobile
 
+## [3.2.0] - 2026-06-27
+
+### Changed
+- Finalise action now calls `POST /api/cases/:id/finalize` instead of `PATCH` with `{ status: "COMPLETE" }`. The new endpoint validates preop/intraop/postop completeness before committing.
+- Case creation now sends `X-Idempotency-Key: <localDraftId>` on the POST request so offline drafts that lose their response are not duplicated on retry.
+
+### Fixed
+- Drug allergy autosave from PWA was rejected by the server PII filter when a drug name contained two capitalised words (e.g. "Morphine Sulfate"). Fixed server-side; no client change required.
+- Intraoperative event and case autosave returned 500 errors under load due to a Prisma transaction timeout (P2028). Fixed server-side by replacing the interactive transaction with sequential writes.
+
+## [3.1.0-hotfix] - 2026-06-27
+
+### Fixed
+- PWA login was blocked with 403 after the v3.1.0 CSRF hardening incorrectly applied the origin check to `/api/auth/token`. Fixed server-side; no client change required.
+
 ## [3.1.0] - 2026-06-25
 
 ### Security and privacy hardening

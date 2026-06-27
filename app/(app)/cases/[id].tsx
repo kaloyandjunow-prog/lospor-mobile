@@ -1714,11 +1714,9 @@ export default function CaseSummaryScreen() {
                       text: tc("actionFinalisePrint"),
                       onPress: async () => {
                         try {
-                          await apiFetch(`/api/cases/${id}`, {
-                            method: "PATCH",
-                            body: JSON.stringify({ status: "COMPLETE" }),
-                          })
-                          setCaseData(prev => prev ? { ...prev, status: "COMPLETE", finalizedAt: new Date().toISOString() } : prev)
+                          const res = await apiFetch(`/api/cases/${id}/finalize`, { method: "POST" })
+                          const body = await res.json().catch(() => null)
+                          setCaseData(prev => prev ? { ...prev, status: "COMPLETE", finalizedAt: body?.finalizedAt ?? new Date().toISOString() } : prev)
                         } catch { /* best-effort */ }
                         doPrint()
                       },

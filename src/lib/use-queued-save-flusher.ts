@@ -14,6 +14,7 @@ async function flushLocalCaseDrafts(): Promise<void> {
       const preop = buildPreopPayload(draft.formValues)
       const res = await apiFetch("/api/cases", {
         method: "POST",
+        headers: { "X-Idempotency-Key": draft.localId },
         body: JSON.stringify({ preop }),
       })
       if (res.ok) {
