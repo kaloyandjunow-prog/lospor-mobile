@@ -121,8 +121,7 @@ export function DrugSheet({
     setDrugPick({ ...drug, unit })
     setDrugRoute?.(firstRoute ?? "")
     setDrugConcentration?.(undefined)
-    const preset = (profile?.quickValues?.length ? profile.quickValues : dosePresets[drug.name])?.[0]
-    setDrugDose(preset != null ? String(preset) : "")
+    setDrugDose("")
   }
 
   function selectCanonical(canonical: string) {
@@ -138,8 +137,7 @@ export function DrugSheet({
     setDrugRoute?.(route)
     setDrugConcentration?.(undefined)
     if (profile?.unit) setDrugPick({ ...drugPick, unit: profile.unit })
-    const preset = (profile?.quickValues?.length ? profile.quickValues : dosePresets[drugPick.name])?.[0]
-    setDrugDose(preset != null ? String(preset) : "")
+    setDrugDose("")
   }
 
   const filtered = query.trim()

@@ -3719,11 +3719,13 @@ export default function IntraopLiveScreen() {
               color: fl.color,
               onStop: () => stopFluidDirect(fl),
             }))
-            const allDecided = runningItems.length > 0 && runningItems.every(item => !!endCaseDecisions[item.key])
+            const allDecided = runningItems.length === 0 || runningItems.every(item => !!endCaseDecisions[item.key])
             return (
               <>
                 <Text style={{ color:"#94a3b8", fontSize:13, marginBottom:16 }}>
-                  Choose what to do with each active item, then finalise.
+                  {runningItems.length === 0
+                    ? "No active items — ready to finalise."
+                    : "Choose what to do with each active item, then finalise."}
                 </Text>
                 {runningItems.map(item => {
                   const dec = endCaseDecisions[item.key]

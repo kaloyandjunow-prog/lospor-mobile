@@ -53,12 +53,17 @@ export type DoseSelectorProps = {
 export function DoseSelector({
   color = "#8b5cf6", hint, extraHint,
   quickValues, quickValue,
-  value, onValueChange, min, max, step = 1, precision = 0, valuePlaceholder = "Value",
+  value, onValueChange, min, max, step = 1, precision: precisionProp, valuePlaceholder = "Value",
   units, unit, onUnitChange, unitSuffix,
   routes, route, onRouteChange,
   concentrationOptions, concentration, onConcentrationChange,
   confirmLabel, onConfirm, confirmDisabled,
 }: DoseSelectorProps) {
+  const precision = precisionProp ?? (() => {
+    const s = String(step)
+    const dot = s.indexOf(".")
+    return dot >= 0 ? s.length - dot - 1 : 0
+  })()
   const num = parseFloat(value) || 0
 
   return (

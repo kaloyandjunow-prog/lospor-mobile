@@ -1,5 +1,12 @@
 # Changelog - LOSPOR Mobile
 
+## [3.2.2] - 2026-06-27
+
+### Fixed
+- Drug dose stepper now shows decimal digits for drugs with fractional step sizes (e.g. Atropine 0.5 mg steps now display "0.5", "1", "1.5" instead of "1", "2"). `DoseSelector` now auto-derives display precision from the step value when the caller doesn't supply one explicitly.
+- Selecting a drug from the drug sheet no longer auto-fills the first quick-dose pill. Dose field starts empty so the anesthesiologist can deliberately choose from the quick pills or use the stepper before confirming.
+- End case modal now shows the finalise button even when there are no active running items (no agent, fluid, infusion, or gas). The previous `&&` guard kept the button hidden whenever the item list was empty, making it impossible to end the case in a clean session.
+
 ## [3.2.1] - 2026-06-27
 
 ### Fixed
