@@ -34,7 +34,7 @@ export const CLINICAL_STRINGS = {
     // Search placeholders
     diagnosisPlaceholder:"No patient-identifying information — diagnosis or ICD-10 code…",
     historySubtitle:     "Search by condition name or ICD-10 code. Tagged conditions are grouped by body system below.",
-    labsPrivacyNote:     "Lab report images are sent to Mistral AI (EU) for text extraction. Before uploading, crop out all patient names, date of birth, ID or MRN numbers, and any other identifying information. Do not upload the image if patient identifiers cannot be removed.",
+    labsPrivacyNote:     "Lab report images are sent to the configured AI provider for text extraction. Before uploading, crop out all patient names, date of birth, ID or MRN numbers, and any other identifying information. Do not upload the image if patient identifiers cannot be removed.",
 
     // ── Patient ───────────────────────────────────────────────────────────
     ageYears:            "Age (years)",
@@ -374,7 +374,7 @@ export const CLINICAL_STRINGS = {
     // ── AI Advisor ────────────────────────────────────────────────────────
     aiPrivacySection:    "Privacy",
     aiAnalysisSection:   "Analysis",
-    aiPrivacyNote:       "AI analysis sends your case data to Mistral AI (EU-hosted). Free-text fields are never included.",
+    aiPrivacyNote:       "AI analysis sends your case data to the configured AI provider. Free-text fields are never included.",
     aiDisclaimer:        "AI-generated summary for review by the responsible anaesthesiologist. Does not constitute clinical advice. Full clinical responsibility remains with the treating anaesthesiologist.",
     aiEnableLabel:       "Enable AI analysis for this case",
     aiAnalysing:         "Analysing…",

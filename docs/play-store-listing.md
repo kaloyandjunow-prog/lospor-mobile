@@ -57,7 +57,7 @@ This app requires an account on a LOSPOR institution. Visit app.lospor.org or co
 ## Data safety form notes
 
 - **Data collected:** name, email/title (account/profile), institution
-- **Data shared with third parties:** none, except Mistral AI (EU) for opt-in AI features (lab scan, monitor scan, pre-op advisor) — images/structured fields processed transiently, not stored by Mistral
+- **Data shared with third parties:** none, except the configured Mistral AI provider for opt-in AI features (lab scan, monitor scan, pre-op advisor) — images/structured fields processed transiently, not stored by LOSPOR
 - **Patient data:** none collected (no names, no national IDs — by design)
 - **Data deletion:** available via in-app Settings → Privacy & Data → Delete account
 - **Data encrypted in transit:** yes (HTTPS)

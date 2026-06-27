@@ -36,6 +36,7 @@ import { InfusionActionSheet } from "@/components/intraop/InfusionActionSheet"
 import { useInfusionEntry } from "@/lib/use-infusion-entry"
 import { DrugSheet } from "@/components/intraop/DrugSheet"
 import { useDrugEntry } from "@/lib/use-drug-entry"
+import { BOLUS_SCENARIOS, INFUSION_SCENARIOS } from "@/lib/intraop-scenarios"
 import { useVitalsEntry } from "@/lib/use-vitals-entry"
 import { PositionTab } from "@/components/intraop/tabs/PositionTab"
 import { MonitoringTab } from "@/components/intraop/tabs/MonitoringTab"
@@ -702,7 +703,7 @@ export default function IntraopLiveScreen() {
     for (const o of drugLibOpts) {
       const cat = o.group ?? "Other"
       if (!byGroup.has(cat)) byGroup.set(cat, { cat, color: MOBILE_DRUG_CAT_COLOR[cat] ?? "#64748b", drugs: [] })
-      byGroup.get(cat)!.drugs.push({ name: o.label, unit: o.metadata?.defaultUnit ?? "mg" })
+      byGroup.get(cat)!.drugs.push({ name: o.label, unit: o.metadata?.unit ?? o.metadata?.defaultUnit ?? "mg" })
     }
     return [...byGroup.values()]
   }, [drugLibOpts])
@@ -715,7 +716,7 @@ export default function IntraopLiveScreen() {
   }
 
   const INF_DRUGS = useMemo(() =>
-    infusionLibOpts.map((o: LibraryOption) => ({ name: o.label, unit: o.metadata?.defaultUnit ?? "mcg/kg/min", color: o.color ?? "#64748b" })),
+    infusionLibOpts.map((o: LibraryOption) => ({ name: o.label, unit: o.metadata?.unit ?? o.metadata?.defaultUnit ?? "mcg/kg/min", color: o.color ?? "#64748b" })),
   [infusionLibOpts])
 
   const FLUID_LIST = useMemo(() =>
@@ -747,6 +748,43 @@ export default function IntraopLiveScreen() {
   const DRUG_LA_CONCENTRATIONS = useMemo(() => {
     const m: Record<string, string[]> = {}
     for (const o of drugLibOpts) if (o.metadata?.concentrationOptions?.length) m[o.label] = o.metadata.concentrationOptions
+    return m
+  }, [drugLibOpts])
+  const DRUG_ROUTE_PROFILES = useMemo(() => {
+    const m: Record<string, Record<string, { mode?: string; min: number; max: number; step: number; quickValues: number[]; unit: string; concentrationOptions?: string[] }>> = {}
+    for (const o of drugLibOpts) {
+      const routeModes = o.metadata?.routeModes
+      if (!routeModes || typeof routeModes !== "object") continue
+      m[o.label] = {}
+      for (const [route, profile] of Object.entries(routeModes as Record<string, any>)) {
+        if (profile?.min == null || profile?.max == null || !profile?.unit) continue
+        m[o.label][route] = {
+          mode: profile.mode,
+          min: profile.min,
+          max: profile.max,
+          step: profile.step ?? profile.variableStep?.[0]?.step ?? 1,
+          quickValues: profile.quickValues ?? [],
+          unit: profile.unit,
+          concentrationOptions: profile.concentrationOptions,
+        }
+      }
+    }
+    return m
+  }, [drugLibOpts])
+  const DRUG_BASE_PROFILES = useMemo(() => {
+    const m: Record<string, { mode?: string; min: number; max: number; step: number; quickValues: number[]; unit: string; concentrationOptions?: string[] }> = {}
+    for (const o of drugLibOpts) {
+      if (o.metadata?.min == null || o.metadata?.max == null || !o.metadata?.unit) continue
+      m[o.label] = {
+        mode: o.metadata.mode,
+        min: o.metadata.min,
+        max: o.metadata.max,
+        step: o.metadata.step ?? o.metadata.variableStep?.[0]?.step ?? 1,
+        quickValues: o.metadata.quickValues ?? [],
+        unit: o.metadata.unit,
+        concentrationOptions: o.metadata.concentrationOptions,
+      }
+    }
     return m
   }, [drugLibOpts])
   // Stepper/slider range per drug — falls back to a sensible default by unit
@@ -991,7 +1029,7 @@ export default function IntraopLiveScreen() {
     drugOpen, setDrugOpen, drugCat, setDrugCat, drugPick, setDrugPick, drugDose, setDrugDose,
     drugRoute, setDrugRoute, drugConcentration, setDrugConcentration,
     openDrug, confirmDrug, startDrugAsInfusion, openDrugPreset,
-  } = useDrugEntry(save, setEntryTs, DRUG_CATS, INF_DRUGS, setInfDrug, setInfRate, setInfOpen, DRUG_CODES)
+  } = useDrugEntry(save, setEntryTs, DRUG_CATS, INF_DRUGS, setInfDrug, setInfRate, setInfOpen, DRUG_CODES, INFUSION_QUICK_RATES)
 
   // Fluid sheet + end options
   const {
@@ -1006,8 +1044,19 @@ export default function IntraopLiveScreen() {
   // Gas settings sheet (FGF/carrier gas/FiO2) - event-based gas_start/gas_change/gas_stop.
   const { gasOpen, setGasOpen, gasFgf, setGasFgf, gasCarrierGas, setGasCarrierGas, gasFio2, setGasFio2, openGasSettings, confirmGasSettings, stopGasSettings } =
     useGasSettingsEntry(save, setEntryTs, activeGas, setActiveGas)
+  const [favouriteDrugs, setFavouriteDrugs] = useState<string[]>([])
+  const [favouriteInfusions, setFavouriteInfusions] = useState<string[]>([])
   const gasInitializedRef  = useRef(false)
   const awInitializedRef   = useRef(false)
+
+  useEffect(() => {
+    apiJson<{ preferences?: { intraopFavouriteDrugs?: string[]; intraopFavouriteInfusions?: string[] } }>("/api/user")
+      .then(data => {
+        setFavouriteDrugs(data.preferences?.intraopFavouriteDrugs ?? [])
+        setFavouriteInfusions(data.preferences?.intraopFavouriteInfusions ?? [])
+      })
+      .catch(() => {})
+  }, [])
 
   // Airway detail sheet
   const [airwayOpen,   setAirwayOpen]   = useState(false)
@@ -2179,6 +2228,15 @@ export default function IntraopLiveScreen() {
     for (const a of timetable.agents) {
       if (col >= a.startCol && col <= a.endCol) items.push({ id:`agent-${a.name}`, label:a.name, color:a.color })
     }
+    for (const gas of timetable.gasSettings ?? []) {
+      if (col >= gas.startCol && col <= gas.endCol) {
+        const sorted = (gas.settingsChanges ?? []).slice().sort((a, b) => a.col - b.col)
+        const active = sorted.filter(change => change.col <= col).pop()
+        const fgf = active?.fgf ?? gas.fgf
+        const fio2 = active?.fio2 ?? gas.fio2
+        items.push({ id: "gas-settings", label: `FGF ${fgf}L/min · FiO2 ${fio2}%`, color: "#818cf8" })
+      }
+    }
     for (const i of timetable.infusions) {
       if (col >= i.startCol && col <= i.endCol) {
         // Show the rate ACTIVE at this column, not the initial rate: apply the
@@ -2495,7 +2553,8 @@ export default function IntraopLiveScreen() {
                               const activeInf = activeInfusions.find(i => item.id === `inf-${i.infId}`)
                               const activeFl  = activeFluids.find(f => item.id === `fluid-${f.fluidId}`)
                               const isAgentItem = item.id.startsWith("agent-")
-                              const canManage = !!(activeInf || activeFl || (isAgentItem && activeAgent))
+                              const isGasItem = item.id === "gas-settings"
+                              const canManage = !!(activeInf || activeFl || (isAgentItem && activeAgent) || (isGasItem && activeGas))
                               return (
                                 <TouchableOpacity
                                   key={item.id}
@@ -2503,6 +2562,7 @@ export default function IntraopLiveScreen() {
                                   onPress={() => {
                                     if (activeInf) { setInfActTgt(activeInf); setInfActRate(activeInf.rate); setInfActOpen(true) }
                                     else if (activeFl) { openFluidEnd(activeFl) }
+                                    else if (isGasItem && activeGas) { openGasSettings(timeAtCol(chartStart, col).toISOString(), activeGas, "change") }
                                     else if (isAgentItem && activeAgent) {
                                       Alert.alert(`Stop ${activeAgent.name}?`, undefined, [
                                         { text: tc("cancelLabel"), style: "cancel" },
@@ -2523,7 +2583,7 @@ export default function IntraopLiveScreen() {
                                   </Text>
                                   {canManage && (
                                     <Text style={{ color: "#64748b", fontSize: 11 }}>
-                                      {activeInf ? "Manage" : activeFl ? "End fluid" : "Stop"} →
+                                      {activeInf ? "Manage" : activeFl ? "End fluid" : isGasItem ? "Edit" : "Stop"} →
                                     </Text>
                                   )}
                                 </TouchableOpacity>
@@ -3129,7 +3189,8 @@ export default function IntraopLiveScreen() {
           visible={drugOpen}
           onClose={() => setDrugOpen(false)}
           drugCats={DRUG_CATS}
-          favDrugs={favDrugs}
+          favouriteNames={favouriteDrugs}
+          scenarios={BOLUS_SCENARIOS}
           drugCat={drugCat}
           setDrugCat={setDrugCat}
           drugPick={drugPick}
@@ -3147,6 +3208,8 @@ export default function IntraopLiveScreen() {
           laConcentrations={DRUG_LA_CONCENTRATIONS}
           drugConcentration={drugConcentration}
           setDrugConcentration={setDrugConcentration}
+          baseProfiles={DRUG_BASE_PROFILES}
+          routeProfiles={DRUG_ROUTE_PROFILES}
         />
 
         {/* ── VITALS SHEET ─────────────────────────────────────────────── */}
@@ -3167,7 +3230,7 @@ export default function IntraopLiveScreen() {
           {/* GDPR note — image sent to Mistral EU */}
           {!vitScanBusy && (
             <Text style={{ color:"#475569", fontSize:10, marginBottom:14, lineHeight:14 }}>
-              Monitor images are sent to Mistral AI (EU-hosted) for extraction only and are not stored. Do not capture patient names or identifiers.
+              Monitor images are sent to the configured AI provider for extraction only and are not stored by LOSPOR. Do not capture patient names or identifiers.
             </Text>
           )}
           <Text style={{ color:"#ef4444", fontSize:11, fontWeight:"700", letterSpacing:1,
@@ -3307,6 +3370,8 @@ export default function IntraopLiveScreen() {
           visible={infOpen}
           onClose={() => { setInfOpen(false); setInfDrug(null); setInfRate(""); setInfRoute(undefined); setInfConcentration(undefined) }}
           infDrugs={INF_DRUGS}
+          favouriteNames={favouriteInfusions}
+          scenarios={INFUSION_SCENARIOS}
           ratePresets={INFUSION_QUICK_RATES}
           infDrug={infDrug}
           setInfDrug={setInfDrug}

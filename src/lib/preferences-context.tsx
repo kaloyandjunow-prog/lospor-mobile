@@ -131,9 +131,9 @@ const STRINGS = {
     exportDataMsg: "Data export is available on the web app at app.lospor.org/settings.",
     openWebApp: "Open web app",
     deleteAccountTitle: "Delete account",
-    deleteAccountMsg: "This will permanently delete your account and all associated data. This action cannot be undone.\n\nAre you sure you want to delete your account?",
+    deleteAccountMsg: "This disables your account access immediately and revokes the current mobile token. Further deletion or anonymisation is processed according to the retention policy. This cannot be undone.\n\nAre you sure you want to delete your account?",
     deleteAccountConfirm: "Delete account",
-    deleteAccountError: "Could not delete account. Please try again or contact support.",
+    deleteAccountError: "Could not disable account. Please try again or contact support.",
 
     // ── Settings — diagnostics rows ───────────────────────────────────────────
     diagApiBase: "API base URL",

@@ -1,7 +1,7 @@
 ﻿# Google Play вЂ” Data Safety & Content Rating draft answers
 
 App: **LOSPOR** (`org.lospor.mobile`)
-Drafted from `lospor-app/src/app/(auth)/privacy/page.tsx` (Privacy Policy v3.0) and the
+Drafted from `lospor-app/src/app/(auth)/privacy/page.tsx` (Privacy Policy v3.1) and the
 mobile dependency list (no analytics/crash/ads SDKs present).
 
 These are my best-effort recommendations for the current LOSPOR data flows. Play
@@ -21,7 +21,7 @@ the live form before submitting, especially the "Health info" sharing call below
   - In-app: Settings в†’ Privacy & Data в†’ Delete Account (mobile and web)
   - Web, no app install required: `https://app.lospor.org` в†’ log in в†’ Settings в†’
     Privacy & Data в†’ Delete Account
-  - Account is soft-deleted immediately, permanently erased within 30 days
+  - Account access is disabled immediately, the presented mobile token is revoked, and further deletion or anonymisation is processed according to the retention policy.
 
 ### Account deletion URL (separate field in Play Console)
 `https://app.lospor.org`
@@ -123,6 +123,6 @@ professional clinical documentation tool.
 - Terms of service: `https://app.lospor.org/terms`
 - Data export (in-app, Settings в†’ Privacy & Data): `/api/user/export`
 - Account deletion (in-app, Settings в†’ Privacy & Data): `/api/user/delete`
-- Sub-processors: Supabase (EU), Vercel (EU), Mistral AI (EU, La Plateforme) вЂ” all
+- Sub-processors: Supabase, Vercel, Mistral AI La Plateforme - all
   under GDPR DPAs
 

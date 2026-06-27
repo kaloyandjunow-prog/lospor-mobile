@@ -18,6 +18,7 @@ import { REMINDERS_KEY, VITALS_INTERVAL_KEY, DEFAULT_INTERVAL_MIN } from "@/lib/
 import { Card, SectionHeader, SettingsRow } from "@/components/ui"
 import { colors, withAlpha } from "@/theme/colors"
 import { AppHeader } from "@/components/AppHeader"
+import { useOptionLibrary, type LibraryOption } from "@/lib/use-option-library"
 
 // --- Types --------------------------------------------------------------------
 
@@ -29,6 +30,10 @@ type ProfileData = {
   title?: string | null
   role?: string | null
   institution?: Institution | null
+  preferences?: {
+    intraopFavouriteDrugs?: string[]
+    intraopFavouriteInfusions?: string[]
+  } | null
 }
 
 // --- Institution picker modal -------------------------------------------------
@@ -128,11 +133,118 @@ function InstitutionPicker({
   )
 }
 
+function FavouritePicker({
+  visible,
+  title,
+  options,
+  selected,
+  onClose,
+  onSave,
+}: {
+  visible: boolean
+  title: string
+  options: LibraryOption[]
+  selected: string[]
+  onClose: () => void
+  onSave: (next: string[]) => void
+}) {
+  const [query, setQuery] = useState("")
+  const [draft, setDraft] = useState<string[]>(selected)
+
+  useEffect(() => {
+    if (!visible) return
+    setQuery("")
+    setDraft(selected)
+  }, [selected, visible])
+
+  const filtered = query.trim()
+    ? options.filter(o => `${o.label} ${o.group ?? ""}`.toLowerCase().includes(query.trim().toLowerCase()))
+    : options
+
+  function toggle(label: string) {
+    setDraft(prev => prev.includes(label)
+      ? prev.filter(x => x !== label)
+      : prev.length >= 8 ? prev : [...prev, label])
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}>
+        <View style={{
+          backgroundColor: colors.surfaceRaised, borderTopLeftRadius: 22, borderTopRightRadius: 22,
+          padding: 20, paddingBottom: 40, maxHeight: "86%",
+        }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+            <View>
+              <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "800" }}>{title}</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>{draft.length}/8 selected</Text>
+            </View>
+            <TouchableOpacity onPress={onClose}>
+              <Text style={{ color: colors.textMuted, fontSize: 20 }}>x</Text>
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search"
+            placeholderTextColor={colors.textMuted}
+            style={{
+              backgroundColor: colors.background, color: colors.textPrimary,
+              borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
+              fontSize: 14, borderWidth: 1, borderColor: colors.border, marginBottom: 12,
+            }}
+          />
+          <FlatList
+            data={filtered}
+            keyExtractor={item => item.id}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item }) => {
+              const checked = draft.includes(item.label)
+              return (
+                <TouchableOpacity
+                  onPress={() => toggle(item.label)}
+                  style={{
+                    paddingVertical: 11,
+                    borderBottomWidth: 1,
+                    borderBottomColor: colors.border,
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    gap: 12,
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: checked ? colors.primary : colors.textPrimary, fontSize: 14, fontWeight: checked ? "800" : "500" }}>
+                      {item.label}
+                    </Text>
+                    {item.group ? <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 1 }}>{item.group}</Text> : null}
+                  </View>
+                  <Text style={{ color: checked ? colors.primary : colors.textMuted, fontSize: 16, fontWeight: "900" }}>
+                    {checked ? "Selected" : "+"}
+                  </Text>
+                </TouchableOpacity>
+              )
+            }}
+          />
+          <TouchableOpacity
+            onPress={() => onSave(draft)}
+            style={{ marginTop: 14, paddingVertical: 14, borderRadius: 12, alignItems: "center", backgroundColor: colors.primary }}
+          >
+            <Text style={{ color: "#fff", fontWeight: "800" }}>Save favourites</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
 // --- Main screen --------------------------------------------------------------
 
 export default function SettingsScreen() {
   const { logout } = useAuth()
   const router  = useRouter()
+  const { options: drugOptions } = useOptionLibrary("INTRAOP_DRUG")
+  const { options: infusionOptions } = useOptionLibrary("INTRAOP_INFUSION")
   const {
     language, setLanguage, theme, setTheme, preopLayout, setPreopLayout, t,
     heightUnit, setHeightUnit, weightUnit, setWeightUnit, temperatureUnit, setTemperatureUnit, etco2Unit, setEtco2Unit,
@@ -144,6 +256,10 @@ export default function SettingsScreen() {
   // -- Profile ------------------------------------------------------------------
   const [profile, setProfile]             = useState<ProfileData | null>(null)
   const [pickerOpen, setPickerOpen]       = useState(false)
+  const [drugFavOpen, setDrugFavOpen]     = useState(false)
+  const [infFavOpen, setInfFavOpen]       = useState(false)
+  const [favouriteDrugs, setFavouriteDrugs] = useState<string[]>([])
+  const [favouriteInfusions, setFavouriteInfusions] = useState<string[]>([])
   const [institutionSaving, setInstitutionSaving] = useState(false)
 
   // -- Automation toggles -------------------------------------------------------
@@ -171,6 +287,8 @@ export default function SettingsScreen() {
     try {
       const data = await apiJson<ProfileData>("/api/user")
       setProfile(data)
+      setFavouriteDrugs(data.preferences?.intraopFavouriteDrugs ?? [])
+      setFavouriteInfusions(data.preferences?.intraopFavouriteInfusions ?? [])
     } catch {
       // Fallback: decode from JWT (no round-trip needed for display)
       const token = await getToken()
@@ -322,6 +440,34 @@ export default function SettingsScreen() {
       Alert.alert(t("error"), "Could not update institution.")
     } finally {
       setInstitutionSaving(false)
+    }
+  }
+
+  async function saveFavouriteDrugs(next: string[]) {
+    setDrugFavOpen(false)
+    setFavouriteDrugs(next)
+    try {
+      const res = await apiFetch("/api/user", {
+        method: "PATCH",
+        body: JSON.stringify({ preferences: { intraopFavouriteDrugs: next } }),
+      })
+      if (!res.ok) throw new Error()
+    } catch {
+      Alert.alert(t("error"), "Could not save favourite drugs.")
+    }
+  }
+
+  async function saveFavouriteInfusions(next: string[]) {
+    setInfFavOpen(false)
+    setFavouriteInfusions(next)
+    try {
+      const res = await apiFetch("/api/user", {
+        method: "PATCH",
+        body: JSON.stringify({ preferences: { intraopFavouriteInfusions: next } }),
+      })
+      if (!res.ok) throw new Error()
+    } catch {
+      Alert.alert(t("error"), "Could not save favourite infusions.")
     }
   }
 
@@ -548,6 +694,16 @@ export default function SettingsScreen() {
         <SectionHeader title={t("intraoperative")} />
         <Card>
           <SettingsRow
+            label="Favourite bolus drugs"
+            subtitle={favouriteDrugs.length ? favouriteDrugs.join(", ") : "Choose up to 8 drugs for the intraop cockpit"}
+            onPress={() => setDrugFavOpen(true)}
+          />
+          <SettingsRow
+            label="Favourite infusions"
+            subtitle={favouriteInfusions.length ? favouriteInfusions.join(", ") : "Choose up to 8 infusions for the intraop cockpit"}
+            onPress={() => setInfFavOpen(true)}
+          />
+          <SettingsRow
             label={t("autoFillVitals")}
             subtitle={t("autoFillVitalsSub")}
             rightElement={
@@ -650,7 +806,7 @@ export default function SettingsScreen() {
           />
           <SettingsRow
             label={t("about")}
-            subtitle="LOSPOR v3.0.0 — Large Open Source Perioperative Register"
+            subtitle="LOSPOR v3.1.0 - Large Open Source Perioperative Register"
           />
           <SettingsRow
             label="Clear local clinical cache"
@@ -691,6 +847,22 @@ export default function SettingsScreen() {
           </Text>
         </Card>
       </ScrollView>
+      <FavouritePicker
+        visible={drugFavOpen}
+        title="Favourite bolus drugs"
+        options={drugOptions}
+        selected={favouriteDrugs}
+        onClose={() => setDrugFavOpen(false)}
+        onSave={saveFavouriteDrugs}
+      />
+      <FavouritePicker
+        visible={infFavOpen}
+        title="Favourite infusions"
+        options={infusionOptions}
+        selected={favouriteInfusions}
+        onClose={() => setInfFavOpen(false)}
+        onSave={saveFavouriteInfusions}
+      />
     </View>
   )
 }

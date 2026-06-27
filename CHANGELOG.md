@@ -1,5 +1,21 @@
 # Changelog - LOSPOR Mobile
 
+## [3.1.0] - 2026-06-25
+
+### Security and privacy hardening
+- Version metadata aligned to `3.1.0`.
+- Failed login now uses a generic message instead of probing the server for pending-account state.
+- Logout clears local clinical drafts, queued case patches, and queued intraoperative events before removing the token.
+- PWA storage notes now state that browser `localStorage` is weaker than native secure storage.
+- Account deletion copy now matches the implemented soft-delete/access-disable behavior instead of promising automatic hard deletion.
+
+### Intraoperative cockpit polish
+- Bolus drug and infusion pickers now open through scenario-based 2-column cockpit menus instead of exposing raw catalogue groups first.
+- Synced user favourites for bolus drugs and infusions can be managed from Settings and appear as the first picker action.
+- Browse-all remains available with search and canonical library grouping/listing.
+- Route-specific dose profiles are respected on mobile/PWA: IV lidocaine stays a dose entry, while local/PD/IT/peripheral block routes show concentration/volume controls.
+- Starting a bolus drug as an infusion now preloads the same canonical quick-rate default as selecting that infusion directly.
+
 ## [3.0.0] - 2026-06-25
 
 ### Summary
@@ -246,4 +262,3 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 - `Haptics.notificationAsync` crash on Android (dev builds without full native linking) — error silently ignored, save completes normally
 - Scroll-to-top on validation failure in the preop form
-

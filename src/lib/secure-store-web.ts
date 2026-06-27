@@ -1,6 +1,6 @@
-// Web shim for expo-secure-store — uses localStorage.
-// On web there is no Keychain/Keystore; plain localStorage is acceptable
-// because the JWT is short-lived and the app is served over HTTPS in production.
+// Web shim for expo-secure-store: uses localStorage because browsers do not
+// expose native Keychain/Keystore storage. This is weaker than native secure
+// storage; logout clears the token plus offline clinical drafts and queues.
 const PREFIX = "lospor_ss_"
 
 export const AFTER_FIRST_UNLOCK             = 0

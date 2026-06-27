@@ -23,6 +23,7 @@ export function useDrugEntry(
   // empty today (catalog isn't populated yet), but once it is, this is what
   // carries drugId/atcCode/inn into the saved event instead of dropping it.
   drugCodes: Record<string, CodedIdentity> = {},
+  infusionRatePresets: Record<string, string[]> = {},
 ) {
   const [drugOpen, setDrugOpen] = useState(false)
   const [drugCat, setDrugCat]   = useState<DrugCat | null>(null)
@@ -51,7 +52,7 @@ export function useDrugEntry(
     if (!infMatch) return
     // Transfer to infusion sheet pre-selected with this drug
     setDrugOpen(false); setDrugCat(null); setDrugPick(null); setDrugDose(""); setDrugRoute(undefined); setDrugConcentration(undefined)
-    setInfDrug(infMatch); setInfRate(""); setInfOpen(true)
+    setInfDrug(infMatch); setInfRate(infusionRatePresets[infMatch.name]?.[0] ?? ""); setInfOpen(true)
   }
 
   function openDrugPreset(name: string, dose = "") {
