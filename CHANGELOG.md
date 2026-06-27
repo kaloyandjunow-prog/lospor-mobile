@@ -1,5 +1,10 @@
 # Changelog - LOSPOR Mobile
 
+## [3.2.1] - 2026-06-27
+
+### Fixed
+- Server-side relational-sync now uses sequential writes instead of `$transaction([...])`, eliminating P2028 errors that appeared in Vercel logs after every case save (background mirror only; case data was always saved correctly). No client change.
+
 ## [3.2.0] - 2026-06-27
 
 ### Changed
