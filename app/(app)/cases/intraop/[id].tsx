@@ -1450,7 +1450,9 @@ export default function IntraopLiveScreen() {
   // each time even when fluids haven't changed), so guard on the computed
   // totals themselves rather than the array reference to avoid a PATCH storm.
   const lastFluidTotalsRef = useRef<string>("")
+  const fluidTotalsInitializedRef = useRef(false)
   useEffect(() => {
+    if (!caseLoaded) return
     let crystalloids = 0, colloids = 0, blood = 0
     for (const f of timetable.fluids ?? []) {
       const vol = parseFloat(f.volume) || 0
@@ -1460,10 +1462,15 @@ export default function IntraopLiveScreen() {
       else if (f.category === "Blood products") blood += vol
     }
     const key = `${crystalloids}|${colloids}|${blood}`
+    if (!fluidTotalsInitializedRef.current) {
+      fluidTotalsInitializedRef.current = true
+      lastFluidTotalsRef.current = key
+      return
+    }
     if (key === lastFluidTotalsRef.current) return
     lastFluidTotalsRef.current = key
     patchIntraopSectionRef.current({ crystalloidsMl: crystalloids || null, colloidsMl: colloids || null, bloodMl: blood || null }).catch(() => {})
-  }, [timetable.fluids, id])
+  }, [timetable.fluids, id, caseLoaded])
 
   // ── Elapsed clock ─────────────────────────────────────────────────────
 
