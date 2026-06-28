@@ -1458,7 +1458,7 @@ export default function CaseSummaryScreen() {
     return Date.now() - new Date(caseData.finalizedAt).getTime() < 30 * 60 * 1000
   }, [caseData?.finalizedAt])
 
-  const canEdit = caseData?.status !== "COMPLETE" || editWindowOpen
+  const canEdit = caseData?.status !== "COMPLETE"
 
   const handleUnfinalize = useCallback(() => {
     Alert.alert(

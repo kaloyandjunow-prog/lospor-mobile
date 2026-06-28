@@ -1034,6 +1034,7 @@ export default function NewCaseScreen() {
   const autosaveInFlightRef = useRef<Promise<void> | null>(null)
   const submittingRef = useRef(false)
   const caseIdRef = useRef<string | null>(null)
+  const draftIdRef = useRef<string>(makeLocalCaseId())
   const [,       setCaseId]       = useState<string | null>(null)
   const [preopFinalizedAt, setPreopFinalizedAt] = useState<string | null>(null)
   const [preopCaseStatus,  setPreopCaseStatus]  = useState<string | null>(null)
@@ -1170,6 +1171,7 @@ export default function NewCaseScreen() {
     try {
       const res = await apiFetch("/api/cases", {
         method: "POST",
+        headers: { "X-Idempotency-Key": draftIdRef.current },
         body: JSON.stringify({ preop: payload }),
       })
       if (!res.ok) {
@@ -1483,16 +1485,17 @@ export default function NewCaseScreen() {
     setAiText("")
     setAiError("")
     try {
-      const res = await apiFetch("/api/ai/advise", {
+      // Ensure the case exists on the server before running the advisor
+      if (!caseIdRef.current) {
+        const created = await tryCreateServerCase(getValues())
+        if (!created) {
+          setAiError("Could not save case — check your connection and try again.")
+          setAiLoading(false)
+          return
+        }
+      }
+      const res = await apiFetch(`/api/cases/${caseIdRef.current}/ai/advise`, {
         method: "POST",
-        body: JSON.stringify({
-          ...getValues(),
-          bmi,
-          rcriScore,
-          apfelScore,
-          stopBangScore,
-          aiOptIn: true,
-        }),
       })
       if (!res.ok) {
         if (res.status === 429) throw new Error(tc("aiRateLimit"))
@@ -1587,6 +1590,7 @@ export default function NewCaseScreen() {
         // No server case yet (offline during autosave); create it now
         const res = await apiFetch("/api/cases", {
           method: "POST",
+          headers: { "X-Idempotency-Key": draftIdRef.current },
           body: JSON.stringify({ preop: preopPayload }),
         })
         if (!res.ok) {
