@@ -9,7 +9,12 @@ const LAST_ERROR_KEY = "lospor_last_api_error"
 const authExpiredListeners = new Set<() => void>()
 
 export class ApiError extends Error {
-  constructor(message: string, public status: number, public code?: string) {
+  constructor(
+    message: string,
+    public status: number,
+    public code?: string,
+    public serverVersion?: Record<string, unknown>,
+  ) {
     super(message)
     this.name = "ApiError"
   }

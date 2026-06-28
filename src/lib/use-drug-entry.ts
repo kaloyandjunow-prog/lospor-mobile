@@ -24,6 +24,7 @@ export function useDrugEntry(
   // carries drugId/atcCode/inn into the saved event instead of dropping it.
   drugCodes: Record<string, CodedIdentity> = {},
   infusionRatePresets: Record<string, string[]> = {},
+  doseCalcs: Record<string, { roundTo?: number }> = {},
 ) {
   const [drugOpen, setDrugOpen] = useState(false)
   const [drugCat, setDrugCat]   = useState<DrugCat | null>(null)
@@ -40,7 +41,11 @@ export function useDrugEntry(
   async function confirmDrug() {
     if (!drugPick || !drugDose) return
     const codes = drugCodes[drugPick.name]
-    await save({ type: "drug", name: drugPick.name, dose: drugDose, unit: drugPick.unit,
+    const rt = doseCalcs[drugPick.name]?.roundTo ?? 1
+    const finalDose = rt > 1 && !isNaN(Number(drugDose))
+      ? String(Math.round(Number(drugDose) / rt) * rt)
+      : drugDose
+    await save({ type: "drug", name: drugPick.name, dose: finalDose, unit: drugPick.unit,
       category: drugCat?.cat, color: drugCat?.color as string, drugRoute: drugRoute, concentration: drugConcentration,
       drugId: codes?.drugId, atcCode: codes?.atcCode, inn: codes?.inn })
     setDrugOpen(false); setDrugCat(null); setDrugPick(null); setDrugDose(""); setDrugRoute(undefined); setDrugConcentration(undefined)

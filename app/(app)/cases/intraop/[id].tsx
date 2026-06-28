@@ -795,6 +795,14 @@ export default function IntraopLiveScreen() {
     for (const o of drugLibOpts) if (o.metadata?.min != null && o.metadata?.max != null && o.metadata?.step != null) m[o.label] = { min: o.metadata.min, max: o.metadata.max, step: o.metadata.step }
     return m
   }, [drugLibOpts])
+  const DRUG_DOSE_CALCS = useMemo(() => {
+    const m: Record<string, { hint: string; perKg?: number; flat?: number; basis?: string; roundTo?: number; cap?: number }> = {}
+    for (const o of drugLibOpts) {
+      const dc = o.metadata?.doseCalc as { perKg?: number; flat?: number; basis?: string; roundTo?: number; cap?: number } | undefined
+      if (dc || o.metadata?.hint) m[o.label] = { hint: (o.metadata?.hint as string | undefined) ?? "", ...dc }
+    }
+    return m
+  }, [drugLibOpts])
   function drugRange(name: string, unit: string) {
     if (DRUG_RANGES[name]) return DRUG_RANGES[name]
     if (unit === "mcg") return { min: 0, max: 2000, step: 10 }
@@ -1029,7 +1037,7 @@ export default function IntraopLiveScreen() {
     drugOpen, setDrugOpen, drugCat, setDrugCat, drugPick, setDrugPick, drugDose, setDrugDose,
     drugRoute, setDrugRoute, drugConcentration, setDrugConcentration,
     openDrug, confirmDrug, startDrugAsInfusion, openDrugPreset,
-  } = useDrugEntry(save, setEntryTs, DRUG_CATS, INF_DRUGS, setInfDrug, setInfRate, setInfOpen, DRUG_CODES, INFUSION_QUICK_RATES)
+  } = useDrugEntry(save, setEntryTs, DRUG_CATS, INF_DRUGS, setInfDrug, setInfRate, setInfOpen, DRUG_CODES, INFUSION_QUICK_RATES, DRUG_DOSE_CALCS)
 
   // Fluid sheet + end options
   const {
@@ -1928,9 +1936,26 @@ export default function IntraopLiveScreen() {
       }
       return result
     } catch (err) {
-      setSyncState("failed")
-      if (err instanceof ApiError && err.status >= 400 && err.status < 500 && err.status !== 409) {
-        Alert.alert("Save rejected", err.message)
+      if (err instanceof ApiError && err.status === 409) {
+        const serverUpdatedAt = (err.serverVersion as any)?.updatedAt as string | undefined
+        if (serverUpdatedAt) {
+          baseIntraopUpdatedAtRef.current = serverUpdatedAt
+          try {
+            const retryResult = await saveCasePatchWithQueue(id, "intraop", payload, serverUpdatedAt)
+            if (retryResult.result === "saved") {
+              baseIntraopUpdatedAtRef.current = retryResult.response?.intraopUpdatedAt ?? serverUpdatedAt
+              setLastSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+              setSyncState("saved")
+              return retryResult
+            }
+          } catch { /* retry also failed — fall through */ }
+        }
+        setSyncState("failed")
+      } else {
+        setSyncState("failed")
+        if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
+          Alert.alert("Save rejected", err.message)
+        }
       }
     } finally {
       pendingSaveCountRef.current -= 1
@@ -2175,17 +2200,20 @@ export default function IntraopLiveScreen() {
     }
   }
 
-  // Auto-scroll to now on mount when switching to timetable tab
+  // Auto-scroll when switching to timetable tab. If events are more than 30 min
+  // (6 columns) before now (e.g. backdated entries or reviewing an old case),
+  // scroll to show the events. Otherwise scroll to current time.
   useEffect(() => {
     if (tab !== "log" || !startRef.current) return
-    const safeIdx = Math.min(currentCol, chartRows.length - 1)
-    if (safeIdx < 0) return
+    const scrollTarget = (lastEventCol < currentCol - 6)
+      ? Math.min(lastEventCol + 3, chartRows.length - 1)
+      : Math.min(currentCol, chartRows.length - 1)
+    if (scrollTarget < 0) return
     const timer = setTimeout(() => {
-      verticalTimetableRef.current?.scrollToIndex({ index: safeIdx, animated: false, viewPosition: 0.35 })
+      verticalTimetableRef.current?.scrollToIndex({ index: scrollTarget, animated: false, viewPosition: 0.35 })
     }, 80)
     return () => clearTimeout(timer)
-   
-  }, [chartRows.length, currentCol, tab])
+  }, [chartRows.length, currentCol, tab, lastEventCol])
 
   // Keep awDevices in sync with the currently-open device's own completeness: add it
   // the moment it becomes complete (this is also the gate that gets it to the DB in
@@ -3236,6 +3264,10 @@ export default function IntraopLiveScreen() {
           setDrugConcentration={setDrugConcentration}
           baseProfiles={DRUG_BASE_PROFILES}
           routeProfiles={DRUG_ROUTE_PROFILES}
+          doseCalcs={DRUG_DOSE_CALCS}
+          patientWeightKg={preop?.weight ?? undefined}
+          patientHeightCm={preop?.height ?? undefined}
+          patientSex={preop?.sex ?? undefined}
         />
 
         {/* ── VITALS SHEET ─────────────────────────────────────────────── */}

@@ -60,11 +60,14 @@ function Pill({
   )
 }
 
+type DoseCalc = { hint: string; perKg?: number; flat?: number; basis?: string; roundTo?: number; cap?: number }
+
 export function DrugSheet({
   visible, onClose, drugCats, favouriteNames, scenarios, drugCat, setDrugCat, drugPick, setDrugPick,
   drugDose, setDrugDose, dosePresets, canStartAsInfusion, onConfirm, onStartAsInfusion,
   routes = {}, drugRoute, setDrugRoute, laConcentrations = {}, drugConcentration, setDrugConcentration,
   ranges = {}, baseProfiles = {}, routeProfiles = {},
+  doseCalcs, patientWeightKg, patientHeightCm, patientSex,
 }: {
   visible: boolean
   onClose: () => void
@@ -90,9 +93,36 @@ export function DrugSheet({
   ranges?: Record<string, Range>
   baseProfiles?: Record<string, DoseSurface>
   routeProfiles?: Record<string, Record<string, DoseSurface>>
+  doseCalcs?: Record<string, DoseCalc>
+  patientWeightKg?: number
+  patientHeightCm?: number
+  patientSex?: string
 }) {
   const { tc } = usePreferences()
   const [mode, setMode] = useState<"home" | "favourites" | "scenario" | "browse">("home")
+
+  function calcSuggestedDose(name: string): { dose: string; hint: string } {
+    const dc = doseCalcs?.[name]
+    const hint = dc?.hint ?? ""
+    if (!dc) return { dose: "", hint }
+    if (dc.flat !== undefined) return { dose: String(dc.flat), hint }
+    if (dc.perKg !== undefined) {
+      const ibw = (() => {
+        if (!patientHeightCm) return null
+        const inches = patientHeightCm / 2.54
+        if (inches < 60) return null
+        const base = (patientSex?.toUpperCase() === "FEMALE") ? 45.5 : 50
+        return base + 2.3 * (inches - 60)
+      })()
+      const tbw = patientWeightKg ?? null
+      const w = dc.basis === "TBW" ? (tbw ?? ibw) : (ibw !== null && tbw !== null ? Math.min(ibw, tbw) : (ibw ?? tbw))
+      if (!w) return { dose: "", hint }
+      const roundTo = dc.roundTo ?? 1
+      const rounded = Math.round(w * dc.perKg / roundTo) * roundTo
+      return { dose: String(rounded), hint }
+    }
+    return { dose: "", hint }
+  }
   const [scenario, setScenario] = useState<ScenarioGroup | null>(null)
   const [query, setQuery] = useState("")
 
@@ -121,7 +151,8 @@ export function DrugSheet({
     setDrugPick({ ...drug, unit })
     setDrugRoute?.(firstRoute ?? "")
     setDrugConcentration?.(undefined)
-    setDrugDose("")
+    const suggested = calcSuggestedDose(drug.name)
+    setDrugDose(suggested.dose)
   }
 
   function selectCanonical(canonical: string) {
@@ -172,6 +203,11 @@ export function DrugSheet({
               confirmLabel={`Add ${drugPick.name} ${drugDose} ${activeUnit}`}
               onConfirm={onConfirm} confirmDisabled={!drugDose}
             />
+            {doseCalcs?.[drugPick.name]?.hint ? (
+              <Text style={{ color:"#64748b", fontSize:11, marginTop:6, marginBottom:4, textAlign:"center" }}>
+                {doseCalcs[drugPick.name].hint}
+              </Text>
+            ) : null}
           </View>
           {canStartAsInfusion && (
             <TouchableOpacity onPress={onStartAsInfusion}

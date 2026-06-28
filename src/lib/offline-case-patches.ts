@@ -195,7 +195,7 @@ async function patchCase(caseId: string, section: CasePatchSection, payload: unk
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new ApiError(body.error ?? "Save failed", res.status)
+    throw new ApiError(body.error ?? "Save failed", res.status, undefined, body.serverVersion)
   }
   return res.json().catch(() => ({}))
 }
