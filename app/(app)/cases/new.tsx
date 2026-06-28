@@ -1485,34 +1485,49 @@ export default function NewCaseScreen() {
     setAiText("")
     setAiError("")
     try {
-      // Ensure the case exists on the server before running the advisor
       if (!caseIdRef.current) {
+        // tryCreateServerCase sends current values including aiOptIn — no race here
         const created = await tryCreateServerCase(getValues())
         if (!created) {
           setAiError("Could not save case — check your connection and try again.")
           setAiLoading(false)
           return
         }
-      }
-      const res = await apiFetch(`/api/cases/${caseIdRef.current}/ai/advise`, {
-        method: "POST",
-      })
-      if (!res.ok) {
-        if (res.status === 429) throw new Error(tc("aiRateLimit"))
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.error ?? tc("aiRequestFailed"))
+      } else {
+        // Flush any in-flight autosave so aiOptIn is persisted before the consent check
+        if (autosaveInFlightRef.current) await autosaveInFlightRef.current
       }
 
-      const reader = res.body?.getReader()
-      if (!reader) throw new Error("No response stream available.")
+      // Retry once if the debounce hadn't fired yet and DB still has aiOptIn=false
+      for (let attempt = 0; attempt <= 1; attempt++) {
+        const res = await apiFetch(`/api/cases/${caseIdRef.current}/ai/advise`, { method: "POST" })
+        if (!res.ok) {
+          if (res.status === 403 && attempt === 0) {
+            const body = await res.json().catch(() => ({}))
+            if (body.error?.includes("not enabled") && getValues().aiOptIn) {
+              // Race: debounce hasn't fired yet — wait for it then retry
+              await new Promise(r => setTimeout(r, 2500))
+              continue
+            }
+            throw new Error(body.error ?? tc("aiRequestFailed"))
+          }
+          if (res.status === 429) throw new Error(tc("aiRateLimit"))
+          const body = await res.json().catch(() => ({}))
+          throw new Error(body.error ?? tc("aiRequestFailed"))
+        }
 
-      const decoder = new TextDecoder()
-      let text = ""
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        text += decoder.decode(value, { stream: true })
-        setAiText(text)
+        const reader = res.body?.getReader()
+        if (!reader) throw new Error("No response stream available.")
+
+        const decoder = new TextDecoder()
+        let text = ""
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          text += decoder.decode(value, { stream: true })
+          setAiText(text)
+        }
+        break
       }
     } catch (error) {
       setAiError(error instanceof Error ? error.message : tc("aiRequestFailed"))
