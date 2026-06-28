@@ -1289,6 +1289,10 @@ export default function NewCaseScreen() {
             setDraftState("idle")
           }
         } catch (error) {
+          if (error instanceof ApiError && error.status === 409) {
+            const sv = error.serverVersion as { preopUpdatedAt?: string } | undefined
+            if (sv?.preopUpdatedAt) basePreopUpdatedAtRef.current = sv.preopUpdatedAt
+          }
           if (error instanceof ApiError && error.status === 404 && caseIdRef.current) {
             caseIdRef.current = null
             setCaseId(null)
@@ -1600,6 +1604,27 @@ export default function NewCaseScreen() {
               await clearLocalDraft()
               router.replace(`/(app)/cases/intraop/${id}`)
               return
+            }
+          }
+          if (res.status === 409) {
+            const serverAt = (body.serverVersion as { preopUpdatedAt?: string } | undefined)?.preopUpdatedAt
+            if (serverAt) {
+              basePreopUpdatedAtRef.current = serverAt
+              const retry = await apiFetch(`/api/cases/${caseIdRef.current}`, {
+                method: "PATCH",
+                headers: { "x-lospor-preop-updated-at": serverAt },
+                body: JSON.stringify({ preop: preopPayload }),
+              })
+              if (retry.ok) {
+                const rj = await retry.json().catch(() => ({}))
+                if (rj.preopUpdatedAt) basePreopUpdatedAtRef.current = rj.preopUpdatedAt
+                id = caseIdRef.current!
+                await clearLocalDraft()
+                router.replace(`/(app)/cases/intraop/${id}`)
+                return
+              }
+              const rb = await retry.json().catch(() => ({}))
+              throw new Error(rb.error ?? "Save failed after retry")
             }
           }
           throw new Error(body.error ?? "Save failed")
