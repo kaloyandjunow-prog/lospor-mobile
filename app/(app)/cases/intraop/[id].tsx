@@ -8,7 +8,7 @@ import {
 import { useLocalSearchParams, useRouter, Stack } from "expo-router"
 import * as Haptics from "expo-haptics"
 import * as SecureStore from "expo-secure-store"
-import { apiFetch, apiJson } from "@/lib/api"
+import { ApiError, apiFetch, apiJson } from "@/lib/api"
 import { markPendingIntraopCase } from "@/lib/pending-intraop-events"
 import { saveCasePatchWithQueue } from "@/lib/offline-case-patches"
 import { useCaseReminders } from "@/lib/use-case-reminders"
@@ -1920,6 +1920,11 @@ export default function IntraopLiveScreen() {
         setSyncState("offline")
       }
       return result
+    } catch (err) {
+      setSyncState("failed")
+      if (err instanceof ApiError && err.status >= 400 && err.status < 500 && err.status !== 409) {
+        Alert.alert("Save rejected", err.message)
+      }
     } finally {
       pendingSaveCountRef.current -= 1
     }
@@ -3021,6 +3026,9 @@ export default function IntraopLiveScreen() {
                   }}
                   showActions={false}
                   endTime={caseEnded || caseEndTime ? caseEndTime : undefined}
+                  patientWeightKg={preop?.weight ?? undefined}
+                  patientHeightCm={preop?.height ?? undefined}
+                  patientSex={preop?.sex ?? undefined}
                   onResumeCase={resumeSecsLeft > 0 ? resumeCase : undefined}
                   onInfusionBarTap={(infId, col) => {
                     // Set entryTs to this column's time so the rate change is recorded

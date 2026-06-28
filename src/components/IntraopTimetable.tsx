@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, Modal,
   TextInput, Alert,
 } from "react-native"
+import { useOptionLibrary } from "@/lib/use-option-library"
 
 // ─── Types (API-compatible with web timetable) ────────────────────────────────
 
@@ -276,11 +277,14 @@ interface TimetableProps {
   onGasStop?:       (segment: GasSettingsSegment) => void
   endTime?:         string   // ISO string or HH:MM - dims cells past the end
   onResumeCase?:    () => void
+  patientWeightKg?: number
+  patientHeightCm?: number
+  patientSex?:      string
 }
 
 type AddTab = "drug" | "infusion" | "fluid" | "agent"
 
-export function IntraopTimetable({ startTime, colCount, onColCountChange, data, onChange, showAgents, colOffset = 0, showActions = true, onInfusionBarTap, onGasCellTap, onGasStop, endTime, onResumeCase: _onResumeCase }: TimetableProps) {
+export function IntraopTimetable({ startTime, colCount, onColCountChange, data, onChange, showAgents, colOffset = 0, showActions = true, onInfusionBarTap, onGasCellTap, onGasStop, endTime, onResumeCase: _onResumeCase, patientWeightKg, patientHeightCm, patientSex }: TimetableProps) {
   const cols = useMemo(() => Array.from({ length: colCount }, (_, i) => i + colOffset), [colCount, colOffset])
 
   const endCol = useMemo(() => {
@@ -309,10 +313,12 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
   const [addOpen, setAddOpen]     = useState(false)
   const [addTab, setAddTab]       = useState<"drug"|"infusion"|"fluid"|"agent">("drug")
 
-  // Drug steps: pick -> dose
+  // Drug steps: cat -> pick -> dose
+  const [drugCat, setDrugCat]     = useState<string | null>(null)
   const [drugStep, setDrugStep]   = useState<"pick"|"dose">("pick")
   const [pickedDrug, setPickedDrug] = useState<{ name:string; unit:string } | null>(null)
   const [drugDose, setDrugDose]   = useState("")
+  const [drugHint, setDrugHint]   = useState("")
 
   // Infusion
   const [selInfDrug, setSelInfDrug] = useState<typeof INF_DRUGS[0] | null>(null)
@@ -334,13 +340,41 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
   const [selBar, setSelBar]       = useState<{ type:"infusion"|"fluid"|"agent"|"gas"; id:string } | null>(null)
   const [barOpts, setBarOpts]     = useState(false)
 
+  // Drug dose autofill
+  const { options: drugLibOptions } = useOptionLibrary("INTRAOP_DRUG")
+
+  const ibw = useMemo(() => {
+    if (!patientHeightCm) return null
+    const inches = patientHeightCm / 2.54
+    if (inches < 60) return null
+    const base = (patientSex?.toUpperCase() === "FEMALE") ? 45.5 : 50
+    return base + 2.3 * (inches - 60)
+  }, [patientHeightCm, patientSex])
+
+  function calcSuggestedDose(name: string): { dose: string; hint: string } {
+    const opt = drugLibOptions.find(o => o.value === name.toUpperCase())
+    const dc = opt?.metadata?.doseCalc as { perKg?: number; flat?: number; basis?: string; roundTo?: number } | undefined
+    const hint = (opt?.metadata?.hint as string | undefined) ?? ""
+    if (!dc) return { dose: "", hint }
+    if (dc.flat !== undefined) return { dose: String(dc.flat), hint }
+    if (dc.perKg !== undefined) {
+      const tbw = patientWeightKg ?? null
+      const w = dc.basis === "TBW" ? (tbw ?? ibw) : (ibw !== null && tbw !== null ? Math.min(ibw, tbw) : (ibw ?? tbw))
+      if (!w) return { dose: "", hint }
+      const roundTo = dc.roundTo ?? 1
+      const rounded = Math.round(w * dc.perKg / roundTo) * roundTo
+      return { dose: String(rounded), hint }
+    }
+    return { dose: "", hint }
+  }
+
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   function openAdd(tab: typeof addTab, col?: number) {
     if (!showActions) return
     if (col !== undefined) setSelCol(col)
     setAddTab(tab)
-    setDrugStep("pick"); setPickedDrug(null); setDrugDose("")
+    setDrugCat(null); setDrugStep("pick"); setPickedDrug(null); setDrugDose(""); setDrugHint("")
     setSelInfDrug(null); setInfRate(""); setInfUnit("")
     setSelFluid(null); setFluidVol("500")
     setSelAgent(null)
@@ -349,15 +383,13 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
 
   function closeAdd() {
     setAddOpen(false)
-    setDrugStep("pick"); setPickedDrug(null); setDrugDose("")
+    setDrugCat(null); setDrugStep("pick"); setPickedDrug(null); setDrugDose(""); setDrugHint("")
   }
 
   function confirmDrug() {
     if (!pickedDrug || !drugDose) return
     onChange({ ...data, drugs: [...data.drugs, { colIdx: selCol, name: pickedDrug.name, dose: drugDose, unit: pickedDrug.unit }] })
-    setDrugDose("")
-    setDrugStep("pick")
-    setPickedDrug(null)
+    setDrugDose(""); setDrugHint(""); setDrugStep("pick"); setPickedDrug(null); setDrugCat(null)
     setAddOpen(false)
   }
 
@@ -600,9 +632,8 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
               const drugs = data.drugs.filter(d => d.colIdx === col)
               const isSelected = col === selCol
               return (
-                <TouchableOpacity
+                <View
                   key={col}
-                  onPress={() => { if (showActions) { setSelCol(col); openAdd("drug", col) } }}
                   style={{ width: COL_W, minHeight: DRUGS_MIN_H, paddingTop:4, paddingBottom:4, paddingHorizontal:2,
                     backgroundColor: isSelected ? "#1e3a5f22" : "transparent",
                     borderRightWidth: col % 3 === 2 ? 1 : 0, borderRightColor:"#2e2e2e",
@@ -611,7 +642,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
                   {drugs.map((d, idx) => (
                     <TouchableOpacity
                       key={idx}
-                      onPress={(e) => { e.stopPropagation?.(); deleteDrug(d.colIdx, d.name, d.dose) }}
+                      onPress={() => deleteDrug(d.colIdx, d.name, d.dose)}
                       style={{ backgroundColor: drugColor(d.name) + "33", borderRadius:4, paddingHorizontal:2, paddingVertical:2, marginBottom:2, borderWidth:1, borderColor: drugColor(d.name) + "66" }}
                     >
                       <Text style={{ color: drugColor(d.name), fontSize:8, fontWeight:"700" }} numberOfLines={1}>
@@ -620,12 +651,15 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
                       <Text style={{ color: "#cbd5e1", fontSize:7 }}>{d.dose}{d.unit}</Text>
                     </TouchableOpacity>
                   ))}
-                  {drugs.length === 0 && (
-                    <View style={{ flex:1, justifyContent:"center", alignItems:"center" }}>
-                      <Text style={{ color:"#1e2d40", fontSize:14 }}>+</Text>
-                    </View>
+                  {showActions && (
+                    <TouchableOpacity
+                      onPress={() => { setSelCol(col); openAdd("drug", col) }}
+                      style={{ flex:1, justifyContent:"center", alignItems:"center", minHeight:16 }}
+                    >
+                      <Text style={{ color: drugs.length === 0 ? "#1e2d40" : "#0f1f33", fontSize:14 }}>+</Text>
+                    </TouchableOpacity>
                   )}
-                </TouchableOpacity>
+                </View>
               )
             })}
           </View>
@@ -760,27 +794,48 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
 
         {/* DRUG TAB */}
         {addTab === "drug" && (
-          drugStep === "pick" ? (
-            <ScrollView style={{ maxHeight:320 }} showsVerticalScrollIndicator={false}>
+          drugStep === "pick" && drugCat === null ? (
+            /* Level 1: category landing */
+            <View style={{ flexDirection:"row", flexWrap:"wrap", gap:8 }}>
               {DRUG_CATS.map(cat => (
-                <View key={cat.cat} style={{ marginBottom:12 }}>
-                  <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{cat.cat}</Text>
-                  <View style={{ flexDirection:"row", flexWrap:"wrap", gap:6 }}>
-                    {cat.drugs.map(d => (
+                <TouchableOpacity
+                  key={cat.cat}
+                  onPress={() => setDrugCat(cat.cat)}
+                  style={{ flex:1, minWidth:"45%", paddingVertical:14, borderRadius:12, alignItems:"center",
+                    backgroundColor: cat.color + "22", borderWidth:1, borderColor: cat.color + "55" }}
+                >
+                  <Text style={{ color: cat.color, fontSize:13, fontWeight:"700" }}>{cat.cat}</Text>
+                  <Text style={{ color:"#475569", fontSize:10, marginTop:2 }}>{cat.drugs.length} drugs</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : drugStep === "pick" ? (
+            /* Level 2: drugs within selected category */
+            <View>
+              <TouchableOpacity onPress={() => setDrugCat(null)} style={{ marginBottom:12 }}>
+                <Text style={{ color:"#64748b", fontSize:14 }}>← Back</Text>
+              </TouchableOpacity>
+              <ScrollView style={{ maxHeight:260 }} showsVerticalScrollIndicator={false}>
+                <View style={{ flexDirection:"row", flexWrap:"wrap", gap:6 }}>
+                  {(DRUG_CATS.find(c => c.cat === drugCat)?.drugs ?? []).map(d => {
+                    const suggested = calcSuggestedDose(d.name)
+                    const catColor = DRUG_CATS.find(c => c.cat === drugCat)?.color ?? "#64748b"
+                    return (
                       <TouchableOpacity
                         key={d.name}
-                        onPress={() => { setPickedDrug(d); setDrugStep("dose") }}
-                        style={{ backgroundColor: cat.color + "22", borderRadius:8, paddingHorizontal:10, paddingVertical:6, borderWidth:1, borderColor: cat.color + "55" }}
+                        onPress={() => { setPickedDrug(d); setDrugDose(suggested.dose); setDrugHint(suggested.hint); setDrugStep("dose") }}
+                        style={{ backgroundColor: catColor + "22", borderRadius:8, paddingHorizontal:10, paddingVertical:8, borderWidth:1, borderColor: catColor + "55" }}
                       >
-                        <Text style={{ color: cat.color, fontSize:12, fontWeight:"600" }}>{d.name}</Text>
-                        <Text style={{ color:"#64748b", fontSize:10 }}>{d.unit}</Text>
+                        <Text style={{ color: catColor, fontSize:12, fontWeight:"600" }}>{d.name}</Text>
+                        <Text style={{ color:"#64748b", fontSize:10 }}>{suggested.dose ? `~${suggested.dose} ${d.unit}` : d.unit}</Text>
                       </TouchableOpacity>
-                    ))}
-                  </View>
+                    )
+                  })}
                 </View>
-              ))}
-            </ScrollView>
+              </ScrollView>
+            </View>
           ) : (
+            /* Level 3: dose entry */
             <View>
               <View style={{ flexDirection:"row", alignItems:"center", gap:8, marginBottom:16 }}>
                 <TouchableOpacity onPress={() => setDrugStep("pick")}>
@@ -790,7 +845,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
               </View>
               <Text style={{ color:"#94a3b8", fontSize:13, marginBottom:6 }}>Dose ({pickedDrug?.unit})</Text>
               <TextInput
-                style={{ backgroundColor:"#111111", color:"#fff", borderRadius:10, padding:12, fontSize:18, borderWidth:1, borderColor:"#2e2e2e", marginBottom:16 }}
+                style={{ backgroundColor:"#111111", color:"#fff", borderRadius:10, padding:12, fontSize:18, borderWidth:1, borderColor:"#2e2e2e", marginBottom: drugHint ? 6 : 16 }}
                 placeholder={`Enter dose in ${pickedDrug?.unit}`}
                 placeholderTextColor="#334155"
                 keyboardType="decimal-pad"
@@ -798,6 +853,9 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
                 onChangeText={setDrugDose}
                 autoFocus
               />
+              {!!drugHint && (
+                <Text style={{ color:"#475569", fontSize:11, marginBottom:14, textAlign:"right" }}>{drugHint}</Text>
+              )}
               <TouchableOpacity
                 onPress={confirmDrug}
                 disabled={!drugDose}

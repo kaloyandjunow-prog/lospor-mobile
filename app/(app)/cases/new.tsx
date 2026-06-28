@@ -1176,7 +1176,7 @@ export default function NewCaseScreen() {
       })
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({}))
-        const msg = `HTTP ${res.status}: ${errBody.error ?? "server error"}`
+        const msg = errBody.error ?? `Save failed (HTTP ${res.status})`
         console.error("[LOSPOR] POST /api/cases failed", res.status, errBody)
         setSaveError(msg)
         return null
@@ -1299,6 +1299,10 @@ export default function NewCaseScreen() {
               setDraftState("saved")
               return
             }
+          }
+          // Surface 4xx server rejections (e.g. PII violation) instead of silently showing "saved locally"
+          if (error instanceof ApiError && error.status >= 400 && error.status < 500 && error.status !== 404 && error.status !== 409) {
+            setSaveError(error.message)
           }
           await persistLocalDraft(values).catch(() => {})
           setDraftState("queued")

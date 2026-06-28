@@ -500,6 +500,7 @@ export default function PostopFormScreen() {
   const [finalizedAt, setFinalizedAt] = useState<string | null>(null)
   const [caseStatus,  setCaseStatus]  = useState<string | null>(null)
   const [autosaveState, setAutosaveState] = useState<AutosaveState>("idle")
+  const [autosaveErrMsg, setAutosaveErrMsg] = useState<string | null>(null)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const lastSavedJsonRef = useRef("")
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -738,6 +739,11 @@ export default function PostopFormScreen() {
       try {
         await persistPostop(parsed.data)
       } catch (err) {
+        if (err instanceof ApiError && err.status >= 400 && err.status < 500 && err.status !== 409) {
+          setAutosaveErrMsg(err.message)
+        } else {
+          setAutosaveErrMsg(null)
+        }
         setAutosaveState(err instanceof ApiError && err.status === 409 ? "conflict" : "error")
       }
     }, 900)
@@ -810,7 +816,7 @@ export default function PostopFormScreen() {
               : autosaveState === "conflict"
               ? tc("autosaveConflict")
               : autosaveState === "error"
-              ? tc("autosaveError")
+              ? (autosaveErrMsg ?? tc("autosaveError"))
               : lastSavedAt
               ? `${t("savedAt")} ${lastSavedAt}`
               : tc("autosaveReady")}
