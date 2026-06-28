@@ -1623,9 +1623,25 @@ export default function NewCaseScreen() {
                 router.replace(`/(app)/cases/intraop/${id}`)
                 return
               }
+              if (retry.status === 401) {
+                await persistLocalDraft(getValues())
+                Alert.alert(
+                  "Session expired",
+                  "Your work has been saved locally. After logging in, return to this case to continue."
+                )
+                return
+              }
               const rb = await retry.json().catch(() => ({}))
               throw new Error(rb.error ?? "Save failed after retry")
             }
+          }
+          if (res.status === 401) {
+            await persistLocalDraft(getValues())
+            Alert.alert(
+              "Session expired",
+              "Your work has been saved locally. After logging in, return to this case to continue."
+            )
+            return
           }
           throw new Error(body.error ?? "Save failed")
         }
