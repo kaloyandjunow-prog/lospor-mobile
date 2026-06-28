@@ -1120,6 +1120,10 @@ export default function IntraopLiveScreen() {
   const [monitoring,     setMonitoring]     = useState<string[]>([])
   const [techniques,     setTechniques]     = useState<string[]>([])
   const [fieldSaving,    setFieldSaving]    = useState<string | null>(null)
+  // Tracks concurrent in-flight patchIntraopSection calls so that a non-silent
+  // loadCase triggered by a dependency change never resets user-selected state
+  // while a save is still outstanding.
+  const pendingSaveCountRef = useRef(0)
 
   // Monitoring advanced section
   const [advMonOpen, setAdvMonOpen] = useState(false)
@@ -1213,6 +1217,7 @@ export default function IntraopLiveScreen() {
         finalizedAt: data.finalizedAt ?? null,
       })
       if (!silent) {
+      if (pendingSaveCountRef.current === 0) {
       setTechniques(caseTechniques)
       if (Array.isArray(data.intraop?.positions)) setPositions(data.intraop.positions as string[])
       const mon: string[] = []
@@ -1220,6 +1225,7 @@ export default function IntraopLiveScreen() {
         if ((data.intraop as any)?.[opt.field]) mon.push(opt.label)
       }
       setMonitoring(mon)
+      }
 
       // Load preop patient data for equipment tab (canonical names: ageYears/weightKg/heightCm)
       const pd = data.preop ?? {}
@@ -1902,16 +1908,21 @@ export default function IntraopLiveScreen() {
   }
 
   async function patchIntraopSection(payload: Record<string, unknown>) {
+    pendingSaveCountRef.current += 1
     setSyncState("saving")
-    const result = await saveCasePatchWithQueue(id, "intraop", payload, baseIntraopUpdatedAtRef.current)
-    if (result.result === "saved") {
-      baseIntraopUpdatedAtRef.current = result.response?.intraopUpdatedAt ?? baseIntraopUpdatedAtRef.current
-      setLastSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
-      setSyncState("saved")
-    } else if (result.result === "queued") {
-      setSyncState("offline")
+    try {
+      const result = await saveCasePatchWithQueue(id, "intraop", payload, baseIntraopUpdatedAtRef.current)
+      if (result.result === "saved") {
+        baseIntraopUpdatedAtRef.current = result.response?.intraopUpdatedAt ?? baseIntraopUpdatedAtRef.current
+        setLastSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+        setSyncState("saved")
+      } else if (result.result === "queued") {
+        setSyncState("offline")
+      }
+      return result
+    } finally {
+      pendingSaveCountRef.current -= 1
     }
-    return result
   }
   patchIntraopSectionRef.current = patchIntraopSection
 
