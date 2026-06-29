@@ -31,13 +31,14 @@ export function useInfusionEntry(
     setInfOpen(true)
   }
 
-  async function confirmInfusion() {
+  function confirmInfusion() {
     if (!infDrug || !infRate) return
     const codes = infusionCodes[infDrug.name]
     const inf: ActiveInfusion = { infId: uid(), name: infDrug.name, rate: infRate, unit: infDrug.unit, color: infDrug.color, concentration: infConcentration, route: infRoute, drugId: codes?.drugId, atcCode: codes?.atcCode, inn: codes?.inn }
+    // Optimistic add + close the sheet synchronously, then fire the save.
     setActiveInfusions(prev => [...prev, inf])
-    await save({ type: "infusion_start", infId: inf.infId, name: inf.name, rate: inf.rate, unit: inf.unit, color: inf.color, concentration: inf.concentration, drugRoute: inf.route, drugId: inf.drugId, atcCode: inf.atcCode, inn: inf.inn })
     setInfOpen(false); setInfDrug(null); setInfRate(""); setInfRoute(undefined); setInfConcentration(undefined)
+    void save({ type: "infusion_start", infId: inf.infId, name: inf.name, rate: inf.rate, unit: inf.unit, color: inf.color, concentration: inf.concentration, drugRoute: inf.route, drugId: inf.drugId, atcCode: inf.atcCode, inn: inf.inn })
   }
 
   async function stopInfusion(inf: ActiveInfusion) {
@@ -45,11 +46,11 @@ export function useInfusionEntry(
     await save({ type: "infusion_stop", infId: inf.infId, name: inf.name, color: inf.color })
   }
 
-  async function changeRate(inf: ActiveInfusion, rate: string, concentration?: string) {
+  function changeRate(inf: ActiveInfusion, rate: string, concentration?: string) {
     setActiveInfusions(prev => prev.map(x => x.infId === inf.infId ? { ...x, rate, concentration: concentration ?? x.concentration } : x))
-    // Use the current timestamp so eventsToTimetable can compute the correct column for the split
-    await save({ type: "infusion_rate", infId: inf.infId, name: inf.name, rate, unit: inf.unit, color: inf.color, concentration: concentration ?? inf.concentration })
     setInfActOpen(false); setInfActTgt(null); setInfActRate(""); setInfActConcentration(undefined)
+    // Use the current timestamp so eventsToTimetable can compute the correct column for the split
+    void save({ type: "infusion_rate", infId: inf.infId, name: inf.name, rate, unit: inf.unit, color: inf.color, concentration: concentration ?? inf.concentration })
   }
 
   return {

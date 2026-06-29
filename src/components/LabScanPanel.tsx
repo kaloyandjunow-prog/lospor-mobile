@@ -1,7 +1,8 @@
 import { useState } from "react"
-import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native"
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native"
 import type * as ImagePickerModule from "expo-image-picker"
 import { apiJson } from "@/lib/api"
+import { notify } from "@/lib/notify"
 import { colors, withAlpha } from "@/theme/colors"
 
 // Lazy require — native module is only present after a full expo run:android build.
@@ -25,7 +26,7 @@ export function LabScanPanel({ value, onAddResults }: Props) {
   async function pick(source: "camera" | "library") {
     const ImagePicker = getImagePicker()
     if (!ImagePicker) {
-      Alert.alert("Not available", "Lab scanning requires a full native build. Rebuild with expo run:android to enable this feature.")
+      notify("Not available", "Lab scanning requires a full native build. Rebuild with expo run:android to enable this feature.")
       return
     }
 
@@ -34,7 +35,7 @@ export function LabScanPanel({ value, onAddResults }: Props) {
       : await ImagePicker.requestMediaLibraryPermissionsAsync()
 
     if (!permission.granted) {
-      Alert.alert("Permission needed", "Allow camera or gallery access to scan a lab report.")
+      notify("Permission needed", "Allow camera or gallery access to scan a lab report.")
       return
     }
 
@@ -75,7 +76,7 @@ export function LabScanPanel({ value, onAddResults }: Props) {
       setResults(imported)
       setReviewOpen(true)
     } catch (err) {
-      Alert.alert("Lab scan failed", err instanceof Error ? err.message : "Could not read this image.")
+      notify("Lab scan failed", err instanceof Error ? err.message : "Could not read this image.")
     } finally {
       setScanning(false)
     }

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react"
-import { ActivityIndicator, Alert, FlatList, RefreshControl, Text, TouchableOpacity, View } from "react-native"
+import { ActivityIndicator, FlatList, RefreshControl, Text, TouchableOpacity, View } from "react-native"
 import { Stack } from "expo-router"
 import { ApiError, apiFetch, apiJson } from "@/lib/api"
+import { notify, confirmAction } from "@/lib/notify"
 import { usePreferences } from "@/lib/preferences-context"
 import { ScreenState, WorkflowPill } from "@/components/clinical-ui"
 import { colors, withAlpha } from "@/theme/colors"
@@ -92,7 +93,7 @@ export default function AdminScreen() {
       }
       success()
     } catch (err) {
-      Alert.alert(t("error"), err instanceof Error ? err.message : t("actionFailed"))
+      notify(t("error"), err instanceof Error ? err.message : t("actionFailed"))
     } finally {
       setActing(null)
     }
@@ -106,16 +107,12 @@ export default function AdminScreen() {
   }
 
   function rejectPending(user: UserRow) {
-    Alert.alert(t("rejectRegistration"), `${t("deleteUserQuestion")} ${displayName(user)}`, [
-      { text: t("cancel"), style: "cancel" },
-      {
-        text: t("reject"),
-        style: "destructive",
-        onPress: () => request(`/api/admin/users/${user.id}`, { method: "DELETE" }, () => {
+    void confirmAction(t("rejectRegistration"), `${t("deleteUserQuestion")} ${displayName(user)}`, { destructive: true, confirmLabel: t("reject"), cancelLabel: t("cancel") })
+      .then(ok => {
+        if (ok) request(`/api/admin/users/${user.id}`, { method: "DELETE" }, () => {
           setPendingUsers((prev) => prev.filter((u) => u.id !== user.id))
-        }),
-      },
-    ])
+        })
+      })
   }
 
   function handleRoleRequest(req: RoleRequest, action: "approve" | "reject") {

@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity,
-  Alert, TextInput,
+  TextInput,
 } from "react-native"
 import { useLocalSearchParams, useRouter, Stack } from "expo-router"
 import { apiFetch, apiJson } from "@/lib/api"
+import { notify } from "@/lib/notify"
 import { PrimaryButton } from "@/components/ui"
 import { ScreenState } from "@/components/clinical-ui"
 import { colors, withAlpha } from "@/theme/colors"
@@ -32,7 +33,7 @@ export default function HandoverScreen() {
   useEffect(() => {
     apiJson<Colleague[]>("/api/users/colleagues")
       .then(setColleagues)
-      .catch((err: Error) => Alert.alert(tc("errorLabel"), err.message))
+      .catch((err: Error) => notify(tc("errorLabel"), err.message))
       .finally(() => setLoading(false))
   }, [tc])
 
@@ -54,16 +55,14 @@ export default function HandoverScreen() {
       }
       const result = await res.json()
       if (result.instant) {
-        Alert.alert(tc("handoverTransferred"), tc("handoverTransferMsg"), [
-          { text: "OK", onPress: () => router.replace("/(app)") },
-        ])
+        notify(tc("handoverTransferred"), tc("handoverTransferMsg"))
+        router.replace("/(app)")
       } else {
-        Alert.alert(tc("handoverSent"), tc("handoverSentMsg"), [
-          { text: "OK", onPress: () => router.back() },
-        ])
+        notify(tc("handoverSent"), tc("handoverSentMsg"))
+        router.back()
       }
     } catch (err) {
-      Alert.alert(tc("errorLabel"), err instanceof Error ? err.message : tc("handoverError"))
+      notify(tc("errorLabel"), err instanceof Error ? err.message : tc("handoverError"))
     } finally {
       setSending(false)
     }

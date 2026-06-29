@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 import {
-  View, Alert, Linking, Platform, ScrollView, Text, Switch,
+  View, Linking, Platform, ScrollView, Text, Switch,
   TouchableOpacity, TextInput, Modal, FlatList, ActivityIndicator,
 } from "react-native"
 import * as SecureStore from "expo-secure-store"
@@ -10,6 +10,7 @@ import {
   API_BASE, apiFetch, apiJson, decodeTokenPayload,
   getLastApiError, getLastOkRequest, getToken, isTokenExpired,
 } from "@/lib/api"
+import { notify, confirmAction } from "@/lib/notify"
 import { flushAllQueuedCasePatches, getQueuedCasePatchSummary } from "@/lib/offline-case-patches"
 import { clearLocalClinicalCache } from "@/lib/local-clinical-cache"
 import { usePreferences } from "@/lib/preferences-context"
@@ -350,20 +351,17 @@ export default function SettingsScreen() {
     const run = async () => {
       const cleared = await clearLocalClinicalCache()
       await refreshDiagnostics()
-      Alert.alert(
+      notify(
         "Local clinical cache cleared",
         `Removed ${cleared.drafts} draft(s), ${cleared.patches} queued save(s), and ${cleared.intraopQueues} intraoperative queue(s) from this device.`
       )
     }
     if (Platform.OS === "web") { await run(); return }
-    Alert.alert(
+    void confirmAction(
       "Clear local clinical cache?",
       "This removes offline drafts and queued clinical saves from this device only. Synced cases in the server database are not deleted.",
-      [
-        { text: t("cancel"), style: "cancel" },
-        { text: "Clear cache", style: "destructive", onPress: run },
-      ]
-    )
+      { destructive: true, confirmLabel: "Clear cache", cancelLabel: t("cancel") },
+    ).then(ok => { if (ok) run() })
   }
 
   // -- Automation setters -------------------------------------------------------
@@ -437,7 +435,7 @@ export default function SettingsScreen() {
       if (!res.ok) throw new Error()
       setProfile(prev => prev ? { ...prev, institution: inst } : prev)
     } catch {
-      Alert.alert(t("error"), "Could not update institution.")
+      notify(t("error"), "Could not update institution.")
     } finally {
       setInstitutionSaving(false)
     }
@@ -453,7 +451,7 @@ export default function SettingsScreen() {
       })
       if (!res.ok) throw new Error()
     } catch {
-      Alert.alert(t("error"), "Could not save favourite drugs.")
+      notify(t("error"), "Could not save favourite drugs.")
     }
   }
 
@@ -467,24 +465,19 @@ export default function SettingsScreen() {
       })
       if (!res.ok) throw new Error()
     } catch {
-      Alert.alert(t("error"), "Could not save favourite infusions.")
+      notify(t("error"), "Could not save favourite infusions.")
     }
   }
 
   // -- Sign-out / delete --------------------------------------------------------
   function handleSignOut() {
-    if (Platform.OS === "web") { logout(); return }
-    Alert.alert(t("signOutConfirmTitle"), t("signOutConfirmMsg"), [
-      { text: t("cancel"), style: "cancel" },
-      { text: t("signOut"), style: "destructive", onPress: logout },
-    ])
+    void confirmAction(t("signOutConfirmTitle"), t("signOutConfirmMsg"), { destructive: true, confirmLabel: t("signOut"), cancelLabel: t("cancel") })
+      .then(ok => { if (ok) logout() })
   }
 
   function handleDeleteAccount() {
-    Alert.alert(t("deleteAccountTitle"), t("deleteAccountMsg"), [
-      { text: t("cancel"), style: "cancel" },
-      { text: t("deleteAccountConfirm"), style: "destructive", onPress: confirmDeleteAccount },
-    ])
+    void confirmAction(t("deleteAccountTitle"), t("deleteAccountMsg"), { destructive: true, confirmLabel: t("deleteAccountConfirm"), cancelLabel: t("cancel") })
+      .then(ok => { if (ok) confirmDeleteAccount() })
   }
 
   async function confirmDeleteAccount() {
@@ -493,7 +486,7 @@ export default function SettingsScreen() {
       if (!res.ok) throw new Error()
       await logout()
     } catch {
-      Alert.alert(t("error"), t("deleteAccountError"))
+      notify(t("error"), t("deleteAccountError"))
     }
   }
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native"
 import { Sheet } from "@/components/intraop/Sheet"
 import { DoseSelector } from "@/components/intraop/DoseSelector"
@@ -6,6 +6,14 @@ import type { ScenarioGroup } from "@/lib/intraop-scenarios"
 
 type InfusionOption = { name: string; unit: string; color: string }
 type Range = { min: number; max: number; step: number }
+type InfProfile = Range & {
+  mode?: string
+  quickValues: number[]
+  unit: string
+  concentrationOptions?: string[]
+  suggestedRate?: number
+  suggestedConcentration?: string
+}
 
 function Pill({
   label, sublabel, color, selected, onPress, wide,
@@ -47,7 +55,7 @@ function Pill({
 export function InfusionSheet({
   visible, onClose, infDrugs, favouriteNames, scenarios, ratePresets, infDrug, setInfDrug, infRate, setInfRate, onConfirm,
   routes = {}, infRoute, setInfRoute, laConcentrations = {}, infConcentration, setInfConcentration,
-  ranges = {},
+  ranges = {}, suggestedRates = {}, baseProfiles = {}, routeProfiles = {},
 }: {
   visible: boolean
   onClose: () => void
@@ -67,19 +75,67 @@ export function InfusionSheet({
   infConcentration?: string
   setInfConcentration?: (c: string | undefined) => void
   ranges?: Record<string, Range>
+  suggestedRates?: Record<string, string>
+  baseProfiles?: Record<string, InfProfile>
+  routeProfiles?: Record<string, Record<string, InfProfile>>
 }) {
   const [mode, setMode] = useState<"home" | "favourites" | "scenario" | "browse">("home")
   const [scenario, setScenario] = useState<ScenarioGroup | null>(null)
   const [query, setQuery] = useState("")
 
+  // Reset to the home menu each time the sheet opens (see DrugSheet).
+  useEffect(() => {
+    if (visible) { setMode("home"); setScenario(null); setQuery("") }
+  }, [visible])
+
   const byName = useMemo(() => new Map(infDrugs.map(drug => [drug.name, drug])), [infDrugs])
 
+  function profileFor(name: string, route?: string): InfProfile | undefined {
+    return (route ? routeProfiles[name]?.[route] : undefined) ?? baseProfiles[name]
+  }
+
+  // The route's autofill rate: per-route suggestedRate, else the flat
+  // suggested rate, else the first quick value.
+  function autofillRate(name: string, profile?: InfProfile): string {
+    if (profile?.suggestedRate != null) return String(profile.suggestedRate)
+    const suggested = suggestedRates[name]
+    if (suggested != null) return suggested
+    const preset = profile?.quickValues?.[0] ?? ratePresets[name]?.[0]
+    return preset != null ? String(preset) : ""
+  }
+
+  // Active dose surface (unit / range / quick values / concentration) for the
+  // currently picked drug + route — falls back to the flat ranges/concentration
+  // maps for infusions that have no per-route profile.
+  const activeRoute = infDrug ? (infRoute ?? routes[infDrug.name]?.[0]) : undefined
+  const activeProfile = infDrug ? profileFor(infDrug.name, activeRoute) : undefined
+  const activeUnit = activeProfile?.unit ?? infDrug?.unit ?? "mg/hr"
+  const activeQuickValues = activeProfile?.quickValues?.length
+    ? activeProfile.quickValues
+    : (infDrug ? ratePresets[infDrug.name]?.map(Number) : undefined)
+  const activeConcentrations = activeProfile
+    ? (activeProfile.mode?.includes("concentration") ? activeProfile.concentrationOptions : undefined)
+    : (infDrug ? laConcentrations[infDrug.name] : undefined)
+  const activeRange = activeProfile
+    ? { min: activeProfile.min, max: activeProfile.max, step: activeProfile.step }
+    : (infDrug ? ranges[infDrug.name] ?? { min: 0, max: 100, step: 1 } : { min: 0, max: 100, step: 1 })
+
   function selectInfusion(drug: InfusionOption) {
-    setInfDrug(drug)
-    const preset = ratePresets[drug.name]?.[0]
-    setInfRate(preset != null ? String(preset) : "")
-    setInfRoute?.(routes[drug.name]?.[0] ?? "")
-    setInfConcentration?.(undefined)
+    const firstRoute = routes[drug.name]?.[0]
+    const profile = profileFor(drug.name, firstRoute)
+    setInfDrug({ ...drug, unit: profile?.unit ?? drug.unit })
+    setInfRoute?.(firstRoute ?? "")
+    setInfRate(autofillRate(drug.name, profile))
+    setInfConcentration?.(profile?.suggestedConcentration)
+  }
+
+  function changeRoute(route: string) {
+    if (!infDrug) return
+    const profile = profileFor(infDrug.name, route)
+    setInfRoute?.(route)
+    if (profile?.unit) setInfDrug({ ...infDrug, unit: profile.unit })
+    setInfRate(autofillRate(infDrug.name, profile))
+    setInfConcentration?.(profile?.suggestedConcentration)
   }
 
   function selectCanonical(canonical: string) {
@@ -106,15 +162,15 @@ export function InfusionSheet({
           </TouchableOpacity>
           <DoseSelector
             color={infDrug.color}
-            quickValues={ratePresets[infDrug.name]?.map(Number)}
+            quickValues={activeQuickValues}
             value={infRate} onValueChange={setInfRate}
-            {...(ranges[infDrug.name] ?? { min: 0, max: 100, step: 1 })}
+            {...activeRange}
             valuePlaceholder="or type custom"
-            unitSuffix={infDrug.unit}
-            routes={routes[infDrug.name]} route={infRoute} onRouteChange={setInfRoute}
-            concentrationOptions={laConcentrations[infDrug.name]}
+            unitSuffix={activeUnit}
+            routes={routes[infDrug.name]} route={activeRoute} onRouteChange={changeRoute}
+            concentrationOptions={activeConcentrations}
             concentration={infConcentration} onConcentrationChange={setInfConcentration}
-            confirmLabel={`Start ${infDrug.name} ${infRate} ${infDrug.unit}`}
+            confirmLabel={`Start ${infDrug.name} ${infRate} ${activeUnit}`}
             onConfirm={onConfirm} confirmDisabled={!infRate}
           />
         </ScrollView>

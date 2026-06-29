@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native"
 import { Sheet } from "@/components/intraop/Sheet"
 import { usePreferences } from "@/lib/preferences-context"
@@ -60,7 +60,8 @@ function Pill({
   )
 }
 
-type DoseCalc = { hint: string; perKg?: number; flat?: number; basis?: string; roundTo?: number; cap?: number }
+type Calc = { perKg?: number; flat?: number; basis?: string; roundTo?: number; cap?: number }
+type DoseCalc = Calc & { hint: string; byRoute?: Record<string, Calc> }
 
 export function DrugSheet({
   visible, onClose, drugCats, favouriteNames, scenarios, drugCat, setDrugCat, drugPick, setDrugPick,
@@ -101,9 +102,13 @@ export function DrugSheet({
   const { tc } = usePreferences()
   const [mode, setMode] = useState<"home" | "favourites" | "scenario" | "browse">("home")
 
-  function calcSuggestedDose(name: string): { dose: string; hint: string } {
-    const dc = doseCalcs?.[name]
-    const hint = dc?.hint ?? ""
+  function calcSuggestedDose(name: string, route?: string): { dose: string; hint: string } {
+    const entry = doseCalcs?.[name]
+    const hint = entry?.hint ?? ""
+    if (!entry) return { dose: "", hint }
+    // Per-route dose calc (e.g. Lidocaine IV 1 mg/kg) takes priority over the
+    // flat one; concentration-mode routes have no doseCalc → no autofill.
+    const dc = (route && entry.byRoute?.[route]) ? entry.byRoute[route] : entry
     if (!dc) return { dose: "", hint }
     if (dc.flat !== undefined) return { dose: String(dc.flat), hint }
     if (dc.perKg !== undefined) {
@@ -125,6 +130,18 @@ export function DrugSheet({
   }
   const [scenario, setScenario] = useState<ScenarioGroup | null>(null)
   const [query, setQuery] = useState("")
+  // True when the current drug was chosen from a scenario/favourites/browse
+  // (selectCanonical sets drugCat only for metadata). Back then returns to that
+  // menu instead of dropping into the drug's library category.
+  const [pickedViaShortcut, setPickedViaShortcut] = useState(false)
+
+  // Reset internal navigation to the home menu each time the sheet opens, so
+  // adding e.g. an Induction drug doesn't leave the next "Add drug" landing on
+  // the Induction subcategory. drugPick/drugCat keep render priority, so
+  // preset-open flows (openDrugPreset) are unaffected.
+  useEffect(() => {
+    if (visible) { setMode("home"); setScenario(null); setQuery(""); setPickedViaShortcut(false) }
+  }, [visible])
 
   const allDrugs = useMemo(() =>
     drugCats.flatMap(cat => cat.drugs.map(drug => ({ ...drug, cat, color: cat.color }))),
@@ -151,13 +168,14 @@ export function DrugSheet({
     setDrugPick({ ...drug, unit })
     setDrugRoute?.(firstRoute ?? "")
     setDrugConcentration?.(undefined)
-    const suggested = calcSuggestedDose(drug.name)
+    const suggested = calcSuggestedDose(drug.name, firstRoute)
     setDrugDose(suggested.dose)
   }
 
   function selectCanonical(canonical: string) {
     const found = byName.get(canonical)
     if (!found) return
+    setPickedViaShortcut(true)
     setDrugCat(found.cat)
     selectDrug({ name: found.name, unit: found.unit })
   }
@@ -168,7 +186,9 @@ export function DrugSheet({
     setDrugRoute?.(route)
     setDrugConcentration?.(undefined)
     if (profile?.unit) setDrugPick({ ...drugPick, unit: profile.unit })
-    setDrugDose("")
+    // Recompute the per-route suggested dose (e.g. Lidocaine IV 1 mg/kg) instead
+    // of clearing — concentration routes have no doseCalc, so this clears to "".
+    setDrugDose(calcSuggestedDose(drugPick.name, route).dose)
   }
 
   const filtered = query.trim()
@@ -186,7 +206,7 @@ export function DrugSheet({
       title={drugPick ? drugPick.name : drugCat ? drugCat.cat : mode === "browse" ? "Browse drugs" : mode === "favourites" ? "Favourite drugs" : scenario?.label ?? "Add drug"} full>
       {drugPick ? (
         <View>
-          <TouchableOpacity onPress={() => setDrugPick(null)} style={{ marginBottom:14 }}>
+          <TouchableOpacity onPress={() => { setDrugPick(null); if (pickedViaShortcut) { setDrugCat(null); setPickedViaShortcut(false) } }} style={{ marginBottom:14 }}>
             <Text style={{ color:"#94a3b8", fontSize:13 }}>{tc("back")}</Text>
           </TouchableOpacity>
           <View style={{ marginBottom: canStartAsInfusion ? 10 : 0 }}>
@@ -226,7 +246,7 @@ export function DrugSheet({
           </TouchableOpacity>
           <View style={{ flexDirection:"row", flexWrap:"wrap", gap:10 }}>
             {drugCat.drugs.map(drug => (
-              <Pill key={drug.name} label={drug.name} sublabel={drug.unit} color={drugCat.color} onPress={() => selectDrug(drug)} />
+              <Pill key={drug.name} label={drug.name} sublabel={drug.unit} color={drugCat.color} onPress={() => { setPickedViaShortcut(false); selectDrug(drug) }} />
             ))}
           </View>
         </ScrollView>

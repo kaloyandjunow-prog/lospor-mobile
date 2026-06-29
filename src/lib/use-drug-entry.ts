@@ -38,17 +38,21 @@ export function useDrugEntry(
     setDrugCat(null); setDrugPick(null); setDrugDose(""); setDrugRoute(undefined); setDrugConcentration(undefined); setDrugOpen(true)
   }
 
-  async function confirmDrug() {
+  // Close + reset the sheet synchronously, THEN fire the save (unawaited) so the
+  // menu collapses immediately and a second tap can't add a duplicate while the
+  // network save is in flight. `save` owns sync-state + offline queue + errors.
+  function confirmDrug() {
     if (!drugPick || !drugDose) return
     const codes = drugCodes[drugPick.name]
     const rt = doseCalcs[drugPick.name]?.roundTo ?? 1
     const finalDose = rt > 1 && !isNaN(Number(drugDose))
       ? String(Math.round(Number(drugDose) / rt) * rt)
       : drugDose
-    await save({ type: "drug", name: drugPick.name, dose: finalDose, unit: drugPick.unit,
-      category: drugCat?.cat, color: drugCat?.color as string, drugRoute: drugRoute, concentration: drugConcentration,
-      drugId: codes?.drugId, atcCode: codes?.atcCode, inn: codes?.inn })
+    const drug = drugPick, cat = drugCat, route = drugRoute, conc = drugConcentration
     setDrugOpen(false); setDrugCat(null); setDrugPick(null); setDrugDose(""); setDrugRoute(undefined); setDrugConcentration(undefined)
+    void save({ type: "drug", name: drug.name, dose: finalDose, unit: drug.unit,
+      category: cat?.cat, color: cat?.color as string, drugRoute: route, concentration: conc,
+      drugId: codes?.drugId, atcCode: codes?.atcCode, inn: codes?.inn })
   }
 
   function startDrugAsInfusion() {

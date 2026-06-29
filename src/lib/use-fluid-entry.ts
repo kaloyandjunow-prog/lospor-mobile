@@ -15,6 +15,7 @@ export function useFluidEntry(
   const [flOpen, setFlOpen]   = useState(false)
   const [flFluid, setFlFluid] = useState<FluidOption | null>(null)
   const [flVol, setFlVol]     = useState("500")
+  const [flConcentration, setFlConcentration] = useState<string | undefined>(undefined)
 
   const [flEndOpen, setFlEndOpen]     = useState(false)
   const [flEndTarget, setFlEndTarget] = useState<ActiveFluid | null>(null)
@@ -22,28 +23,32 @@ export function useFluidEntry(
 
   function openFluid(ts?: string) {
     setEntryTs(ts ?? null)
+    setFlConcentration(undefined)
     setFlOpen(true)
   }
 
-  async function confirmFluid() {
+  function confirmFluid() {
     if (!flFluid) return
     const fl: ActiveFluid = { fluidId: uid(), name: flFluid.name, volume: flVol, color: flFluid.color }
+    const category = flFluid.cat
+    const concentration = flConcentration
+    // Optimistic add + close the sheet synchronously, then fire the save.
     setActiveFluids(prev => [...prev, fl])
-    await save({ type: "fluid_start", fluidId: fl.fluidId, name: fl.name, volume: fl.volume, color: fl.color, category: flFluid.cat })
-    setFlOpen(false); setFlFluid(null); setFlVol("500")
+    setFlOpen(false); setFlFluid(null); setFlVol("500"); setFlConcentration(undefined)
+    void save({ type: "fluid_start", fluidId: fl.fluidId, name: fl.name, volume: fl.volume, color: fl.color, category, concentration })
   }
 
   function openFluidEnd(fl: ActiveFluid) {
     setFlEndTarget(fl); setFlEndCustom(""); setFlEndOpen(true)
   }
 
-  async function confirmFluidEnd(label?: string) {
+  function confirmFluidEnd(label?: string) {
     if (!flEndTarget) return
     const fl = flEndTarget
-    setActiveFluids(prev => prev.filter(x => x.fluidId !== fl.fluidId))
     const name = label ? `${fl.name} (${label})` : fl.name
-    await save({ type: "fluid_end", fluidId: fl.fluidId, name, color: fl.color })
+    setActiveFluids(prev => prev.filter(x => x.fluidId !== fl.fluidId))
     setFlEndOpen(false); setFlEndTarget(null)
+    void save({ type: "fluid_end", fluidId: fl.fluidId, name, color: fl.color })
   }
 
   // Direct fluid stop used by end-case sheet (no modal, no flEndTarget state required)
@@ -54,6 +59,7 @@ export function useFluidEntry(
 
   return {
     flOpen, setFlOpen, flFluid, setFlFluid, flVol, setFlVol,
+    flConcentration, setFlConcentration,
     flEndOpen, setFlEndOpen, flEndTarget, setFlEndTarget, flEndCustom, setFlEndCustom,
     openFluid, confirmFluid, openFluidEnd, confirmFluidEnd, stopFluidDirect,
   }

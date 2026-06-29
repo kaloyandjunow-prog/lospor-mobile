@@ -2,13 +2,14 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import {
   View, Text, ScrollView, FlatList, TouchableOpacity, Modal,
-  TextInput, Alert, Pressable, KeyboardAvoidingView, Platform, Switch,
+  TextInput, Pressable, KeyboardAvoidingView, Platform, Switch,
   unstable_batchedUpdates, PanResponder, useWindowDimensions,
 } from "react-native"
 import { useLocalSearchParams, useRouter, Stack } from "expo-router"
 import * as Haptics from "expo-haptics"
 import * as SecureStore from "expo-secure-store"
 import { ApiError, apiFetch, apiJson } from "@/lib/api"
+import { notify, confirmAction, actionSheet } from "@/lib/notify"
 import { markPendingIntraopCase } from "@/lib/pending-intraop-events"
 import { saveCasePatchWithQueue } from "@/lib/offline-case-patches"
 import { useCaseReminders } from "@/lib/use-case-reminders"
@@ -727,6 +728,23 @@ export default function IntraopLiveScreen() {
     for (const o of fluidLibOpts) if (o.metadata?.quickValues?.length) m[o.label] = o.metadata.quickValues
     return m
   }, [fluidLibOpts])
+  // Library concentration options + default per fluid (e.g. HES 6%/10%, default 10%).
+  const FLUID_CONCENTRATIONS = useMemo(() => {
+    const m: Record<string, string[]> = {}
+    for (const o of fluidLibOpts) {
+      const opts = (o.metadata as { concentrationOptions?: string[] } | null)?.concentrationOptions
+      if (opts?.length) m[o.label] = opts
+    }
+    return m
+  }, [fluidLibOpts])
+  const FLUID_DEFAULT_CONCENTRATIONS = useMemo(() => {
+    const m: Record<string, string> = {}
+    for (const o of fluidLibOpts) {
+      const def = (o.metadata as { defaultConcentration?: string } | null)?.defaultConcentration
+      if (def) m[o.label] = def
+    }
+    return m
+  }, [fluidLibOpts])
 
   const VOLATILE_AGENTS = useMemo(() =>
     agentLibOpts.map((o: LibraryOption) => ({ name: o.label, color: MOBILE_AGENT_COLOR[o.label] ?? "#a855f7" })),
@@ -796,10 +814,20 @@ export default function IntraopLiveScreen() {
     return m
   }, [drugLibOpts])
   const DRUG_DOSE_CALCS = useMemo(() => {
-    const m: Record<string, { hint: string; perKg?: number; flat?: number; basis?: string; roundTo?: number; cap?: number }> = {}
+    type Calc = { perKg?: number; flat?: number; basis?: string; roundTo?: number; cap?: number }
+    const m: Record<string, Calc & { hint: string; byRoute?: Record<string, Calc> }> = {}
     for (const o of drugLibOpts) {
-      const dc = o.metadata?.doseCalc as { perKg?: number; flat?: number; basis?: string; roundTo?: number; cap?: number } | undefined
-      if (dc || o.metadata?.hint) m[o.label] = { hint: (o.metadata?.hint as string | undefined) ?? "", ...dc }
+      const md = o.metadata as { doseCalc?: Calc; hint?: string; doseCalcByRoute?: Record<string, Calc>; routeModes?: Record<string, { doseCalc?: Calc }> } | undefined
+      const dc = md?.doseCalc
+      // Per-route dose calc lives in either doseCalcByRoute or inside each
+      // routeModes[route].doseCalc (Lidocaine bolus uses the latter). Merge both.
+      const byRoute: Record<string, Calc> = {}
+      if (md?.doseCalcByRoute) for (const [r, v] of Object.entries(md.doseCalcByRoute)) if (v) byRoute[r] = v
+      if (md?.routeModes) for (const [r, prof] of Object.entries(md.routeModes)) if (prof?.doseCalc) byRoute[r] = prof.doseCalc
+      const hasByRoute = Object.keys(byRoute).length > 0
+      if (dc || md?.hint || hasByRoute) {
+        m[o.label] = { hint: md?.hint ?? "", ...dc, ...(hasByRoute ? { byRoute } : {}) }
+      }
     }
     return m
   }, [drugLibOpts])
@@ -814,6 +842,16 @@ export default function IntraopLiveScreen() {
   const INFUSION_QUICK_RATES = useMemo(() => {
     const m: Record<string, string[]> = {}
     for (const o of infusionLibOpts) if (o.metadata?.quickValues?.length) m[o.label] = o.metadata.quickValues.map(String)
+    return m
+  }, [infusionLibOpts])
+  // Library-configured starting rate per infusion (e.g. Propofol 6 mg/kg/hr).
+  // Used to prefill the rate on selection instead of the first quick value.
+  const INFUSION_SUGGESTED_RATES = useMemo(() => {
+    const m: Record<string, string> = {}
+    for (const o of infusionLibOpts) {
+      const sr = (o.metadata as { suggestedRate?: number } | null)?.suggestedRate
+      if (sr != null) m[o.label] = String(sr)
+    }
     return m
   }, [infusionLibOpts])
   const INFUSION_ROUTES = useMemo(() => {
@@ -836,6 +874,51 @@ export default function IntraopLiveScreen() {
   function infusionRange(name: string) {
     return INFUSION_RANGES[name] ?? { min: 0, max: 100, step: 1 }
   }
+  // Per-route and base dose surfaces for infusions, mirroring the drug
+  // profiles above. Lets infusions like Lidocaine present a different unit /
+  // range / concentration / suggested rate per route (IV mg/kg/hr vs
+  // PD/IT/Perineural mL/hr + concentration).
+  const INFUSION_ROUTE_PROFILES = useMemo(() => {
+    const m: Record<string, Record<string, { mode?: string; min: number; max: number; step: number; quickValues: number[]; unit: string; concentrationOptions?: string[]; suggestedRate?: number; suggestedConcentration?: string }>> = {}
+    for (const o of infusionLibOpts) {
+      const routeModes = o.metadata?.routeModes
+      if (!routeModes || typeof routeModes !== "object") continue
+      m[o.label] = {}
+      for (const [route, profile] of Object.entries(routeModes as Record<string, any>)) {
+        if (profile?.min == null || profile?.max == null || !profile?.unit) continue
+        m[o.label][route] = {
+          mode: profile.mode,
+          min: profile.min,
+          max: profile.max,
+          step: profile.step ?? profile.variableStep?.[0]?.step ?? 1,
+          quickValues: profile.quickValues ?? [],
+          unit: profile.unit,
+          concentrationOptions: profile.concentrationOptions,
+          suggestedRate: profile.suggestedRate,
+          suggestedConcentration: profile.suggestedConcentration,
+        }
+      }
+    }
+    return m
+  }, [infusionLibOpts])
+  const INFUSION_BASE_PROFILES = useMemo(() => {
+    const m: Record<string, { mode?: string; min: number; max: number; step: number; quickValues: number[]; unit: string; concentrationOptions?: string[]; suggestedRate?: number; suggestedConcentration?: string }> = {}
+    for (const o of infusionLibOpts) {
+      if (o.metadata?.min == null || o.metadata?.max == null || !o.metadata?.unit) continue
+      m[o.label] = {
+        mode: o.metadata.mode,
+        min: o.metadata.min,
+        max: o.metadata.max,
+        step: o.metadata.step ?? o.metadata.variableStep?.[0]?.step ?? 1,
+        quickValues: o.metadata.quickValues ?? [],
+        unit: o.metadata.unit,
+        concentrationOptions: o.metadata.concentrationOptions,
+        suggestedRate: o.metadata.suggestedRate,
+        suggestedConcentration: (o.metadata as { suggestedConcentration?: string }).suggestedConcentration,
+      }
+    }
+    return m
+  }, [infusionLibOpts])
   // Coded identity by name — empty today (catalog isn't populated yet), but
   // wired so it flows through to the saved event once it is, instead of
   // being silently dropped.
@@ -1042,6 +1125,7 @@ export default function IntraopLiveScreen() {
   // Fluid sheet + end options
   const {
     flOpen, setFlOpen, flFluid, setFlFluid, flVol, setFlVol,
+    flConcentration, setFlConcentration,
     flEndOpen, setFlEndOpen, flEndTarget, setFlEndTarget, flEndCustom, setFlEndCustom,
     openFluid, confirmFluid, openFluidEnd, confirmFluidEnd, stopFluidDirect,
   } = useFluidEntry(save, setEntryTs, setActiveFluids)
@@ -1383,7 +1467,7 @@ export default function IntraopLiveScreen() {
     } catch (err) {
       if (!silent) {
         const message = err instanceof Error ? err.message : "Could not load case."
-        Alert.alert(tc("errorLabel"), message)
+        notify(tc("errorLabel"), message)
       }
     }
   }, [id, MONITORING_OPTS, tc])
@@ -1543,7 +1627,7 @@ export default function IntraopLiveScreen() {
       setLog(prev => prev.map(item => item.id === ev.id ? { ...item, syncStatus: "failed" } : item))
       setSyncState("failed")
       if (!silent) setUndoEv({ ...ev, syncStatus: "failed" })
-      if (!silent) Alert.alert("Saved locally", "Network save failed. The event is still visible and will retry from this screen.")
+      if (!silent) notify("Saved locally", "Network save failed. The event is still visible and will retry from this screen.")
     }
     setEntryTs(null)
     return ev
@@ -1572,7 +1656,7 @@ export default function IntraopLiveScreen() {
       setSyncState("saved")
     } catch {
       setSyncState("failed")
-      Alert.alert("Sync error", "Could not save change. Reload to restore.")
+      notify("Sync error", "Could not save change. Reload to restore.")
     }
   }
 
@@ -1674,7 +1758,7 @@ export default function IntraopLiveScreen() {
           return
         } catch {
           setSyncState("failed")
-          Alert.alert("Still offline", "The reconstructed web timeline could not sync.")
+          notify("Still offline", "The reconstructed web timeline could not sync.")
           return
         }
       }
@@ -1704,7 +1788,7 @@ export default function IntraopLiveScreen() {
         return
       } catch {
         setSyncState("failed")
-        Alert.alert("Still offline", `${pending.length} event${pending.length === 1 ? "" : "s"} could not sync.`)
+        notify("Still offline", `${pending.length} event${pending.length === 1 ? "" : "s"} could not sync.`)
         return
       }
     }
@@ -1737,7 +1821,7 @@ export default function IntraopLiveScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
     } else {
       setSyncState("failed")
-      Alert.alert("Still offline", `${failed.length} event${failed.length === 1 ? "" : "s"} could not sync.`)
+      notify("Still offline", `${failed.length} event${failed.length === 1 ? "" : "s"} could not sync.`)
     }
   }
 
@@ -1762,29 +1846,29 @@ export default function IntraopLiveScreen() {
   function emergencyShortcut(kind: "hypotension" | "desaturation" | "bradycardia" | "airway") {
     const ts = new Date().toISOString()
     if (kind === "hypotension") {
-      Alert.alert("Hypotension", "Log event or open a common rescue drug.", [
-        { text: "Phenylephrine 100 mcg", onPress: () => { setEntryTs(ts); openDrugPreset("Phenylephrine", "100") } },
-        { text: "Ephedrine 10 mg", onPress: () => { setEntryTs(ts); openDrugPreset("Ephedrine", "10") } },
-        { text: "Log event", onPress: () => save({ type:"clinical_event", label:"Hypotension", color:"#ef4444" }) },
-        { text: tc("cancelLabel"), style:"cancel" },
+      actionSheet("Hypotension", "Log event or open a common rescue drug.", [
+        { label: "Phenylephrine 100 mcg", onPress: () => { setEntryTs(ts); openDrugPreset("Phenylephrine", "100") } },
+        { label: "Ephedrine 10 mg", onPress: () => { setEntryTs(ts); openDrugPreset("Ephedrine", "10") } },
+        { label: "Log event", onPress: () => save({ type:"clinical_event", label:"Hypotension", color:"#ef4444" }) },
+        { label: tc("cancelLabel"), cancel: true },
       ])
     } else if (kind === "desaturation") {
-      Alert.alert("Desaturation", "Fast airway/oxygenation event.", [
-        { text: "Log desaturation", onPress: () => save({ type:"clinical_event", label:"Desaturation", color:"#06b6d4" }) },
-        { text: "Airway note", onPress: () => { setAirwayLabel("Intubated"); setAirwayOpen(true) } },
-        { text: tc("cancelLabel"), style:"cancel" },
+      actionSheet("Desaturation", "Fast airway/oxygenation event.", [
+        { label: "Log desaturation", onPress: () => save({ type:"clinical_event", label:"Desaturation", color:"#06b6d4" }) },
+        { label: "Airway note", onPress: () => { setAirwayLabel("Intubated"); setAirwayOpen(true) } },
+        { label: tc("cancelLabel"), cancel: true },
       ])
     } else if (kind === "bradycardia") {
-      Alert.alert("Bradycardia", "Log event or open atropine.", [
-        { text: "Atropine 0.5 mg", onPress: () => { setEntryTs(ts); openDrugPreset("Atropine", "0.5") } },
-        { text: "Log event", onPress: () => save({ type:"clinical_event", label:"Bradycardia", color:"#22c55e" }) },
-        { text: tc("cancelLabel"), style:"cancel" },
+      actionSheet("Bradycardia", "Log event or open atropine.", [
+        { label: "Atropine 0.5 mg", onPress: () => { setEntryTs(ts); openDrugPreset("Atropine", "0.5") } },
+        { label: "Log event", onPress: () => save({ type:"clinical_event", label:"Bradycardia", color:"#22c55e" }) },
+        { label: tc("cancelLabel"), cancel: true },
       ])
     } else {
-      Alert.alert("Difficult airway", "Log a difficult airway event or add airway detail.", [
-        { text: "Airway detail", onPress: () => { setAirwayLabel("Intubated"); setAirwayOpen(true) } },
-        { text: "Log difficult airway", onPress: () => save({ type:"clinical_event", label:"Difficult airway", color:"#6366f1" }) },
-        { text: tc("cancelLabel"), style:"cancel" },
+      actionSheet("Difficult airway", "Log a difficult airway event or add airway detail.", [
+        { label: "Airway detail", onPress: () => { setAirwayLabel("Intubated"); setAirwayOpen(true) } },
+        { label: "Log difficult airway", onPress: () => save({ type:"clinical_event", label:"Difficult airway", color:"#6366f1" }) },
+        { label: tc("cancelLabel"), cancel: true },
       ])
     }
   }
@@ -1804,29 +1888,29 @@ export default function IntraopLiveScreen() {
   // ── Long-press drug event ──────────────────────────────────────────────
 
   function longPressDrug(ev: LogEvent) {
-    Alert.alert(
+    actionSheet(
       `${ev.name} ${ev.dose}${ev.unit}`,
       formatTs(ev.ts),
       [
-        { text: "Repeat dose", onPress: () => save({ type:"drug", name:ev.name, dose:ev.dose, unit:ev.unit, category:ev.category, color:ev.color }) },
-        { text: "Edit", onPress: () => { setEditEv(ev); setEditDose(ev.dose ?? ""); setEditTime(formatTs(ev.ts)); setEditOpen(true) } },
-        { text: "Delete", style:"destructive", onPress: () => removeEvent(ev) },
-        { text: tc("cancelLabel"), style:"cancel" },
+        { label: "Repeat dose", onPress: () => save({ type:"drug", name:ev.name, dose:ev.dose, unit:ev.unit, category:ev.category, color:ev.color }) },
+        { label: "Edit", onPress: () => { setEditEv(ev); setEditDose(ev.dose ?? ""); setEditTime(formatTs(ev.ts)); setEditOpen(true) } },
+        { label: "Delete", destructive: true, onPress: () => removeEvent(ev) },
+        { label: tc("cancelLabel"), cancel: true },
       ]
     )
   }
 
   function eventActions(ev: LogEvent) {
-    const actions: any[] = []
+    const actions: { label: string; destructive?: boolean; cancel?: boolean; onPress?: () => void }[] = []
     if (ev.type === "drug") {
-      actions.push({ text: "Repeat dose", onPress: () => save({ type:"drug", name:ev.name, dose:ev.dose, unit:ev.unit, category:ev.category, color:ev.color }) })
-      actions.push({ text: "Edit dose/time", onPress: () => { setEditEv(ev); setEditDose(ev.dose ?? ""); setEditTime(formatTs(ev.ts)); setEditOpen(true) } })
+      actions.push({ label: "Repeat dose", onPress: () => save({ type:"drug", name:ev.name, dose:ev.dose, unit:ev.unit, category:ev.category, color:ev.color }) })
+      actions.push({ label: "Edit dose/time", onPress: () => { setEditEv(ev); setEditDose(ev.dose ?? ""); setEditTime(formatTs(ev.ts)); setEditOpen(true) } })
     } else {
-      actions.push({ text: "Edit time", onPress: () => { setEditEv(ev); setEditDose(""); setEditTime(formatTs(ev.ts)); setEditOpen(true) } })
+      actions.push({ label: "Edit time", onPress: () => { setEditEv(ev); setEditDose(""); setEditTime(formatTs(ev.ts)); setEditOpen(true) } })
     }
-    actions.push({ text: "Delete", style:"destructive", onPress: () => removeEvent(ev) })
-    actions.push({ text: tc("cancelLabel"), style:"cancel" })
-    Alert.alert(eventLabel(ev).text, formatTs(ev.ts), actions)
+    actions.push({ label: "Delete", destructive: true, onPress: () => removeEvent(ev) })
+    actions.push({ label: tc("cancelLabel"), cancel: true })
+    actionSheet(eventLabel(ev).text, formatTs(ev.ts), actions)
   }
 
   function confirmEdit() {
@@ -1843,10 +1927,8 @@ export default function IntraopLiveScreen() {
   }
 
   function promptDelete(ev: LogEvent) {
-    Alert.alert("Delete event", `Remove "${eventLabel(ev).text}"?`, [
-      { text: tc("cancelLabel"), style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => removeEvent(ev) },
-    ])
+    void confirmAction("Delete event", `Remove "${eventLabel(ev).text}"?`, { destructive: true, confirmLabel: "Delete", cancelLabel: tc("cancelLabel") })
+      .then(ok => { if (ok) removeEvent(ev) })
   }
 
   // ── Start case ────────────────────────────────────────────────────────
@@ -1885,10 +1967,8 @@ export default function IntraopLiveScreen() {
       setEndCaseDecisions({})
       setEndCaseOpen(true)
     } else {
-      Alert.alert("End case", "All active items clear. Continue to postoperative form?", [
-        { text: tc("cancelLabel"), style:"cancel" },
-        { text: "Continue", onPress: () => finaliseCase([]) },
-      ])
+      void confirmAction("End case", "All active items clear. Continue to postoperative form?", { confirmLabel: "Continue", cancelLabel: tc("cancelLabel") })
+        .then(ok => { if (ok) finaliseCase([]) })
     }
   }
 
@@ -1954,7 +2034,7 @@ export default function IntraopLiveScreen() {
       } else {
         setSyncState("failed")
         if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
-          Alert.alert("Save rejected", err.message)
+          notify("Save rejected", err.message)
         }
       }
     } finally {
@@ -1987,7 +2067,7 @@ export default function IntraopLiveScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
       setCompOpen(false)
     } catch {
-      Alert.alert(tc("errorLabel"), "Could not save complications.")
+      notify(tc("errorLabel"), "Could not save complications.")
     } finally {
       setCompSaving(false)
     }
@@ -2008,7 +2088,7 @@ export default function IntraopLiveScreen() {
       })
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
     } catch {
-      Alert.alert(tc("errorLabel"), "Could not save premedication.")
+      notify(tc("errorLabel"), "Could not save premedication.")
     } finally {
       setPremedSaving(false)
     }
@@ -2048,7 +2128,7 @@ export default function IntraopLiveScreen() {
       })
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
     } catch {
-      Alert.alert(tc("errorLabel"), "Could not save airway data.")
+      notify(tc("errorLabel"), "Could not save airway data.")
     } finally {
       setAirwaySectionSaving(false)
     }
@@ -2615,10 +2695,8 @@ export default function IntraopLiveScreen() {
                                     else if (activeFl) { openFluidEnd(activeFl) }
                                     else if (isGasItem && activeGas) { openGasSettings(timeAtCol(chartStart, col).toISOString(), activeGas, "change") }
                                     else if (isAgentItem && activeAgent) {
-                                      Alert.alert(`Stop ${activeAgent.name}?`, undefined, [
-                                        { text: tc("cancelLabel"), style: "cancel" },
-                                        { text: "Stop", style: "destructive", onPress: stopAgent },
-                                      ])
+                                      void confirmAction(`Stop ${activeAgent.name}?`, undefined, { destructive: true, confirmLabel: "Stop", cancelLabel: tc("cancelLabel") })
+                                        .then(ok => { if (ok) stopAgent() })
                                     }
                                   }}
                                   style={{
@@ -3443,6 +3521,9 @@ export default function IntraopLiveScreen() {
           infConcentration={infConcentration}
           setInfConcentration={setInfConcentration}
           ranges={INFUSION_RANGES}
+          suggestedRates={INFUSION_SUGGESTED_RATES}
+          baseProfiles={INFUSION_BASE_PROFILES}
+          routeProfiles={INFUSION_ROUTE_PROFILES}
         />
 
         {/* ── INFUSION ACTION SHEET ──────────────────────────────────────── */}
@@ -3464,7 +3545,7 @@ export default function IntraopLiveScreen() {
         {/* ── FLUID SHEET ───────────────────────────────────────────────── */}
         <FluidSheet
           visible={flOpen}
-          onClose={() => { setFlOpen(false); setFlFluid(null); setFlVol("500") }}
+          onClose={() => { setFlOpen(false); setFlFluid(null); setFlVol("500"); setFlConcentration(undefined) }}
           fluidList={FLUID_LIST}
           flFluid={flFluid}
           setFlFluid={setFlFluid}
@@ -3472,6 +3553,10 @@ export default function IntraopLiveScreen() {
           setFlVol={setFlVol}
           onConfirm={confirmFluid}
           quickVolumes={FLUID_QUICK_VOLUMES}
+          concentrations={FLUID_CONCENTRATIONS}
+          defaultConcentrations={FLUID_DEFAULT_CONCENTRATIONS}
+          flConcentration={flConcentration}
+          setFlConcentration={setFlConcentration}
         />
 
         <FluidEndSheet

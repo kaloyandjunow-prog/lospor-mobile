@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   FlatList,
   Modal,
@@ -14,6 +13,7 @@ import {
 } from "react-native"
 import { Stack, useRouter, type Href } from "expo-router"
 import { ApiError, apiFetch, apiJson, decodeTokenPayload, getToken } from "@/lib/api"
+import { notify } from "@/lib/notify"
 import { useAuth } from "@/lib/auth-context"
 import { useLiveRefresh } from "@/lib/use-live-refresh"
 import { getQueuedCasePatchSummary, getQueuedCaseIds, clearAllQueuedPatchesForCase } from "@/lib/offline-case-patches"
@@ -164,10 +164,10 @@ export default function DashboardScreen() {
       setLoadError(message)
       if (err instanceof ApiError && err.status === 401) {
         await logout()
-        Alert.alert("Session expired", "Please sign in again.")
+        notify("Session expired", "Please sign in again.")
         return
       }
-      Alert.alert("Error", message)
+      notify("Error", message)
     }
   }, [logout])
 
@@ -263,7 +263,7 @@ export default function DashboardScreen() {
       closeMenu()
       await loadCases()
     } catch {
-      Alert.alert(t("error"), t("actionFailed"))
+      notify(t("error"), t("actionFailed"))
     } finally {
       setActionLoading(false)
     }
@@ -276,7 +276,7 @@ export default function DashboardScreen() {
       const data = await apiJson<{ id: string; name: string; role: string }[]>("/api/users/colleagues")
       setColleagues(Array.isArray(data) ? data : [])
     } catch {
-      Alert.alert(t("error"), t("actionFailed"))
+      notify(t("error"), t("actionFailed"))
       setMenuMode("menu")
     } finally {
       setLoadingColleagues(false)
@@ -295,7 +295,7 @@ export default function DashboardScreen() {
       closeMenu()
       await loadCases()
     } catch {
-      Alert.alert(t("error"), t("actionFailed"))
+      notify(t("error"), t("actionFailed"))
     } finally {
       setActionLoading(false)
     }
@@ -313,7 +313,7 @@ export default function DashboardScreen() {
       if (!res.ok) throw new Error()
       await Promise.all([loadCases(), loadTransfers()])
     } catch {
-      Alert.alert("Error", `Could not ${action} handover.`)
+      notify("Error", `Could not ${action} handover.`)
     } finally {
       setActioningTransfer(null)
     }

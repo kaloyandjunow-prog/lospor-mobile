@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
   View, Text, ScrollView, TextInput, TouchableOpacity,
-  ActivityIndicator, Alert, Switch, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Switch, KeyboardAvoidingView, Platform,
 } from "react-native"
 import { useLocalSearchParams, useRouter, Stack } from "expo-router"
+import { notify, confirmAction } from "@/lib/notify"
 import { useForm, Controller, useWatch } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -660,26 +661,17 @@ export default function PostopFormScreen() {
   }, [id, markSaveResult, payloadFrom])
 
   function overwriteWithMine() {
-    Alert.alert(
-      t("overwriteNewerTitle"),
-      t("overwriteNewerMsg"),
-      [
-        { text: tc("cancelLabel"), style: "cancel" },
-        {
-          text: t("overwrite"),
-          style: "destructive",
-          onPress: async () => {
-            setAutosaveState("saving")
-            try {
-              await persistPostop(schema.parse(getValues()), true)
-            } catch (err) {
-              Alert.alert(tc("errorLabel"), err instanceof Error ? err.message : t("couldNotOverwrite"))
-              setAutosaveState("conflict")
-            }
-          },
-        },
-      ]
-    )
+    void confirmAction(t("overwriteNewerTitle"), t("overwriteNewerMsg"), { destructive: true, confirmLabel: t("overwrite"), cancelLabel: tc("cancelLabel") })
+      .then(async ok => {
+        if (!ok) return
+        setAutosaveState("saving")
+        try {
+          await persistPostop(schema.parse(getValues()), true)
+        } catch (err) {
+          notify(tc("errorLabel"), err instanceof Error ? err.message : t("couldNotOverwrite"))
+          setAutosaveState("conflict")
+        }
+      })
   }
 
   async function reloadLatest() {
@@ -693,7 +685,7 @@ export default function PostopFormScreen() {
       reset(nextValues)
       setAutosaveState("saved")
     } catch (err) {
-      Alert.alert(tc("errorLabel"), err instanceof Error ? err.message : t("couldNotReload"))
+      notify(tc("errorLabel"), err instanceof Error ? err.message : t("couldNotReload"))
     } finally {
       setLoading(false)
     }
@@ -719,7 +711,7 @@ export default function PostopFormScreen() {
         const queued = await flushQueuedCasePatch(id, "postop")
         markSaveResult(queued.result === "empty" ? "saved" : queued.result, queued.response)
       })
-      .catch((err: Error) => Alert.alert(tc("errorLabel"), err.message))
+      .catch((err: Error) => notify(tc("errorLabel"), err.message))
       .finally(() => setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [continuedItems, id, payloadFrom, reset, t, tc, valuesFromPostop])
@@ -765,10 +757,10 @@ export default function PostopFormScreen() {
       if (result === "saved") {
         router.replace(`/(app)/cases/${id}`)
       } else {
-        Alert.alert(t("savedLocally"), t("savedLocallyMsg"))
+        notify(t("savedLocally"), t("savedLocallyMsg"))
       }
     } catch (err) {
-      Alert.alert(tc("errorLabel"), err instanceof Error ? err.message : t("couldNotOverwrite"))
+      notify(tc("errorLabel"), err instanceof Error ? err.message : t("couldNotOverwrite"))
     } finally {
       setSaving(false)
     }

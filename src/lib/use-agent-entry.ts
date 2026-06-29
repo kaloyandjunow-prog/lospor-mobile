@@ -22,14 +22,20 @@ export function useAgentEntry(
     setAgOpen(true)
   }
 
-  async function confirmAgent() {
+  function confirmAgent() {
     if (!agPick) return
-    if (activeAgent && activeAgent.name !== agPick.name)
-      await save({ type: "agent_stop", name: activeAgent.name, color: activeAgent.color })
+    const prev = activeAgent
+    const pick = agPick
     const percent = agPercent ?? undefined
-    setActiveAgent({ name: agPick.name, color: agPick.color, percent })
-    await save({ type: "agent_start", name: agPick.name, color: agPick.color, value: percent !== undefined ? String(percent) : undefined })
+    // Optimistic switch + close the sheet synchronously, then persist. The two
+    // saves run in order inside the IIFE so the stop precedes the start in the log.
+    setActiveAgent({ name: pick.name, color: pick.color, percent })
     setAgOpen(false); setAgPick(null); setAgPercent(null)
+    void (async () => {
+      if (prev && prev.name !== pick.name)
+        await save({ type: "agent_stop", name: prev.name, color: prev.color })
+      await save({ type: "agent_start", name: pick.name, color: pick.color, value: percent !== undefined ? String(percent) : undefined })
+    })()
   }
 
   async function stopAgent() {

@@ -1,8 +1,9 @@
 import { useState } from "react"
 import type { RefObject } from "react"
-import { Platform, Alert } from "react-native"
+import { Platform } from "react-native"
 import type { TextInput } from "react-native"
 import { apiFetch } from "@/lib/api"
+import { notify } from "@/lib/notify"
 import { uid } from "@/lib/intraop-log-event"
 import type { LogEvent } from "@/lib/intraop-log-event"
 import { prepareVitalsScanImage, getImagePicker, type ScanImageAsset } from "@/lib/vitals-scan"
@@ -107,14 +108,14 @@ export function useVitalsEntry(
   async function scanVitalsFromCamera() {
     const ImagePicker = getImagePicker()
     if (!ImagePicker) {
-      Alert.alert("Not available", "Monitor scanning requires a full native rebuild. Run npx expo run:android to enable.")
+      notify("Not available", "Monitor scanning requires a full native rebuild. Run npx expo run:android to enable.")
       return
     }
     setVitScanBusy(true)
     try {
       const perm = await ImagePicker.requestCameraPermissionsAsync()
       if (!perm.granted) {
-        Alert.alert("Permission denied", "Camera access is required.")
+        notify("Permission denied", "Camera access is required.")
         return
       }
       const result = await ImagePicker.launchCameraAsync({
@@ -147,11 +148,11 @@ export function useVitalsEntry(
       if (v.etco2     != null) setVEtco2(String(etco2ToDisplay(v.etco2)))
       if (v.temp      != null) setVTemp(String(tempToDisplay(v.temp)))
       if ([v.systolic, v.diastolic, v.heartRate, v.spO2, v.etco2, v.temp].every((value: unknown) => value == null)) {
-        Alert.alert("No readings found", "No clear monitor readings were detected. Retake the photo closer to the screen.")
+        notify("No readings found", "No clear monitor readings were detected. Retake the photo closer to the screen.")
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not read monitor."
-      Alert.alert(tErrorLabel, message)
+      notify(tErrorLabel, message)
     } finally {
       setVitScanBusy(false)
     }

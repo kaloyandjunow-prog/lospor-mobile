@@ -1,10 +1,11 @@
 import { useState } from "react"
 import {
   View, Text, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
+  KeyboardAvoidingView, Platform, ActivityIndicator,
 } from "react-native"
 import { useRouter } from "expo-router"
 import { useAuth } from "@/lib/auth-context"
+import { notify } from "@/lib/notify"
 import { colors, withAlpha } from "@/theme/colors"
 import { AuthBackdrop, AuthBrand } from "@/components/AuthBrand"
 
@@ -22,7 +23,7 @@ export default function LoginScreen() {
       await login(email.trim().toLowerCase(), password)
     } catch (err) {
       const message = err instanceof Error ? err.message : "Please check your credentials."
-      Alert.alert("Login failed", message)
+      notify("Login failed", message)
     } finally {
       setLoading(false)
     }

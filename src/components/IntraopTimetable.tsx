@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, Modal,
-  TextInput, Alert,
+  TextInput,
 } from "react-native"
 import { useOptionLibrary } from "@/lib/use-option-library"
+import { confirmAction } from "@/lib/notify"
 
 // ─── Types (API-compatible with web timetable) ────────────────────────────────
 
@@ -394,12 +395,10 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
   }
 
   function deleteDrug(colIdx: number, name: string, dose: string) {
-    Alert.alert("Delete drug", `Remove ${dose} ${name}?`, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => {
-        onChange({ ...data, drugs: data.drugs.filter(d => !(d.colIdx === colIdx && d.name === name && d.dose === dose)) })
-      }},
-    ])
+    void confirmAction("Delete drug", `Remove ${dose} ${name}?`, { destructive: true, confirmLabel: "Delete", cancelLabel: "Cancel" })
+      .then(ok => {
+        if (ok) onChange({ ...data, drugs: data.drugs.filter(d => !(d.colIdx === colIdx && d.name === name && d.dose === dose)) })
+      })
   }
 
   function confirmInfusion() {

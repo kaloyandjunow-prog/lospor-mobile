@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity, Pressable,
-  Alert, Linking, ActivityIndicator,
+  Linking, ActivityIndicator,
 } from "react-native"
 import { useLocalSearchParams, useRouter, Stack } from "expo-router"
 import { apiFetch, apiJson } from "@/lib/api"
+import { notify, confirmAction } from "@/lib/notify"
 import { AppHeader } from "@/components/AppHeader"
 import { EditWindowBanner } from "@/components/EditWindowBanner"
 import { STATUS_META } from "@/components/ui"
@@ -1461,50 +1462,32 @@ export default function CaseSummaryScreen() {
   const canEdit = caseData?.status !== "COMPLETE"
 
   const handleUnfinalize = useCallback(() => {
-    Alert.alert(
-      t("unfinalizeCase"),
-      t("unfinalizeCaseMsg"),
-      [
-        { text: tc("cancelLabel"), style: "cancel" },
-        {
-          text: tc("actionUnfinalize"),
-          style: "destructive",
-          onPress: async () => {
-            setUnfinalizing(true)
-            try {
-              await apiFetch(`/api/cases/${id}/unfinalize`, { method: "POST" })
-              await loadCase()
-            } catch {
-              Alert.alert(tc("errorLabel"), t("couldNotUnfinalize"))
-            } finally {
-              setUnfinalizing(false)
-            }
-          },
-        },
-      ]
-    )
+    void confirmAction(t("unfinalizeCase"), t("unfinalizeCaseMsg"), { destructive: true, confirmLabel: tc("actionUnfinalize"), cancelLabel: tc("cancelLabel") })
+      .then(async ok => {
+        if (!ok) return
+        setUnfinalizing(true)
+        try {
+          await apiFetch(`/api/cases/${id}/unfinalize`, { method: "POST" })
+          await loadCase()
+        } catch {
+          notify(tc("errorLabel"), t("couldNotUnfinalize"))
+        } finally {
+          setUnfinalizing(false)
+        }
+      })
   }, [id, loadCase, t, tc])
 
   const handleDelete = useCallback(() => {
-    Alert.alert(
-      t("deleteCaseTitle"),
-      t("deleteCaseMsg"),
-      [
-        { text: tc("cancelLabel"), style: "cancel" },
-        {
-          text: tc("actionDelete"),
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await apiFetch(`/api/cases/${id}`, { method: "DELETE" })
-              router.back()
-            } catch {
-              Alert.alert(tc("errorLabel"), t("couldNotDelete"))
-            }
-          },
-        },
-      ]
-    )
+    void confirmAction(t("deleteCaseTitle"), t("deleteCaseMsg"), { destructive: true, confirmLabel: tc("actionDelete"), cancelLabel: tc("cancelLabel") })
+      .then(async ok => {
+        if (!ok) return
+        try {
+          await apiFetch(`/api/cases/${id}`, { method: "DELETE" })
+          router.back()
+        } catch {
+          notify(tc("errorLabel"), t("couldNotDelete"))
+        }
+      })
   }, [id, router, t, tc])
 
   const handlePrint = useCallback(async () => {
@@ -1512,38 +1495,30 @@ export default function CaseSummaryScreen() {
       const res = await apiFetch(`/api/cases/${id}/print-token`, { method: "POST" })
       if (res.ok) {
         const { url } = await res.json()
-        Linking.openURL(url).catch(() => Alert.alert(tc("errorLabel"), "Could not open browser"))
+        Linking.openURL(url).catch(() => notify(tc("errorLabel"), "Could not open browser"))
         return
       }
     } catch { /* fall through */ }
-    Linking.openURL(`${API_BASE}/cases/${id}`).catch(() => Alert.alert(tc("errorLabel"), "Could not open browser"))
+    Linking.openURL(`${API_BASE}/cases/${id}`).catch(() => notify(tc("errorLabel"), "Could not open browser"))
   }, [id, tc])
 
   const [finalizing, setFinalizing] = useState(false)
 
   const handleFinalize = useCallback(() => {
-    Alert.alert(
-      tc("actionFinalise"),
-      tc("finalisePrintPrompt"),
-      [
-        { text: tc("cancelLabel"), style: "cancel" },
-        {
-          text: tc("actionFinalise"),
-          onPress: async () => {
-            setFinalizing(true)
-            try {
-              const res = await apiFetch(`/api/cases/${id}/finalize`, { method: "POST" })
-              const body = await res.json().catch(() => null)
-              setCaseData(prev => prev ? { ...prev, status: "COMPLETE", finalizedAt: body?.finalizedAt ?? new Date().toISOString() } : prev)
-            } catch {
-              Alert.alert(tc("errorLabel"), "Could not finalise case.")
-            } finally {
-              setFinalizing(false)
-            }
-          },
-        },
-      ]
-    )
+    void confirmAction(tc("actionFinalise"), tc("finalisePrintPrompt"), { confirmLabel: tc("actionFinalise"), cancelLabel: tc("cancelLabel") })
+      .then(async ok => {
+        if (!ok) return
+        setFinalizing(true)
+        try {
+          const res = await apiFetch(`/api/cases/${id}/finalize`, { method: "POST" })
+          const body = await res.json().catch(() => null)
+          setCaseData(prev => prev ? { ...prev, status: "COMPLETE", finalizedAt: body?.finalizedAt ?? new Date().toISOString() } : prev)
+        } catch {
+          notify(tc("errorLabel"), "Could not finalise case.")
+        } finally {
+          setFinalizing(false)
+        }
+      })
   }, [id, tc])
 
   const screenTitle = caseData?.caseCode ?? (loading ? "…" : tc("cardPreop"))

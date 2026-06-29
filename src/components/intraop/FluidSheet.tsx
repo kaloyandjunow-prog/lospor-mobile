@@ -7,6 +7,7 @@ type FluidOption = { name: string; cat: string; color: string }
 export function FluidSheet({
   visible, onClose, fluidList, flFluid, setFlFluid, flVol, setFlVol, onConfirm,
   quickVolumes = {}, routes = {}, flRoute, setFlRoute,
+  concentrations = {}, defaultConcentrations = {}, flConcentration, setFlConcentration,
 }: {
   visible: boolean
   onClose: () => void
@@ -20,11 +21,17 @@ export function FluidSheet({
   routes?: Record<string, string[]>
   flRoute?: string
   setFlRoute?: (r: string) => void
+  concentrations?: Record<string, string[]>
+  defaultConcentrations?: Record<string, string>
+  flConcentration?: string
+  setFlConcentration?: (c: string | undefined) => void
 }) {
   const selectFluid = (fluid: FluidOption) => {
     setFlFluid(fluid)
     const preset = (quickVolumes[fluid.name] ?? [250, 500, 1000])[0]
     setFlVol(String(preset ?? 500))
+    // Apply the library's default concentration (e.g. HES 10%) on select.
+    setFlConcentration?.(defaultConcentrations[fluid.name])
   }
 
   return (
@@ -38,6 +45,8 @@ export function FluidSheet({
             min={0} max={2000} step={50}
             valuePlaceholder="Volume" unitSuffix="mL"
             routes={routes[flFluid.name]} route={flRoute} onRouteChange={setFlRoute}
+            concentrationOptions={concentrations[flFluid.name]}
+            concentration={flConcentration} onConcentrationChange={setFlConcentration}
             confirmLabel={`Add ${flFluid.name} ${flVol} mL`}
             onConfirm={onConfirm} confirmDisabled={!flVol}
           />

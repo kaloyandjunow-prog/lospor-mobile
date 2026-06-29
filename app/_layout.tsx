@@ -14,6 +14,7 @@ import { useQueuedSaveFlusher } from "@/lib/use-queued-save-flusher"
 import { PreferencesProvider } from "@/lib/preferences-context"
 import { configureForeground } from "@/lib/notifications"
 import { BootAnimation } from "@/components/BootAnimation"
+import { ActionSheetHost } from "@/components/ActionSheetHost"
 
 const appFontFamily = "Roboto_400Regular"
 let defaultFontApplied = false
@@ -83,6 +84,7 @@ export default function RootLayout() {
     <PreferencesProvider>
       <AuthProvider>
         <Guard />
+        <ActionSheetHost />
       </AuthProvider>
     </PreferencesProvider>
   )
