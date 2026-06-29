@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Easing,
   BackHandler,
@@ -39,6 +38,7 @@ import {
   StyledInput,
 } from "@/components/ui"
 import { SearchTagInput } from "@/components/SearchTagInput"
+import { notify } from "@/lib/notify"
 import { ClinicalNumberInput } from "@/components/ClinicalNumberInput"
 import { convertedMeasurement } from "@/lib/use-converted-measurement"
 import { LabScanPanel } from "@/components/LabScanPanel"
@@ -124,6 +124,24 @@ const schema = z.object({
   aiOptIn: z.boolean().default(false),
   labResults: z.array(z.object({ test: z.string(), value: z.string(), unit: z.string() })).default([]),
 })
+  // Cross-field required checks mirroring the web app's validate() in
+  // forms/PreopForm.tsx so mobile/PWA enforces the same gate before intraop.
+  // These surface as inline field errors + an onInvalid jump instead of a
+  // silent no-op (Alert is dead on react-native-web — see lib/notify.ts).
+  .superRefine((d, ctx) => {
+    if (!d.diagnoses?.length)
+      ctx.addIssue({ code: "custom", path: ["diagnoses"], message: "At least one diagnosis is required" })
+    if (!d.procedures?.length)
+      ctx.addIssue({ code: "custom", path: ["procedures"], message: "At least one procedure is required" })
+    if (!d.bpUnobtainable && (d.bpSystolic == null || d.bpDiastolic == null))
+      ctx.addIssue({ code: "custom", path: ["bpSystolic"], message: "Blood pressure is required" })
+    if (!d.heartRateUnobtainable && d.heartRate == null)
+      ctx.addIssue({ code: "custom", path: ["heartRate"], message: "Heart rate is required" })
+    if (!d.respiratoryRateUnobtainable && d.respiratoryRate == null)
+      ctx.addIssue({ code: "custom", path: ["respiratoryRate"], message: "Respiratory rate is required" })
+    if (!d.airwayUnobtainable && !d.mallampati)
+      ctx.addIssue({ code: "custom", path: ["mallampati"], message: "Mallampati class is required" })
+  })
 
 type FormInput = z.input<typeof schema>
 type FormData = z.output<typeof schema>
@@ -701,7 +719,7 @@ function VitalStepper({ value, onChange, min, max, step = 1, precision = 0, unit
   )
 }
 
-function VitalNumber({ label, unit, value, onChange, unobtainable, onToggleUnobtainable, min, max, step = 1, precision = 0, labelUnableToObtain = "Unable to obtain" }: {
+function VitalNumber({ label, unit, value, onChange, unobtainable, onToggleUnobtainable, min, max, step = 1, precision = 0, labelUnableToObtain = "Unable to obtain", required = false, error }: {
   label: string
   unit: string
   value?: number
@@ -713,11 +731,13 @@ function VitalNumber({ label, unit, value, onChange, unobtainable, onToggleUnobt
   step?: number
   precision?: number
   labelUnableToObtain?: string
+  required?: boolean
+  error?: string
 }) {
   return (
     <View style={{ marginBottom: 14 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: "900" }}>{label}</Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: "900" }}>{label}{required && <Text style={{ color: colors.danger }}> *</Text>}</Text>
         <Pressable
           onPress={() => { impact(); onToggleUnobtainable() }}
           style={{
@@ -739,6 +759,7 @@ function VitalNumber({ label, unit, value, onChange, unobtainable, onToggleUnobt
       ) : (
         <VitalStepper value={value} onChange={(next) => { impact(); onChange(next) }} min={min} max={max} step={step} precision={precision} unit={unit} placeholder={label} />
       )}
+      {error ? <Text style={{ color: colors.danger, fontSize: 12, marginTop: 4 }}>{error}</Text> : null}
     </View>
   )
 }
@@ -1227,11 +1248,11 @@ export default function NewCaseScreen() {
           caseIdRef.current = null
           setCaseId(null)
           basePreopUpdatedAtRef.current = null
-          Alert.alert(tc("errorLabel"), "This draft no longer exists. Returning to the dashboard.")
+          notify(tc("errorLabel"), "This draft no longer exists. Returning to the dashboard.")
           router.replace("/(app)")
           return
         }
-        Alert.alert(tc("errorLabel"), err.message ?? "Could not load case.")
+        notify(tc("errorLabel"), err.message ?? "Could not load case.")
       })
    
   }, [clearLocalDraft, continueId, reset, router, tc])
@@ -1544,24 +1565,42 @@ export default function NewCaseScreen() {
     }
   }
 
-  async function onSubmit(data: FormData) {
-    // Validate mandatory clinical fields before allowing intraop transition.
-    // These match the web app's validate() requirements in PreopForm.tsx.
-    const missingFields: string[] = []
-    if (!data.ageYears && data.ageYears !== 0) missingFields.push("Age")
-    if (!data.sex) missingFields.push("Sex")
-    if (!data.procedures?.length) missingFields.push("Planned procedure")
-    if (!data.diagnoses?.length)  missingFields.push("Diagnosis")
-    if (!data.asaScore)           missingFields.push("ASA class")
-    if (!data.mallampati && !data.airwayUnobtainable) missingFields.push("Airway (Mallampati)")
-    if (missingFields.length > 0) {
-      Alert.alert(
-        tc("requiredFieldsMissing"),
-        `${tc("completeBeforeProceeding")}\n\n• ${missingFields.join("\n• ")}`,
-      )
-      return
+  // Readable label for a required field key, used in the validation message.
+  function requiredFieldLabel(key: string): string {
+    const labels: Record<string, string> = {
+      ageYears: tc("ageYears"), sex: tc("sexLabel"), heightCm: tc("heightCm"), weightKg: tc("weightKg"),
+      diagnoses: tc("diagnosisLabel"), procedures: tc("procedureLabel"),
+      bpSystolic: tc("sbpLabel"), bpDiastolic: tc("dbpLabel"), heartRate: tc("heartRateLabel"),
+      respiratoryRate: tc("respiratoryRateLabel"), mallampati: tc("mallampatiLabel"), asaScore: tc("asaPhysicalStatus"),
     }
+    return labels[key] ?? key
+  }
 
+  // Maps each required field to its preop section so a failed validation can
+  // scroll the user straight to the problem. Mirrors web validate() coverage.
+  const REQUIRED_FIELD_SECTION: Record<string, PreopSection> = {
+    ageYears: "patient", sex: "patient", heightCm: "patient", weightKg: "patient",
+    diagnoses: "case", procedures: "case",
+    bpSystolic: "exam", bpDiastolic: "exam", heartRate: "exam", respiratoryRate: "exam",
+    mallampati: "airway", asaScore: "risk",
+  }
+
+  // Shared invalid-submit handler for both Continue buttons. handleSubmit only
+  // reaches onSubmit when the schema passes, so any required field gap lands
+  // here. Jump to the first offending section and show a visible message
+  // (notify works on PWA where Alert.alert is a no-op).
+  function onInvalid(invalid: Record<string, unknown>) {
+    const keys = Object.keys(invalid)
+    const first = keys[0]
+    const target = first ? REQUIRED_FIELD_SECTION[first] : undefined
+    if (target) jumpTo(target)
+    notify(
+      tc("requiredFieldsMissing"),
+      `${tc("completeBeforeProceeding")}\n\n${keys.map((k) => `• ${requiredFieldLabel(k)}`).join("\n")}`,
+    )
+  }
+
+  async function onSubmit(data: FormData) {
     submittingRef.current = true
     if (autosaveDraftRef.current) {
       clearTimeout(autosaveDraftRef.current)
@@ -1625,7 +1664,7 @@ export default function NewCaseScreen() {
               }
               if (retry.status === 401) {
                 await persistLocalDraft(getValues())
-                Alert.alert(
+                notify(
                   "Session expired",
                   "Your work has been saved locally. After logging in, return to this case to continue."
                 )
@@ -1637,7 +1676,7 @@ export default function NewCaseScreen() {
           }
           if (res.status === 401) {
             await persistLocalDraft(getValues())
-            Alert.alert(
+            notify(
               "Session expired",
               "Your work has been saved locally. After logging in, return to this case to continue."
             )
@@ -1663,7 +1702,7 @@ export default function NewCaseScreen() {
       await clearLocalDraft()
       router.replace(`/(app)/cases/intraop/${id}`)
     } catch (error) {
-      Alert.alert(tc("errorLabel"), error instanceof Error ? error.message : "Could not create case.")
+      notify(tc("errorLabel"), error instanceof Error ? error.message : "Could not create case.")
     } finally {
       submittingRef.current = false
       setSaving(false)
@@ -1760,18 +1799,7 @@ export default function NewCaseScreen() {
                 ))}
               </View>
               <TouchableOpacity
-                onPress={handleSubmit(onSubmit, (invalid) => {
-                  const firstInvalid = Object.keys(invalid)[0]
-                  const sectionMap: Record<string, PreopSection> = {
-                    ageYears: "patient", sex: "patient",
-                    bpSystolic: "exam", heartRate: "exam", spO2: "exam",
-                    mallampati: "airway", airwayUnobtainable: "airway",
-                    asaScore: "risk",
-                  }
-                  const target = sectionMap[firstInvalid]
-                  if (target) jumpTo(target)
-                  else Alert.alert(tc("requiredFieldsMissing"), "Check the highlighted sections.")
-                })}
+                onPress={handleSubmit(onSubmit, onInvalid)}
                 disabled={saving}
                 style={{
                   backgroundColor: colors.primary, borderRadius: 16, borderCurve: "continuous",
@@ -1911,10 +1939,10 @@ export default function NewCaseScreen() {
 
             <SectionCard title={tc("sectionCaseDetails")} onLayout={(y) => { sectionY.current.case = y }} visible={showSection("case")}>
               <Controller control={control} name="diagnoses" render={({ field }) => (
-                <SearchTagInput label={tc("diagnosisLabel")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label, system: item.system, labelEn: item.labelEn, labelBg: item.labelBg }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, sub: item.code, label: item.label, system: item.system ?? "ICD-10", labelEn: item.labelEn, labelBg: item.labelBg })))} endpoint="/api/search/icd10" placeholder={tc("diagnosisPlaceholder")} onFocus={() => scrollToSection("case", 60)} />
+                <SearchTagInput label={tc("diagnosisLabel")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label, system: item.system, labelEn: item.labelEn, labelBg: item.labelBg }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, sub: item.code, label: item.label, system: item.system ?? "ICD-10", labelEn: item.labelEn, labelBg: item.labelBg })))} endpoint="/api/search/icd10" placeholder={tc("diagnosisPlaceholder")} onFocus={() => scrollToSection("case", 60)} required error={errors.diagnoses?.message} />
               )} />
               <Controller control={control} name="procedures" render={({ field }) => (
-                <SearchTagInput label={tc("procedureLabel")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, label: item.label })))} endpoint="/api/search/procedures" placeholder="Search procedure..." onFocus={() => scrollToSection("case", 160)} />
+                <SearchTagInput label={tc("procedureLabel")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, label: item.label })))} endpoint="/api/search/procedures" placeholder="Search procedure..." onFocus={() => scrollToSection("case", 160)} required error={errors.procedures?.message} />
               )} />
               <Controller control={control} name="highRiskSurgery" render={({ field }) => <ClinicalSwitchRow label={tc("highRiskSurgery")} value={!!field.value} onValueChange={field.onChange} activeColor={colors.warning} />} />
               <Controller control={control} name="emergencySurgery" render={({ field }) => (
@@ -2002,21 +2030,21 @@ export default function NewCaseScreen() {
                 <View style={{ flex: 1 }}>
                   <Controller control={control} name="bpSystolic" render={({ field }) => (
                     <Controller control={control} name="bpUnobtainable" render={({ field: uto }) => (
-                      <VitalNumber label={tc("sbpLabel")} unit="mmHg" value={field.value} onChange={field.onChange} min={bpSystolicRange?.min ?? 1} max={bpSystolicRange?.max ?? 300} step={bpSystolicRange?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} />
+                      <VitalNumber label={tc("sbpLabel")} unit="mmHg" value={field.value} onChange={field.onChange} min={bpSystolicRange?.min ?? 1} max={bpSystolicRange?.max ?? 300} step={bpSystolicRange?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} required error={errors.bpSystolic?.message} />
                     )} />
                   )} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Controller control={control} name="bpDiastolic" render={({ field }) => (
                     <Controller control={control} name="bpUnobtainable" render={({ field: uto }) => (
-                      <VitalNumber label={tc("dbpLabel")} unit="mmHg" value={field.value} onChange={field.onChange} min={bpDiastolicRange?.min ?? 1} max={bpDiastolicRange?.max ?? 200} step={bpDiastolicRange?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} />
+                      <VitalNumber label={tc("dbpLabel")} unit="mmHg" value={field.value} onChange={field.onChange} min={bpDiastolicRange?.min ?? 1} max={bpDiastolicRange?.max ?? 200} step={bpDiastolicRange?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} required />
                     )} />
                   )} />
                 </View>
               </View>
               <Controller control={control} name="heartRate" render={({ field }) => (
                 <Controller control={control} name="heartRateUnobtainable" render={({ field: uto }) => (
-                  <VitalNumber label={tc("heartRateLabel")} unit="bpm" value={field.value} onChange={field.onChange} min={heartRateRange?.min ?? 1} max={heartRateRange?.max ?? 300} step={heartRateRange?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} />
+                  <VitalNumber label={tc("heartRateLabel")} unit="bpm" value={field.value} onChange={field.onChange} min={heartRateRange?.min ?? 1} max={heartRateRange?.max ?? 300} step={heartRateRange?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} required error={errors.heartRate?.message} />
                 )} />
               )} />
               <Controller control={control} name="heartArrhythmia" render={({ field }) => <ClinicalSwitchRow label={tc("arrhythmiaLabel")} value={!!field.value} onValueChange={field.onChange} activeColor={colors.warning} />} />
@@ -2033,7 +2061,7 @@ export default function NewCaseScreen() {
               )} />
               <Controller control={control} name="respiratoryRate" render={({ field }) => (
                 <Controller control={control} name="respiratoryRateUnobtainable" render={({ field: uto }) => (
-                  <VitalNumber label={tc("respiratoryRateLabel")} unit="/min" value={field.value} onChange={field.onChange} min={respiratoryRange?.min ?? 0} max={respiratoryRange?.max ?? 50} step={respiratoryRange?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} />
+                  <VitalNumber label={tc("respiratoryRateLabel")} unit="/min" value={field.value} onChange={field.onChange} min={respiratoryRange?.min ?? 0} max={respiratoryRange?.max ?? 50} step={respiratoryRange?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} required error={errors.respiratoryRate?.message} />
                 )} />
               )} />
               <Field label={tc("physicalExamReport")}>
@@ -2045,7 +2073,7 @@ export default function NewCaseScreen() {
               <Controller control={control} name="airwayUnobtainable" render={({ field }) => <ClinicalSwitchRow label={field.value ? tc("airwayUnableToObtain") : tc("unableToObtain")} value={!!field.value} onValueChange={field.onChange} activeColor={colors.warning} />} />
               {!airwayUnobtainable ? (
                 <>
-                  <Field label={tc("mallampatiLabel")}>
+                  <Field label={tc("mallampatiLabel")} required error={errors.mallampati?.message}>
                     <Controller control={control} name="mallampati" render={({ field }) => <SegmentedSelect value={field.value} onChange={field.onChange} options={mallampatiOptions.map(o => ({ value: o.value, label: o.value }))} />} />
                   </Field>
                   <Field label={tc("mouthOpeningLabel")}>
@@ -2116,7 +2144,7 @@ export default function NewCaseScreen() {
               )} />
             </SectionCard>
 
-            <PrimaryButton label={tc("continueIntraop")} onPress={handleSubmit(onSubmit, (invalid) => Alert.alert(tc("requiredFieldsMissing"), Object.keys(invalid).join(", ") || "Check the highlighted fields."))} loading={saving} />
+            <PrimaryButton label={tc("continueIntraop")} onPress={handleSubmit(onSubmit, onInvalid)} loading={saving} />
           </View>
           </Animated.View>
         </Animated.ScrollView>

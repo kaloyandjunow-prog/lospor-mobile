@@ -36,6 +36,8 @@ type Props = {
   placeholder?: string
   maxItems?: number
   onFocus?: () => void
+  required?: boolean
+  error?: string
 }
 
 export function SearchTagInput({
@@ -48,6 +50,8 @@ export function SearchTagInput({
   placeholder = "Search...",
   maxItems,
   onFocus,
+  required = false,
+  error,
 }: Props) {
   const { language, t } = usePreferences()
   const [query, setQuery] = useState("")
@@ -140,7 +144,9 @@ export function SearchTagInput({
 
   return (
     <View style={{ marginBottom: 16, zIndex: open ? 20 : 1 }}>
-      <Text style={{ color: colors.textSecondary, fontSize: 14, marginBottom: 6 }}>{label}</Text>
+      <Text style={{ color: colors.textSecondary, fontSize: 14, marginBottom: 6 }}>
+        {label}{required && <Text style={{ color: colors.danger }}> *</Text>}
+      </Text>
 
       {value.length > 0 ? (
         <View style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 8 }}>
@@ -251,6 +257,7 @@ export function SearchTagInput({
           ) : null}
         </View>
       ) : null}
+      {error ? <Text style={{ color: colors.danger, fontSize: 12, marginTop: 4 }}>{error}</Text> : null}
     </View>
   )
 }
