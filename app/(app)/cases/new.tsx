@@ -1290,8 +1290,8 @@ export default function NewCaseScreen() {
           }
         } catch (error) {
           if (error instanceof ApiError && error.status === 409) {
-            const sv = error.serverVersion as { preopUpdatedAt?: string } | undefined
-            if (sv?.preopUpdatedAt) basePreopUpdatedAtRef.current = sv.preopUpdatedAt
+            const sv = error.serverVersion as { updatedAt?: string } | undefined
+            if (sv?.updatedAt) basePreopUpdatedAtRef.current = sv.updatedAt
           }
           if (error instanceof ApiError && error.status === 404 && caseIdRef.current) {
             caseIdRef.current = null
@@ -1607,7 +1607,7 @@ export default function NewCaseScreen() {
             }
           }
           if (res.status === 409) {
-            const serverAt = (body.serverVersion as { preopUpdatedAt?: string } | undefined)?.preopUpdatedAt
+            const serverAt = (body.serverVersion as { updatedAt?: string } | undefined)?.updatedAt
             if (serverAt) {
               basePreopUpdatedAtRef.current = serverAt
               const retry = await apiFetch(`/api/cases/${caseIdRef.current}`, {
