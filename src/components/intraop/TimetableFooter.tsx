@@ -1,4 +1,5 @@
 import { View, Text, TouchableOpacity } from "react-native"
+import { usePreferences } from "@/lib/preferences-context"
 
 // Sticky footer under the vertical timetable: jump-to-now + end-case.
 // Presentational — markup moved verbatim from cases/intraop/[id].tsx.
@@ -8,6 +9,7 @@ export function TimetableFooter({ started, isWatching, onJumpToNow, onEndCase }:
   onJumpToNow: () => void
   onEndCase: () => void
 }) {
+  const { tc } = usePreferences()
   return (
     <View style={{
       flexDirection: "row", gap: 10,
@@ -24,7 +26,7 @@ export function TimetableFooter({ started, isWatching, onJumpToNow, onEndCase }:
           opacity: started ? 1 : 0.35,
         }}
       >
-        <Text style={{ color: "#fb923c", fontSize: 13, fontWeight: "800" }}>↓ Now</Text>
+        <Text style={{ color: "#fb923c", fontSize: 13, fontWeight: "800" }}>{tc("tfJumpToNow")}</Text>
       </TouchableOpacity>
       <TouchableOpacity
         onPress={() => { if (!isWatching) onEndCase() }}
@@ -35,7 +37,7 @@ export function TimetableFooter({ started, isWatching, onJumpToNow, onEndCase }:
           opacity: isWatching ? 0.4 : 1,
         }}
       >
-        <Text style={{ color: "#fb923c", fontSize: 13, fontWeight: "800" }}>End case</Text>
+        <Text style={{ color: "#fb923c", fontSize: 13, fontWeight: "800" }}>{tc("tfEndCase")}</Text>
       </TouchableOpacity>
     </View>
   )

@@ -3,10 +3,15 @@ import { describe, expect, it, vi } from "vitest"
 
 import { getByText, pressByText, render, update } from "@/test/render"
 import { MultiToggle, PrimaryButton, SingleToggle, StatusBadge } from "./ui"
+import { PreferencesProvider } from "@/lib/preferences-context"
 
 describe("shared UI components", () => {
   it("renders canonical case status labels", () => {
-    const tree = render(<StatusBadge status="AWAITING_POSTOP" />)
+    const tree = render(
+      <PreferencesProvider>
+        <StatusBadge status="AWAITING_POSTOP" />
+      </PreferencesProvider>,
+    )
 
     expect(getByText(tree, "Awaiting postop")).toBeTruthy()
   })

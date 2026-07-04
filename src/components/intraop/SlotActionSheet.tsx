@@ -3,6 +3,7 @@ import type { ClinicalEventDef } from "@/lib/intraop-types"
 import type { ActiveGasSettings } from "@/lib/intraop-log-event"
 import { FeedbackPressable } from "./FeedbackPressable"
 import { Sheet } from "./Sheet"
+import { usePreferences } from "@/lib/preferences-context"
 
 type ClinicalEventCategory = {
   cat: string
@@ -54,12 +55,13 @@ export function SlotActionSheet({
   onStopGas,
   onOpenGas,
 }: Props) {
+  const { tc } = usePreferences()
   return (
     <Sheet visible={visible} onClose={onClose} title={title} full>
       <TextInput
         style={{ backgroundColor:"#111820", color:"#f8fafc", borderRadius:10, paddingHorizontal:12, paddingVertical:9,
           fontSize:13, borderWidth:1, borderColor:"#1e2d40", marginBottom:12 }}
-        placeholder="Search events..."
+        placeholder={tc("sasSearchEvents")}
         placeholderTextColor="#475569"
         value={eventSearch}
         onChangeText={onEventSearchChange}
@@ -107,13 +109,13 @@ export function SlotActionSheet({
       <FeedbackPressable onPress={onBrowseDrugs}
         style={{ borderRadius:10, paddingVertical:10, alignItems:"center",
           backgroundColor:"#1e2d40", borderWidth:1, borderColor:"#3b82f644", marginBottom:18 }}>
-        <Text style={{ color:"#93c5fd", fontWeight:"700", fontSize:12 }}>{"Browse all drugs ->"}</Text>
+        <Text style={{ color:"#93c5fd", fontWeight:"700", fontSize:12 }}>{tc("sasBrowseAllDrugs")}</Text>
       </FeedbackPressable>
 
       {isGACase && (
         <>
           <Text style={{ color:"#a855f7", fontSize:10, fontWeight:"800", letterSpacing:1.2,
-            textTransform:"uppercase", marginBottom:8 }}>Inhaled Agent</Text>
+            textTransform:"uppercase", marginBottom:8 }}>{tc("sasInhaledAgent")}</Text>
           {activeAgent ? (
             <View style={{ flexDirection:"row", gap:8, marginBottom:8 }}>
               <View style={{ flex:1, borderRadius:10, paddingVertical:10, paddingHorizontal:12,
@@ -123,7 +125,7 @@ export function SlotActionSheet({
               <TouchableOpacity onPress={onStopAgent}
                 style={{ borderRadius:10, paddingHorizontal:14, paddingVertical:10,
                   backgroundColor:"#1e1010", borderWidth:1, borderColor:"#ef444444" }}>
-                <Text style={{ color:"#ef4444", fontWeight:"700", fontSize:12 }}>Stop</Text>
+                <Text style={{ color:"#ef4444", fontWeight:"700", fontSize:12 }}>{tc("sasStop")}</Text>
               </TouchableOpacity>
             </View>
           ) : null}
@@ -136,7 +138,7 @@ export function SlotActionSheet({
           </TouchableOpacity>
 
           <Text style={{ color:"#6366f1", fontSize:10, fontWeight:"800", letterSpacing:1.2,
-            textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Gas Settings</Text>
+            textTransform:"uppercase", marginTop:16, marginBottom:8 }}>{tc("gasSettings")}</Text>
           {activeGas ? (
             <View style={{ flexDirection:"row", gap:8, marginBottom:8 }}>
               <View style={{ flex:1, borderRadius:10, paddingVertical:10, paddingHorizontal:12,
@@ -148,7 +150,7 @@ export function SlotActionSheet({
               <TouchableOpacity onPress={onStopGas}
                 style={{ borderRadius:10, paddingHorizontal:14, paddingVertical:10,
                   backgroundColor:"#1e1010", borderWidth:1, borderColor:"#ef444444" }}>
-                <Text style={{ color:"#ef4444", fontWeight:"700", fontSize:12 }}>Stop</Text>
+                <Text style={{ color:"#ef4444", fontWeight:"700", fontSize:12 }}>{tc("sasStop")}</Text>
               </TouchableOpacity>
             </View>
           ) : null}

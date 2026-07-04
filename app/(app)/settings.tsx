@@ -150,6 +150,7 @@ function FavouritePicker({
   onClose: () => void
   onSave: (next: string[]) => void
 }) {
+  const { t } = usePreferences()
   const [query, setQuery] = useState("")
   const [draft, setDraft] = useState<string[]>(selected)
 
@@ -188,7 +189,7 @@ function FavouritePicker({
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search"
+            placeholder={t("searchPlaceholderShort")}
             placeholderTextColor={colors.textMuted}
             style={{
               backgroundColor: colors.background, color: colors.textPrimary,
@@ -232,7 +233,7 @@ function FavouritePicker({
             onPress={() => onSave(draft)}
             style={{ marginTop: 14, paddingVertical: 14, borderRadius: 12, alignItems: "center", backgroundColor: colors.primary }}
           >
-            <Text style={{ color: "#fff", fontWeight: "800" }}>Save favourites</Text>
+            <Text style={{ color: "#fff", fontWeight: "800" }}>{t("saveFavourites")}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -248,7 +249,7 @@ export default function SettingsScreen() {
   const { options: drugOptions } = useOptionLibrary("INTRAOP_DRUG")
   const { options: infusionOptions } = useOptionLibrary("INTRAOP_INFUSION")
   const {
-    language, setLanguage, theme, setTheme, preopLayout, setPreopLayout, t,
+    language, setLanguage, theme, setTheme, preopLayout, setPreopLayout, t, tc,
     heightUnit, setHeightUnit, weightUnit, setWeightUnit, temperatureUnit, setTemperatureUnit, etco2Unit, setEtco2Unit,
   } = usePreferences()
 
@@ -511,7 +512,7 @@ export default function SettingsScreen() {
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 60, paddingTop: 12 }}
         >
           {/* Profile card */}
-          <SectionHeader title="Profile" />
+          <SectionHeader title={t("profileSection")} />
           <Card>
             {/* Name */}
             <View style={{
@@ -566,7 +567,7 @@ export default function SettingsScreen() {
               <Text style={{ color: colors.textMuted, fontSize: 14, fontWeight: "500" }}>
                 {t("viewProfile")}
               </Text>
-              <Text style={{ color: colors.textMuted, fontSize: 11 }}>Coming soon</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 11 }}>{t("comingSoon")}</Text>
             </View>
           </Card>
 
@@ -575,7 +576,7 @@ export default function SettingsScreen() {
           <Card>
             <SettingsRow
               label={t("settings")}
-              subtitle="UI, Automation, Privacy & Data"
+              subtitle={t("uiAutomationPrivacySubtitle")}
               onPress={() => setView("settings")}
             />
             {isAdmin && (
@@ -639,7 +640,7 @@ export default function SettingsScreen() {
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 60, paddingTop: 12 }}
       >
         {/* -- UI ----------------------------------------------------------------- */}
-        <SectionHeader title="UI" />
+        <SectionHeader title={t("uiSection")} />
         <Card>
           <SettingsRow
             label={t("theme")}
@@ -664,20 +665,20 @@ export default function SettingsScreen() {
             value (cm/kg/°C/mmHg); changing these just converts what's shown and
             typed in vitals entry. Drugs, infusions, fluids, and labs are not
             affected by this section. */}
-        <SectionHeader title="Units of measurement" />
+        <SectionHeader title={t("unitsOfMeasurementSection")} />
         <Card>
           <SettingsRow
-            label="Height"
+            label={t("heightLabel")}
             subtitle={heightUnit === "cm" ? "Centimetres (cm)" : "Inches (in)"}
             onPress={() => setHeightUnit(heightUnit === "cm" ? "in" : "cm")}
           />
           <SettingsRow
-            label="Weight"
+            label={t("weightLabel")}
             subtitle={weightUnit === "kg" ? "Kilograms (kg)" : "Pounds (lb)"}
             onPress={() => setWeightUnit(weightUnit === "kg" ? "lb" : "kg")}
           />
           <SettingsRow
-            label="Temperature"
+            label={tc("temperatureLabel")}
             subtitle={temperatureUnit === "C" ? "Celsius (°C)" : "Fahrenheit (°F)"}
             onPress={() => setTemperatureUnit(temperatureUnit === "C" ? "F" : "C")}
           />
@@ -693,12 +694,12 @@ export default function SettingsScreen() {
         <SectionHeader title={t("intraoperative")} />
         <Card>
           <SettingsRow
-            label="Favourite bolus drugs"
+            label={t("favouriteBolusDrugs")}
             subtitle={favouriteDrugs.length ? favouriteDrugs.join(", ") : "Choose up to 8 drugs for the intraop cockpit"}
             onPress={() => setDrugFavOpen(true)}
           />
           <SettingsRow
-            label="Favourite infusions"
+            label={t("favouriteInfusions")}
             subtitle={favouriteInfusions.length ? favouriteInfusions.join(", ") : "Choose up to 8 infusions for the intraop cockpit"}
             onPress={() => setInfFavOpen(true)}
           />
@@ -744,10 +745,10 @@ export default function SettingsScreen() {
         </Card>
 
         {/* -- Notifications ------------------------------------------------------ */}
-        <SectionHeader title="Notifications" />
+        <SectionHeader title={t("notificationsSection")} />
         <Card>
           <SettingsRow
-            label="Case reminders"
+            label={t("caseReminders")}
             subtitle={
               "Remind me to chart vitals during an active case" +
               (notifStatus
@@ -774,8 +775,8 @@ export default function SettingsScreen() {
           )}
           {remindersOn && (
             <SettingsRow
-              label="Vitals reminder interval"
-              subtitle="Tap to change how often you're reminded"
+              label={t("vitalsReminderInterval")}
+              subtitle={t("tapToChangeReminder")}
               onPress={cycleVitalsInterval}
               rightElement={
                 <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 15 }}>
@@ -785,8 +786,8 @@ export default function SettingsScreen() {
             />
           )}
           <SettingsRow
-            label="Send test notification"
-            subtitle="Check that notifications are allowed on this device"
+            label={t("sendTestNotification")}
+            subtitle={t("checkNotificationsAllowed")}
             last
             onPress={sendTestNotification}
           />
@@ -805,11 +806,11 @@ export default function SettingsScreen() {
           />
           <SettingsRow
             label={t("about")}
-            subtitle="LOSPOR v4.0.0 - Large Open Source Perioperative Register"
+            subtitle={t("aboutSubtitle")}
           />
           <SettingsRow
-            label="Clear local clinical cache"
-            subtitle="Removes offline drafts and queued saves from this device only"
+            label={t("clearLocalCache")}
+            subtitle={t("clearLocalCacheSubtitle")}
             danger
             onPress={clearClinicalCache}
           />
@@ -819,7 +820,7 @@ export default function SettingsScreen() {
           />
           <SettingsRow
             label={t("reportBug")}
-            subtitle="Not yet available"
+            subtitle={t("notYetAvailable")}
             // greyed — no onPress
           />
           <SettingsRow
@@ -848,7 +849,7 @@ export default function SettingsScreen() {
       </ScrollView>
       <FavouritePicker
         visible={drugFavOpen}
-        title="Favourite bolus drugs"
+        title={t("favouriteBolusDrugs")}
         options={drugOptions}
         selected={favouriteDrugs}
         onClose={() => setDrugFavOpen(false)}
@@ -856,7 +857,7 @@ export default function SettingsScreen() {
       />
       <FavouritePicker
         visible={infFavOpen}
-        title="Favourite infusions"
+        title={t("favouriteInfusions")}
         options={infusionOptions}
         selected={favouriteInfusions}
         onClose={() => setInfFavOpen(false)}

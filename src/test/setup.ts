@@ -25,3 +25,11 @@ vi.mock("react-native", () => {
     useWindowDimensions: () => ({ width: 400, height: 800 }),
   }
 })
+
+// expo-secure-store pulls in expo-modules-core, which references the RN
+// __DEV__ global that isn't defined outside the RN runtime. Components under
+// test only need PreferencesProvider's language persistence to no-op.
+vi.mock("expo-secure-store", () => ({
+  getItemAsync: vi.fn(async () => null),
+  setItemAsync: vi.fn(async () => {}),
+}))

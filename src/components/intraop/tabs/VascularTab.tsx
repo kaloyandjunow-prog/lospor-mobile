@@ -45,7 +45,7 @@ export function VascularTab({
               borderRadius:16, paddingHorizontal:10, paddingVertical:6,
               borderWidth:1, borderColor: acc.preexisting ? "#d97706" : clr }}>
               {acc.preexisting && (
-                <Text style={{ color:"#f59e0b", fontSize:8, fontWeight:"800", letterSpacing:0.8 }}>PRE</Text>
+                <Text style={{ color:"#f59e0b", fontSize:8, fontWeight:"800", letterSpacing:0.8 }}>{tc("vtPreBadge")}</Text>
               )}
               <Text style={{ color: acc.preexisting ? "#fbbf24" : clr, fontWeight:"700", fontSize:12 }}>
                 {acc.siteLabel}{detail ? `  (${detail})` : ""}
@@ -73,7 +73,7 @@ export function VascularTab({
             <TouchableOpacity onPress={() => { setVascMode("preexisting"); setVascPending(null); setVascDetailSize(""); setVascDetailDepth("") }}
               style={{ flexDirection:"row", alignItems:"center", gap:4, paddingHorizontal:12, paddingVertical:7,
                 borderRadius:16, borderWidth:1.5, borderStyle:"dashed" as ViewStyle["borderStyle"], borderColor:"#78350f" }}>
-              <Text style={{ color:"#f59e0b", fontSize:12, fontWeight:"700" }}>Already in place</Text>
+              <Text style={{ color:"#f59e0b", fontSize:12, fontWeight:"700" }}>{tc("vtAlreadyInPlace")}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -93,7 +93,7 @@ export function VascularTab({
             {vascTreePath.length > 0 && (
               <View style={{ flexDirection:"row", alignItems:"center", flexWrap:"wrap", gap:2, marginBottom:8 }}>
                 <TouchableOpacity onPress={() => setVascTreePath([])}>
-                  <Text style={{ color:"#3b82f6", fontSize:11 }}>Access</Text>
+                  <Text style={{ color:"#3b82f6", fontSize:11 }}>{tc("vtAccess")}</Text>
                 </TouchableOpacity>
                 {vascTreePath.map((n, i) => (
                   <View key={n.v} style={{ flexDirection:"row", alignItems:"center", gap:2 }}>
@@ -134,7 +134,7 @@ export function VascularTab({
       {/* Already in place — quick picker */}
       {vascMode === "preexisting" && !vascPending && (
         <View style={{ backgroundColor:"#1c0e00", borderRadius:12, borderWidth:1, borderColor:"#78350f", padding:12 }}>
-          <Text style={{ color:"#f59e0b", fontSize:11, fontWeight:"700", marginBottom:8 }}>Select pre-existing access</Text>
+          <Text style={{ color:"#f59e0b", fontSize:11, fontWeight:"700", marginBottom:8 }}>{tc("vtSelectPreexisting")}</Text>
           <View style={{ flexDirection:"row", flexWrap:"wrap", gap:8 }}>
             {vascPreexistingQuick.map(q => (
               <TouchableOpacity key={q.v} onPress={() => {
@@ -151,7 +151,7 @@ export function VascularTab({
             <TouchableOpacity onPress={() => { setVascMode("add"); setVascTreePath([]); setVascPending(null) }}
               style={{ paddingHorizontal:12, paddingVertical:8, borderRadius:10,
                 borderWidth:1, borderColor:"#1e3a5f", backgroundColor:"#111827" }}>
-              <Text style={{ color:"#93c5fd", fontSize:12, fontWeight:"600" }}>Other…</Text>
+              <Text style={{ color:"#93c5fd", fontSize:12, fontWeight:"600" }}>{tc("vtOther")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -169,7 +169,7 @@ export function VascularTab({
         return (
           <View style={{ backgroundColor:bgClr, borderRadius:12, borderWidth:1, borderColor:borderClr, padding:12 }}>
             <Text style={{ color:"#94a3b8", fontSize:11, marginBottom:10 }}>{vascPending.crumb}</Text>
-            <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Unit</Text>
+            <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{tc("vtUnit")}</Text>
             <View style={{ flexDirection:"row", gap:8, marginBottom:12 }}>
               {["G","Fr"].map(u => (
                 <TouchableOpacity key={u} onPress={() => { setVascDetailUnit(u); setVascDetailSize("") }}
@@ -195,7 +195,7 @@ export function VascularTab({
             </ScrollView>
             {isCentral && (
               <>
-                <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Depth from skin (cm)</Text>
+                <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{tc("vtDepthFromSkin")}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom:12 }}>
                   <View style={{ flexDirection:"row", gap:6 }}>
                     {["2","4","6","8","10","12","14","16","18","20","22","24"].map(d => (
@@ -208,7 +208,7 @@ export function VascularTab({
                     ))}
                   </View>
                 </ScrollView>
-                <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Lumens</Text>
+                <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{tc("vtLumens")}</Text>
                 <View style={{ flexDirection:"row", gap:8, marginBottom:12 }}>
                   {["1","2","3","4+"].map(l => (
                     <TouchableOpacity key={l} onPress={() => setVascDetailLumens(vascDetailLumens === l ? "" : l)}
@@ -242,7 +242,7 @@ export function VascularTab({
               }} style={{ flex:1, paddingVertical:12, borderRadius:10, alignItems:"center",
                 backgroundColor: vascDetailSize ? "#3b82f6" : "#1e2d40",
                 borderWidth:1, borderColor:"#3b82f644" }}>
-                <Text style={{ color:"#fff", fontWeight:"700", fontSize:14 }}>Add</Text>
+                <Text style={{ color:"#fff", fontWeight:"700", fontSize:14 }}>{tc("vtAdd")}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setVascPending(null)}
                 style={{ paddingHorizontal:16, paddingVertical:12, borderRadius:10, alignItems:"center",
@@ -255,7 +255,7 @@ export function VascularTab({
       })()}
 
       {vascularSaving && (
-        <Text style={{ color:"#64748b", fontSize:11, textAlign:"center", marginTop:12 }}>Saving…</Text>
+        <Text style={{ color:"#64748b", fontSize:11, textAlign:"center", marginTop:12 }}>{tc("draftSaving")}</Text>
       )}
     </ScrollView>
   )

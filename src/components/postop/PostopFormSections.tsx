@@ -75,9 +75,9 @@ const HANDOVER_GROUPS: HandoverGroup[] = [
     id: "obs",
     title: "Vital Signs & Monitoring",
     items: [
-      { v: "obs_freq",     label: "Observations q15 min Г— 1h, then q30 min Г— 1h" },
-      { v: "spo2_cont",    label: "Continuous SpOв‚‚ monitoring" },
-      { v: "alert_bp",     label: "Blood pressure вЂ” target range communicated" },
+      { v: "obs_freq",     label: "Observations q15 min × 1h, then q30 min × 1h" },
+      { v: "spo2_cont",    label: "Continuous SpO₂ monitoring" },
+      { v: "alert_bp",     label: "Blood pressure — target range communicated" },
       { v: "temp_monitor", label: "Temperature monitoring / active warming" },
       { v: "urine_output", label: "Urine output monitoring (IDC in situ)" },
       { v: "glucose",      label: "Serum/peripheral glucose monitoring" },
@@ -87,11 +87,11 @@ const HANDOVER_GROUPS: HandoverGroup[] = [
     id: "airway",
     title: "Airway & Oxygen",
     items: [
-      { v: "o2_supp",         label: "Supplemental Oв‚‚ вЂ” rate and duration specified" },
+      { v: "o2_supp",         label: "Supplemental O₂ — rate and duration specified" },
       { v: "npo",             label: "Fasting status / nil by mouth until fully awake" },
       { v: "diet_advance",    label: "Advance diet when tolerating" },
-      { v: "alert_resp",      label: "Alert if SpOв‚‚ < 92% or RR < 8 or > 25/min" },
-      { v: "airway_alert",    label: "Difficult airway вЂ” alert at bedside" },
+      { v: "alert_resp",      label: "Alert if SpO₂ < 92% or RR < 8 or > 25/min" },
+      { v: "airway_alert",    label: "Difficult airway — alert at bedside" },
       { v: "airway_position", label: "Position: head up / lateral / as specified" },
     ],
   },
@@ -103,7 +103,7 @@ const HANDOVER_GROUPS: HandoverGroup[] = [
       { v: "cvk",              label: "Central venous catheter in situ" },
       { v: "art_line",         label: "Arterial line in situ" },
       { v: "alert_hr",         label: "Alert if HR < 50 or > 120 bpm" },
-      { v: "fluid_plan",       label: "IV fluid plan вЂ” type, rate, volume specified" },
+      { v: "fluid_plan",       label: "IV fluid plan — type, rate, volume specified" },
       { v: "fluid_balance",    label: "Fluid balance monitoring and documentation" },
       { v: "antihypertensive", label: "Antihypertensive medications resumed / held" },
       { v: "anticoagulation",  label: "Anticoagulation plan documented" },
@@ -114,10 +114,10 @@ const HANDOVER_GROUPS: HandoverGroup[] = [
     title: "Pain Management",
     items: [
       { v: "analgesia_protocol", label: "Regular analgesic schedule prescribed" },
-      { v: "pca",                label: "PCA / epidural вЂ” pump settings checked" },
-      { v: "epidural_catheter",  label: "Epidural catheter вЂ” pain team to review" },
+      { v: "pca",                label: "PCA / epidural — pump settings checked" },
+      { v: "epidural_catheter",  label: "Epidural catheter — pain team to review" },
       { v: "nerve_catheter",     label: "Peripheral nerve catheter in situ" },
-      { v: "pain_rescue",        label: "Rescue analgesia вЂ” drug, dose, frequency" },
+      { v: "pain_rescue",        label: "Rescue analgesia — drug, dose, frequency" },
       { v: "alert_pain",         label: "Alert if NRS pain score > 4 at rest" },
     ],
   },
@@ -128,16 +128,16 @@ const HANDOVER_GROUPS: HandoverGroup[] = [
       { v: "antiemetic_prn", label: "Antiemetics PRN / antiemetic regime prescribed" },
       { v: "ponv_protocol",  label: "PONV prophylaxis" },
       { v: "oral_intake",    label: "Resume oral intake when tolerating" },
-      { v: "ngt",            label: "NGT in situ вЂ” position confirmed / output documented" },
+      { v: "ngt",            label: "NGT in situ — position confirmed / output documented" },
     ],
   },
   {
     id: "meds",
     title: "Medications & Prophylaxis",
     items: [
-      { v: "resume_meds",   label: "Regular medications resumed / held вЂ” list confirmed" },
-      { v: "dvt_lmwh",      label: "Chemical DVT prophylaxis вЂ” LMWH dose and timing" },
-      { v: "dvt_mechanical", label: "Mechanical DVT prophylaxis вЂ” compression stockings / IPC" },
+      { v: "resume_meds",   label: "Regular medications resumed / held — list confirmed" },
+      { v: "dvt_lmwh",      label: "Chemical DVT prophylaxis — LMWH dose and timing" },
+      { v: "dvt_mechanical", label: "Mechanical DVT prophylaxis — compression stockings / IPC" },
       { v: "mobilisation",   label: "Early mobilisation plan documented" },
       { v: "stress_ulcer",   label: "Stress ulcer prophylaxis" },
       { v: "antibiotics",    label: "Antibiotic course continued / completed" },
@@ -236,7 +236,7 @@ export function ScoreRow({
   )
 }
 
-// Row of 11 numbered buttons for NRS 0вЂ“10
+// Row of 11 numbered buttons for NRS 0–10
 export function NRSRow({ value, onChange }: { value: number | undefined; onChange: (v: number) => void }) {
   return (
     <View className="flex-row flex-wrap gap-1.5">
@@ -317,7 +317,7 @@ export function DispositionPicker({
   )
 }
 
-// Multi-toggle checkboxes for handover items вЂ” grouped
+// Multi-toggle checkboxes for handover items — grouped
 export function HandoverChecklist({
   value,
   onChange,

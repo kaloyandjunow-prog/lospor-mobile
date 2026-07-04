@@ -7,6 +7,7 @@ import { buildIntraopEventActions, repeatDrugEventPayload } from "@/lib/intraop-
 import { buildEmergencyShortcutSheet, type EmergencyShortcutKind } from "@/lib/intraop-emergency-shortcuts"
 import { dispatchRowQuickAdd, slotIsoTimestamp, type RowQuickAddAction } from "@/lib/intraop-row-quick-add"
 import type { LogEvent } from "@/lib/intraop-log-event"
+import type { ClinicalStringKey } from "@/lib/preferences-context"
 
 type EventLabel = (ev: LogEvent) => { text: string }
 type SaveIntraopEvent = (
@@ -22,6 +23,7 @@ type UseIntraopEventActionsArgs = {
   removeEvent: (ev: LogEvent, sync?: boolean) => Promise<void>
   eventLabel: EventLabel
   cancelLabel: string
+  tc: (key: ClinicalStringKey) => string
   setEntryTs: Dispatch<SetStateAction<string | null>>
   openDrugPreset: (name: string, dose: string) => void
   setAirwayLabel: Dispatch<SetStateAction<string>>
@@ -46,6 +48,7 @@ export function useIntraopEventActions({
   removeEvent,
   eventLabel,
   cancelLabel,
+  tc,
   setEntryTs,
   openDrugPreset,
   setAirwayLabel,
@@ -80,7 +83,7 @@ export function useIntraopEventActions({
       },
       logEvent: (label, color) => save({ type: "clinical_event", label, color }),
       openAirwayDetail,
-    })
+    }, tc)
     actionSheet(sheet.title, sheet.message, sheet.actions)
   }
 

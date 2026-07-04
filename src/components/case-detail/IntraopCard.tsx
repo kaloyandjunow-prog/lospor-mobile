@@ -108,7 +108,7 @@ export function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intr
     const parts: string[] = []
     if (ibwUsed) parts.push(`IBW ${Math.round(ibwUsed * 10) / 10} kg`)
     if (tbwUsed) parts.push(`TBW ${Math.round((tbwUsed ?? 0) * 10) / 10} kg`)
-    return parts.length ? `вЂ  ${parts.join(" / ")}` : null
+    return parts.length ? `≈ ${parts.join(" / ")}` : null
   })()
 
   const airwayStr = formatAirway(intraop)
@@ -216,7 +216,7 @@ export function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intr
       {intraop.premedicationEvening ? <InfoRow label={tc("summaryPremedEve")} value={intraop.premedicationEvening} /> : null}
       {intraop.premedicationMorning ? <InfoRow label={tc("summaryPremedAM")} value={intraop.premedicationMorning} /> : null}
 
-      {/* Drug totals вЂ” bolus */}
+      {/* Drug totals — bolus */}
       {drugTotals.length > 0 && (
         <View style={{ marginBottom: 10 }}>
           <Text style={{ color: colors.textMuted, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
@@ -231,7 +231,7 @@ export function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intr
         </View>
       )}
 
-      {/* Infusion totals вЂ” weight-adjusted where applicable */}
+      {/* Infusion totals — weight-adjusted where applicable */}
       {infusionTotals.length > 0 && (
         <View style={{ marginBottom: 10 }}>
           <Text style={{ color: colors.textMuted, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
@@ -242,7 +242,7 @@ export function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intr
               <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{d.name}</Text>
               <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: "700" }}>
                 {d.total} {d.unit}
-                {d.weightUsed != null ? <Text style={{ color: colors.warning, fontSize: 10 }}> вЂ </Text> : null}
+                {d.weightUsed != null ? <Text style={{ color: colors.warning, fontSize: 10 }}> ≈</Text> : null}
               </Text>
             </View>
           ))}

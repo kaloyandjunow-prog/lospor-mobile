@@ -3,6 +3,7 @@ import { colors } from "@/theme/colors"
 import { SyncBadge } from "@/components/clinical-ui"
 import { fmtElapsed } from "@/lib/intraop-format"
 import type { VitalsEntry } from "@/components/IntraopTimetable"
+import { usePreferences } from "@/lib/preferences-context"
 
 // Top "monitor" header for the intraop screen: technique/procedure/diagnosis,
 // the running clock + start controls, sync state, and last vitals.
@@ -25,6 +26,7 @@ export function IntraopMonitorHeader({
   onRetrySync: () => void
   lastVitals?: VitalsEntry | null
 }) {
+  const { tc } = usePreferences()
   return (
     <View style={{ backgroundColor: colors.surface, paddingTop:10, paddingBottom:10,
       paddingHorizontal:16, borderBottomWidth:1, borderBottomColor: colors.border }}>
@@ -52,14 +54,14 @@ export function IntraopMonitorHeader({
                 style={{ borderRadius:10, paddingHorizontal:12, paddingVertical:5,
                   backgroundColor:"#1a1005", borderWidth:1, borderColor:"#f97316aa" }}
               >
-                <Text style={{ color:"#fb923c", fontSize:11, fontWeight:"900" }}>Start now</Text>
+                <Text style={{ color:"#fb923c", fontSize:11, fontWeight:"900" }}>{tc("mhStartNow")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={onStartAt}
                 style={{ borderRadius:10, paddingHorizontal:12, paddingVertical:5,
                   backgroundColor:"#0f172a", borderWidth:1, borderColor:"#6366f1aa" }}
               >
-                <Text style={{ color:"#a5b4fc", fontSize:11, fontWeight:"900" }}>Start at…</Text>
+                <Text style={{ color:"#a5b4fc", fontSize:11, fontWeight:"900" }}>{tc("mhStartAt")}</Text>
               </TouchableOpacity>
             </View>
           ) : elapsedMs > 60_000 ? (
@@ -81,7 +83,7 @@ export function IntraopMonitorHeader({
             onPress={onRetrySync}
             style={{ paddingHorizontal:10, paddingVertical:6, borderRadius:10,
               borderWidth:1, borderColor:colors.warning, backgroundColor:"#2a210f" }}>
-            <Text style={{ color:colors.warning, fontSize:11, fontWeight:"800" }}>Retry sync</Text>
+            <Text style={{ color:colors.warning, fontSize:11, fontWeight:"800" }}>{tc("mhRetrySync")}</Text>
           </TouchableOpacity>
         )}
       </View>

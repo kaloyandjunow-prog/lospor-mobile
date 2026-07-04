@@ -97,7 +97,7 @@ export function PostopCard({ postop, tc, t }: { postop: CaseData["postop"]; tc: 
           borderWidth: 1, borderColor: withAlpha(totalColor, "66"),
         }}>
           <Text style={{ color: totalColor, fontSize: 14, fontWeight: "900" }}>
-            {total}/10 вЂ” {totalLabel}
+            {total}/10 — {totalLabel}
           </Text>
         </View>
       </View>
@@ -138,7 +138,7 @@ export function PostopCard({ postop, tc, t }: { postop: CaseData["postop"]; tc: 
             borderRadius: 10, padding: 8, alignItems: "center",
           }}>
             <Text style={{ color: colors.primary, fontSize: 16, fontWeight: "800" }}>{postop.recoverySpO2}%</Text>
-            <Text style={{ color: colors.textMuted, fontSize: 10, marginTop: 2 }}>SpOв‚‚</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 10, marginTop: 2 }}>SpO₂</Text>
           </View>
         )}
         {postop.temperatureCelsius != null && (
@@ -151,7 +151,7 @@ export function PostopCard({ postop, tc, t }: { postop: CaseData["postop"]; tc: 
             <Text style={{ color: colors.temp, fontSize: 16, fontWeight: "800" }}>
               {postop.temperatureCelsius}
             </Text>
-            <Text style={{ color: colors.textMuted, fontSize: 10, marginTop: 2 }}>Temp В°C</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 10, marginTop: 2 }}>Temp °C</Text>
           </View>
         )}
         {postop.painScoreNRS != null && (

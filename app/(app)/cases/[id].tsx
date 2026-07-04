@@ -8,7 +8,7 @@ import { apiFetch, apiJson } from "@/lib/api"
 import { notify, confirmAction } from "@/lib/notify"
 import { AppHeader } from "@/components/AppHeader"
 import { EditWindowBanner } from "@/components/EditWindowBanner"
-import { STATUS_META } from "@/components/ui"
+import { STATUS_META, statusLabel } from "@/components/ui"
 import { colors, withAlpha } from "@/theme/colors"
 import { usePreferences } from "@/lib/preferences-context"
 import { AirwayCard, IntraopCard, LabCard, MedicalHistoryCard, PostopCard, PreopCard } from "@/components/case-detail/CaseDetailCards"
@@ -23,7 +23,7 @@ import {
 export default function CaseSummaryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
-  const { tc, t } = usePreferences()
+  const { tc, t, language } = usePreferences()
   const [caseData, setCaseData] = useState<CaseData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -175,7 +175,7 @@ export default function CaseSummaryScreen() {
   // в”Ђв”Ђ Main render в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   const displayStatus = computedDisplayStatus(caseData)
   const sc = STATUS_META[displayStatus]?.color ?? colors.textMuted
-  const statusLabel = STATUS_META[displayStatus]?.label ?? displayStatus
+  const displayStatusLabel = statusLabel(displayStatus, language)
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -198,7 +198,7 @@ export default function CaseSummaryScreen() {
               color: sc, fontSize: 11, fontWeight: "800",
               textTransform: "uppercase", letterSpacing: 0.5,
             }}>
-              {statusLabel}
+              {displayStatusLabel}
             </Text>
           </View>
           {caseData.caseCode ? (

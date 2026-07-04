@@ -3,6 +3,7 @@ import { ScrollView, Text, TextInput, TouchableOpacity, View } from "react-nativ
 import { Sheet } from "@/components/intraop/Sheet"
 import { DoseSelector } from "@/components/intraop/DoseSelector"
 import type { ScenarioGroup } from "@/lib/intraop-scenarios"
+import { usePreferences } from "@/lib/preferences-context"
 
 type InfusionOption = { name: string; unit: string; color: string }
 type Range = { min: number; max: number; step: number }
@@ -79,6 +80,7 @@ export function InfusionSheet({
   baseProfiles?: Record<string, InfProfile>
   routeProfiles?: Record<string, Record<string, InfProfile>>
 }) {
+  const { tc } = usePreferences()
   const [mode, setMode] = useState<"home" | "favourites" | "scenario" | "browse">("home")
   const [scenario, setScenario] = useState<ScenarioGroup | null>(null)
   const [query, setQuery] = useState("")
@@ -154,30 +156,30 @@ export function InfusionSheet({
     .filter((drug): drug is InfusionOption => !!drug)
 
   return (
-    <Sheet visible={visible} onClose={onClose} title={infDrug ? infDrug.name : mode === "browse" ? "Browse infusions" : mode === "favourites" ? "Favourite infusions" : scenario?.label ?? "Start infusion"} full>
+    <Sheet visible={visible} onClose={onClose} title={infDrug ? infDrug.name : mode === "browse" ? tc("dsBrowseInfusions") : mode === "favourites" ? tc("dsFavouriteInfusions") : scenario?.label ?? tc("dsStartInfusion")} full>
       {infDrug ? (
         <ScrollView showsVerticalScrollIndicator={false}>
           <TouchableOpacity onPress={() => setInfDrug(null)} style={{ marginBottom:14 }}>
-            <Text style={{ color:"#94a3b8", fontSize:13 }}>Back</Text>
+            <Text style={{ color:"#94a3b8", fontSize:13 }}>{tc("back")}</Text>
           </TouchableOpacity>
           <DoseSelector
             color={infDrug.color}
             quickValues={activeQuickValues}
             value={infRate} onValueChange={setInfRate}
             {...activeRange}
-            valuePlaceholder="or type custom"
+            valuePlaceholder={tc("dsOrTypeCustom")}
             unitSuffix={activeUnit}
             routes={routes[infDrug.name]} route={activeRoute} onRouteChange={changeRoute}
             concentrationOptions={activeConcentrations}
             concentration={infConcentration} onConcentrationChange={setInfConcentration}
-            confirmLabel={`Start ${infDrug.name} ${infRate} ${activeUnit}`}
+            confirmLabel={`${tc("dsStart")} ${infDrug.name} ${infRate} ${activeUnit}`}
             onConfirm={onConfirm} confirmDisabled={!infRate}
           />
         </ScrollView>
       ) : mode === "scenario" && scenario ? (
         <ScrollView showsVerticalScrollIndicator={false}>
           <TouchableOpacity onPress={() => { setScenario(null); setMode("home") }} style={{ marginBottom:14 }}>
-            <Text style={{ color:"#94a3b8", fontSize:13 }}>Back</Text>
+            <Text style={{ color:"#94a3b8", fontSize:13 }}>{tc("back")}</Text>
           </TouchableOpacity>
           <View style={{ flexDirection:"row", flexWrap:"wrap", gap:10 }}>
             {scenarioItems.map(({ entry, drug }) => (
@@ -188,10 +190,10 @@ export function InfusionSheet({
       ) : mode === "favourites" ? (
         <ScrollView showsVerticalScrollIndicator={false}>
           <TouchableOpacity onPress={() => setMode("home")} style={{ marginBottom:14 }}>
-            <Text style={{ color:"#94a3b8", fontSize:13 }}>Back</Text>
+            <Text style={{ color:"#94a3b8", fontSize:13 }}>{tc("back")}</Text>
           </TouchableOpacity>
           {favouriteItems.length === 0 ? (
-            <Text style={{ color:"#64748b", fontSize:13, lineHeight:18 }}>Choose favourite infusions in Settings.</Text>
+            <Text style={{ color:"#64748b", fontSize:13, lineHeight:18 }}>{tc("dsChooseFavourites")}</Text>
           ) : (
             <View style={{ flexDirection:"row", flexWrap:"wrap", gap:10 }}>
               {favouriteItems.map(drug => (
@@ -203,12 +205,12 @@ export function InfusionSheet({
       ) : mode === "browse" ? (
         <ScrollView showsVerticalScrollIndicator={false}>
           <TouchableOpacity onPress={() => { setQuery(""); setMode("home") }} style={{ marginBottom:14 }}>
-            <Text style={{ color:"#94a3b8", fontSize:13 }}>Back</Text>
+            <Text style={{ color:"#94a3b8", fontSize:13 }}>{tc("back")}</Text>
           </TouchableOpacity>
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search infusions"
+            placeholder={tc("dsSearchInfusions")}
             placeholderTextColor="#475569"
             style={{ backgroundColor:"#111820", color:"#e2e8f0", borderRadius:10, paddingHorizontal:12, paddingVertical:10,
               borderWidth:1, borderColor:"#1e2d40", marginBottom:14 }}
@@ -222,7 +224,7 @@ export function InfusionSheet({
       ) : (
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={{ flexDirection:"row", flexWrap:"wrap", gap:10, marginBottom:16 }}>
-            <Pill label="Favourites" sublabel={`${favouriteItems.length || 0} selected`} color="#38bdf8" onPress={() => setMode("favourites")} wide />
+            <Pill label={tc("dsFavourites")} sublabel={`${favouriteItems.length || 0} ${tc("dsSelected")}`} color="#38bdf8" onPress={() => setMode("favourites")} wide />
           </View>
           <View style={{ flexDirection:"row", flexWrap:"wrap", gap:10 }}>
             {scenarios.map(group => (
@@ -231,7 +233,7 @@ export function InfusionSheet({
             ))}
           </View>
           <View style={{ marginTop:18 }}>
-            <Pill label="Browse all infusions" sublabel="Search canonical list" color="#64748b" onPress={() => setMode("browse")} wide />
+            <Pill label={tc("dsBrowseAllInfusions")} sublabel={tc("dsSearchCanonicalList")} color="#64748b" onPress={() => setMode("browse")} wide />
           </View>
         </ScrollView>
       )}

@@ -1,5 +1,7 @@
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Switch, type TextInputProps } from "react-native"
 import { colors, withAlpha } from "@/theme/colors"
+import { usePreferences, type AppLanguage } from "@/lib/preferences-context"
+import { CASE_STATUS_LABELS, type CaseStatus } from "@lospor/core/case-status"
 
 // ─── Colors (match web dark mode exactly) ────────────────────────────────────
 // Screen bg:    #111111   →  bg-[#111111]
@@ -168,6 +170,9 @@ export function SingleToggle({
 }
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
+// Colors only — labels come from @lospor/core/case-status (shared with
+// lospor-app) so they follow the active app language instead of being
+// hardcoded English here.
 export const STATUS_META: Record<string, { label: string; color: string }> = {
   DRAFT:                { label: "Draft",               color: colors.textMuted },
   IN_CONSULTATION:      { label: "In consultation",     color: "#f59e0b" },
@@ -178,11 +183,18 @@ export const STATUS_META: Record<string, { label: string; color: string }> = {
   COMPLETE:             { label: "Case finished",       color: colors.success },
 }
 
+export function statusLabel(status: string, language: AppLanguage): string {
+  const entry = CASE_STATUS_LABELS[status as CaseStatus]
+  return entry ? (language === "bg" ? entry.bg : entry.en) : status
+}
+
 export function StatusBadge({ status }: { status: string }) {
-  const meta = STATUS_META[status] ?? { label: status, color: colors.textMuted }
+  const { language } = usePreferences()
+  const color = STATUS_META[status]?.color ?? colors.textMuted
+  const label = statusLabel(status, language)
   return (
-    <View style={{ borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: withAlpha(meta.color, "20"), borderWidth: 1, borderColor: withAlpha(meta.color, "66") }}>
-      <Text style={{ color: meta.color, fontSize: 12, fontWeight: "800" }}>{meta.label}</Text>
+    <View style={{ borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: withAlpha(color, "20"), borderWidth: 1, borderColor: withAlpha(color, "66") }}>
+      <Text style={{ color, fontSize: 12, fontWeight: "800" }}>{label}</Text>
     </View>
   )
 }

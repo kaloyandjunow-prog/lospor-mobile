@@ -2,6 +2,7 @@ import type { RefObject } from "react"
 import { Platform, Text, TextInput, View } from "react-native"
 import { FeedbackPressable } from "./FeedbackPressable"
 import { Sheet } from "./Sheet"
+import { usePreferences } from "@/lib/preferences-context"
 
 type Props = {
   visible: boolean
@@ -74,6 +75,7 @@ export function VitalsSheet({
   onGlucoseChange,
   onConfirm,
 }: Props) {
+  const { tc } = usePreferences()
   return (
     <Sheet visible={visible} onClose={onClose} title={title} full>
       <FeedbackPressable
@@ -84,23 +86,23 @@ export function VitalsSheet({
           backgroundColor: scanBusy ? "#1e2d40" : "#0f2a1a",
           borderWidth:1, borderColor: scanBusy ? "#2a3a50" : "#22c55e55" }}>
         <Text style={{ color: scanBusy ? "#64748b" : "#86efac", fontSize:13, fontWeight:"700" }}>
-          {scanBusy ? "Reading monitor..." : "Scan monitor screen"}
+          {scanBusy ? tc("vsReadingMonitor") : tc("vsScanMonitor")}
         </Text>
       </FeedbackPressable>
       {!scanBusy && (
         <Text style={{ color:"#475569", fontSize:10, marginBottom:14, lineHeight:14 }}>
-          Monitor images are sent to the configured AI provider for extraction only and are not stored by LOSPOR. Do not capture patient names or identifiers.
+          {tc("vsScanPrivacyNote")}
         </Text>
       )}
       <Text style={{ color:"#ef4444", fontSize:11, fontWeight:"700", letterSpacing:1,
-        textTransform:"uppercase", marginBottom:8 }}>Blood Pressure</Text>
+        textTransform:"uppercase", marginBottom:8 }}>{tc("vsBloodPressure")}</Text>
       <View style={{ flexDirection:"row", gap:10, marginBottom:18 }}>
         <TextInput
           style={{ flex:1, minWidth:0, backgroundColor:"#111111", color:"#ef4444", borderRadius:12,
             padding: Platform.OS === "web" ? 10 : 14,
             fontSize: Platform.OS === "web" ? 20 : 30,
             fontWeight:"700", borderWidth:1, borderColor:"#ef444444", textAlign:"center" }}
-          placeholder="Sys"
+          placeholder={tc("vsSys")}
           placeholderTextColor="#3e3e3e"
           ref={sysRef}
           keyboardType="number-pad"
@@ -113,7 +115,7 @@ export function VitalsSheet({
             padding: Platform.OS === "web" ? 10 : 14,
             fontSize: Platform.OS === "web" ? 20 : 30,
             fontWeight:"700", borderWidth:1, borderColor:"#ef444433", textAlign:"center" }}
-          placeholder="Dia"
+          placeholder={tc("vsDia")}
           placeholderTextColor="#3e3e3e"
           ref={diaRef}
           keyboardType="number-pad"
@@ -126,7 +128,7 @@ export function VitalsSheet({
         <>
           <View style={{ flexDirection:"row", gap:10, marginBottom:14 }}>
             <View style={{ flex:1, minWidth:0 }}>
-              <Text style={{ color:"#22c55e", fontSize:11, fontWeight:"700", marginBottom:6 }}>HEART RATE</Text>
+              <Text style={{ color:"#22c55e", fontSize:11, fontWeight:"700", marginBottom:6 }}>{tc("vsHeartRate")}</Text>
               <TextInput
                 style={{ backgroundColor:"#111111", color:"#22c55e", borderRadius:10,
                   padding: Platform.OS === "web" ? 9 : 12,
@@ -181,7 +183,7 @@ export function VitalsSheet({
           {showTemperature && (
             <View style={{ flexDirection:"row", gap:10, marginBottom:14 }}>
               <View style={{ flex:1, minWidth:0 }}>
-                <Text style={{ color:"#a78bfa", fontSize:11, fontWeight:"700", marginBottom:6 }}>TEMP</Text>
+                <Text style={{ color:"#a78bfa", fontSize:11, fontWeight:"700", marginBottom:6 }}>{tc("vsTemp")}</Text>
                 <TextInput
                   style={{ backgroundColor:"#111111", color:"#a78bfa", borderRadius:10,
                     padding: Platform.OS === "web" ? 8 : 10,
@@ -202,7 +204,7 @@ export function VitalsSheet({
           {showGlucose && (
             <View style={{ flexDirection:"row", gap:10, marginBottom:20 }}>
               <View style={{ flex:1, minWidth:0 }}>
-                <Text style={{ color:"#34d399", fontSize:11, fontWeight:"700", marginBottom:6 }}>Serum/peripheral glucose mmol/L</Text>
+                <Text style={{ color:"#34d399", fontSize:11, fontWeight:"700", marginBottom:6 }}>{tc("vsGlucoseMmol")}</Text>
                 <TextInput
                   style={{ backgroundColor:"#111111", color:"#34d399", borderRadius:10,
                     padding: Platform.OS === "web" ? 8 : 10,
@@ -224,7 +226,7 @@ export function VitalsSheet({
       {mode === "bp" && (
         <View style={{ flexDirection:"row", gap:10, marginBottom:18 }}>
           <View style={{ flex:1 }}>
-            <Text style={{ color:"#22c55e", fontSize:11, fontWeight:"700", marginBottom:6 }}>HEART RATE</Text>
+            <Text style={{ color:"#22c55e", fontSize:11, fontWeight:"700", marginBottom:6 }}>{tc("vsHeartRate")}</Text>
             <TextInput
               style={{ backgroundColor:"#111111", color:"#22c55e", borderRadius:10,
                 padding: Platform.OS === "web" ? 9 : 12,
@@ -244,7 +246,7 @@ export function VitalsSheet({
       <FeedbackPressable onPress={onConfirm}
         style={{ backgroundColor:"#0f2a1a", borderRadius:14, padding:18, alignItems:"center",
           borderWidth:1, borderColor:"#22c55e" }}>
-        <Text style={{ color:"#86efac", fontSize:16, fontWeight:"700" }}>Save vitals</Text>
+        <Text style={{ color:"#86efac", fontSize:16, fontWeight:"700" }}>{tc("vsSaveVitals")}</Text>
       </FeedbackPressable>
     </Sheet>
   )

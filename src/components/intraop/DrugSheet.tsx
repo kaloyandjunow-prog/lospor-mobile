@@ -181,7 +181,7 @@ export function DrugSheet({
 
   return (
     <Sheet visible={visible} onClose={onClose}
-      title={drugPick ? drugPick.name : drugCat ? drugCat.cat : mode === "browse" ? "Browse drugs" : mode === "favourites" ? "Favourite drugs" : scenario?.label ?? "Add drug"} full>
+      title={drugPick ? drugPick.name : drugCat ? drugCat.cat : mode === "browse" ? tc("dsBrowseDrugs") : mode === "favourites" ? tc("dsFavouriteDrugs") : scenario?.label ?? tc("dsAddDrug")} full>
       {drugPick ? (
         <View>
           <TouchableOpacity onPress={() => { setDrugPick(null); if (pickedViaShortcut) { setDrugCat(null); setPickedViaShortcut(false) } }} style={{ marginBottom:14 }}>
@@ -193,12 +193,12 @@ export function DrugSheet({
               quickValues={activeQuickValues}
               value={drugDose} onValueChange={setDrugDose}
               {...activeRange}
-              valuePlaceholder={`Custom ${activeUnit}`}
+              valuePlaceholder={`${tc("dsCustomUnit")} ${activeUnit}`}
               unitSuffix={activeUnit}
               routes={routes[drugPick.name]} route={activeRoute} onRouteChange={changeRoute}
               concentrationOptions={activeConcentrations}
               concentration={drugConcentration} onConcentrationChange={setDrugConcentration}
-              confirmLabel={`Add ${drugPick.name} ${drugDose} ${activeUnit}`}
+              confirmLabel={`${tc("dsAdd")} ${drugPick.name} ${drugDose} ${activeUnit}`}
               onConfirm={onConfirm} confirmDisabled={!drugDose}
             />
             {doseCalcs?.[drugPick.name]?.hint ? (
@@ -212,7 +212,7 @@ export function DrugSheet({
               style={{ backgroundColor:"#111820", borderRadius:14, padding:16, alignItems:"center",
                 borderWidth:1, borderColor: (drugCat?.color ?? "#3b82f6") + "66" }}>
               <Text style={{ color: drugCat?.color ?? "#93c5fd", fontSize:14, fontWeight:"700" }}>
-                Start {drugPick.name} as infusion →
+                {tc("dsStartAsInfusion").replace("{name}", drugPick.name)}
               </Text>
             </TouchableOpacity>
           )}
@@ -262,7 +262,7 @@ export function DrugSheet({
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search drugs"
+            placeholder={tc("dsSearchDrugs")}
             placeholderTextColor="#475569"
             style={{ backgroundColor:"#111820", color:"#e2e8f0", borderRadius:10, paddingHorizontal:12, paddingVertical:10,
               borderWidth:1, borderColor:"#1e2d40", marginBottom:14 }}
@@ -278,7 +278,7 @@ export function DrugSheet({
       ) : (
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={{ flexDirection:"row", flexWrap:"wrap", gap:10, marginBottom:16 }}>
-            <Pill label="Favourites" sublabel={`${favouriteItems.length || 0} selected`} color="#38bdf8" onPress={() => setMode("favourites")} wide />
+            <Pill label={tc("dsFavourites")} sublabel={`${favouriteItems.length || 0} ${tc("dsSelected")}`} color="#38bdf8" onPress={() => setMode("favourites")} wide />
           </View>
           <View style={{ flexDirection:"row", flexWrap:"wrap", gap:10 }}>
             {scenarios.map(group => (
@@ -287,7 +287,7 @@ export function DrugSheet({
             ))}
           </View>
           <View style={{ marginTop:18 }}>
-            <Pill label="Browse all drugs" sublabel="Search and canonical groups" color="#64748b" onPress={() => setMode("browse")} wide />
+            <Pill label={tc("dsBrowseAllDrugs")} sublabel={tc("dsSearchCanonical")} color="#64748b" onPress={() => setMode("browse")} wide />
           </View>
         </ScrollView>
       )}

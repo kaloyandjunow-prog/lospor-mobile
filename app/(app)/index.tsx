@@ -160,14 +160,14 @@ export default function DashboardScreen() {
       const data = await apiJson<CaseItem[] | { cases: CaseItem[] }>("/api/cases")
       setCases(Array.isArray(data) ? data : (Array.isArray(data?.cases) ? data.cases : []))
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not load cases."
+      const message = err instanceof Error ? err.message : t("couldNotLoadCases")
       setLoadError(message)
       if (err instanceof ApiError && err.status === 401) {
         await logout()
-        notify("Session expired", "Please sign in again.")
+        notify(t("sessionExpired"), t("signInAgainPrompt"))
         return
       }
-      notify("Error", message)
+      notify(t("error"), message)
     }
   }, [logout])
 
@@ -313,7 +313,7 @@ export default function DashboardScreen() {
       if (!res.ok) throw new Error()
       await Promise.all([loadCases(), loadTransfers()])
     } catch {
-      notify("Error", `Could not ${action} handover.`)
+      notify(t("error"), t("couldNotActionHandover").replace("{action}", action))
     } finally {
       setActioningTransfer(null)
     }
@@ -451,7 +451,7 @@ const tabCounts: Record<FilterTab, number> = {
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                         <View style={{ backgroundColor: colors.warning, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
-                          <Text style={{ color: "#000", fontSize: 9, fontWeight: "900" }}>LOCAL</Text>
+                          <Text style={{ color: "#000", fontSize: 9, fontWeight: "900" }}>{t("localBadge")}</Text>
                         </View>
                         <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: "800" }} numberOfLines={1}>{diag}</Text>
                       </View>

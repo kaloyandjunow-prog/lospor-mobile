@@ -520,6 +520,7 @@ export default function IntraopLiveScreen() {
     removeEvent,
     eventLabel,
     cancelLabel: tc("cancelLabel"),
+    tc,
     setEntryTs,
     openDrugPreset,
     setAirwayLabel,

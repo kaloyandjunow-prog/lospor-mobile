@@ -479,6 +479,7 @@ export function VitalNumber({ label, unit, value, onChange, unobtainable, onTogg
   required?: boolean
   error?: string
 }) {
+  const { tc } = usePreferences()
   return (
     <View style={{ marginBottom: 14 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -499,7 +500,7 @@ export function VitalNumber({ label, unit, value, onChange, unobtainable, onTogg
       </View>
       {unobtainable ? (
         <View style={{ minHeight: 48, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, justifyContent: "center", paddingHorizontal: 12 }}>
-          <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: "800" }}>Not available</Text>
+          <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: "800" }}>{tc("vitalNotAvailable")}</Text>
         </View>
       ) : (
         <VitalStepper value={value} onChange={(next) => { impact(); onChange(next) }} min={min} max={max} step={step} precision={precision} unit={unit} placeholder={label} />
@@ -510,6 +511,7 @@ export function VitalNumber({ label, unit, value, onChange, unobtainable, onTogg
 }
 
 export function ManualLabPanel({ value, onChange, labelManualLabEntry = "Manual lab entry", labelHideManualLab = "Hide manual lab entry", labelSearchLabs = "Search tests..." }: { value: { test: string; value: string; unit: string }[]; onChange: (value: { test: string; value: string; unit: string }[]) => void; labelManualLabEntry?: string; labelHideManualLab?: string; labelSearchLabs?: string }) {
+  const { tc } = usePreferences()
   const [expanded, setExpanded] = useState(false)
   const [query, setQuery] = useState("")
   const [category, setCategory] = useState<string | null>(null)
@@ -556,7 +558,7 @@ export function ManualLabPanel({ value, onChange, labelManualLabEntry = "Manual 
 
       <Pressable onPress={() => setExpanded(!expanded)} style={{ borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: 14, paddingVertical: 12, marginBottom: expanded ? 12 : 0 }}>
         <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: "900" }}>{expanded ? labelHideManualLab : labelManualLabEntry}</Text>
-        <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>Typing is the backup path. Camera and Gallery are primary.</Text>
+        <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>{tc("manualLabHint")}</Text>
       </Pressable>
 
       {expanded ? (

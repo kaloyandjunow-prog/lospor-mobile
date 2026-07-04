@@ -938,18 +938,18 @@ export default function NewCaseScreen() {
             )}
             <SectionCard title={tc("sectionPatient")} onLayout={(y) => { sectionY.current.patient = y }} visible={showSection("patient")}>
               <Field label={tc("ageYears")} required error={errors.ageYears?.message}>
-                <Controller control={control} name="ageYears" render={({ field }) => <ClinicalNumberInput value={field.value} onChange={field.onChange} min={ageRange?.min ?? 0} max={149} step={ageRange?.step ?? 1} placeholder="Age" showSteppers={false} />} />
+                <Controller control={control} name="ageYears" render={({ field }) => <ClinicalNumberInput value={field.value} onChange={field.onChange} min={ageRange?.min ?? 0} max={149} step={ageRange?.step ?? 1} placeholder={tc("agePlaceholder")} showSteppers={false} />} />
               </Field>
               <Field label={tc("heightCm")} required error={errors.heightCm?.message}>
                 <Controller control={control} name="heightCm" render={({ field }) => {
                   const cv = convertedMeasurement("height", unitPrefs, field.value, field.onChange, heightRange?.min ?? 0, heightRange?.max ?? 250, heightRange?.step ?? 1)
-                  return <ClinicalNumberInput value={cv.value} onChange={cv.onChange} min={cv.min} max={cv.max} step={cv.step} precision={cv.precision} unit={cv.unit} placeholder="Height" showSteppers={false} />
+                  return <ClinicalNumberInput value={cv.value} onChange={cv.onChange} min={cv.min} max={cv.max} step={cv.step} precision={cv.precision} unit={cv.unit} placeholder={tc("heightPlaceholder")} showSteppers={false} />
                 }} />
               </Field>
               <Field label={tc("weightKg")} required error={errors.weightKg?.message}>
                 <Controller control={control} name="weightKg" render={({ field }) => {
                   const cv = convertedMeasurement("weight", unitPrefs, field.value, field.onChange, weightRange?.min ?? 0, weightRange?.max ?? 250, weightRange?.step ?? 1)
-                  return <ClinicalNumberInput value={cv.value} onChange={cv.onChange} min={cv.min} max={cv.max} step={cv.step} precision={cv.precision} unit={cv.unit} placeholder="Weight" showSteppers={false} />
+                  return <ClinicalNumberInput value={cv.value} onChange={cv.onChange} min={cv.min} max={cv.max} step={cv.step} precision={cv.precision} unit={cv.unit} placeholder={tc("weightPlaceholder")} showSteppers={false} />
                 }} />
               </Field>
               {(bmi || ibw || abw) ? (
@@ -974,7 +974,7 @@ export default function NewCaseScreen() {
                 <SearchTagInput label={tc("diagnosisLabel")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label, system: item.system, labelEn: item.labelEn, labelBg: item.labelBg }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, sub: item.code, label: item.label, system: item.system ?? "ICD-10", labelEn: item.labelEn, labelBg: item.labelBg })))} endpoint="/api/search/icd10" placeholder={tc("diagnosisPlaceholder")} onFocus={() => scrollToSection("case", 60)} required error={errors.diagnoses?.message} />
               )} />
               <Controller control={control} name="procedures" render={({ field }) => (
-                <SearchTagInput label={tc("procedureLabel")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, label: item.label })))} endpoint="/api/search/procedures" placeholder="Search procedure..." onFocus={() => scrollToSection("case", 160)} required error={errors.procedures?.message} />
+                <SearchTagInput label={tc("procedureLabel")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, label: item.label })))} endpoint="/api/search/procedures" placeholder={tc("procedureSearchPlaceholder")} onFocus={() => scrollToSection("case", 160)} required error={errors.procedures?.message} />
               )} />
               <Controller control={control} name="highRiskSurgery" render={({ field }) => <ClinicalSwitchRow label={tc("highRiskSurgery")} value={!!field.value} onValueChange={field.onChange} activeColor={colors.warning} />} />
               <Controller control={control} name="emergencySurgery" render={({ field }) => (
@@ -1013,7 +1013,7 @@ export default function NewCaseScreen() {
               }} activeColor={colors.danger} />} />
               {allergies ? (
                 <Controller control={control} name="allergyDetails" render={({ field }) => (
-                  <SearchTagInput label={tc("allergenSearch")} value={(field.value ?? []).map((item) => ({ code: item.label, label: item.label }))} onChange={(items) => field.onChange(items.map((item) => ({ label: item.label, inn: item.inn, atcCode: item.atcCode })))} endpoint="/api/search/drugs" placeholder="Search allergen..." onFocus={() => scrollToSection("history", 200)} />
+                  <SearchTagInput label={tc("allergenSearch")} value={(field.value ?? []).map((item) => ({ code: item.label, label: item.label }))} onChange={(items) => field.onChange(items.map((item) => ({ label: item.label, inn: item.inn, atcCode: item.atcCode })))} endpoint="/api/search/drugs" placeholder={tc("allergenSearchPlaceholder")} onFocus={() => scrollToSection("history", 200)} />
                 )} />
               ) : null}
               <Controller control={control} name="latexAllergy" render={({ field }) => <ClinicalSwitchRow label={tc("latexAllergy")} value={!!field.value} onValueChange={field.onChange} activeColor={colors.danger} />} />
@@ -1021,7 +1021,7 @@ export default function NewCaseScreen() {
                 field.onChange(value)
                 if (!value) setValue("familyAnesthesiaDetails", "", { shouldDirty: true })
               }} activeColor={colors.warning} />} />
-              {familyAnesthesiaProblems ? <Field label={tc("familyAnesthesiaDetails")}><Controller control={control} name="familyAnesthesiaDetails" render={({ field }) => <StyledInput value={field.value ?? ""} onChangeText={field.onChange} maxLength={500} multiline placeholder="MH, suxamethonium apnoea, unexplained anaesthesia death..." />} /></Field> : null}
+              {familyAnesthesiaProblems ? <Field label={tc("familyAnesthesiaDetails")}><Controller control={control} name="familyAnesthesiaDetails" render={({ field }) => <StyledInput value={field.value ?? ""} onChangeText={field.onChange} maxLength={500} multiline placeholder={tc("familyAnesthesiaHint")} />} /></Field> : null}
               <Controller control={control} name="dentalProsthetics" render={({ field }) => <ClinicalSwitchRow label={tc("dentalProsthetics")} value={!!field.value} onValueChange={field.onChange} />} />
               <Controller control={control} name="looseTeeth" render={({ field }) => <ClinicalSwitchRow label={tc("looseTeeth")} value={!!field.value} onValueChange={field.onChange} activeColor={colors.warning} />} />
               <Controller control={control} name="smoking" render={({ field }) => <ClinicalSwitchRow label={tc("smoking")} value={!!field.value} onValueChange={field.onChange} />} />
@@ -1097,7 +1097,7 @@ export default function NewCaseScreen() {
                 )} />
               )} />
               <Field label={tc("physicalExamReport")}>
-                <Controller control={control} name="physicalExamReport" render={({ field }) => <StyledInput value={field.value ?? ""} onChangeText={field.onChange} maxLength={500} multiline placeholder="General appearance, relevant exam findings..." />} />
+                <Controller control={control} name="physicalExamReport" render={({ field }) => <StyledInput value={field.value ?? ""} onChangeText={field.onChange} maxLength={500} multiline placeholder={tc("physicalExamHint")} />} />
               </Field>
             </SectionCard>
 
@@ -1109,10 +1109,10 @@ export default function NewCaseScreen() {
                     <Controller control={control} name="mallampati" render={({ field }) => <SegmentedSelect value={field.value} onChange={field.onChange} options={mallampatiOptions.map(o => ({ value: o.value, label: o.value }))} />} />
                   </Field>
                   <Field label={tc("mouthOpeningLabel")}>
-                    <Controller control={control} name="mouthOpeningCm" render={({ field }) => <ClinicalNumberInput value={field.value} onChange={field.onChange} min={mouthOpeningRange?.min ?? 0} max={mouthOpeningRange?.max ?? 10} step={mouthOpeningRange?.step ?? 0.5} precision={1} unit="cm" placeholder="Mouth opening" quickValues={[3, 3.5, 4, 4.5, 5]} showSteppers={false} />} />
+                    <Controller control={control} name="mouthOpeningCm" render={({ field }) => <ClinicalNumberInput value={field.value} onChange={field.onChange} min={mouthOpeningRange?.min ?? 0} max={mouthOpeningRange?.max ?? 10} step={mouthOpeningRange?.step ?? 0.5} precision={1} unit="cm" placeholder={tc("mouthOpeningPlaceholder")} quickValues={[3, 3.5, 4, 4.5, 5]} showSteppers={false} />} />
                   </Field>
                   <Field label={tc("thyromental")}>
-                    <Controller control={control} name="thyromental" render={({ field }) => <ClinicalNumberInput value={field.value} onChange={field.onChange} min={thyromentalRange?.min ?? 0} max={thyromentalRange?.max ?? 15} step={thyromentalRange?.step ?? 1} precision={0} unit="cm" placeholder="Thyromental" quickValues={[5, 6, 7, 8, 9]} showSteppers={false} />} />
+                    <Controller control={control} name="thyromental" render={({ field }) => <ClinicalNumberInput value={field.value} onChange={field.onChange} min={thyromentalRange?.min ?? 0} max={thyromentalRange?.max ?? 15} step={thyromentalRange?.step ?? 1} precision={0} unit="cm" placeholder={tc("thyromentalPlaceholder")} quickValues={[5, 6, 7, 8, 9]} showSteppers={false} />} />
                   </Field>
                   <Field label={tc("neckMobility")}>
                     <Controller control={control} name="neckMobility" render={({ field }) => <SegmentedSelect value={field.value} onChange={field.onChange} options={neckMobilityOptions.map(o => ({ value: o.value, label: lbl(o) }))} />} />
@@ -1130,7 +1130,7 @@ export default function NewCaseScreen() {
                     field.onChange(value)
                     if (!value) setValue("difficultAirwayNotes", "", { shouldDirty: true })
                   }} activeColor={colors.danger} />} />
-                  {difficultAirwayHistory ? <Field label={tc("difficultAirwayNotes")}><Controller control={control} name="difficultAirwayNotes" render={({ field }) => <StyledInput value={field.value ?? ""} onChangeText={field.onChange} maxLength={500} multiline placeholder="Previous grade, technique, rescue device..." />} /></Field> : null}
+                  {difficultAirwayHistory ? <Field label={tc("difficultAirwayNotes")}><Controller control={control} name="difficultAirwayNotes" render={({ field }) => <StyledInput value={field.value ?? ""} onChangeText={field.onChange} maxLength={500} multiline placeholder={tc("difficultAirwayHint")} />} /></Field> : null}
                 </>
               ) : null}
             </SectionCard>

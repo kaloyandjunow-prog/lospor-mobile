@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest"
 import { buildEmergencyShortcutSheet, type EmergencyShortcutKind } from "./intraop-emergency-shortcuts"
+import { CLINICAL_STRINGS } from "@/i18n/clinical-strings"
+
+const tc = (key: keyof typeof CLINICAL_STRINGS.en) => CLINICAL_STRINGS.en[key]
 
 function callbacks() {
   return {
@@ -16,7 +19,7 @@ describe("buildEmergencyShortcutSheet", () => {
     ["bradycardia", "Bradycardia", ["Atropine 0.5 mg", "Log event", "Cancel"]],
     ["airway", "Difficult airway", ["Airway detail", "Log difficult airway", "Cancel"]],
   ] as [EmergencyShortcutKind, string, string[]][])("builds %s actions", (kind, title, labels) => {
-    const sheet = buildEmergencyShortcutSheet(kind, "Cancel", callbacks())
+    const sheet = buildEmergencyShortcutSheet(kind, "Cancel", callbacks(), tc)
     expect(sheet.title).toBe(title)
     expect(sheet.actions.map(action => action.label)).toEqual(labels)
     expect(sheet.actions.at(-1)?.cancel).toBe(true)
@@ -24,14 +27,14 @@ describe("buildEmergencyShortcutSheet", () => {
 
   it("binds drug preset, event, and airway callbacks", () => {
     const hypotensionCallbacks = callbacks()
-    const hypotension = buildEmergencyShortcutSheet("hypotension", "Cancel", hypotensionCallbacks)
+    const hypotension = buildEmergencyShortcutSheet("hypotension", "Cancel", hypotensionCallbacks, tc)
     hypotension.actions[0].onPress?.()
     hypotension.actions[2].onPress?.()
     expect(hypotensionCallbacks.openDrugPreset).toHaveBeenCalledWith("Phenylephrine", "100")
     expect(hypotensionCallbacks.logEvent).toHaveBeenCalledWith("Hypotension", "#ef4444")
 
     const airwayCallbacks = callbacks()
-    const airway = buildEmergencyShortcutSheet("airway", "Cancel", airwayCallbacks)
+    const airway = buildEmergencyShortcutSheet("airway", "Cancel", airwayCallbacks, tc)
     airway.actions[0].onPress?.()
     expect(airwayCallbacks.openAirwayDetail).toHaveBeenCalledOnce()
   })

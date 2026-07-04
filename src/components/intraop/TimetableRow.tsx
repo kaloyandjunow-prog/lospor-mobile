@@ -6,18 +6,21 @@ import type { LogEvent, ActiveInfusion, ActiveFluid, ActiveGasSettings } from "@
 import type { ActiveAgent } from "@/lib/intraop-active-state"
 import type { RunningItem, RowSummary } from "@/lib/intraop-running"
 import type { VitalsEntry } from "@/components/IntraopTimetable"
+import { usePreferences, type ClinicalStringKey } from "@/lib/preferences-context"
 
 export type QuickAddAction = "vital" | "bp" | "drug" | "infusion" | "fluid" | "agent" | "gas" | "event"
 
-const QUICK_ADD_BUTTONS: { label: string; action: QuickAddAction; color: string }[] = [
-  { label: "Vitals", action: "vital", color: "#22c55e" },
-  { label: "Drug", action: "drug", color: "#3b82f6" },
-  { label: "Infusion", action: "infusion", color: "#a855f7" },
-  { label: "Fluid", action: "fluid", color: "#06b6d4" },
-  { label: "Agent", action: "agent", color: "#f59e0b" },
-  { label: "FGF", action: "gas", color: "#818cf8" },
-  { label: "Event", action: "event", color: "#6366f1" },
-]
+function quickAddButtons(tc: (key: ClinicalStringKey) => string): { label: string; action: QuickAddAction; color: string }[] {
+  return [
+    { label: tc("trRowVitals"), action: "vital", color: "#22c55e" },
+    { label: tc("trRowDrug"), action: "drug", color: "#3b82f6" },
+    { label: tc("trRowInfusion"), action: "infusion", color: "#a855f7" },
+    { label: tc("trRowFluid"), action: "fluid", color: "#06b6d4" },
+    { label: tc("trRowAgent"), action: "agent", color: "#f59e0b" },
+    { label: "FGF", action: "gas", color: "#818cf8" },
+    { label: tc("trRowEvent"), action: "event", color: "#6366f1" },
+  ]
+}
 
 // One row of the vertical timetable (5-minute column): collapsed priority
 // summary, or — when expanded — running items + a quick-add grid. Presentational;
@@ -55,6 +58,7 @@ function TimetableRowComponent({
   activeInfusions, activeFluids, activeAgent, activeGas,
   onExpand, onCollapse, onManageInfusion, onEndFluid, onEditGas, onStopAgent, onQuickAdd,
 }: TimetableRowProps) {
+  const { tc } = usePreferences()
   const t = timeAtCol(chartStart, col)
   const { criticalParts, normalParts, drugParts, hasCritical, hasUnsynced } = summary
 
@@ -111,7 +115,7 @@ function TimetableRowComponent({
             <Text style={{
               color: "#475569", fontSize: 10, fontWeight: "700",
               letterSpacing: 1.1, textTransform: "uppercase", marginBottom: 8,
-            }}>Running</Text>
+            }}>{tc("trRunning")}</Text>
             <View style={{ gap: 7 }}>
               {running.map(item => {
                 const activeInf = activeInfusions.find(i => item.id === `inf-${i.infId}`)
@@ -142,7 +146,7 @@ function TimetableRowComponent({
                     </Text>
                     {canManage && (
                       <Text style={{ color: "#64748b", fontSize: 11 }}>
-                        {activeInf ? "Manage" : activeFl ? "End fluid" : isGasItem ? "Edit" : "Stop"} →
+                        {activeInf ? tc("trManage") : activeFl ? tc("trEndFluid") : isGasItem ? tc("trEdit") : tc("trStop")} →
                       </Text>
                     )}
                   </TouchableOpacity>
@@ -157,9 +161,9 @@ function TimetableRowComponent({
           <Text style={{
             color: "#475569", fontSize: 10, fontWeight: "700",
             letterSpacing: 1.1, textTransform: "uppercase", marginBottom: 10,
-          }}>Add now</Text>
+          }}>{tc("trAddNow")}</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {QUICK_ADD_BUTTONS.map(btn => (
+            {quickAddButtons(tc).map(btn => (
               <TouchableOpacity
                 key={btn.action}
                 onPress={() => onQuickAdd(col, btn.action)}

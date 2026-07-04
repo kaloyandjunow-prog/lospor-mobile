@@ -53,7 +53,7 @@ export function PreopCard({ preop, tc, t }: { preop: CaseData["preop"]; tc: (key
   const procLabel = preop.proceduresJson?.[0]?.label ?? preop.plannedProcedure
 
   const bloodType = preop.bloodType && preop.rhFactor
-    ? `${preop.bloodType}${preop.rhFactor === "POSITIVE" ? "+" : preop.rhFactor === "NEGATIVE" ? "в€’" : preop.rhFactor}`
+    ? `${preop.bloodType}${preop.rhFactor === "POSITIVE" ? "+" : preop.rhFactor === "NEGATIVE" ? "−" : preop.rhFactor}`
     : undefined
 
   const sexLabel = preop.sex === "MALE" ? tc("sexMale") : preop.sex === "FEMALE" ? tc("sexFemale") : preop.sex
@@ -66,8 +66,8 @@ export function PreopCard({ preop, tc, t }: { preop: CaseData["preop"]; tc: (key
   if (preop.bpSystolic != null && preop.bpDiastolic != null) vitals.push(`BP ${preop.bpSystolic}/${preop.bpDiastolic}`)
   else if (preop.bpSystolic != null) vitals.push(`SBP ${preop.bpSystolic}`)
   if (preop.heartRate != null) vitals.push(`HR ${preop.heartRate}`)
-  if (preop.spO2 != null) vitals.push(`SpOв‚‚ ${preop.spO2}%`)
-  if (preop.temperature != null) vitals.push(`Temp ${preop.temperature}В°C`)
+  if (preop.spO2 != null) vitals.push(`SpO₂ ${preop.spO2}%`)
+  if (preop.temperature != null) vitals.push(`Temp ${preop.temperature}°C`)
   if (preop.respiratoryRate != null) vitals.push(`RR ${preop.respiratoryRate}/min`)
 
   type RiskItem = { label: string; score: number; max: string; risk: string; level: RiskLevel }
