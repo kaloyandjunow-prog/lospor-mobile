@@ -158,7 +158,7 @@ export async function registerAccount(input: RegisterAccountInput): Promise<Regi
   const res = await fetch(`${API_BASE}/api/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
+    body: JSON.stringify({ ...input, email: input.email.trim().toLowerCase() }),
   })
   const body = await res.json().catch(() => ({}))
   if (!res.ok) {
@@ -176,7 +176,7 @@ export async function requestPasswordReset(email: string): Promise<PasswordReset
   const res = await fetch(`${API_BASE}/api/auth/password-reset/request`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email: email.trim().toLowerCase() }),
   })
   const body = await res.json().catch(() => ({}))
   if (!res.ok && res.status !== 202) {

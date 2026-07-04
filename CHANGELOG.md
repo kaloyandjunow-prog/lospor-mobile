@@ -1,5 +1,13 @@
 # Changelog - LOSPOR Mobile
 
+## [4.0.1] - 2026-07-04
+
+Post-release review fixes. Android `versionCode` 15.
+
+### Fixed
+- **Registration now sends a normalized email** (trimmed + lowercased), matching the login and forgot-password screens; the API helpers normalize defensively as well. The server (lospor-app 4.0.1) normalizes all auth emails authoritatively.
+- Repaired broken characters (UTF-8/cp1251 mojibake) in `docs/play-store-data-safety.md` and `RELEASE_PLAN.md`.
+
 ## [4.0.0] - 2026-07-03
 
 Quality/stability milestone. The intraop screen was rebuilt internally (same UX, far more maintainable and faster), account email flows arrived, and the mobile test suite grew from 95 to 228 tests.

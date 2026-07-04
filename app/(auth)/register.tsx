@@ -372,7 +372,7 @@ export default function RegisterScreen() {
         firstName:     data.firstName,
         lastName:      data.lastName,
         title:         data.title,
-        email:         data.email,
+        email:         data.email.trim().toLowerCase(),
         password:      data.password,
         institutionId: data.institutionId,
         acceptedTerms: data.acceptedTerms,
