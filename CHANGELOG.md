@@ -1,11 +1,17 @@
 # Changelog - LOSPOR Mobile
 
-## [4.0.1] - 2026-07-04
+## [4.1.0] - 2026-07-05
 
-Post-release review fixes. Android `versionCode` 15.
+Full Bulgarian localization pass and shared clinical-data consolidation. Android `versionCode` 16.
+
+### Added
+- **Deep Bulgarian translation coverage** across the intraop screen (vitals, airway, vascular access, timing, drug/infusion pickers, timetable row/footer/undo bar, monitor header), preop, case-detail cards, dashboard, settings, and admin/audit-logs.
+- Base and clinical UI strings extracted into `src/i18n/strings.ts` and `src/i18n/clinical-strings.ts`, with an automated English/Bulgarian key-parity test so the two languages can no longer silently drift apart.
+- Ventilation-mode lists, the complications picker's category list, and case-status label text now come from `@lospor/core` instead of hand-duplicated local copies, shared with the web app.
 
 ### Fixed
-- **Registration now sends a normalized email** (trimmed + lowercased), matching the login and forgot-password screens; the API helpers normalize defensively as well. The server (lospor-app 4.0.1) normalizes all auth emails authoritatively.
+- Repaired broken characters (UTF-8/cp1251 mojibake) found in postop handover items and several case-detail card files while translating them.
+- **Registration now sends a normalized email** (trimmed + lowercased), matching the login and forgot-password screens; the API helpers normalize defensively as well. The server (lospor-app 4.1.0) normalizes all auth emails authoritatively.
 - Repaired broken characters (UTF-8/cp1251 mojibake) in `docs/play-store-data-safety.md` and `RELEASE_PLAN.md`.
 
 ## [4.0.0] - 2026-07-03
