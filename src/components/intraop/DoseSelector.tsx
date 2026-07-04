@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity } from "react-native"
 import { VitalStepper } from "@/components/VitalStepper"
+import { FeedbackPressable } from "./FeedbackPressable"
 
 // One reused dose-entry block for drugs (bolus), infusions, fluids, and
 // agents — extracted out of DrugSheet/InfusionSheet/InfusionActionSheet/
@@ -133,10 +134,10 @@ export function DoseSelector({
       )}
 
       {confirmLabel && onConfirm && (
-        <TouchableOpacity onPress={onConfirm} disabled={confirmDisabled}
+        <FeedbackPressable onPress={onConfirm} disabled={confirmDisabled}
           style={{ backgroundColor: confirmDisabled ? "#1e2d40" : color, borderRadius: 14, padding: 18, alignItems: "center" }}>
           <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>{confirmLabel}</Text>
-        </TouchableOpacity>
+        </FeedbackPressable>
       )}
     </View>
   )

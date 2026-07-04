@@ -28,6 +28,55 @@ function pendingKey(caseId: string) {
   return `lospor_pending_intraop_${caseId}`
 }
 
+export function stripIntraopEventSyncStatus<T extends { syncStatus?: unknown }>(ev: T): Omit<T, "syncStatus"> {
+  const { syncStatus: _syncStatus, ...clean } = ev
+  return clean
+}
+
+export function serializeIntraopEventForServer<T extends PendingIntraopEvent>(ev: T): Omit<T, "syncStatus"> {
+  return stripIntraopEventSyncStatus(ev)
+}
+
+export function prependPendingIntraopEvent<T extends PendingIntraopEvent>(pending: T[], event: T): T[] {
+  return [event, ...pending.filter(item => item.id !== event.id)]
+}
+
+export function removePendingIntraopEvent<T extends PendingIntraopEvent>(pending: T[], eventId: string): T[] {
+  return pending.filter(item => item.id !== eventId)
+}
+
+export function markIntraopEventSynced<T extends PendingIntraopEvent>(log: T[], eventId: string): T[] {
+  return log.map(item => item.id === eventId ? serializeIntraopEventForServer(item) as T : item)
+}
+
+export function markIntraopEventFailed<T extends PendingIntraopEvent>(log: T[], eventId: string): T[] {
+  return log.map(item => item.id === eventId ? { ...item, syncStatus: "failed" } : item)
+}
+
+export function stripIntraopLogSyncStatuses<T extends PendingIntraopEvent>(log: T[]): Omit<T, "syncStatus">[] {
+  return log.map(serializeIntraopEventForServer)
+}
+
+export function serializeIntraopLogForServer<T extends PendingIntraopEvent>(
+  newestFirstLog: T[],
+): { log: Omit<T, "syncStatus">[] } {
+  return { log: [...newestFirstLog].reverse().map(serializeIntraopEventForServer) }
+}
+
+export function mergeLogWithPendingIntraopEvents<T extends { id: string; ts: string }>(
+  serverLog: T[],
+  pending: T[],
+): T[] {
+  const seen = new Set<string>()
+  return [...pending, ...serverLog]
+    .filter(ev => {
+      if (seen.has(ev.id)) return false
+      seen.add(ev.id)
+      return true
+    })
+    .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
+}
+
 async function loadIndex(): Promise<string[]> {
   const raw = await SecureStore.getItemAsync(INDEX_KEY)
   if (!raw) return []
@@ -75,9 +124,18 @@ async function storePending(caseId: string, events: PendingIntraopEvent[]) {
   await SecureStore.setItemAsync(pendingKey(caseId), JSON.stringify(events))
 }
 
-function eventForServer(ev: PendingIntraopEvent): Omit<PendingIntraopEvent, "syncStatus"> {
-  const { syncStatus: _syncStatus, ...clean } = ev
-  return clean
+export async function loadPendingIntraopEvents<T extends PendingIntraopEvent = PendingIntraopEvent>(
+  caseId: string,
+): Promise<T[]> {
+  return loadPending(caseId) as Promise<T[]>
+}
+
+export async function storePendingIntraopEvents<T extends PendingIntraopEvent>(
+  caseId: string,
+  events: T[],
+): Promise<void> {
+  await storePending(caseId, events)
+  await markPendingIntraopCase(caseId, events.length > 0)
 }
 
 // A small log of events the server permanently rejected (400/403/404). We drop
@@ -89,7 +147,7 @@ async function recordDroppedEvent(caseId: string, ev: PendingIntraopEvent, statu
   try {
     const raw = await SecureStore.getItemAsync(DROPPED_KEY)
     const list = raw ? (JSON.parse(raw) as DroppedIntraopEvent[]) : []
-    list.push({ caseId, event: eventForServer(ev), status, droppedAt: new Date().toISOString() })
+    list.push({ caseId, event: serializeIntraopEventForServer(ev), status, droppedAt: new Date().toISOString() })
     await SecureStore.setItemAsync(DROPPED_KEY, JSON.stringify(list.slice(-200)))
   } catch {
     /* best-effort - never let logging a drop throw */
@@ -142,7 +200,7 @@ export async function flushPendingIntraopEvents(): Promise<{ saved: number; fail
             "X-Idempotency-Key": `${caseId}:${ev.id}`,
             "X-Lospor-Source": "mobile",
           },
-          body: JSON.stringify(eventForServer(ev)),
+          body: JSON.stringify(serializeIntraopEventForServer(ev)),
         })
         if (res.ok) { saved += 1; continue }
         if (res.status === 401) {

@@ -4,6 +4,7 @@ import { Sheet } from "@/components/intraop/Sheet"
 import { usePreferences } from "@/lib/preferences-context"
 import { DoseSelector } from "@/components/intraop/DoseSelector"
 import type { ScenarioGroup } from "@/lib/intraop-scenarios"
+import { calcSuggestedDose as calcDose } from "@/lib/dose-calc"
 
 type DrugOption = { name: string; unit: string }
 type DrugCat = { cat: string; color: string; drugs: DrugOption[] }
@@ -103,30 +104,7 @@ export function DrugSheet({
   const [mode, setMode] = useState<"home" | "favourites" | "scenario" | "browse">("home")
 
   function calcSuggestedDose(name: string, route?: string): { dose: string; hint: string } {
-    const entry = doseCalcs?.[name]
-    const hint = entry?.hint ?? ""
-    if (!entry) return { dose: "", hint }
-    // Per-route dose calc (e.g. Lidocaine IV 1 mg/kg) takes priority over the
-    // flat one; concentration-mode routes have no doseCalc → no autofill.
-    const dc = (route && entry.byRoute?.[route]) ? entry.byRoute[route] : entry
-    if (!dc) return { dose: "", hint }
-    if (dc.flat !== undefined) return { dose: String(dc.flat), hint }
-    if (dc.perKg !== undefined) {
-      const ibw = (() => {
-        if (!patientHeightCm) return null
-        const inches = patientHeightCm / 2.54
-        if (inches < 60) return null
-        const base = (patientSex?.toUpperCase() === "FEMALE") ? 45.5 : 50
-        return base + 2.3 * (inches - 60)
-      })()
-      const tbw = patientWeightKg ?? null
-      const w = dc.basis === "TBW" ? (tbw ?? ibw) : (ibw !== null && tbw !== null ? Math.min(ibw, tbw) : (ibw ?? tbw))
-      if (!w) return { dose: "", hint }
-      const roundTo = dc.roundTo ?? 1
-      const rounded = Math.round(w * dc.perKg / roundTo) * roundTo
-      return { dose: String(rounded), hint }
-    }
-    return { dose: "", hint }
+    return calcDose(doseCalcs?.[name], route, { weightKg: patientWeightKg, heightCm: patientHeightCm, sex: patientSex })
   }
   const [scenario, setScenario] = useState<ScenarioGroup | null>(null)
   const [query, setQuery] = useState("")

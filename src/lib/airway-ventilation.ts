@@ -24,3 +24,11 @@ export const VENT_CONTROLLED = [
   { v: "HFOV", label: "HFOV" },
   { v: "VG",   label: "Volume Guarantee (VG)" },
 ]
+
+export type VentilationPanel = "assisted" | "controlled" | null
+
+export function expandedVentilationPanelForModes(modes: string[]): VentilationPanel {
+  if (VENT_ASSISTED.some(mode => modes.includes(mode.v))) return "assisted"
+  if (VENT_CONTROLLED.some(mode => modes.includes(mode.v))) return "controlled"
+  return null
+}

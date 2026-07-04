@@ -4,10 +4,14 @@ import type { ActiveInfusion } from "@/lib/intraop-log-event"
 import { DoseSelector } from "@/components/intraop/DoseSelector"
 
 type Range = { min: number; max: number; step: number }
+type RouteProfileLite = {
+  min: number; max: number; step: number
+  quickValues?: number[]; concentrationOptions?: string[]; unit?: string
+}
 
 export function InfusionActionSheet({
   visible, onClose, target, ratePresets, newRate, setNewRate, onChangeRate, onStop,
-  laConcentrations = {}, newConcentration, setNewConcentration, ranges = {},
+  laConcentrations = {}, newConcentration, setNewConcentration, ranges = {}, routeProfiles = {},
 }: {
   visible: boolean
   onClose: () => void
@@ -21,7 +25,20 @@ export function InfusionActionSheet({
   newConcentration?: string
   setNewConcentration?: (c: string | undefined) => void
   ranges?: Record<string, Range>
+  // Per-route dose surfaces, keyed by infusion name then route. When the running
+  // infusion has a route with a profile (e.g. Lidocaine PD/IT in mL/hr +
+  // concentration), the rate-change controls use it instead of the flat range.
+  routeProfiles?: Record<string, Record<string, RouteProfileLite>>
 }) {
+  // Resolve the per-route dose surface for the running infusion, falling back to
+  // the flat per-name range/quick/concentration when there's no route profile.
+  const prof = target?.route ? routeProfiles[target.name]?.[target.route] : undefined
+  const range: Range = prof
+    ? { min: prof.min, max: prof.max, step: prof.step }
+    : (target ? ranges[target.name] : undefined) ?? { min: 0, max: 100, step: 1 }
+  const quickValues = prof?.quickValues ?? (target ? ratePresets[target.name]?.map(Number) : undefined)
+  const concentrationOptions = prof?.concentrationOptions ?? (target ? laConcentrations[target.name] : undefined)
+
   return (
     <Sheet visible={visible} onClose={onClose} title={target?.name ?? "Infusion"}>
       {target && (
@@ -31,12 +48,12 @@ export function InfusionActionSheet({
           </Text>
           <DoseSelector
             color="#3b82f6"
-            quickValues={ratePresets[target.name]?.map(Number)}
+            quickValues={quickValues}
             value={newRate} onValueChange={setNewRate}
-            {...(ranges[target.name] ?? { min: 0, max: 100, step: 1 })}
+            {...range}
             valuePlaceholder="New rate"
             unitSuffix={target.unit}
-            concentrationOptions={laConcentrations[target.name]}
+            concentrationOptions={concentrationOptions}
             concentration={newConcentration ?? target.concentration}
             onConcentrationChange={setNewConcentration}
             confirmLabel={`Change to ${newRate} ${target.unit}`}

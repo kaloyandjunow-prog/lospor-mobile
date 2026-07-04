@@ -1,3 +1,5 @@
+import { randomHex } from "@/lib/random-id"
+
 export type EventType =
   | "drug" | "vital" | "clinical_event"
   | "infusion_start" | "infusion_rate" | "infusion_stop"
@@ -24,7 +26,7 @@ export type ActiveInfusion = { infId: string; name: string; rate: string; unit: 
 export type ActiveFluid    = { fluidId: string; name: string; volume: string; color: string }
 export type ActiveGasSettings = { fgf: number; carrierGas: string | null; fio2: number; fiAir?: number; fiN2O?: number } | null
 
-// Local-state key generator — not cryptographically strong, doesn't need to
-// be (these IDs identify in-memory infusion/fluid/log entries, not anything
-// security-sensitive). For that, see randomHex() in random-id.ts.
-export function uid() { return Math.random().toString(36).slice(2, 9) }
+// Local id generator for in-memory infusion/fluid/log entries. Uses the
+// crypto-backed randomHex (with a React Native fallback) rather than
+// Math.random so concurrent entries in the clinical event log can't collide.
+export function uid() { return randomHex(8) }

@@ -1,5 +1,25 @@
 # Changelog - LOSPOR Mobile
 
+## [4.0.0] - 2026-07-03
+
+Quality/stability milestone. The intraop screen was rebuilt internally (same UX, far more maintainable and faster), account email flows arrived, and the mobile test suite grew from 95 to 228 tests.
+
+### Added
+- **Forgot password** screen; register/login now use shared auth API helpers (`registerAccount`, `requestPasswordReset`, `confirmPasswordReset`).
+- **Single-flight event save queue**: event POSTs, whole-log syncs, retries, and live-refresh reloads are serialized so fast sequences like "start infusion → immediately Undo" no longer produce transient "Sync error" badges. Full-log sync also retries once with the server timestamp after a 409 (e.g. when a fluid-total autosave races an undo/delete).
+- **Timetable performance pass**: per-column row data memoized, `React.memo` rows (the moving now-marker only invalidates the current row), batched running-item projection, tuned FlatList batching, press feedback restored via `FeedbackPressable`.
+- **In-app medical disclaimer** and crypto-backed event IDs.
+- **Shared `@lospor/core` package** for dosing, scores, unit conversion, ranges, equipment suggestions, option-library mappers, and timetable math — one source of truth with the web app.
+- Offline hardening: cached empty option-library categories fall back to the bundled library instead of blanking clinical menus.
+
+### Changed
+- **Registration success screen** now says to verify your email — admin approval no longer gates login (see web 4.0.0 notes).
+- **Intraop route refactor**: `cases/intraop/[id].tsx` went from 4,073 to ~650 lines. Logic moved to ~40 unit-tested `src/lib` modules (projection, running items, event edit/actions, lifecycle, monitoring defaults, premedication, airway, timing, pending-event queue…) and the UI to ~25 focused components (tab hosts, sheet hosts, timetable rows, monitor header…). Behaviour-preserving; verified on device.
+- **Preop route refactor**: `cases/new.tsx` from 2,220 to ~1,180 lines (schema, section overview, server value/create/patch mappers, ASA suggestion, validation navigation, form widgets extracted). Preop autosave now serializes with in-flight saves; age accepts up to 149; airway wheel values (mouth opening ≤10 cm, thyromental ≤15 cm) no longer fail validation.
+- Case detail and postop screens split into card/section components.
+
+> Note: versions 3.4.x–3.5.0 shipped as combined web+mobile releases; their detailed notes live in the web app changelog.
+
 ## [3.3.0] - 2026-06-27
 
 ### Fixed

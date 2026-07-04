@@ -19,6 +19,7 @@ import { REMINDERS_KEY, VITALS_INTERVAL_KEY, DEFAULT_INTERVAL_MIN } from "@/lib/
 import { Card, SectionHeader, SettingsRow } from "@/components/ui"
 import { colors, withAlpha } from "@/theme/colors"
 import { AppHeader } from "@/components/AppHeader"
+import { MedicalDisclaimer } from "@/components/MedicalDisclaimer"
 import { useOptionLibrary, type LibraryOption } from "@/lib/use-option-library"
 
 // --- Types --------------------------------------------------------------------
@@ -607,6 +608,11 @@ export default function SettingsScreen() {
               </Text>
             </TouchableOpacity>
           </View>
+
+          {/* Medical-device disclaimer — the app suggests doses/rates */}
+          <View style={{ marginTop: 28 }}>
+            <MedicalDisclaimer />
+          </View>
         </ScrollView>
 
         <InstitutionPicker
@@ -799,7 +805,7 @@ export default function SettingsScreen() {
           />
           <SettingsRow
             label={t("about")}
-            subtitle="LOSPOR v3.1.0 - Large Open Source Perioperative Register"
+            subtitle="LOSPOR v4.0.0 - Large Open Source Perioperative Register"
           />
           <SettingsRow
             label="Clear local clinical cache"

@@ -35,8 +35,9 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
+# env files (never commit secrets; .env.example may be opted in)
+.env*
+!.env.example
 
 # typescript
 *.tsbuildinfo
@@ -59,3 +60,4 @@ screenshots/
 
 # Temporary scripts (one-off DB cleanup etc.)
 scripts/clean-dev-db.ts
+CODEX_HANDOFF*.md

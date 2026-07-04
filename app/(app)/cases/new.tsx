@@ -1,33 +1,37 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Animated,
   Easing,
   BackHandler,
   KeyboardAvoidingView,
-  Modal,
   PanResponder,
   Platform,
   Pressable,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   useWindowDimensions,
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native"
-import { hapticKey, hapticTick } from "@/lib/haptic"
+import { hapticTick } from "@/lib/haptic"
 import { Stack, useRouter, useLocalSearchParams, useFocusEffect } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Controller, useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
 import { ApiError, apiFetch, apiJson } from "@/lib/api"
 import { saveCasePatchWithQueue } from "@/lib/offline-case-patches"
 import { deleteLocalCaseDraft, loadLocalCaseDraft, makeLocalCaseId, saveLocalCaseDraft } from "@/lib/local-case-store"
 import { buildPreopPayload } from "@/lib/preop-payload"
+import { preopFormSchema, type PreopFormData as FormData, type PreopFormInput as FormInput, type PreopSection } from "@/lib/preop-form-schema"
+import { buildPreopSectionItems, type PreopSectionLabel } from "@/lib/preop-section-overview"
+import { valuesFromServerPreop, type ServerPreop } from "@/lib/preop-server-values"
+import { PREOP_REQUIRED_FIELD_SECTION, preopInvalidSubmitMessage } from "@/lib/preop-validation-navigation"
+import { postPreopServerCase } from "@/lib/preop-server-create"
+import { patchPreopServerCase } from "@/lib/preop-server-patch"
+import { suggestASAFromTags } from "@/lib/preop-asa-suggestion"
 import {
   ChecklistGroup,
   ChecklistRow,
@@ -45,116 +49,24 @@ import { LabScanPanel } from "@/components/LabScanPanel"
 import { AiAdvisorPanel } from "@/components/AiAdvisorPanel"
 import { AppHeader } from "@/components/AppHeader"
 import { EditWindowBanner } from "@/components/EditWindowBanner"
-import { LAB_CATEGORIES, getLabOutOfRange, searchLabs, type LabTest } from "@/lib/labs"
 import { colors, withAlpha } from "@/theme/colors"
-import { usePreferences, type ClinicalStringKey } from "@/lib/preferences-context"
+import { usePreferences } from "@/lib/preferences-context"
 import { useOptionLibrary, useRangeSpec } from "@/lib/use-option-library"
 import { suggestRcriIschemicHeart, suggestRcriCHF, suggestRcriCVD, suggestRcriInsulinDM, suggestRcriCreatinine, suggestStopBangBP } from "@/lib/risk-derivation"
+import {
+  AsaPicker,
+  BloodGrid,
+  ComorbiditiesBySystem,
+  ManualLabPanel,
+  MetricBadge,
+  ScoreBadge,
+  SegmentedSelect,
+  VitalNumber,
+  apfelRiskLabel,
+  rcriRiskLabel,
+  stopBangRiskLabel,
+} from "@/components/preop/PreopFormWidgets"
 
-const schema = z.object({
-  ageYears: z.number({ error: "Required" }).min(0).max(120),
-  sex: z.enum(["MALE", "FEMALE", "OTHER"]),
-  heightCm: z.number({ error: "Required" }).min(0).max(220),
-  weightKg: z.number({ error: "Required" }).min(0).max(250),
-  bloodType: z.enum(["A", "B", "AB", "O"]).optional(),
-  rhFactor: z.enum(["POSITIVE", "NEGATIVE"]).optional(),
-
-  diagnoses: z.array(z.object({ label: z.string(), code: z.string().optional(), system: z.string().optional(), labelEn: z.string().optional(), labelBg: z.string().optional() })).default([]),
-  procedures: z.array(z.object({ label: z.string(), code: z.string().optional() })).default([]),
-  highRiskSurgery: z.boolean().default(false),
-  elective: z.boolean().default(false),
-  emergencySurgery: z.boolean().default(false),
-
-  comorbidities: z.array(z.object({ label: z.string(), code: z.string().optional(), sub: z.string().optional(), system: z.string().optional(), labelEn: z.string().optional(), labelBg: z.string().optional() })).default([]),
-  currentMedications: z.array(z.object({ label: z.string(), inn: z.string().optional(), atcCode: z.string().optional() })).default([]),
-
-  allergies: z.boolean().default(false),
-  latexAllergy: z.boolean().default(false),
-  allergyDetails: z.array(z.object({ label: z.string(), inn: z.string().optional(), atcCode: z.string().optional() })).default([]),
-  familyAnesthesiaProblems: z.boolean().default(false),
-  familyAnesthesiaDetails: z.string().max(500).optional(),
-  dentalProsthetics: z.boolean().default(false),
-  looseTeeth: z.boolean().default(false),
-  smoking: z.boolean().default(false),
-  substanceAbuse: z.boolean().default(false),
-
-  bpSystolic: z.number().min(0).max(260).optional(),
-  bpDiastolic: z.number().min(0).max(160).optional(),
-  heartRate: z.number().min(0).max(250).optional(),
-  heartArrhythmia: z.boolean().default(false),
-  spO2: z.number().min(50).max(100).optional(),
-  temperature: z.number().min(0).max(42).optional(),
-  respiratoryRate: z.number().min(4).max(60).optional(),
-  bpUnobtainable: z.boolean().default(false),
-  heartRateUnobtainable: z.boolean().default(false),
-  spO2Unobtainable: z.boolean().default(false),
-  temperatureUnobtainable: z.boolean().default(false),
-  respiratoryRateUnobtainable: z.boolean().default(false),
-  physicalExamReport: z.string().max(500).optional(),
-
-  mallampati: z.enum(["I", "II", "III", "IV"]).optional(),
-  mouthOpeningCm: z.number().min(0.5).max(8).optional(),
-  thyromental: z.number().min(3).max(12).optional(),
-  neckMobility: z.enum(["FULL", "LIMITED", "FIXED"]).optional(),
-  upperLipBiteTest: z.enum(["CLASS_I", "CLASS_II", "CLASS_III"]).optional(),
-  cormackLehane: z.enum(["I", "IIa", "IIb", "III", "IV"]).optional(),
-  retrognathia: z.boolean().default(false),
-  prominentIncisors: z.boolean().default(false),
-  facialHair: z.boolean().default(false),
-  difficultAirwayHistory: z.boolean().default(false),
-  difficultAirwayNotes: z.string().max(500).optional(),
-  airwayUnobtainable: z.boolean().default(false),
-
-  rcriIschemicHeart: z.boolean().default(false),
-  rcriCHF: z.boolean().default(false),
-  rcriCVD: z.boolean().default(false),
-  rcriInsulinDM: z.boolean().default(false),
-  rcriCreatinine: z.boolean().default(false),
-  apfelPONVHistory: z.boolean().default(false),
-  apfelPostopOpioids: z.boolean().default(false),
-  stopbangSnoring: z.boolean().default(false),
-  stopbangTired: z.boolean().default(false),
-  stopbangObserved: z.boolean().default(false),
-  stopbangBP: z.boolean().default(false),
-  stopbangNeck: z.boolean().default(false),
-
-  asaScore: z.enum(["I", "II", "III", "IV", "V", "VI"]),
-  teamNotes: z.string().max(500).optional(),
-  notes: z.string().optional(),
-  aiOptIn: z.boolean().default(false),
-  labResults: z.array(z.object({ test: z.string(), value: z.string(), unit: z.string() })).default([]),
-})
-  // Cross-field required checks mirroring the web app's validate() in
-  // forms/PreopForm.tsx so mobile/PWA enforces the same gate before intraop.
-  // These surface as inline field errors + an onInvalid jump instead of a
-  // silent no-op (Alert is dead on react-native-web — see lib/notify.ts).
-  .superRefine((d, ctx) => {
-    if (!d.diagnoses?.length)
-      ctx.addIssue({ code: "custom", path: ["diagnoses"], message: "At least one diagnosis is required" })
-    if (!d.procedures?.length)
-      ctx.addIssue({ code: "custom", path: ["procedures"], message: "At least one procedure is required" })
-    if (!d.bpUnobtainable && (d.bpSystolic == null || d.bpDiastolic == null))
-      ctx.addIssue({ code: "custom", path: ["bpSystolic"], message: "Blood pressure is required" })
-    if (!d.heartRateUnobtainable && d.heartRate == null)
-      ctx.addIssue({ code: "custom", path: ["heartRate"], message: "Heart rate is required" })
-    if (!d.respiratoryRateUnobtainable && d.respiratoryRate == null)
-      ctx.addIssue({ code: "custom", path: ["respiratoryRate"], message: "Respiratory rate is required" })
-    if (!d.airwayUnobtainable && !d.mallampati)
-      ctx.addIssue({ code: "custom", path: ["mallampati"], message: "Mallampati class is required" })
-  })
-
-type FormInput = z.input<typeof schema>
-type FormData = z.output<typeof schema>
-type PreopSection =
-  | "patient"
-  | "case"
-  | "history"
-  | "meds"
-  | "anamnesis"
-  | "exam"
-  | "airway"
-  | "labs"
-  | "risk"
 
 // SECTION_LABELS is built inside the component with translated strings via tc().
 
@@ -192,775 +104,6 @@ function SectionCard({ title, subtitle, children, onLayout, visible = true }: {
   )
 }
 
-// ── ASA suggestion from comorbidity ICD-10 tags ──────────────────────────────
-const ASA_RULES: [string, number, number, string][] = [
-  ["N18.6",5,4,"End-stage renal disease (not on dialysis)"],
-  ["N18.5",5,4,"Chronic kidney disease stage 5"],
-  ["I50.2",5,4,"Systolic heart failure"],
-  ["I50.3",5,4,"Diastolic heart failure"],
-  ["I50",3,3,"Heart failure"],["I21",3,3,"Acute MI"],["I25",3,3,"Chronic ischaemic heart disease"],
-  ["I63",3,3,"Cerebral infarction (stroke)"],["I64",3,3,"Stroke / CVA"],["G45",3,3,"TIA"],
-  ["Z95.0",5,3,"Pacemaker / ICD"],["Z95.1",5,3,"Implanted cardiac device"],
-  ["J44",3,3,"COPD"],["J45.5",5,3,"Severe persistent asthma"],
-  ["E10",3,3,"Type 1 diabetes mellitus"],["K70.3",5,3,"Alcoholic liver cirrhosis"],
-  ["K74",3,3,"Cirrhosis of liver"],["N18",3,3,"Chronic kidney disease"],
-  ["Z99.2",5,3,"Dialysis"],["E66.9",5,3,"Morbid obesity"],
-  ["G20",3,3,"Parkinson's disease"],["F10.2",5,3,"Alcohol dependence"],
-  ["F19.2",5,3,"Substance dependence"],["Z86.7",5,3,"History of MI/stroke > 3 months"],
-  ["I10",3,2,"Hypertension"],["I11",3,2,"Hypertensive heart disease"],
-  ["I48",3,2,"Atrial fibrillation"],["I49",3,2,"Arrhythmia"],
-  ["I73",3,2,"Peripheral vascular disease"],["I83",3,2,"Varicose veins / CVI"],
-  ["I82",3,2,"DVT history"],["J45",3,2,"Asthma"],["J44",3,2,"COPD (mild)"],
-  ["E11",3,2,"Type 2 diabetes mellitus"],["E03",3,2,"Hypothyroidism"],
-  ["E05",3,2,"Hyperthyroidism"],["E04",3,2,"Thyroid disease"],
-  ["G40",3,2,"Epilepsy"],["G43",3,2,"Migraine"],
-  ["F32",3,2,"Depressive episode"],["F33",3,2,"Recurrent depression"],
-  ["F41",3,2,"Anxiety disorder"],["K29",3,2,"Gastritis / peptic ulcer"],
-  ["K57",3,2,"Diverticular disease"],["K21",3,2,"GERD"],
-  ["K73",3,2,"Chronic hepatitis"],["K74",3,2,"Liver fibrosis"],
-  ["N03",3,2,"Chronic glomerulonephritis"],["N11",3,2,"Chronic pyelonephritis"],
-  ["D50",3,2,"Anaemia (iron deficiency)"],["D51",3,2,"Vitamin B12 deficiency anaemia"],
-  ["D64",3,2,"Anaemia"],["M05",3,2,"Rheumatoid arthritis"],
-  ["M06",3,2,"Rheumatoid arthritis"],["M81",3,2,"Osteoporosis"],
-  ["Z87.3",5,2,"History of musculoskeletal disease"],["F17.2",5,2,"Nicotine dependence (smoker)"],
-]
-
-type ASASuggestion = { cls: "I"|"II"|"III"|"IV"; reasons: string[] }
-
-function suggestASAFromTags(tags: { label: string; code?: string }[], bmi: number | null): ASASuggestion | null {
-  if (tags.length === 0 && !bmi) return null
-  const r4: string[] = [], r3: string[] = [], r2: string[] = []
-  for (const tag of tags) {
-    const code = (tag.code ?? "").toUpperCase()
-    for (const [prefix, minLen, cls, label] of ASA_RULES) {
-      if (code.startsWith(prefix.toUpperCase()) && code.length >= minLen) {
-        if (cls === 4) r4.push(label)
-        else if (cls === 3) { if (!r3.includes(label)) r3.push(label) }
-        else if (cls === 2) { if (!r2.includes(label)) r2.push(label) }
-        break
-      }
-    }
-  }
-  if (bmi && bmi >= 40) r3.push(`Morbid obesity (BMI ${bmi.toFixed(1)})`)
-  else if (bmi && bmi >= 30) r2.push(`Obesity (BMI ${bmi.toFixed(1)})`)
-  if (r4.length > 0) return { cls: "IV", reasons: r4 }
-  if (r3.length > 0) return { cls: "III", reasons: r3.slice(0, 4) }
-  if (r2.length > 0) return { cls: "II", reasons: r2.slice(0, 4) }
-  if (tags.length > 0) return { cls: "II", reasons: ["Comorbidities present"] }
-  return { cls: "I", reasons: [] }
-}
-
-const ASA_OPTS: { v: "I"|"II"|"III"|"IV"|"V"|"VI"; color: string }[] = [
-  { v: "I",   color: "#22c55e" },
-  { v: "II",  color: "#84cc16" },
-  { v: "III", color: "#f59e0b" },
-  { v: "IV",  color: "#f97316" },
-  { v: "V",   color: "#ef4444" },
-  { v: "VI",  color: "#64748b" },
-]
-
-function AsaPicker({
-  value,
-  onChange,
-  emergencySurgery,
-  suggestion,
-  labelSuggested,
-  labelSuggestedReview,
-  labelEmergencySuffix,
-}: {
-  value?: string
-  onChange: (v: string) => void
-  emergencySurgery: boolean
-  suggestion: ASASuggestion | null
-  labelSuggested: string
-  labelSuggestedReview: string
-  labelEmergencySuffix: string
-}) {
-  return (
-    <View style={{ gap: 8 }}>
-      {suggestion && (
-        <View style={{ backgroundColor: withAlpha("#3b82f6", "15"), borderRadius: 12, borderWidth: 1, borderColor: withAlpha("#3b82f6", "40"), paddingHorizontal: 12, paddingVertical: 10, gap: 4 }}>
-          <Text style={{ color: "#60a5fa", fontSize: 13, fontWeight: "800" }}>
-            {labelSuggested} {suggestion.cls} {labelSuggestedReview}
-          </Text>
-          {suggestion.reasons.map((r) => (
-            <Text key={r} style={{ color: "#60a5fa", fontSize: 12, opacity: 0.85 }}>• {r}</Text>
-          ))}
-        </View>
-      )}
-      {emergencySurgery && (
-        <View style={{ backgroundColor: withAlpha(colors.danger, "10"), borderRadius: 10, borderWidth: 1, borderColor: withAlpha(colors.danger, "40"), paddingHorizontal: 12, paddingVertical: 8 }}>
-          <Text style={{ color: colors.danger, fontSize: 12, fontWeight: "700" }}>{labelEmergencySuffix}</Text>
-        </View>
-      )}
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        {ASA_OPTS.map(({ v, color }) => {
-          const selected = value === v
-          const displayLabel = emergencySurgery && v !== "VI" ? `${v}E` : v
-          return (
-            <Pressable
-              key={v}
-              onPress={() => { impact(); onChange(value === v ? "" : v) }}
-              style={{
-                flex: 1, minWidth: 52, minHeight: 56,
-                alignItems: "center", justifyContent: "center",
-                borderRadius: 14, borderCurve: "continuous",
-                borderWidth: selected ? 2 : 1,
-                borderColor: selected ? color : colors.border,
-                backgroundColor: selected ? withAlpha(color, "22") : colors.surface,
-              }}
-            >
-              <Text style={{ color: selected ? color : colors.textSecondary, fontSize: 15, fontWeight: "900", letterSpacing: -0.3 }}>
-                {displayLabel}
-              </Text>
-            </Pressable>
-          )
-        })}
-      </View>
-    </View>
-  )
-}
-
-function SegmentButton({ label, selected, onPress, flex = 1 }: { label: string; selected: boolean; onPress: () => void; flex?: number }) {
-  return (
-    <Pressable
-      onPress={() => { impact(); onPress() }}
-      style={{
-        flex,
-        minHeight: 48,
-        alignItems: "center",
-        justifyContent: "center",
-        borderRadius: 14,
-        borderCurve: "continuous",
-        borderWidth: 1,
-        borderColor: selected ? colors.primary : colors.border,
-        backgroundColor: selected ? colors.primarySoft : colors.surface,
-        paddingHorizontal: 10,
-      }}
-    >
-      <Text style={{ color: selected ? colors.primary : colors.textSecondary, fontSize: 14, fontWeight: "900" }}>{label}</Text>
-    </Pressable>
-  )
-}
-
-function SegmentedSelect<T extends string>({ options, value, onChange }: {
-  options: { value: T; label: string }[]
-  value?: T
-  onChange: (value: T) => void
-}) {
-  return (
-    <View style={{ flexDirection: "row", gap: 8 }}>
-      {options.map((option) => (
-        <SegmentButton key={option.value} label={option.label} selected={value === option.value} onPress={() => onChange(option.value)} />
-      ))}
-    </View>
-  )
-}
-
-function BloodGrid({ bloodType, rhFactor, onChange }: {
-  bloodType?: "A" | "B" | "AB" | "O"
-  rhFactor?: "POSITIVE" | "NEGATIVE"
-  onChange: (bloodType: "A" | "B" | "AB" | "O" | undefined, rhFactor: "POSITIVE" | "NEGATIVE" | undefined) => void
-}) {
-  const { options: bloodGroupOptions } = useOptionLibrary("BLOOD_GROUP")
-  return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-      {bloodGroupOptions.map(opt => {
-        const meta = opt.metadata as { bloodType: "A" | "B" | "AB" | "O"; rhFactor: "POSITIVE" | "NEGATIVE" } | undefined
-        const selected = bloodType === meta?.bloodType && rhFactor === meta?.rhFactor
-        return (
-          <Pressable
-            key={opt.value}
-            onPress={() => {
-              impact()
-              onChange(selected ? undefined : meta?.bloodType, selected ? undefined : meta?.rhFactor)
-            }}
-            style={{
-              width: "23%",
-              minHeight: 48,
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 14,
-              borderCurve: "continuous",
-              borderWidth: 1,
-              borderColor: selected ? colors.primary : colors.border,
-              backgroundColor: selected ? colors.primarySoft : colors.surface,
-            }}
-          >
-            <Text style={{ color: selected ? colors.primary : colors.textSecondary, fontSize: 15, fontWeight: "900" }}>{opt.label}</Text>
-          </Pressable>
-        )
-      })}
-    </View>
-  )
-}
-
-// Risk label helpers — identical thresholds to web lib/scores.ts
-function rcriRiskLabel(s: number, tc: (k: ClinicalStringKey) => string) {
-  return s === 0 ? tc("rcriVeryLow") : s === 1 ? tc("rcriLow") : s === 2 ? tc("rcriModerate") : tc("rcriHigh")
-}
-function apfelRiskLabel(s: number, tc: (k: ClinicalStringKey) => string) {
-  return s <= 1 ? tc("apfelLow") : s === 2 ? tc("apfelModerate") : tc("apfelHigh")
-}
-function stopBangRiskLabel(s: number, tc: (k: ClinicalStringKey) => string) {
-  return s <= 2 ? tc("osaLow") : s <= 4 ? tc("osaIntermediate") : tc("osaHigh")
-}
-
-const BODY_SYSTEM_TC: Record<string, ClinicalStringKey> = {
-  "Cardiovascular":             "sysCardiovascular",
-  "Respiratory":                "sysRespiratory",
-  "Neurological / Psychiatric": "sysNeuroPsychiatric",
-  "Endocrine / Metabolic":      "sysEndocrineMetabolic",
-  "Gastrointestinal / Hepatic": "sysGastroHepatic",
-  "Renal / Urological":         "sysRenalUrological",
-  "Haematological":             "sysHaematological",
-  "Musculoskeletal":            "sysMusculoskeletal",
-  "Neoplasms":                  "sysNeoplasms",
-  "Infectious diseases":        "sysInfectious",
-  "Ophthalmological / ENT":     "sysOphthalmENT",
-  "Obstetric":                  "sysObstetric",
-  "Congenital":                 "sysCongenital",
-  "Other":                      "sysOther",
-}
-
-// ── ICD-10 body-system classification (mirrors web lib/icd-categories.ts) ──
-type BodySystem = "Cardiovascular"|"Respiratory"|"Neurological / Psychiatric"|"Endocrine / Metabolic"|"Gastrointestinal / Hepatic"|"Renal / Urological"|"Haematological"|"Musculoskeletal"|"Neoplasms"|"Infectious diseases"|"Ophthalmological / ENT"|"Obstetric"|"Congenital"|"Other"
-
-const SYSTEM_ORDER: BodySystem[] = [
-  "Cardiovascular","Respiratory","Neurological / Psychiatric","Endocrine / Metabolic",
-  "Gastrointestinal / Hepatic","Renal / Urological","Haematological","Musculoskeletal",
-  "Neoplasms","Infectious diseases","Ophthalmological / ENT","Obstetric","Congenital","Other",
-]
-
-const SYSTEM_HEX: Record<BodySystem, string> = {
-  "Cardiovascular":             "#ef4444",
-  "Respiratory":                "#38bdf8",
-  "Neurological / Psychiatric": "#a78bfa",
-  "Endocrine / Metabolic":      "#fbbf24",
-  "Gastrointestinal / Hepatic": "#f97316",
-  "Renal / Urological":         "#2dd4bf",
-  "Haematological":             "#fb7185",
-  "Musculoskeletal":            "#84cc16",
-  "Neoplasms":                  "#f472b6",
-  "Infectious diseases":        "#d97706",
-  "Ophthalmological / ENT":     "#22d3ee",
-  "Obstetric":                  "#e879f9",
-  "Congenital":                 "#818cf8",
-  "Other":                      "#94a3b8",
-}
-
-function getBodySystem(code: string): BodySystem {
-  if (!code) return "Other"
-  const p2 = code.substring(0, 2).toUpperCase()
-  // ICD-10 single-letter classification
-  const p1 = p2.charAt(0), num = parseInt(code.substring(1, 3), 10) || 0
-  if (p1 === "I") return "Cardiovascular"
-  if (p1 === "J") return "Respiratory"
-  if (p1 === "G" || p1 === "F") return "Neurological / Psychiatric"
-  if (p1 === "E") return "Endocrine / Metabolic"
-  if (p1 === "K") return "Gastrointestinal / Hepatic"
-  if (p1 === "N") return "Renal / Urological"
-  if (p1 === "D") return (num >= 50 && num <= 89) ? "Haematological" : "Neoplasms"
-  if (p1 === "C") return "Neoplasms"
-  if (p1 === "M") return "Musculoskeletal"
-  if (p1 === "A" || p1 === "B") return "Infectious diseases"
-  if (p1 === "H") return "Ophthalmological / ENT"
-  if (p1 === "O") return "Obstetric"
-  if (p1 === "Q") return "Congenital"
-  return "Other"
-}
-
-function ComorbiditiesBySystem({ items, onRemove }: { items: { label: string; code?: string }[]; onRemove: (label: string) => void }) {
-  const { tc } = usePreferences()
-  if (items.length === 0) return null
-  const grouped: Partial<Record<BodySystem, typeof items>> = {}
-  for (const item of items) {
-    const system = getBodySystem(item.code ?? "")
-    if (!grouped[system]) grouped[system] = []
-    grouped[system]!.push(item)
-  }
-  return (
-    <View style={{ marginTop: 12, gap: 10 }}>
-      {SYSTEM_ORDER.filter(s => grouped[s]).map(system => {
-        const col = SYSTEM_HEX[system]
-        const tcKey = BODY_SYSTEM_TC[system]
-        return (
-          <View key={system}>
-            <Text style={{ color: col, fontSize: 9, fontWeight: "800", letterSpacing: 1.1, textTransform: "uppercase", marginBottom: 6 }}>{tcKey ? tc(tcKey) : system}</Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-              {grouped[system]!.map(item => (
-                <View key={item.label} style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: col + "18", borderWidth: 1, borderColor: col + "55" }}>
-                  <Text style={{ color: col, fontSize: 12, fontWeight: "700" }} numberOfLines={1}>{item.label}</Text>
-                  <Pressable onPress={() => onRemove(item.label)} hitSlop={6}>
-                    <Text style={{ color: col, fontSize: 12, fontWeight: "700", opacity: 0.7 }}>×</Text>
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-          </View>
-        )
-      })}
-    </View>
-  )
-}
-
-function ScoreBadge({ label, score, max, riskLabel }: { label: string; score: number; max: number; riskLabel?: string }) {
-  const color = score <= 1 ? colors.success : score <= 3 ? colors.warning : colors.danger
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: withAlpha(color, "66"), borderRadius: 15, paddingVertical: 12, alignItems: "center" }}>
-      <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "900" }}>{label}</Text>
-      <Text style={{ color, fontSize: 24, fontWeight: "900", marginTop: 3 }}>{score}<Text style={{ color: colors.textMuted, fontSize: 15 }}>/{max}</Text></Text>
-      {!!riskLabel && (
-        <Text style={{ color, fontSize: 9, fontWeight: "800", textAlign: "center", marginTop: 4, paddingHorizontal: 4 }} numberOfLines={1}>{riskLabel}</Text>
-      )}
-    </View>
-  )
-}
-
-function MetricBadge({ label, value, unit, tone = colors.primary }: { label: string; value: string; unit: string; tone?: string }) {
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: withAlpha(tone, "55"), borderRadius: 15, paddingVertical: 12, alignItems: "center" }}>
-      <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "900" }}>{label}</Text>
-      <Text style={{ color: tone, fontSize: 22, fontWeight: "900", marginTop: 3, fontVariant: ["tabular-nums"] }}>
-        {value}<Text style={{ color: colors.textMuted, fontSize: 12 }}> {unit}</Text>
-      </Text>
-    </View>
-  )
-}
-
-function clampNumber(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value))
-}
-
-function roundToStep(value: number, step: number, precision: number) {
-  return Number((Math.round(value / step) * step).toFixed(Math.max(precision, 2)))
-}
-
-function formatClinicalValue(value: number | undefined, precision: number) {
-  if (value == null) return "-"
-  return precision > 0 ? value.toFixed(precision).replace(/\.0+$/, "") : String(Math.round(value))
-}
-
-function VitalStepper({ value, onChange, min, max, step = 1, precision = 0, unit, placeholder = "-" }: {
-  value?: number
-  onChange: (value: number | undefined) => void
-  min: number
-  max: number
-  step?: number
-  precision?: number
-  unit?: string
-  placeholder?: string
-}) {
-  const [keypadOpen, setKeypadOpen] = useState(false)
-  const [keypadText, setKeypadText] = useState("")
-  const [anchor, setAnchor] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
-  const [trackWidth, setTrackWidth] = useState(1)
-  const fieldRef = useRef<View>(null)
-  const trackXRef = useRef(0)
-  const holdTimer = useRef<{ initial: ReturnType<typeof setTimeout> | null; repeat: ReturnType<typeof setInterval> | null }>({ initial: null, repeat: null })
-  const { height: screenHeight, width: screenWidth } = useWindowDimensions()
-
-  const commit = useCallback((next: number | undefined) => {
-    hapticTick()
-    if (next == null) {
-      onChange(undefined)
-      return
-    }
-    onChange(clampNumber(roundToStep(next, step, precision), min, max))
-  }, [max, min, onChange, precision, step])
-
-  const nudge = useCallback((direction: -1 | 1) => {
-    commit((value ?? min) + direction * step)
-  }, [commit, min, step, value])
-
-  function startHold(direction: -1 | 1) {
-    nudge(direction)
-    holdTimer.current.initial = setTimeout(() => {
-      holdTimer.current.repeat = setInterval(() => nudge(direction), 120)
-    }, 420)
-  }
-
-  const stopHold = useCallback(() => {
-    if (holdTimer.current.initial) clearTimeout(holdTimer.current.initial)
-    if (holdTimer.current.repeat) clearInterval(holdTimer.current.repeat)
-    holdTimer.current.initial = null
-    holdTimer.current.repeat = null
-  }, [])
-
-  useEffect(() => stopHold, [stopHold])
-
-  const setFromPageX = useCallback((pageX: number) => {
-    const ratio = clampNumber((pageX - trackXRef.current) / Math.max(1, trackWidth), 0, 1)
-    commit(min + ratio * (max - min))
-  }, [commit, max, min, trackWidth])
-
-  const panResponder = useMemo(() => PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: (event) => {
-      setFromPageX(event.nativeEvent.pageX)
-    },
-    onPanResponderMove: (_, gesture) => {
-      setFromPageX(gesture.moveX)
-    },
-  }), [setFromPageX])
-
-  function openKeypad() {
-    setKeypadText(value != null ? formatClinicalValue(value, precision) : "")
-    fieldRef.current?.measureInWindow((x, y, width, height) => {
-      setAnchor({ x, y, width, height })
-      setKeypadOpen(true)
-    })
-  }
-
-  function closeKeypad() {
-    const parsed = Number(keypadText.replace(",", "."))
-    if (keypadText.trim() && Number.isFinite(parsed)) commit(parsed)
-    setKeypadOpen(false)
-  }
-
-  function pressKey(key: string) {
-    hapticKey()
-    if (key === "clear") {
-      setKeypadText("")
-      return
-    }
-    if (key === "back") {
-      setKeypadText((current) => current.slice(0, -1))
-      return
-    }
-    setKeypadText((current) => {
-      if (key === "." && (precision === 0 || current.includes("."))) return current
-      return `${current}${key}`.replace(/^0+(?=\d)/, "")
-    })
-  }
-
-  const ratio = value == null ? 0 : (clampNumber(value, min, max) - min) / (max - min)
-
-  // Keypad should always be comfortably wide regardless of the field's actual width.
-  // When the field is narrow (e.g. SBP/DBP in a 2-column row), the keypad is
-  // centred on screen at a fixed width instead of inheriting the tiny field width.
-  const KEYPAD_MIN_W = 268
-  const keypadWidth = Math.max(KEYPAD_MIN_W, anchor?.width ?? KEYPAD_MIN_W)
-  const keypadLeft  = anchor
-    ? keypadWidth <= (anchor.width ?? 0)
-      ? anchor.x                                              // field is wide enough — align left
-      : Math.max(8, Math.min(anchor.x, screenWidth - keypadWidth - 8)) // shift left if it would overflow
-    : 8
-  const keypadTop = anchor ? Math.max(8, Math.min(anchor.y, screenHeight - 330)) : 0
-
-  return (
-    <View style={{ gap: 9 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        <Pressable
-          onPressIn={() => startHold(-1)}
-          onPressOut={stopHold}
-          style={{ width: 44, height: 44, borderRadius: 12, borderCurve: "continuous", alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border }}
-        >
-          <Text style={{ color: colors.textPrimary, fontSize: 24, fontWeight: "900" }}>-</Text>
-        </Pressable>
-
-        <View ref={fieldRef} collapsable={false} style={{ flex: 1 }}>
-          <Pressable onPress={openKeypad} style={{ minHeight: 44, alignItems: "center", justifyContent: "center", borderBottomWidth: 2, borderBottomColor: colors.borderStrong }}>
-            <Text style={{ color: value == null ? colors.textMuted : colors.textPrimary, fontSize: 22, fontWeight: "900", fontVariant: ["tabular-nums"] }}>
-              {value == null ? placeholder : formatClinicalValue(value, precision)}{unit ? <Text style={{ color: colors.textMuted, fontSize: 13 }}> {unit}</Text> : null}
-            </Text>
-          </Pressable>
-        </View>
-
-        <Pressable
-          onPressIn={() => startHold(1)}
-          onPressOut={stopHold}
-          style={{ width: 44, height: 44, borderRadius: 12, borderCurve: "continuous", alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border }}
-        >
-          <Text style={{ color: colors.textPrimary, fontSize: 24, fontWeight: "900" }}>+</Text>
-        </Pressable>
-      </View>
-
-      <View
-        ref={(node) => {
-          if (!node) return
-          node.measureInWindow((x) => { trackXRef.current = x })
-        }}
-        onLayout={(event) => setTrackWidth(Math.max(1, event.nativeEvent.layout.width))}
-        style={{ height: 28, justifyContent: "center" }}
-        {...panResponder.panHandlers}
-      >
-        <View style={{ height: 5, borderRadius: 999, backgroundColor: colors.borderStrong }} />
-        <View style={{ position: "absolute", left: `${ratio * 100}%`, width: 10, height: 22, marginLeft: -5, borderRadius: 5, backgroundColor: colors.textSecondary }} />
-      </View>
-
-      <Modal visible={keypadOpen && anchor != null} transparent animationType="fade" onRequestClose={closeKeypad}>
-        <Pressable onPress={closeKeypad} style={{ flex: 1, backgroundColor: "transparent" }}>
-          <Pressable
-            onPress={(event) => event.stopPropagation?.()}
-            style={{ position: "absolute", left: keypadLeft, top: keypadTop, width: keypadWidth }}
-          >
-            <View style={{ borderRadius: 18, borderCurve: "continuous", borderWidth: 1, borderColor: withAlpha(colors.primary, "66"), backgroundColor: colors.surface, padding: 8, boxShadow: "0 16px 34px rgba(0,0,0,0.32)" }}>
-              <View style={{ minHeight: 54, borderRadius: 14, borderCurve: "continuous", borderWidth: 1, borderColor: withAlpha(colors.textPrimary, "24"), backgroundColor: withAlpha(colors.textPrimary, "10"), alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
-                <Text style={{ color: keypadText ? colors.textPrimary : colors.textMuted, fontSize: 25, fontWeight: "900", fontVariant: ["tabular-nums"] }}>
-                  {keypadText || "-"}{unit && keypadText ? <Text style={{ color: colors.textMuted, fontSize: 13 }}> {unit}</Text> : null}
-                </Text>
-              </View>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-                {["1", "2", "3", "4", "5", "6", "7", "8", "9", precision > 0 ? "." : "clear", "0", "back"].map((key) => (
-                  <Pressable key={key} onPress={() => pressKey(key)} style={{ width: "31.5%", minHeight: 48, borderRadius: 14, borderCurve: "continuous", alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border }}>
-                    <Text style={{ color: colors.textPrimary, fontSize: key.length === 1 ? 21 : 13, fontWeight: "900" }}>
-                      {key === "back" ? "Back" : key === "clear" ? "Clear" : key}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
-    </View>
-  )
-}
-
-function VitalNumber({ label, unit, value, onChange, unobtainable, onToggleUnobtainable, min, max, step = 1, precision = 0, labelUnableToObtain = "Unable to obtain", required = false, error }: {
-  label: string
-  unit: string
-  value?: number
-  onChange: (value: number | undefined) => void
-  unobtainable: boolean
-  onToggleUnobtainable: () => void
-  min: number
-  max: number
-  step?: number
-  precision?: number
-  labelUnableToObtain?: string
-  required?: boolean
-  error?: string
-}) {
-  return (
-    <View style={{ marginBottom: 14 }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: "900" }}>{label}{required && <Text style={{ color: colors.danger }}> *</Text>}</Text>
-        <Pressable
-          onPress={() => { impact(); onToggleUnobtainable() }}
-          style={{
-            borderRadius: 999,
-            borderWidth: 1,
-            borderColor: unobtainable ? colors.warning : colors.border,
-            backgroundColor: unobtainable ? withAlpha(colors.warning, "18") : colors.surface,
-            paddingHorizontal: 10,
-            paddingVertical: 6,
-          }}
-        >
-          <Text style={{ color: unobtainable ? colors.warning : colors.textMuted, fontSize: 11, fontWeight: "900" }}>{labelUnableToObtain}</Text>
-        </Pressable>
-      </View>
-      {unobtainable ? (
-        <View style={{ minHeight: 48, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, justifyContent: "center", paddingHorizontal: 12 }}>
-          <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: "800" }}>Not available</Text>
-        </View>
-      ) : (
-        <VitalStepper value={value} onChange={(next) => { impact(); onChange(next) }} min={min} max={max} step={step} precision={precision} unit={unit} placeholder={label} />
-      )}
-      {error ? <Text style={{ color: colors.danger, fontSize: 12, marginTop: 4 }}>{error}</Text> : null}
-    </View>
-  )
-}
-
-function ManualLabPanel({ value, onChange, labelManualLabEntry = "Manual lab entry", labelHideManualLab = "Hide manual lab entry", labelSearchLabs = "Search tests..." }: { value: { test: string; value: string; unit: string }[]; onChange: (value: { test: string; value: string; unit: string }[]) => void; labelManualLabEntry?: string; labelHideManualLab?: string; labelSearchLabs?: string }) {
-  const [expanded, setExpanded] = useState(false)
-  const [query, setQuery] = useState("")
-  const [category, setCategory] = useState<string | null>(null)
-  const filtered = useMemo(() => query.length >= 2 ? searchLabs(query) : null, [query])
-
-  function addTest(test: LabTest) {
-    if (value.some((row) => row.test === test.name)) return
-    onChange([...value, { test: test.name, value: "", unit: test.unit }])
-    setQuery("")
-  }
-
-  function update(test: string, nextValue: string) {
-    onChange(value.map((row) => row.test === test ? { ...row, value: nextValue } : row))
-  }
-
-  return (
-    <View>
-      {value.length > 0 ? (
-        <View style={{ backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, overflow: "hidden", marginBottom: 12 }}>
-          {value.map((row, idx) => {
-            const testDef = searchLabs(row.test)[0]?.test
-            const numeric = Number.parseFloat(row.value)
-            const flag = testDef && Number.isFinite(numeric) ? getLabOutOfRange(testDef, numeric) : null
-            return (
-              <View key={row.test} style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderBottomWidth: idx < value.length - 1 ? 1 : 0, borderBottomColor: colors.border }}>
-                <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 12, fontWeight: "900" }} numberOfLines={1}>{row.test}</Text>
-                <TextInput
-                  value={row.value}
-                  onChangeText={(text) => update(row.test, text)}
-                  keyboardType="decimal-pad"
-                  placeholder="-"
-                  placeholderTextColor={colors.textMuted}
-                  style={{ width: 72, color: flag ? colors.warning : colors.textPrimary, backgroundColor: colors.background, borderWidth: 1, borderColor: flag ? colors.warning : colors.border, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 6, textAlign: "right", fontWeight: "900" }}
-                />
-                <Text style={{ width: 48, color: colors.textMuted, fontSize: 11 }}>{row.unit}</Text>
-                <Pressable onPress={() => onChange(value.filter((item) => item.test !== row.test))}>
-                  <Text style={{ color: colors.danger, fontSize: 16, fontWeight: "900" }}>x</Text>
-                </Pressable>
-              </View>
-            )
-          })}
-        </View>
-      ) : null}
-
-      <Pressable onPress={() => setExpanded(!expanded)} style={{ borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: 14, paddingVertical: 12, marginBottom: expanded ? 12 : 0 }}>
-        <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: "900" }}>{expanded ? labelHideManualLab : labelManualLabEntry}</Text>
-        <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>Typing is the backup path. Camera and Gallery are primary.</Text>
-      </Pressable>
-
-      {expanded ? (
-        <View>
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder={labelSearchLabs}
-            placeholderTextColor={colors.textMuted}
-            style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 14, color: colors.textPrimary, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 10 }}
-          />
-          {filtered ? (
-            <View style={{ backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }}>
-              {filtered.slice(0, 8).map((result, idx) => (
-                <Pressable key={result.test.name} onPress={() => addTest(result.test)} style={{ padding: 12, borderBottomWidth: idx < Math.min(filtered.length, 8) - 1 ? 1 : 0, borderBottomColor: colors.border }}>
-                  <Text style={{ color: colors.textPrimary, fontWeight: "900" }}>{result.test.name}</Text>
-                  <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>{result.category.label} - {result.test.unit}</Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : LAB_CATEGORIES.map((cat) => (
-            <View key={cat.id} style={{ marginBottom: 8 }}>
-              <Pressable onPress={() => setCategory(category === cat.id ? null : cat.id)} style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 12 }}>
-                <Text style={{ color: colors.textSecondary, fontWeight: "900" }}>{cat.label}</Text>
-              </Pressable>
-              {category === cat.id ? cat.tests.map((test) => (
-                <Pressable key={test.name} onPress={() => addTest(test)} style={{ paddingHorizontal: 14, paddingVertical: 10 }}>
-                  <Text style={{ color: colors.textMuted, fontWeight: "800" }}>{test.name} ({test.unit})</Text>
-                </Pressable>
-              )) : null}
-            </View>
-          ))}
-        </View>
-      ) : null}
-    </View>
-  )
-}
-
-// Map server preop data back into the new-case form fields
-
-// For comma-separated fields (allergyDetails, currentMedications)
-function commaToTags(value: unknown): { label: string; code?: string; inn?: string; atcCode?: string }[] {
-  if (Array.isArray(value)) return value
-  if (typeof value !== "string" || !value.trim()) return []
-  const trimmed = value.trim()
-  if (trimmed.startsWith("[")) {
-    try {
-      const parsed = JSON.parse(trimmed)
-      if (Array.isArray(parsed)) return parsed
-    } catch {}
-  }
-  return value.split(",").map(s => s.trim()).filter(Boolean).map(label => ({ label }))
-}
-
-// For diagnoses/procedures: DB stores as diagnosesJson/proceduresJson (array) or
-// as a legacy "; "-joined string. Never split on commas — names contain them.
-function diagToTags(value: unknown): { label: string; code?: string; sub?: string }[] {
-  if (Array.isArray(value)) return value
-  if (typeof value !== "string" || !value.trim()) return []
-  return value.split(";").map(s => s.trim()).filter(Boolean).map(label => ({ label }))
-}
-
-type ServerPreop = Partial<FormInput> & {
-  diagnosesJson?: unknown
-  diagnosis?: unknown
-  proceduresJson?: unknown
-  plannedProcedure?: unknown
-  comorbidities?: unknown
-  ulbt?: unknown
-  age?: number
-  weight?: number
-  height?: number
-  difficultAirway?: boolean
-  updatedAt?: string
-}
-
-function valuesFromServerPreop(p: ServerPreop): Partial<FormInput> {
-  const ulbt = p.upperLipBiteTest ?? p.ulbt
-  const toClass = (v: unknown) =>
-    v === "CLASS_I" || v === "CLASS_II" || v === "CLASS_III" ? v as "CLASS_I" | "CLASS_II" | "CLASS_III"
-    : v === "I" ? "CLASS_I" : v === "II" ? "CLASS_II" : v === "III" ? "CLASS_III" : undefined
-  return {
-    ageYears:            p.ageYears ?? undefined,
-    sex:                 p.sex ?? "MALE",
-    heightCm:            p.heightCm ?? undefined,
-    weightKg:            p.weightKg ?? undefined,
-    bloodType:           p.bloodType ?? undefined,
-    rhFactor:            p.rhFactor ?? undefined,
-    diagnoses:           diagToTags(p.diagnosesJson ?? p.diagnosis),
-    procedures:          diagToTags(p.proceduresJson ?? p.plannedProcedure),
-    highRiskSurgery:     p.highRiskSurgery ?? false,
-    elective:            p.elective ?? !p.emergencySurgery,
-    emergencySurgery:    p.emergencySurgery ?? false,
-    comorbidities:       diagToTags(p.comorbidities),
-    currentMedications:  commaToTags(p.currentMedications),
-    allergies:           p.allergies ?? false,
-    latexAllergy:        p.latexAllergy ?? false,
-    allergyDetails:      commaToTags(p.allergyDetails),
-    familyAnesthesiaProblems: p.familyAnesthesiaProblems ?? false,
-    familyAnesthesiaDetails:  p.familyAnesthesiaDetails ?? undefined,
-    dentalProsthetics:   p.dentalProsthetics ?? false,
-    looseTeeth:          p.looseTeeth ?? false,
-    smoking:             p.smoking ?? false,
-    substanceAbuse:      p.substanceAbuse ?? false,
-    bpSystolic:          p.bpSystolic ?? undefined,
-    bpDiastolic:         p.bpDiastolic ?? undefined,
-    heartRate:           p.heartRate ?? undefined,
-    heartArrhythmia:     p.heartArrhythmia ?? false,
-    spO2:                p.spO2 ?? undefined,
-    temperature:         p.temperature ?? undefined,
-    respiratoryRate:     p.respiratoryRate ?? undefined,
-    bpUnobtainable:      p.bpUnobtainable ?? false,
-    heartRateUnobtainable: p.heartRateUnobtainable ?? false,
-    spO2Unobtainable:    p.spO2Unobtainable ?? false,
-    temperatureUnobtainable: p.temperatureUnobtainable ?? false,
-    respiratoryRateUnobtainable: p.respiratoryRateUnobtainable ?? false,
-    physicalExamReport:  p.physicalExamReport ?? undefined,
-    mallampati:          p.mallampati ?? undefined,
-    mouthOpeningCm:      p.mouthOpeningCm ?? undefined,
-    thyromental:         p.thyromental ?? undefined,
-    neckMobility:        p.neckMobility ?? undefined,
-    upperLipBiteTest:    toClass(ulbt),
-    cormackLehane:       p.cormackLehane ?? undefined,
-    retrognathia:        p.retrognathia ?? false,
-    prominentIncisors:   p.prominentIncisors ?? false,
-    facialHair:          p.facialHair ?? false,
-    difficultAirwayHistory: p.difficultAirwayHistory ?? p.difficultAirway ?? false,
-    difficultAirwayNotes: p.difficultAirwayNotes ?? undefined,
-    airwayUnobtainable:  p.airwayUnobtainable ?? false,
-    rcriIschemicHeart:   p.rcriIschemicHeart ?? false,
-    rcriCHF:             p.rcriCHF ?? false,
-    rcriCVD:             p.rcriCVD ?? false,
-    rcriInsulinDM:       p.rcriInsulinDM ?? false,
-    rcriCreatinine:      p.rcriCreatinine ?? false,
-    apfelPONVHistory:    p.apfelPONVHistory ?? false,
-    apfelPostopOpioids:  p.apfelPostopOpioids ?? false,
-    stopbangSnoring:     p.stopbangSnoring ?? false,
-    stopbangTired:       p.stopbangTired ?? false,
-    stopbangObserved:    p.stopbangObserved ?? false,
-    stopbangBP:    p.stopbangBP ?? false,
-    stopbangNeck:        p.stopbangNeck ?? false,
-    asaScore:            p.asaScore ?? "I",
-    teamNotes:           p.teamNotes ?? p.notes ?? undefined,
-    notes:               p.notes ?? undefined,
-    aiOptIn:        p.aiOptIn ?? false,
-    labResults:          Array.isArray(p.labResults) ? p.labResults : [],
-  }
-}
-
 export default function NewCaseScreen() {
   const router = useRouter()
   const { continue: continueId, localId: localIdParam } = useLocalSearchParams<{ continue?: string; localId?: string }>()
@@ -985,9 +128,9 @@ export default function NewCaseScreen() {
   const { options: cormackLehaneOptions } = useOptionLibrary("CORMACK_LEHANE")
   const lbl = (opt: { label: string; labelBg: string | null }) => (language === "bg" && opt.labelBg) ? opt.labelBg : opt.label
 
-  // Build translated section labels from tc() — must be inside component
+  // Build translated section labels from tc() вЂ” must be inside component
   // Pill rail labels (shorter) vs full section card titles
-  const SECTION_LABELS: { key: PreopSection; label: string }[] = useMemo(() => [
+  const SECTION_LABELS: PreopSectionLabel[] = useMemo(() => [
     { key: "patient",   label: tc("pillPatient") },
     { key: "case",      label: tc("sectionCaseDetails") },
     { key: "history",   label: tc("sectionHistory") },
@@ -1035,7 +178,7 @@ export default function NewCaseScreen() {
         if (preopModeRef.current === "editing") {
           setPreopMode("overview")
           preopModeRef.current = "overview"
-          return true // consumed — don't bubble to navigator
+          return true // consumed вЂ” don't bubble to navigator
         }
         return false // let the navigator handle it (goes to dashboard)
       })
@@ -1062,7 +205,7 @@ export default function NewCaseScreen() {
   const basePreopUpdatedAtRef = useRef<string | null>(null)
 
   const { control, handleSubmit, setValue, getValues, reset, formState: { errors } } = useForm<FormInput, unknown, FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(preopFormSchema),
     defaultValues: {
       sex: "MALE",
       asaScore: "I",
@@ -1083,7 +226,7 @@ export default function NewCaseScreen() {
     },
   })
 
-  // Batched watch subscriptions — 4 groups instead of 17 individual calls
+  // Batched watch subscriptions вЂ” 4 groups instead of 17 individual calls
   const [sex, smoking, ageYears, heightCm, weightKg, bloodType, rhFactor,
          allergies, familyAnesthesiaProblems, airwayUnobtainable, difficultAirwayHistory,
          labResults, _aiOptIn, highRiskSurgery, emergencySurgery, comorbidities, currentMedications] =
@@ -1097,7 +240,7 @@ export default function NewCaseScreen() {
 
   const bmi = heightCm && weightKg ? weightKg / ((heightCm / 100) ** 2) : null
 
-  // Suggestions only — never silently auto-checked, same rule as the ASA suggestion.
+  // Suggestions only вЂ” never silently auto-checked, same rule as the ASA suggestion.
   const rcriSuggested = {
     rcriIschemicHeart: suggestRcriIschemicHeart(comorbidities ?? []),
     rcriCHF:            suggestRcriCHF(comorbidities ?? []),
@@ -1106,7 +249,7 @@ export default function NewCaseScreen() {
     rcriCreatinine:     suggestRcriCreatinine(labResults ?? []),
   }
   const stopBangBPSuggested = suggestStopBangBP(comorbidities ?? [], currentMedications ?? [])
-  const RCRI_HINT = "Suggested by comorbidities/medications — review and confirm"
+  const RCRI_HINT = "Suggested by comorbidities/medications вЂ” review and confirm"
   const asaSuggestion = suggestASAFromTags(comorbidities ?? [], bmi)
   const ibw = heightCm ? (sex === "MALE" ? 50 : 45.5) + 2.3 * ((heightCm / 2.54) - 60) : null
   const abw = ibw && weightKg && weightKg > ibw ? ibw + 0.4 * (weightKg - ibw) : null
@@ -1162,7 +305,7 @@ export default function NewCaseScreen() {
       if (dx < -50) goNextSection()
       else if (dx > 50) goPrevSection()
     },
-   
+
   }), [goNextSection, goPrevSection, preopLayout])
 
   useEffect(() => {
@@ -1185,46 +328,31 @@ export default function NewCaseScreen() {
   }, [])
 
   const tryCreateServerCase = useCallback(async (values: FormInput): Promise<string | null> => {
-    const payload = buildPreopPayload(values)
-    // Guard: skip only if values object is completely empty (e.g. form not yet mounted).
-    // "sex" always defaults to "MALE" so any real form state passes this check.
-    if (!values || Object.keys(values).length === 0) return null
-    try {
-      const res = await apiFetch("/api/cases", {
-        method: "POST",
-        headers: { "X-Idempotency-Key": draftIdRef.current },
-        body: JSON.stringify({ preop: payload }),
-      })
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}))
-        const msg = errBody.error ?? `Save failed (HTTP ${res.status})`
-        console.error("[LOSPOR] POST /api/cases failed", res.status, errBody)
-        setSaveError(msg)
-        return null
+    const result = await postPreopServerCase(values, draftIdRef.current, apiFetch)
+    if (!result) return null
+    if (!result.ok) {
+      if (result.status != null) {
+        console.error("[LOSPOR] POST /api/cases failed", result.status, result.body ?? {})
+      } else {
+        console.error("[LOSPOR] POST /api/cases network error", result.error)
       }
-      setSaveError(null)
-      const json = await res.json()
-      const id: string = json.id
-      const updatedAt: string | undefined = json.preopUpdatedAt ?? json.preop?.updatedAt ?? json.updatedAt
-      caseIdRef.current = id
-      setCaseId(id)
-      void clearLocalDraft()
-      basePreopUpdatedAtRef.current = updatedAt ?? null
-      return id
-    } catch (err) {
-      const msg = `Network error: ${err instanceof Error ? err.message : "cannot reach server"}`
-      console.error("[LOSPOR] POST /api/cases network error", err)
-      setSaveError(msg)
+      setSaveError(result.message)
       return null
     }
+    setSaveError(null)
+    caseIdRef.current = result.id
+    setCaseId(result.id)
+    void clearLocalDraft()
+    basePreopUpdatedAtRef.current = result.updatedAt
+    return result.id
   }, [clearLocalDraft])
 
   const persistLocalDraft = useCallback(async (values: FormInput): Promise<boolean> => {
     if (!localIdRef.current) localIdRef.current = makeLocalCaseId()
     const ok = await saveLocalCaseDraft(localIdRef.current, values)
     if (!ok) {
-      // Storage write failed — tell the user the draft is NOT saved
-      setSaveError("Storage error — draft could not be saved locally")
+      // Storage write failed вЂ” tell the user the draft is NOT saved
+      setSaveError("Storage error вЂ” draft could not be saved locally")
     }
     return ok
   }, [])
@@ -1254,7 +382,7 @@ export default function NewCaseScreen() {
         }
         notify(tc("errorLabel"), err.message ?? "Could not load case.")
       })
-   
+
   }, [clearLocalDraft, continueId, reset, router, tc])
 
   // Restore local draft silently when opened from the dashboard via ?localId=
@@ -1265,10 +393,10 @@ export default function NewCaseScreen() {
       reset(draft.formValues as FormInput)
       setDraftState("queued")
     })
-   
+
   }, [continueId, localIdParam, reset])
 
-  // useWatch triggers a React re-render on every field change — works on both native and web.
+  // useWatch triggers a React re-render on every field change вЂ” works on both native and web.
   // (watch(callback) subscription doesn't fire reliably on Expo web builds.)
   const _allFormValues = useWatch({ control })
 
@@ -1278,9 +406,12 @@ export default function NewCaseScreen() {
     setDraftState("saving")
     if (autosaveDraftRef.current) clearTimeout(autosaveDraftRef.current)
     autosaveDraftRef.current = setTimeout(() => {
-      const values = getValues()
+      const previousAutosave = autosaveInFlightRef.current
       const task = (async () => {
+        let values = getValues()
         try {
+          await previousAutosave?.catch(() => {})
+          values = getValues()
           if (!caseIdRef.current) {
             // First save: try to create the case on the server
             const id = await tryCreateServerCase(values)
@@ -1303,7 +434,7 @@ export default function NewCaseScreen() {
             await clearLocalDraft()
             setDraftState("saved")
           } else if (result.result === "queued") {
-            setSaveError("Network error — patch queued")
+            setSaveError("Network error вЂ” patch queued")
             await persistLocalDraft(values)
             setDraftState("queued")
           } else {
@@ -1338,7 +469,7 @@ export default function NewCaseScreen() {
         if (autosaveInFlightRef.current === task) autosaveInFlightRef.current = null
       })
     }, 2000)
-   
+
   }, [_allFormValues, clearLocalDraft, getValues, persistLocalDraft, tryCreateServerCase])
 
   useEffect(() => {
@@ -1367,7 +498,7 @@ export default function NewCaseScreen() {
   useEffect(() => {
     if (preopLayout !== "sections") return
     runSectionEnterAnim(slideDir.current)
-   
+
   }, [activeSection, preopLayout, runSectionEnterAnim])
 
   const sectionPan = useRef(PanResponder.create({
@@ -1427,7 +558,7 @@ export default function NewCaseScreen() {
     const dir = targetIndex > currentIndex ? -1 : 1
     if (preopLayout === "sections") {
       if (preopModeRef.current !== "editing") {
-        // Entering editing from overview — skip exit animation, slide in cleanly from right
+        // Entering editing from overview вЂ” skip exit animation, slide in cleanly from right
         slideDir.current = 1
         activeSectionRef.current = section
         setActiveSection(section)
@@ -1515,10 +646,10 @@ export default function NewCaseScreen() {
     setAiError("")
     try {
       if (!caseIdRef.current) {
-        // tryCreateServerCase sends current values including aiOptIn — no race here
+        // tryCreateServerCase sends current values including aiOptIn вЂ” no race here
         const created = await tryCreateServerCase(getValues())
         if (!created) {
-          setAiError("Could not save case — check your connection and try again.")
+          setAiError("Could not save case вЂ” check your connection and try again.")
           setAiLoading(false)
           return
         }
@@ -1534,7 +665,7 @@ export default function NewCaseScreen() {
           if (res.status === 403 && attempt === 0) {
             const body = await res.json().catch(() => ({}))
             if (body.error?.includes("not enabled") && getValues().aiOptIn) {
-              // Race: debounce hasn't fired yet — wait for it then retry
+              // Race: debounce hasn't fired yet вЂ” wait for it then retry
               await new Promise(r => setTimeout(r, 2500))
               continue
             }
@@ -1565,38 +696,29 @@ export default function NewCaseScreen() {
     }
   }
 
-  // Readable label for a required field key, used in the validation message.
-  function requiredFieldLabel(key: string): string {
-    const labels: Record<string, string> = {
-      ageYears: tc("ageYears"), sex: tc("sexLabel"), heightCm: tc("heightCm"), weightKg: tc("weightKg"),
-      diagnoses: tc("diagnosisLabel"), procedures: tc("procedureLabel"),
-      bpSystolic: tc("sbpLabel"), bpDiastolic: tc("dbpLabel"), heartRate: tc("heartRateLabel"),
-      respiratoryRate: tc("respiratoryRateLabel"), mallampati: tc("mallampatiLabel"), asaScore: tc("asaPhysicalStatus"),
-    }
-    return labels[key] ?? key
+  const requiredFieldLabels = {
+    ageYears: tc("ageYears"),
+    sex: tc("sexLabel"),
+    heightCm: tc("heightCm"),
+    weightKg: tc("weightKg"),
+    diagnoses: tc("diagnosisLabel"),
+    procedures: tc("procedureLabel"),
+    bpSystolic: tc("sbpLabel"),
+    bpDiastolic: tc("dbpLabel"),
+    heartRate: tc("heartRateLabel"),
+    respiratoryRate: tc("respiratoryRateLabel"),
+    mallampati: tc("mallampatiLabel"),
+    asaScore: tc("asaPhysicalStatus"),
   }
 
-  // Maps each required field to its preop section so a failed validation can
-  // scroll the user straight to the problem. Mirrors web validate() coverage.
-  const REQUIRED_FIELD_SECTION: Record<string, PreopSection> = {
-    ageYears: "patient", sex: "patient", heightCm: "patient", weightKg: "patient",
-    diagnoses: "case", procedures: "case",
-    bpSystolic: "exam", bpDiastolic: "exam", heartRate: "exam", respiratoryRate: "exam",
-    mallampati: "airway", asaScore: "risk",
-  }
-
-  // Shared invalid-submit handler for both Continue buttons. handleSubmit only
-  // reaches onSubmit when the schema passes, so any required field gap lands
-  // here. Jump to the first offending section and show a visible message
-  // (notify works on PWA where Alert.alert is a no-op).
   function onInvalid(invalid: Record<string, unknown>) {
     const keys = Object.keys(invalid)
     const first = keys[0]
-    const target = first ? REQUIRED_FIELD_SECTION[first] : undefined
+    const target = first ? PREOP_REQUIRED_FIELD_SECTION[first] : undefined
     if (target) jumpTo(target)
     notify(
       tc("requiredFieldsMissing"),
-      `${tc("completeBeforeProceeding")}\n\n${keys.map((k) => `• ${requiredFieldLabel(k)}`).join("\n")}`,
+      preopInvalidSubmitMessage(keys, requiredFieldLabels, tc("completeBeforeProceeding")),
     )
   }
 
@@ -1609,72 +731,28 @@ export default function NewCaseScreen() {
     setSaving(true)
     try {
       await autosaveInFlightRef.current
-      const h = data.heightCm, w = data.weightKg
-      const calculatedBmi = h && w ? Number((w / ((h / 100) ** 2)).toFixed(1)) : undefined
-      const preopPayload = {
-        ...data,
-        bmi: calculatedBmi,
-        diagnosis: data.diagnoses.map((item) => item.label).join("; "),
-        plannedProcedure: data.procedures.map((item) => item.label).join("; "),
-        upperLipBiteTest: data.upperLipBiteTest,
-        rcriScore,
-        apfelScore,
-        stopBangScore,
-      }
+      const preopPayload = buildPreopPayload(data)
       let id: string
       if (caseIdRef.current) {
         // Case already created by autosave; do a final PATCH with complete data
-        const res = await apiFetch(`/api/cases/${caseIdRef.current}`, {
-          method: "PATCH",
-          headers: basePreopUpdatedAtRef.current
-            ? { "x-lospor-preop-updated-at": basePreopUpdatedAtRef.current }
-            : undefined,
-          body: JSON.stringify({ preop: preopPayload }),
-        })
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}))
-          if (res.status === 404) {
-            caseIdRef.current = null
-            setCaseId(null)
-            basePreopUpdatedAtRef.current = null
-            const replacementId = await tryCreateServerCase(data)
-            if (replacementId) {
-              id = replacementId
-              await clearLocalDraft()
-              router.replace(`/(app)/cases/intraop/${id}`)
-              return
-            }
+        const patchResult = await patchPreopServerCase(caseIdRef.current, preopPayload, basePreopUpdatedAtRef.current, apiFetch)
+        if (patchResult.result === "saved") {
+          basePreopUpdatedAtRef.current = patchResult.updatedAt ?? basePreopUpdatedAtRef.current
+          id = caseIdRef.current
+        } else if (patchResult.result === "not-found") {
+          caseIdRef.current = null
+          setCaseId(null)
+          basePreopUpdatedAtRef.current = null
+          const replacementId = await tryCreateServerCase(data)
+          if (replacementId) {
+            id = replacementId
+            await clearLocalDraft()
+            router.replace(`/(app)/cases/intraop/${id}`)
+            return
           }
-          if (res.status === 409) {
-            const serverAt = (body.serverVersion as { updatedAt?: string } | undefined)?.updatedAt
-            if (serverAt) {
-              basePreopUpdatedAtRef.current = serverAt
-              const retry = await apiFetch(`/api/cases/${caseIdRef.current}`, {
-                method: "PATCH",
-                headers: { "x-lospor-preop-updated-at": serverAt },
-                body: JSON.stringify({ preop: preopPayload }),
-              })
-              if (retry.ok) {
-                const rj = await retry.json().catch(() => ({}))
-                if (rj.preopUpdatedAt) basePreopUpdatedAtRef.current = rj.preopUpdatedAt
-                id = caseIdRef.current!
-                await clearLocalDraft()
-                router.replace(`/(app)/cases/intraop/${id}`)
-                return
-              }
-              if (retry.status === 401) {
-                await persistLocalDraft(getValues())
-                notify(
-                  "Session expired",
-                  "Your work has been saved locally. After logging in, return to this case to continue."
-                )
-                return
-              }
-              const rb = await retry.json().catch(() => ({}))
-              throw new Error(rb.error ?? "Save failed after retry")
-            }
-          }
-          if (res.status === 401) {
+          throw new Error("Save failed")
+        } else {
+          if (patchResult.result === "unauthorized") {
             await persistLocalDraft(getValues())
             notify(
               "Session expired",
@@ -1682,22 +760,17 @@ export default function NewCaseScreen() {
             )
             return
           }
-          throw new Error(body.error ?? "Save failed")
+          throw new Error(patchResult.message)
         }
-        id = caseIdRef.current
       } else {
         // No server case yet (offline during autosave); create it now
-        const res = await apiFetch("/api/cases", {
-          method: "POST",
-          headers: { "X-Idempotency-Key": draftIdRef.current },
-          body: JSON.stringify({ preop: preopPayload }),
-        })
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}))
-          throw new Error(body.error ?? "Save failed")
-        }
-        const json = await res.json()
-        id = json.id
+        const createResult = await postPreopServerCase(data, draftIdRef.current, apiFetch)
+        if (!createResult) throw new Error("Save failed")
+        if (!createResult.ok) throw new Error(createResult.message)
+        id = createResult.id
+        caseIdRef.current = createResult.id
+        setCaseId(createResult.id)
+        basePreopUpdatedAtRef.current = createResult.updatedAt
       }
       await clearLocalDraft()
       router.replace(`/(app)/cases/intraop/${id}`)
@@ -1710,57 +783,16 @@ export default function NewCaseScreen() {
   }
 
   function computeSectionItems() {
-    const v = getValues()
-    const hasBP = v.bpSystolic != null || !!v.bpUnobtainable
-    const hasHR = v.heartRate != null || !!v.heartRateUnobtainable
-    const hasSpO2 = v.spO2 != null || !!v.spO2Unobtainable
-    return SECTION_LABELS.map(({ key, label }) => {
-      let done = false
-      let required = false
-      let summary = ""
-      switch (key) {
-        case "patient":
-          required = true
-          done = v.ageYears != null
-          summary = v.ageYears != null ? `${v.ageYears}y · ${v.sex ?? "-"} · ${v.weightKg ?? "-"}kg` : tc("overviewPatientHint")
-          break
-        case "case":
-          done = (v.diagnoses?.length ?? 0) > 0 || (v.procedures?.length ?? 0) > 0
-          summary = v.procedures?.[0]?.label ?? v.diagnoses?.[0]?.label ?? "Diagnosis and procedure"
-          break
-        case "history":
-          done = (v.comorbidities?.length ?? 0) > 0
-          summary = done ? `${v.comorbidities?.length} comorbidities` : tc("overviewComorbidities")
-          break
-        case "meds":
-          done = (v.currentMedications?.length ?? 0) > 0
-          summary = done ? `${v.currentMedications?.length} medications` : tc("overviewMeds")
-          break
-        case "anamnesis":
-          done = !!(v.allergies || v.familyAnesthesiaProblems || v.smoking || v.substanceAbuse || v.dentalProsthetics || v.looseTeeth)
-          summary = [v.allergies && "Allergy", v.smoking && "Smoker", v.familyAnesthesiaProblems && "Family hx"].filter(Boolean).join(" · ") || tc("overviewFlags")
-          break
-        case "exam":
-          required = true
-          done = hasBP && hasHR && hasSpO2
-          summary = v.bpSystolic != null ? `BP ${v.bpSystolic}/${v.bpDiastolic ?? "?"} · HR ${v.heartRate ?? "-"}` : tc("overviewVitalsReq")
-          break
-        case "airway":
-          required = true
-          done = v.mallampati != null || !!v.airwayUnobtainable
-          summary = v.mallampati != null ? `Mallampati ${v.mallampati}` : tc("overviewMallampatiReq")
-          break
-        case "labs":
-          done = (v.labResults?.length ?? 0) > 0
-          summary = done ? `${v.labResults?.length} results` : tc("overviewLabsHint")
-          break
-        case "risk":
-          required = true
-          done = v.asaScore != null
-          summary = v.asaScore != null ? `ASA ${v.asaScore}${v.emergencySurgery ? "E" : ""}` : tc("overviewASAReq")
-          break
-      }
-      return { key, label, done, required, summary }
+    return buildPreopSectionItems(getValues(), SECTION_LABELS, {
+      patientHint: tc("overviewPatientHint"),
+      diagnosisAndProcedure: "Diagnosis and procedure",
+      comorbidities: tc("overviewComorbidities"),
+      meds: tc("overviewMeds"),
+      flags: tc("overviewFlags"),
+      vitalsRequired: tc("overviewVitalsReq"),
+      mallampatiRequired: tc("overviewMallampatiReq"),
+      labsHint: tc("overviewLabsHint"),
+      asaRequired: tc("overviewASAReq"),
     })
   }
 
@@ -1906,7 +938,7 @@ export default function NewCaseScreen() {
             )}
             <SectionCard title={tc("sectionPatient")} onLayout={(y) => { sectionY.current.patient = y }} visible={showSection("patient")}>
               <Field label={tc("ageYears")} required error={errors.ageYears?.message}>
-                <Controller control={control} name="ageYears" render={({ field }) => <ClinicalNumberInput value={field.value} onChange={field.onChange} min={ageRange?.min ?? 0} max={ageRange?.max ?? 150} step={ageRange?.step ?? 1} placeholder="Age" showSteppers={false} />} />
+                <Controller control={control} name="ageYears" render={({ field }) => <ClinicalNumberInput value={field.value} onChange={field.onChange} min={ageRange?.min ?? 0} max={149} step={ageRange?.step ?? 1} placeholder="Age" showSteppers={false} />} />
               </Field>
               <Field label={tc("heightCm")} required error={errors.heightCm?.message}>
                 <Controller control={control} name="heightCm" render={({ field }) => {
@@ -2198,7 +1230,7 @@ export default function NewCaseScreen() {
             </View>
           </View>
         ) : null}
-          {/* FAB — go back to section overview */}
+          {/* FAB вЂ” go back to section overview */}
           <TouchableOpacity
             onPress={() => { preopModeRef.current = "overview"; setPreopMode("overview") }}
             style={{
@@ -2208,7 +1240,7 @@ export default function NewCaseScreen() {
               shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8,
             }}
           >
-            <Text style={{ color: "#fff", fontSize: 18, lineHeight: 20, fontWeight: "900" }}>⊞</Text>
+            <Text style={{ color: "#fff", fontSize: 18, lineHeight: 20, fontWeight: "900" }}>вЉћ</Text>
           </TouchableOpacity>
         </View>}
       </KeyboardAvoidingView>

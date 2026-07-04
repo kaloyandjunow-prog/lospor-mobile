@@ -5,6 +5,8 @@ import {
 } from "react-native"
 import { useOptionLibrary } from "@/lib/use-option-library"
 import { confirmAction } from "@/lib/notify"
+import { calcSuggestedDose as calcDose, type DoseEntry, type DoseRule } from "@/lib/dose-calc"
+import { packLaneRows } from "@lospor/core/timetable"
 
 // ─── Types (API-compatible with web timetable) ────────────────────────────────
 
@@ -109,18 +111,7 @@ function computeFluidRows(fluids: TimetableFluid[]): FluidLaneRow[] {
   }
   const rows: FluidLaneRow[] = []
   for (const [cat, catFluids] of byCat) {
-    const sorted = [...catFluids].sort((a, b) => a.startCol - b.startCol)
-    const lanes: TimetableFluid[][] = []
-    for (const fluid of sorted) {
-      let placed = false
-      for (const lane of lanes) {
-        // Non-overlapping if fluid ends before lane item starts, or starts after lane item ends
-        if (!lane.some(l => !(fluid.endCol < l.startCol || fluid.startCol > l.endCol))) {
-          lane.push(fluid); placed = true; break
-        }
-      }
-      if (!placed) lanes.push([fluid])
-    }
+    const lanes = packLaneRows(catFluids)
     const color = catFluids[0]?.color ?? "#94a3b8"
     lanes.forEach((lane, idx) => {
       rows.push({ label: idx === 0 ? cat : `${cat} ${idx + 1}`, color, segs: lane })
@@ -344,29 +335,22 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
   // Drug dose autofill
   const { options: drugLibOptions } = useOptionLibrary("INTRAOP_DRUG")
 
-  const ibw = useMemo(() => {
-    if (!patientHeightCm) return null
-    const inches = patientHeightCm / 2.54
-    if (inches < 60) return null
-    const base = (patientSex?.toUpperCase() === "FEMALE") ? 45.5 : 50
-    return base + 2.3 * (inches - 60)
-  }, [patientHeightCm, patientSex])
-
   function calcSuggestedDose(name: string): { dose: string; hint: string } {
     const opt = drugLibOptions.find(o => o.value === name.toUpperCase())
-    const dc = opt?.metadata?.doseCalc as { perKg?: number; flat?: number; basis?: string; roundTo?: number } | undefined
-    const hint = (opt?.metadata?.hint as string | undefined) ?? ""
-    if (!dc) return { dose: "", hint }
-    if (dc.flat !== undefined) return { dose: String(dc.flat), hint }
-    if (dc.perKg !== undefined) {
-      const tbw = patientWeightKg ?? null
-      const w = dc.basis === "TBW" ? (tbw ?? ibw) : (ibw !== null && tbw !== null ? Math.min(ibw, tbw) : (ibw ?? tbw))
-      if (!w) return { dose: "", hint }
-      const roundTo = dc.roundTo ?? 1
-      const rounded = Math.round(w * dc.perKg / roundTo) * roundTo
-      return { dose: String(rounded), hint }
+    const metadata = opt?.metadata as {
+      hint?: string
+      doseCalc?: DoseRule
+      doseCalcByRoute?: Record<string, DoseRule>
+      routeModes?: Record<string, { doseCalc?: DoseRule }>
+    } | undefined
+    const byRoute: Record<string, DoseRule> = { ...(metadata?.doseCalcByRoute ?? {}) }
+    for (const [route, profile] of Object.entries(metadata?.routeModes ?? {})) {
+      if (profile?.doseCalc) byRoute[route] = profile.doseCalc
     }
-    return { dose: "", hint }
+    const entry: DoseEntry | undefined = metadata?.doseCalc || Object.keys(byRoute).length
+      ? { ...(metadata?.doseCalc ?? {}), hint: metadata?.hint, byRoute: Object.keys(byRoute).length ? byRoute : undefined }
+      : undefined
+    return calcDose(entry, undefined, { weightKg: patientWeightKg, heightCm: patientHeightCm, sex: patientSex })
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────

@@ -135,6 +135,68 @@ export async function login(email: string, password: string): Promise<void> {
   await setToken(access_token)
 }
 
+export type RegisterAccountInput = {
+  firstName: string
+  lastName: string
+  title?: string
+  email: string
+  password: string
+  institutionId?: string
+  acceptedTerms: boolean
+}
+
+export type RegisterAccountResult = {
+  id?: string
+  email?: string
+  pending?: boolean
+  verificationRequired?: boolean
+  emailSent?: boolean
+  devVerifyUrl?: string
+}
+
+export async function registerAccount(input: RegisterAccountInput): Promise<RegisterAccountResult> {
+  const res = await fetch(`${API_BASE}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(body.error ?? "Registration failed. Please try again.")
+  }
+  return body as RegisterAccountResult
+}
+
+export type PasswordResetRequestResult = {
+  ok: boolean
+  devResetUrl?: string
+}
+
+export async function requestPasswordReset(email: string): Promise<PasswordResetRequestResult> {
+  const res = await fetch(`${API_BASE}/api/auth/password-reset/request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok && res.status !== 202) {
+    throw new Error(body.error ?? "Password reset failed.")
+  }
+  return { ok: true, devResetUrl: body.devResetUrl }
+}
+
+export async function confirmPasswordReset(token: string, password: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/auth/password-reset/confirm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, password }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error ?? "Password reset failed.")
+  }
+}
+
 export async function logout(): Promise<void> {
   // Best-effort server-side revocation so a token can't be replayed after logout
   // (e.g. on a lost device). Clear locally regardless of the network result.

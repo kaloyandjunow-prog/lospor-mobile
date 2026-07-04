@@ -3,25 +3,12 @@ import { useEffect, useState } from "react"
 import * as SecureStore from "expo-secure-store"
 import { apiJson } from "./api"
 import fallbackSnapshot from "../data/option-library-fallback.json"
+import type { LibraryOption, RangeSpec } from "@lospor/core/option-library"
 
-type OptionMetadata = Record<string, any> | null
 type FallbackSnapshot = { generatedAt?: string } & Record<string, LibraryOption[] | string | undefined>
 const typedFallbackSnapshot = fallbackSnapshot as unknown as FallbackSnapshot
 
-export type LibraryOption = {
-  id: string
-  value: string
-  label: string
-  labelBg: string | null
-  group: string | null
-  parentId: string | null
-  color: string | null
-  description: string | null
-  drugId: string | null
-  atcCode: string | null
-  inn: string | null
-  metadata: OptionMetadata
-}
+export type { LibraryOption, RangeSpec }
 
 export type LibrarySource = "live" | "cached" | "bundled"
 
@@ -38,6 +25,21 @@ const FALLBACK_SNAPSHOT_DATE: string = typedFallbackSnapshot.generatedAt ?? "unk
 
 function storeKey(category: string) {
   return `lospor_option_library_${category}`
+}
+
+function bundledOptions(category: string): LibraryOption[] {
+  const bundled = typedFallbackSnapshot[category]
+  return Array.isArray(bundled) ? bundled : []
+}
+
+function parseCachedOptions(raw: string | null): LibraryOption[] | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : null
+  } catch {
+    return null
+  }
 }
 
 function notify(category: string) {
@@ -84,13 +86,10 @@ async function attemptLiveFetch(category: string): Promise<void> {
       // pickers aren't empty.
       if (!state.has(category)) {
         const cached = await SecureStore.getItemAsync(storeKey(category)).catch(() => null)
-        if (cached) {
-          try {
-            setState(category, { data: JSON.parse(cached), source: "cached" })
-          } catch { setState(category, { data: Array.isArray(typedFallbackSnapshot[category]) ? typedFallbackSnapshot[category] : [], source: "bundled" }) }
-        } else {
-          setState(category, { data: Array.isArray(typedFallbackSnapshot[category]) ? typedFallbackSnapshot[category] : [], source: "bundled" })
-        }
+        const cachedOptions = parseCachedOptions(cached)
+        setState(category, cachedOptions
+          ? { data: cachedOptions, source: "cached" }
+          : { data: bundledOptions(category), source: "bundled" })
       }
       scheduleRetry(category)
     } finally {
@@ -129,10 +128,11 @@ export function useOptionLibrary(category: string): { options: LibraryOption[]; 
   }, [category])
 
   const latest = state.get(category)
-  return { options: latest?.data ?? [], loading, source: latest?.source ?? null }
+  const effective = latest && latest.data.length === 0
+    ? { data: bundledOptions(category), source: "bundled" as const }
+    : latest
+  return { options: effective?.data ?? [], loading, source: effective?.source ?? null }
 }
-
-export type RangeSpec = { min: number; max: number; step: number; unit: string }
 
 // Numeric range pickers (age, height, weight, vitals, etc.) are seeded as a
 // single OptionLibrary row per category with the actual min/max/step/unit in

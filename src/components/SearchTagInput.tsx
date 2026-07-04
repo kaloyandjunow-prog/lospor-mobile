@@ -59,6 +59,7 @@ export function SearchTagInput({
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isIcdSearch = endpoint.includes("icd11") || endpoint.includes("icd10")
 
   useEffect(() => {
     return () => {
@@ -78,7 +79,7 @@ export function SearchTagInput({
       setLoading(true)
       try {
         const mergedParams: Record<string, string> = { [queryParam]: q, ...extraParams }
-        if (endpoint.includes("icd11") || endpoint.includes("icd10")) mergedParams.locale = language
+        if (isIcdSearch) mergedParams.locale = language
         const params = new URLSearchParams(mergedParams)
         const data = await apiJson<SearchResult[]>(`${endpoint}?${params}`)
         setResults(
@@ -111,7 +112,7 @@ export function SearchTagInput({
         setLoading(false)
       }
     }, 300)
-  }, [endpoint, queryParam, extraParams, language])
+  }, [endpoint, queryParam, extraParams, language, isIcdSearch])
 
   function handleChange(q: string) {
     setQuery(q)

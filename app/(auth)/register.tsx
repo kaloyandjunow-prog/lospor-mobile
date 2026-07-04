@@ -8,7 +8,7 @@ import { useForm, Controller } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Field, StyledInput, SectionHeader, PrimaryButton, SingleToggle, Chip } from "@/components/ui"
-import { API_BASE } from "@/lib/api"
+import { API_BASE, registerAccount } from "@/lib/api"
 import { AuthBackdrop, AuthBrand } from "@/components/AuthBrand"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -323,7 +323,7 @@ function SuccessView() {
       <Text style={{ fontSize: 72, color: "#22c55e", marginBottom: 16 }}>✓</Text>
       <Text className="text-white text-2xl font-bold text-center mb-3">Account created</Text>
       <Text className="text-slate-400 text-sm text-center mb-10 leading-relaxed">
-        Your account is pending admin approval. You'll be able to log in once approved.
+        Check your email for a verification link. Once you verify your email, you can log in.
       </Text>
       <TouchableOpacity
         className="bg-blue-600 rounded-xl py-3.5 px-8 items-center"
@@ -368,27 +368,18 @@ export default function RegisterScreen() {
   async function onSubmit(data: FormValues) {
     setServerError(null)
     try {
-      const res = await fetch(`${API_BASE}/api/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName:     data.firstName,
-          lastName:      data.lastName,
-          title:         data.title,
-          email:         data.email,
-          password:      data.password,
-          institutionId: data.institutionId,
-          acceptedTerms: data.acceptedTerms,
-        }),
+      await registerAccount({
+        firstName:     data.firstName,
+        lastName:      data.lastName,
+        title:         data.title,
+        email:         data.email,
+        password:      data.password,
+        institutionId: data.institutionId,
+        acceptedTerms: data.acceptedTerms,
       })
-      const body = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setServerError((body as { error?: string }).error ?? "Registration failed. Please try again.")
-        return
-      }
       setSuccess(true)
-    } catch {
-      setServerError("Network error. Please check your connection.")
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : "Network error. Please check your connection.")
     }
   }
 

@@ -8,11 +8,13 @@ describe("buildPreopPayload", () => {
       weightKg: 70,
       diagnoses: [{ label: "Hypertension" }, { label: "Diabetes" }],
       procedures: [{ label: "Appendectomy" }],
+      upperLipBiteTest: "CLASS_II",
     })
 
     expect(result.bmi).toBeCloseTo(24.2, 1)
     expect(result.diagnosis).toBe("Hypertension; Diabetes")
     expect(result.plannedProcedure).toBe("Appendectomy")
+    expect(result.upperLipBiteTest).toBe("CLASS_II")
   })
 
   it("calculates RCRI, Apfel, and STOP-BANG scores from form values", () => {
