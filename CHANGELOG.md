@@ -1,5 +1,13 @@
 # Changelog - LOSPOR Mobile
 
+## [4.1.5] - 2026-07-05
+
+Android `versionCode` 17.
+
+### Fixed
+- Replaced the corrupted preop section-overview floating button text with a real app icon, fixing the mojibake shown in mobile and Expo PWA builds.
+- Normalized the Expo web manifest description so PWA install metadata avoids fragile glyph encoding.
+
 ## [4.1.4] - 2026-07-05
 
 Intraop bug fixes (regressions surfaced after the shared-core refactor). Android `versionCode` 16 (JS-only, no native changes).

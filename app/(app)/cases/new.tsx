@@ -18,6 +18,7 @@ import {
 } from "react-native"
 import { hapticTick } from "@/lib/haptic"
 import { Stack, useRouter, useLocalSearchParams, useFocusEffect } from "expo-router"
+import Ionicons from "@expo/vector-icons/Ionicons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Controller, useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -1260,7 +1261,7 @@ export default function NewCaseScreen() {
               shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8,
             }}
           >
-            <Text style={{ color: "#fff", fontSize: 18, lineHeight: 20, fontWeight: "900" }}>вЉћ</Text>
+            <Ionicons name="grid-outline" size={23} color="#fff" />
           </TouchableOpacity>
         </View>}
       </KeyboardAvoidingView>

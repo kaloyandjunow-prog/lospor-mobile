@@ -2,7 +2,7 @@
   "expo": {
     "name": "LOSPOR",
     "slug": "lospor-mobile",
-    "version": "4.1.4",
+    "version": "4.1.5",
     "scheme": "lospor",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "org.lospor.mobile",
-      "versionCode": 16,
+      "versionCode": 17,
       "adaptiveIcon": {
         "backgroundColor": "#090b0c",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -31,7 +31,7 @@
       "output": "single",
       "name": "LOSPOR",
       "shortName": "LOSPOR",
-      "description": "Large Open Source Perioperative Register — clinical anaesthesia documentation",
+      "description": "Large Open Source Perioperative Register - clinical anaesthesia documentation",
       "themeColor": "#090b0c",
       "backgroundColor": "#090b0c",
       "lang": "en",
