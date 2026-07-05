@@ -45,7 +45,7 @@ type TimetableRowProps = {
   activeGas: ActiveGasSettings
   onExpand: (col: number) => void
   onCollapse: () => void
-  onManageInfusion: (inf: ActiveInfusion) => void
+  onManageInfusion: (inf: ActiveInfusion, col?: number) => void
   onEndFluid: (fl: ActiveFluid) => void
   onEditGas: (col: number) => void
   onStopAgent: () => void
@@ -128,7 +128,7 @@ function TimetableRowComponent({
                     key={item.id}
                     activeOpacity={canManage ? 0.7 : 1}
                     onPress={() => {
-                      if (activeInf) onManageInfusion(activeInf)
+                      if (activeInf) onManageInfusion(activeInf, col)
                       else if (activeFl) onEndFluid(activeFl)
                       else if (isGasItem && activeGas) onEditGas(col)
                       else if (isAgentItem && activeAgent) onStopAgent()

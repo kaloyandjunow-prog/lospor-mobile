@@ -197,7 +197,7 @@ export default function IntraopLiveScreen() {
     infOpen, setInfOpen, infDrug, setInfDrug, infRate, setInfRate,
     infRoute, setInfRoute, infConcentration, setInfConcentration,
     infActOpen, setInfActOpen, infActTgt, setInfActTgt, infActRate, setInfActRate,
-    infActConcentration, setInfActConcentration,
+    infActConcentration, setInfActConcentration, setInfActTs,
     openInfusion, confirmInfusion, stopInfusion, changeRate,
   } = useInfusionEntry(save, setEntryTs, setActiveInfusions, INFUSION_CODES)
 
@@ -591,7 +591,7 @@ export default function IntraopLiveScreen() {
           screenWidth, tabSwipeResponder, tab, undoEv, chartRows, chartStart, currentCol,
           expandedRow, nowSlotPercent, timetable, eventRows, activeInfusions, activeFluids,
           activeAgent, activeGas, startRef, isWatching, verticalTimetableRef, undoLastEvent,
-          setUndoEv, setExpandedRow, eventLabel, setInfActTgt, setInfActRate,
+          setUndoEv, setExpandedRow, eventLabel, setInfActTgt, setInfActRate, setInfActTs,
           openFluidEnd, openGasSettings, tc, stopAgent, openRowQuickAdd, jumpVerticalTimetableToNow,
           openEndCase, preop, techPath, setTechPath, TECHNIQUE_TREE, techniques, setTechniques,
           saveTechniques, techniqueLabel, otherTechText, setOtherTechText, caseMonthYear,

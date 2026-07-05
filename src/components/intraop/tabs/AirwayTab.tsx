@@ -65,11 +65,26 @@ export function AirwayTab({
     DOUBLE_LUMEN_TUBE: (awDltType || awDltSide || awDltSize) ? `DLT${awDltType ? " "+awDltType : ""}${awDltSide ? " "+awDltSide : ""}${awDltSize ? " "+awDltSize+"Fr" : ""}` : null,
     ENDOBRONCHIAL_TUBE:awEbSize ? `EB ${awEbSize}mm` : null,
   }
-  // A device is only ever in awDevices once it was previously confirmed complete —
-  // reopening it now is an edit, not a fresh entry, so the parent's auto-collapse
-  // effect shouldn't auto-add/collapse mid-edit.
+  function clearDeviceFields(code: string) {
+    switch (code) {
+      case "LMA": setAwLmaSize(null); break
+      case "ORAL_ETT": setAwOralTubeSize(null); setAwOralCuffed(null); break
+      case "NASAL_ETT": setAwNasalTubeSize(null); setAwNasalCuffed(null); break
+      case "DOUBLE_LUMEN_TUBE": setAwDltType(null); setAwDltSide(null); setAwDltSize(null); break
+      case "ENDOBRONCHIAL_TUBE": setAwEbSize(null); break
+    }
+  }
+
+  // Reopening an already-added device is a re-edit: clear its sub-fields so the
+  // panel opens with everything deselected and the user re-picks from scratch,
+  // exactly like first-time entry (the normal incomplete→complete→auto-collapse
+  // flow then runs again). Previously we kept the old values and set a
+  // "wasComplete" flag to suppress the auto-collapse — but that flag was never
+  // reset, so after a re-edit the panel could never collapse again and the
+  // device was effectively impossible to edit.
   function expandDevice(code: string) {
-    awExpandedWasComplete.current = awDevices.includes(code)
+    if (awDevices.includes(code)) clearDeviceFields(code)
+    awExpandedWasComplete.current = false
     setAwExpandedDevice(code)
   }
 
@@ -78,13 +93,7 @@ export function AirwayTab({
   function removeDevice(code: string) {
     setAwDevices(prev => prev.filter(d => d !== code))
     if (awExpandedDevice === code) setAwExpandedDevice(null)
-    switch (code) {
-      case "LMA": setAwLmaSize(null); break
-      case "ORAL_ETT": setAwOralTubeSize(null); setAwOralCuffed(null); break
-      case "NASAL_ETT": setAwNasalTubeSize(null); setAwNasalCuffed(null); break
-      case "DOUBLE_LUMEN_TUBE": setAwDltType(null); setAwDltSide(null); setAwDltSize(null); break
-      case "ENDOBRONCHIAL_TUBE": setAwEbSize(null); break
-    }
+    clearDeviceFields(code)
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {})
   }
 

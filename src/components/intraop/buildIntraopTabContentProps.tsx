@@ -14,7 +14,7 @@ export function buildIntraopTabContentProps(props: any): IntraopTabContentHostPr
     screenWidth, tab, undoEv, chartRows, chartStart, currentCol, expandedRow, nowSlotPercent,
     timetable, eventRows, activeInfusions, activeFluids, activeAgent, activeGas, startRef,
     isWatching, verticalTimetableRef, undoLastEvent, setUndoEv, setExpandedRow, eventLabel,
-    setInfActTgt, setInfActRate, setInfActOpen, openFluidEnd, openGasSettings, tc, stopAgent,
+    setInfActTgt, setInfActRate, setInfActOpen, setInfActTs, openFluidEnd, openGasSettings, tc, stopAgent,
     openRowQuickAdd, jumpVerticalTimetableToNow, openEndCase, preop, techPath, setTechPath,
     TECHNIQUE_TREE, techniques, setTechniques, saveTechniques, techniqueLabel, otherTechText,
     setOtherTechText, caseMonthYear, setCaseMonthYear, caseStartTime, setCaseStartTime,
@@ -62,7 +62,7 @@ export function buildIntraopTabContentProps(props: any): IntraopTabContentHostPr
       onSetExpandedRow: setExpandedRow,
       eventText: logEventText ?? ((ev: LogEvent) => eventLabel(ev).text),
       buildSummary: logBuildSummary ?? ((vital: VitalsEntry | undefined, rowEvents: LogEvent[]) => buildRowSummary(vital, rowEvents, ev => eventLabel(ev).text)),
-      onManageInfusion: inf => { setInfActTgt(inf); setInfActRate(inf.rate); setInfActOpen(true) },
+      onManageInfusion: (inf, col) => { setInfActTs(col != null ? timeAtCol(chartStart, col).toISOString() : null); setInfActTgt(inf); setInfActRate(inf.rate); setInfActOpen(true) },
       onEndFluid: openFluidEnd,
       onEditGas: c => { if (activeGas) openGasSettings(timeAtCol(chartStart, c).toISOString(), activeGas, "change") },
       onStopAgent: () => {

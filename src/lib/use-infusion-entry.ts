@@ -25,6 +25,11 @@ export function useInfusionEntry(
   const [infActTgt, setInfActTgt]   = useState<ActiveInfusion | null>(null)
   const [infActRate, setInfActRate] = useState("")
   const [infActConcentration, setInfActConcentration] = useState<string | undefined>(undefined)
+  // Timestamp of the timetable column the rate change is being made at. A
+  // dedicated field (not the shared entryTs) so opening/closing the manage
+  // sheet can't leave a stale timestamp that a later unrelated event would
+  // pick up. null = stamp at "now" (real-time charting).
+  const [infActTs, setInfActTs] = useState<string | null>(null)
 
   function openInfusion(ts?: string) {
     setEntryTs(ts ?? null)
@@ -48,16 +53,19 @@ export function useInfusionEntry(
 
   function changeRate(inf: ActiveInfusion, rate: string, concentration?: string) {
     setActiveInfusions(prev => prev.map(x => x.infId === inf.infId ? { ...x, rate, concentration: concentration ?? x.concentration } : x))
-    setInfActOpen(false); setInfActTgt(null); setInfActRate(""); setInfActConcentration(undefined)
-    // Use the current timestamp so eventsToTimetable can compute the correct column for the split
-    void save({ type: "infusion_rate", infId: inf.infId, name: inf.name, rate, unit: inf.unit, color: inf.color, concentration: concentration ?? inf.concentration })
+    const atTs = infActTs
+    setInfActOpen(false); setInfActTgt(null); setInfActRate(""); setInfActConcentration(undefined); setInfActTs(null)
+    // Stamp the rate change at the timetable column the user was editing (infActTs)
+    // so the split lands there, not at wall-clock "now". Falls back to now when
+    // opened without a column context (real-time charting).
+    void save({ type: "infusion_rate", infId: inf.infId, name: inf.name, rate, unit: inf.unit, color: inf.color, concentration: concentration ?? inf.concentration }, atTs ?? undefined)
   }
 
   return {
     infOpen, setInfOpen, infDrug, setInfDrug, infRate, setInfRate,
     infRoute, setInfRoute, infConcentration, setInfConcentration,
     infActOpen, setInfActOpen, infActTgt, setInfActTgt, infActRate, setInfActRate,
-    infActConcentration, setInfActConcentration,
+    infActConcentration, setInfActConcentration, infActTs, setInfActTs,
     openInfusion, confirmInfusion, stopInfusion, changeRate,
   }
 }

@@ -93,7 +93,7 @@ export function useIntraopEventPersistence({
     setTimetable(eventsToTimetable(newLog, roundDown5Min(startRef.current!), new Date()))
     try {
       await enqueueEventSave(async () => {
-        const res = await apiFetch(`/api/cases/${caseId}/events`, {
+        const doRequest = () => apiFetch(`/api/cases/${caseId}/events`, {
           method: legacyWebLogNeedsSyncRef.current ? "PUT" : "POST",
           headers: {
             "X-Idempotency-Key": `${caseId}:${ev.id}`,
@@ -106,6 +106,21 @@ export function useIntraopEventPersistence({
             ? JSON.stringify(serializeIntraopLogForServer(newLog))
             : JSON.stringify(serializeIntraopEventForServer(ev)),
         })
+        let res = await doRequest()
+        // The legacy-web-log migration PUT carries a conflict header; if the
+        // client's base intraop timestamp is stale (common on a web-touched
+        // case's very first event, often the first vitals of the case), the
+        // server 409s. Self-heal once with the server's timestamp instead of
+        // dropping to "failed" and making the user tap Sync retry — mirrors
+        // syncLog()'s existing behavior.
+        if (res.status === 409 && legacyWebLogNeedsSyncRef.current) {
+          const conflictBody = await res.json().catch(() => ({}))
+          const serverUpdatedAt = conflictBody?.serverVersion?.updatedAt as string | undefined
+          if (serverUpdatedAt) {
+            baseIntraopUpdatedAtRef.current = serverUpdatedAt
+            res = await doRequest()
+          }
+        }
         if (!res.ok) throw new Error()
         const body = await res.json().catch(() => ({}))
         legacyWebLogNeedsSyncRef.current = false
