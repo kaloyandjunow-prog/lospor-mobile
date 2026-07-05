@@ -144,9 +144,9 @@ describe("intraop monitoring defaults", () => {
   it("builds technique monitoring patches and preserves current labels", () => {
     expect(buildTechniqueMonitoringUpdate([
       { field: "ecg", label: "ECG" },
-      { field: "spO2Monitor", label: "SpOРІвЂљвЂљ" },
+      { field: "spO2Monitor", label: "SpO₂" },
       { field: "nbpMonitor", label: "NIBP" },
-      { field: "etco2Monitor", label: "Capnography (EtCOРІвЂљвЂљ)" },
+      { field: "etco2Monitor", label: "Capnography (EtCO₂)" },
       { field: "tempMonitor", label: "Temperature" },
       { field: "bis", label: "BIS" },
     ], ["Custom monitor"], ["GENERAL_TIVA"])).toEqual({
@@ -162,9 +162,9 @@ describe("intraop monitoring defaults", () => {
       monitoring: [
         "Custom monitor",
         "ECG",
-        "SpOРІвЂљвЂљ",
+        "SpO₂",
         "NIBP",
-        "Capnography (EtCOРІвЂљвЂљ)",
+        "Capnography (EtCO₂)",
         "Temperature",
         "BIS",
       ],

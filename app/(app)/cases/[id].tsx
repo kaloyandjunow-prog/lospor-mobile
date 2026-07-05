@@ -110,7 +110,7 @@ export default function CaseSummaryScreen() {
       })
   }, [id, tc])
 
-  const screenTitle = caseData?.caseCode ?? (loading ? "вЂ¦" : tc("cardPreop"))
+  const screenTitle = caseData?.caseCode ?? (loading ? "…" : tc("cardPreop"))
 
   const procedureTitle = caseData?.preop?.proceduresJson?.[0]?.label
     ?? caseData?.preop?.plannedProcedure
@@ -313,7 +313,7 @@ export default function CaseSummaryScreen() {
                 }}
               >
                 <Text style={{ color: "#fff", fontSize: 13, fontWeight: "800" }}>
-                  {finalizing ? "FinalisingвЂ¦" : tc("actionFinalise")}
+                  {finalizing ? "Finalising…" : tc("actionFinalise")}
                 </Text>
               </TouchableOpacity>
             )}

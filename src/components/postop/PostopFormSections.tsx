@@ -9,7 +9,7 @@ type HandoverGroup = {
   items: { v: string; label: string }[]
 }
 
-// Maps legacy mobile/web codes в†’ canonical codes
+// Maps legacy mobile/web codes → canonical codes
 const HANDOVER_TC_TITLES: Record<string, ClinicalStringKey> = {
   obs:             "hvgVitalSigns",
   airway:          "hvgAirway",

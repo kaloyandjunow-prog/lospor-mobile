@@ -149,7 +149,7 @@ export default function PostopFormScreen() {
       aldreteCirculation:   p.aldreteCirculation   ?? p.circulationScore   ?? 0,
       aldreteConsciousness: p.aldreteConsciousness ?? p.consciousnessScore ?? 0,
       aldreteSpO2:          p.aldreteSpO2          ?? p.spO2Score          ?? 0,
-      // Recovery vitals вЂ” same ranges + random pre-fill as the preop exam form
+      // Recovery vitals — same ranges + random pre-fill as the preop exam form
       recoveryBpSystolic:   p.recoveryBpSystolic  ?? (Math.floor(Math.random() * 11) + 120),
       recoveryBpDiastolic:  p.recoveryBpDiastolic ?? (Math.floor(Math.random() * 16) + 70),
       recoveryHeartRate:    p.recoveryHeartRate   ?? (Math.floor(Math.random() * 31) + 60),

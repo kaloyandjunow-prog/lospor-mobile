@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Controller, useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ApiError, apiFetch, apiJson } from "@/lib/api"
-import { saveCasePatchWithQueue } from "@/lib/offline-case-patches"
+import { flushQueuedCasePatch, saveCasePatchWithQueue } from "@/lib/offline-case-patches"
 import { deleteLocalCaseDraft, loadLocalCaseDraft, makeLocalCaseId, saveLocalCaseDraft } from "@/lib/local-case-store"
 import { buildPreopPayload } from "@/lib/preop-payload"
 import { preopFormSchema, type PreopFormData as FormData, type PreopFormInput as FormInput, type PreopSection } from "@/lib/preop-form-schema"
@@ -128,7 +128,7 @@ export default function NewCaseScreen() {
   const { options: cormackLehaneOptions } = useOptionLibrary("CORMACK_LEHANE")
   const lbl = (opt: { label: string; labelBg: string | null }) => (language === "bg" && opt.labelBg) ? opt.labelBg : opt.label
 
-  // Build translated section labels from tc() вЂ” must be inside component
+  // Build translated section labels from tc() — must be inside component
   // Pill rail labels (shorter) vs full section card titles
   const SECTION_LABELS: PreopSectionLabel[] = useMemo(() => [
     { key: "patient",   label: tc("pillPatient") },
@@ -178,7 +178,7 @@ export default function NewCaseScreen() {
         if (preopModeRef.current === "editing") {
           setPreopMode("overview")
           preopModeRef.current = "overview"
-          return true // consumed вЂ” don't bubble to navigator
+          return true // consumed — don't bubble to navigator
         }
         return false // let the navigator handle it (goes to dashboard)
       })
@@ -196,6 +196,7 @@ export default function NewCaseScreen() {
   const localIdRef = useRef<string | null>(localIdParam ?? null)
   const autosaveDraftRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const autosaveInFlightRef = useRef<Promise<void> | null>(null)
+  const flushAutosaveRef = useRef<() => void>(() => {})
   const submittingRef = useRef(false)
   const caseIdRef = useRef<string | null>(null)
   const draftIdRef = useRef<string>(makeLocalCaseId())
@@ -226,7 +227,7 @@ export default function NewCaseScreen() {
     },
   })
 
-  // Batched watch subscriptions вЂ” 4 groups instead of 17 individual calls
+  // Batched watch subscriptions — 4 groups instead of 17 individual calls
   const [sex, smoking, ageYears, heightCm, weightKg, bloodType, rhFactor,
          allergies, familyAnesthesiaProblems, airwayUnobtainable, difficultAirwayHistory,
          labResults, _aiOptIn, highRiskSurgery, emergencySurgery, comorbidities, currentMedications] =
@@ -240,7 +241,7 @@ export default function NewCaseScreen() {
 
   const bmi = heightCm && weightKg ? weightKg / ((heightCm / 100) ** 2) : null
 
-  // Suggestions only вЂ” never silently auto-checked, same rule as the ASA suggestion.
+  // Suggestions only — never silently auto-checked, same rule as the ASA suggestion.
   const rcriSuggested = {
     rcriIschemicHeart: suggestRcriIschemicHeart(comorbidities ?? []),
     rcriCHF:            suggestRcriCHF(comorbidities ?? []),
@@ -249,7 +250,7 @@ export default function NewCaseScreen() {
     rcriCreatinine:     suggestRcriCreatinine(labResults ?? []),
   }
   const stopBangBPSuggested = suggestStopBangBP(comorbidities ?? [], currentMedications ?? [])
-  const RCRI_HINT = "Suggested by comorbidities/medications вЂ” review and confirm"
+  const RCRI_HINT = "Suggested by comorbidities/medications — review and confirm"
   const asaSuggestion = suggestASAFromTags(comorbidities ?? [], bmi)
   const ibw = heightCm ? (sex === "MALE" ? 50 : 45.5) + 2.3 * ((heightCm / 2.54) - 60) : null
   const abw = ibw && weightKg && weightKg > ibw ? ibw + 0.4 * (weightKg - ibw) : null
@@ -311,7 +312,15 @@ export default function NewCaseScreen() {
   useEffect(() => {
     return () => {
       if (scrollRailTimer.current) clearTimeout(scrollRailTimer.current)
-      if (autosaveDraftRef.current) clearTimeout(autosaveDraftRef.current)
+      if (autosaveDraftRef.current) {
+        // A pending debounced autosave was about to fire — flush it instead
+        // of just cancelling, or edits made in the last 2s before navigating
+        // away are silently lost (never sent to the server, never written
+        // to the local draft fallback either, since that only happens
+        // inside the timer body).
+        clearTimeout(autosaveDraftRef.current)
+        flushAutosaveRef.current()
+      }
     }
   }, [])
 
@@ -351,8 +360,8 @@ export default function NewCaseScreen() {
     if (!localIdRef.current) localIdRef.current = makeLocalCaseId()
     const ok = await saveLocalCaseDraft(localIdRef.current, values)
     if (!ok) {
-      // Storage write failed вЂ” tell the user the draft is NOT saved
-      setSaveError("Storage error вЂ” draft could not be saved locally")
+      // Storage write failed — tell the user the draft is NOT saved
+      setSaveError("Storage error — draft could not be saved locally")
     }
     return ok
   }, [])
@@ -362,7 +371,14 @@ export default function NewCaseScreen() {
     if (!continueId) return
     caseIdRef.current = continueId
     setCaseId(continueId)
-    apiJson<{ preop?: ServerPreop; finalizedAt?: string | null; status?: string }>(`/api/cases/${continueId}`)
+    // Flush any queued-but-unsent preop patch for this case before fetching —
+    // otherwise a patch queued from a previous offline autosave sits unsent
+    // until the periodic background flusher's next tick (up to 15s), and the
+    // GET below would silently reset the form to that stale pre-edit
+    // snapshot in the meantime, discarding the queued edit.
+    flushQueuedCasePatch(continueId, "preop").catch(() => {}).then(() =>
+      apiJson<{ preop?: ServerPreop; finalizedAt?: string | null; status?: string }>(`/api/cases/${continueId}`)
+    )
       .then((caseData) => {
         const p = caseData.preop ?? {}
         basePreopUpdatedAtRef.current = p.updatedAt ?? null
@@ -396,7 +412,7 @@ export default function NewCaseScreen() {
 
   }, [continueId, localIdParam, reset])
 
-  // useWatch triggers a React re-render on every field change вЂ” works on both native and web.
+  // useWatch triggers a React re-render on every field change — works on both native and web.
   // (watch(callback) subscription doesn't fire reliably on Expo web builds.)
   const _allFormValues = useWatch({ control })
 
@@ -405,7 +421,8 @@ export default function NewCaseScreen() {
     if (submittingRef.current) return
     setDraftState("saving")
     if (autosaveDraftRef.current) clearTimeout(autosaveDraftRef.current)
-    autosaveDraftRef.current = setTimeout(() => {
+
+    function runAutosave() {
       const previousAutosave = autosaveInFlightRef.current
       const task = (async () => {
         let values = getValues()
@@ -434,7 +451,7 @@ export default function NewCaseScreen() {
             await clearLocalDraft()
             setDraftState("saved")
           } else if (result.result === "queued") {
-            setSaveError("Network error вЂ” patch queued")
+            setSaveError("Network error — patch queued")
             await persistLocalDraft(values)
             setDraftState("queued")
           } else {
@@ -468,7 +485,10 @@ export default function NewCaseScreen() {
       void task.finally(() => {
         if (autosaveInFlightRef.current === task) autosaveInFlightRef.current = null
       })
-    }, 2000)
+    }
+
+    flushAutosaveRef.current = runAutosave
+    autosaveDraftRef.current = setTimeout(runAutosave, 2000)
 
   }, [_allFormValues, clearLocalDraft, getValues, persistLocalDraft, tryCreateServerCase])
 
@@ -558,7 +578,7 @@ export default function NewCaseScreen() {
     const dir = targetIndex > currentIndex ? -1 : 1
     if (preopLayout === "sections") {
       if (preopModeRef.current !== "editing") {
-        // Entering editing from overview вЂ” skip exit animation, slide in cleanly from right
+        // Entering editing from overview — skip exit animation, slide in cleanly from right
         slideDir.current = 1
         activeSectionRef.current = section
         setActiveSection(section)
@@ -646,10 +666,10 @@ export default function NewCaseScreen() {
     setAiError("")
     try {
       if (!caseIdRef.current) {
-        // tryCreateServerCase sends current values including aiOptIn вЂ” no race here
+        // tryCreateServerCase sends current values including aiOptIn — no race here
         const created = await tryCreateServerCase(getValues())
         if (!created) {
-          setAiError("Could not save case вЂ” check your connection and try again.")
+          setAiError("Could not save case — check your connection and try again.")
           setAiLoading(false)
           return
         }
@@ -665,7 +685,7 @@ export default function NewCaseScreen() {
           if (res.status === 403 && attempt === 0) {
             const body = await res.json().catch(() => ({}))
             if (body.error?.includes("not enabled") && getValues().aiOptIn) {
-              // Race: debounce hasn't fired yet вЂ” wait for it then retry
+              // Race: debounce hasn't fired yet — wait for it then retry
               await new Promise(r => setTimeout(r, 2500))
               continue
             }
@@ -1230,7 +1250,7 @@ export default function NewCaseScreen() {
             </View>
           </View>
         ) : null}
-          {/* FAB вЂ” go back to section overview */}
+          {/* FAB — go back to section overview */}
           <TouchableOpacity
             onPress={() => { preopModeRef.current = "overview"; setPreopMode("overview") }}
             style={{

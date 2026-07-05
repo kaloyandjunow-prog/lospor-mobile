@@ -156,7 +156,7 @@ export function PreopCard({ preop, tc, t }: { preop: CaseData["preop"]; tc: (key
             {tc("summaryPreopVitals")}
           </Text>
           <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 18 }}>
-            {vitals.join("  В·  ")}
+            {vitals.join("  ·  ")}
           </Text>
           {preop.heartArrhythmia && (
             <Text style={{ color: colors.warning, fontSize: 11, marginTop: 2 }}>{tc("summaryArrhythmia")}</Text>

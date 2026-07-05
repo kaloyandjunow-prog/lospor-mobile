@@ -55,7 +55,7 @@ export function runningItemsByCol(timetable: TimetableData, cols: number[]): Map
       const active = sorted.filter(change => change.col <= col).pop()
       const fgf = active?.fgf ?? gas.fgf
       const fio2 = active?.fio2 ?? gas.fio2
-      push(col, { id: "gas-settings", label: `FGF ${fgf}L/min В· FiO2 ${fio2}%`, color: "#818cf8" })
+      push(col, { id: "gas-settings", label: `FGF ${fgf}L/min · FiO2 ${fio2}%`, color: "#818cf8" })
     }
   }
   for (const i of timetable.infusions) {

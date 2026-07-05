@@ -46,7 +46,7 @@ export function AsaPicker({
             {labelSuggested} {suggestion.cls} {labelSuggestedReview}
           </Text>
           {suggestion.reasons.map((r) => (
-            <Text key={r} style={{ color: "#60a5fa", fontSize: 12, opacity: 0.85 }}>вЂў {r}</Text>
+            <Text key={r} style={{ color: "#60a5fa", fontSize: 12, opacity: 0.85 }}>• {r}</Text>
           ))}
         </View>
       )}
@@ -157,7 +157,7 @@ export function BloodGrid({ bloodType, rhFactor, onChange }: {
   )
 }
 
-// Risk label helpers вЂ” identical thresholds to web lib/scores.ts
+// Risk label helpers — identical thresholds to web lib/scores.ts
 export function rcriRiskLabel(s: number, tc: (k: ClinicalStringKey) => string) {
   return s === 0 ? tc("rcriVeryLow") : s === 1 ? tc("rcriLow") : s === 2 ? tc("rcriModerate") : tc("rcriHigh")
 }
@@ -389,7 +389,7 @@ export function VitalStepper({ value, onChange, min, max, step = 1, precision = 
   const keypadWidth = Math.max(KEYPAD_MIN_W, anchor?.width ?? KEYPAD_MIN_W)
   const keypadLeft  = anchor
     ? keypadWidth <= (anchor.width ?? 0)
-      ? anchor.x                                              // field is wide enough вЂ” align left
+      ? anchor.x                                              // field is wide enough — align left
       : Math.max(8, Math.min(anchor.x, screenWidth - keypadWidth - 8)) // shift left if it would overflow
     : 8
   const keypadTop = anchor ? Math.max(8, Math.min(anchor.y, screenHeight - 330)) : 0

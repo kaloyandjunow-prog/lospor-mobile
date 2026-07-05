@@ -147,37 +147,37 @@ export function useIntraopCaseLoader({
             setTechniques(hydrated.caseTechniques)
             if (hydrated.positions) setPositions(hydrated.positions)
             setMonitoring(hydrated.monitoring)
+            if (hydrated.airway.tools) setAwTools(hydrated.airway.tools)
+            if (hydrated.airway.devices) setAwDevices(hydrated.airway.devices)
+            if (hydrated.airway.lmaSize != null) setAwLmaSize(hydrated.airway.lmaSize)
+            if (hydrated.airway.oralTubeSize != null) setAwOralTubeSize(hydrated.airway.oralTubeSize)
+            if (hydrated.airway.oralCuffed != null) setAwOralCuffed(hydrated.airway.oralCuffed)
+            if (hydrated.airway.nasalTubeSize != null) setAwNasalTubeSize(hydrated.airway.nasalTubeSize)
+            if (hydrated.airway.nasalCuffed != null) setAwNasalCuffed(hydrated.airway.nasalCuffed)
+            if (hydrated.airway.dltType != null) setAwDltType(hydrated.airway.dltType)
+            if (hydrated.airway.dltSide != null) setAwDltSide(hydrated.airway.dltSide)
+            if (hydrated.airway.dltSize != null) setAwDltSize(hydrated.airway.dltSize)
+            if (hydrated.airway.ebSize != null) setAwEbSize(hydrated.airway.ebSize)
+            if (hydrated.airway.clGrade != null) setAwClGrade(hydrated.airway.clGrade)
+            if (hydrated.airway.ventilationModes) {
+              setAwVentModes(hydrated.airway.ventilationModes)
+              if (hydrated.airway.ventilationExpanded !== undefined) setAwVentExpanded(hydrated.airway.ventilationExpanded)
+            }
+            if (hydrated.airway.notes != null) setAwNotes(hydrated.airway.notes)
+            if (hydrated.vascularAccesses) setVascularAccesses(hydrated.vascularAccesses)
+            if (hydrated.premedication.evening != null) setPremedEveningText(hydrated.premedication.evening)
+            if (hydrated.premedication.morning != null) setPremedMorningText(hydrated.premedication.morning)
+            if (hydrated.complications) {
+              setSelectedComplications(hydrated.complications.selected)
+              setComplicationsNotes(hydrated.complications.notes)
+            }
           }
           setPreop(hydrated.preop)
           setCaseMonthYear(hydrated.timing.monthYear)
           if (hydrated.timing.startTime) setCaseStartTime(hydrated.timing.startTime)
           if (hydrated.timing.endTime) setCaseEndTime(hydrated.timing.endTime)
           if (hydrated.timing.endTimeNextDay != null) setCaseEndNextDay(hydrated.timing.endTimeNextDay)
-          if (hydrated.airway.tools) setAwTools(hydrated.airway.tools)
-          if (hydrated.airway.devices) setAwDevices(hydrated.airway.devices)
-          if (hydrated.airway.lmaSize != null) setAwLmaSize(hydrated.airway.lmaSize)
-          if (hydrated.airway.oralTubeSize != null) setAwOralTubeSize(hydrated.airway.oralTubeSize)
-          if (hydrated.airway.oralCuffed != null) setAwOralCuffed(hydrated.airway.oralCuffed)
-          if (hydrated.airway.nasalTubeSize != null) setAwNasalTubeSize(hydrated.airway.nasalTubeSize)
-          if (hydrated.airway.nasalCuffed != null) setAwNasalCuffed(hydrated.airway.nasalCuffed)
-          if (hydrated.airway.dltType != null) setAwDltType(hydrated.airway.dltType)
-          if (hydrated.airway.dltSide != null) setAwDltSide(hydrated.airway.dltSide)
-          if (hydrated.airway.dltSize != null) setAwDltSize(hydrated.airway.dltSize)
-          if (hydrated.airway.ebSize != null) setAwEbSize(hydrated.airway.ebSize)
-          if (hydrated.airway.clGrade != null) setAwClGrade(hydrated.airway.clGrade)
-          if (hydrated.airway.ventilationModes) {
-            setAwVentModes(hydrated.airway.ventilationModes)
-            if (hydrated.airway.ventilationExpanded !== undefined) setAwVentExpanded(hydrated.airway.ventilationExpanded)
-          }
-          if (hydrated.airway.notes != null) setAwNotes(hydrated.airway.notes)
           if (hydrated.hasAdvancedMonitoring) setAdvMonOpen(true)
-          if (hydrated.vascularAccesses) setVascularAccesses(hydrated.vascularAccesses)
-          if (hydrated.premedication.evening != null) setPremedEveningText(hydrated.premedication.evening)
-          if (hydrated.premedication.morning != null) setPremedMorningText(hydrated.premedication.morning)
-          if (hydrated.complications) {
-            setSelectedComplications(hydrated.complications.selected)
-            setComplicationsNotes(hydrated.complications.notes)
-          }
         }
 
         setPendingCount(pending.length)

@@ -124,8 +124,8 @@ export function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intr
 
   let timingStr = ""
   if (intraop.startTime && intraop.endTime) {
-    timingStr = `${formatTimeHHMM(intraop.startTime)} в†’ ${formatTimeHHMM(intraop.endTime)}`
-    if (intraop.durationMinutes) timingStr += `  В·  ${formatDuration(intraop.durationMinutes)}`
+    timingStr = `${formatTimeHHMM(intraop.startTime)} → ${formatTimeHHMM(intraop.endTime)}`
+    if (intraop.durationMinutes) timingStr += `  ·  ${formatDuration(intraop.durationMinutes)}`
   } else if (intraop.durationMinutes) {
     timingStr = formatDuration(intraop.durationMinutes)
   }

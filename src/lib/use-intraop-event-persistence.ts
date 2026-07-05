@@ -68,9 +68,16 @@ export function useIntraopEventPersistence({
     logRef.current = newLog
     setLog(newLog)
     setSyncState("saving")
-    const pending = await loadPendingIntraopEvents<LogEvent>(caseId)
-    await storePendingIntraopEvents(caseId, prependPendingIntraopEvent(pending, ev))
-    setPendingCount(pending.length + 1)
+    // Serialized through the same single-flight queue as the network save
+    // below — rapid-fire adds otherwise race this read-modify-write against
+    // each other (and against removeEvent's), silently dropping an event
+    // from the offline pending-store.
+    const pendingCountAfterAdd = await enqueueEventSave(async () => {
+      const pending = await loadPendingIntraopEvents<LogEvent>(caseId)
+      await storePendingIntraopEvents(caseId, prependPendingIntraopEvent(pending, ev))
+      return pending.length + 1
+    })
+    setPendingCount(pendingCountAfterAdd)
     if (!startRef.current) {
       startRef.current = new Date(ev.ts)
       setElapsedMs(0)
@@ -259,13 +266,16 @@ export function useIntraopEventPersistence({
 
   async function removeEvent(ev: LogEvent, sync = true) {
     const next = log.filter(x => x.id !== ev.id)
-    const remainingPending = removePendingIntraopEvent(await loadPendingIntraopEvents<LogEvent>(caseId), ev.id)
-    await storePendingIntraopEvents(caseId, remainingPending)
-    setPendingCount(remainingPending.length)
+    const remainingCount = await enqueueEventSave(async () => {
+      const remainingPending = removePendingIntraopEvent(await loadPendingIntraopEvents<LogEvent>(caseId), ev.id)
+      await storePendingIntraopEvents(caseId, remainingPending)
+      return remainingPending.length
+    })
+    setPendingCount(remainingCount)
     setLog(next)
     if (startRef.current) setTimetable(eventsToTimetable(next, roundDown5Min(startRef.current)))
     if (sync && !ev.syncStatus) await syncLog(next)
-    else setSyncState(remainingPending.length > 0 ? "failed" : "saved")
+    else setSyncState(remainingCount > 0 ? "failed" : "saved")
   }
 
   async function undoLastEvent() {

@@ -7,7 +7,7 @@ type AirwayEventDetail = {
 
 export function formatAirwayEventLabel(airwayLabel: string, detail: AirwayEventDetail): string {
   const suffix = airwayLabel === "Intubated"
-    ? `${detail.tubeSize}mm ${detail.cuffed === "yes" ? "cuffed" : "uncuffed"} В· ${detail.tool}${detail.cl ? ` В· CL ${detail.cl}` : ""}`
+    ? `${detail.tubeSize}mm ${detail.cuffed === "yes" ? "cuffed" : "uncuffed"} · ${detail.tool}${detail.cl ? ` · CL ${detail.cl}` : ""}`
     : `LMA ${detail.tubeSize}`
   return `${airwayLabel} (${suffix})`
 }

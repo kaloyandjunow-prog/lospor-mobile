@@ -1,5 +1,16 @@
 # Changelog - LOSPOR Mobile
 
+## [4.1.1] - 2026-07-05
+
+Bug-fix follow-up to v4.1.0. Android `versionCode` 16 (no native changes this round, JS-only fixes).
+
+### Fixed
+- **Airway device / vascular access / premedication selections no longer flicker and revert.** The initial case-load GET could clobber a just-made selection with the pre-edit server snapshot before an in-flight autosave committed; the existing in-flight-save guard (already protecting techniques/positions/monitoring) was never extended to these fields.
+- **Rapid drug/event entry in the intraop timetable no longer silently drops items.** The local offline pending-events cache did an unguarded read-modify-write on every add/remove; tapping 2-3 items within ~1-2 seconds could race and lose one from the offline safety net. Now serialized through the same single-flight queue already used for network saves.
+- **Preop data (age, height, weight, diagnosis, comorbidities, etc.) no longer silently lost on close/reopen.** Two causes: the debounced autosave was cancelled (not flushed) on navigating away within its 2s window, and reopening a case could race a still-unflushed queued offline patch, showing stale server data in the meantime. Autosave now flushes on unmount, and reopening a case first attempts to flush any queued patch before fetching.
+- **Account deletion wording no longer overpromises (Bulgarian).** The Bulgarian confirmation text claimed the action "permanently deletes your profile and all related data" — stronger than what actually happens (disable + token revoke, deletion/anonymisation per retention policy). Wording now matches the accurate English text.
+- Residual encoding corruption (mojibake) cleaned up in 10 files — bullets, arrows, middle dots, ellipses, and a garbled "SpO₂"/"EtCO₂" in a test file; earlier fixes this release cycle were incomplete, not a full sweep.
+
 ## [4.1.0] - 2026-07-05
 
 Full Bulgarian localization pass and shared clinical-data consolidation. Android `versionCode` 16.
