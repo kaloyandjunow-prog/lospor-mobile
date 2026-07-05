@@ -1,5 +1,9 @@
 # Changelog - LOSPOR Mobile
 
+## [4.1.3] - 2026-07-05
+
+Version alignment across all four LOSPOR repos (core, app, mobile, docs) — no functional changes beyond v4.1.2. Android `versionCode` 16 (no native changes).
+
 ## [4.1.2] - 2026-07-05
 
 Sync-race and correctness fixes in the intraop timetable, following a live incident where the backend's database connection pool was exhausted (see lospor-app v4.1.2) and made these worse. Android `versionCode` 16 (no native changes this round, JS-only fixes).
