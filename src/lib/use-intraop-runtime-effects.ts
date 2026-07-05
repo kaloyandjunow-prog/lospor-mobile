@@ -1,56 +1,32 @@
-import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from "react"
+import { useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from "react"
 
 import type { TimetableData } from "@/components/IntraopTimetable"
-import { calculateFluidTotals, fluidTotalsKey, fluidTotalsPatch } from "@/lib/intraop-chart-change"
 import { eventsToTimetable, roundDown5Min } from "@/lib/intraop-projection"
 import type { LogEvent } from "@/lib/intraop-log-event"
 
 type UseIntraopRuntimeEffectsArgs = {
-  caseLoaded: boolean
   log: LogEvent[]
   logRef: MutableRefObject<LogEvent[]>
   startRef: MutableRefObject<Date | null>
-  timetable: TimetableData
   setElapsedMs: Dispatch<SetStateAction<number>>
   setTimetable: Dispatch<SetStateAction<TimetableData>>
-  patchIntraopSection: (payload: Record<string, unknown>) => Promise<unknown>
 }
 
 export function useIntraopRuntimeEffects({
-  caseLoaded,
   log,
   logRef,
   startRef,
-  timetable,
   setElapsedMs,
   setTimetable,
-  patchIntraopSection,
 }: UseIntraopRuntimeEffectsArgs) {
-  const lastFluidTotalsRef = useRef("")
-  const fluidTotalsInitializedRef = useRef(false)
-  const patchIntraopSectionRef = useRef(patchIntraopSection)
-
-  useEffect(() => {
-    patchIntraopSectionRef.current = patchIntraopSection
-  }, [patchIntraopSection])
-
+  // Fluid totals used to be recomputed here and PATCHed to the server on every
+  // fluid change — a second write on top of the fluid event itself, which
+  // always lost a conflict race and retried (the "multiple autosave rolls").
+  // The server now derives fluid totals from the fluid events in
+  // rebuildProjection, so the client no longer writes them at all.
   useEffect(() => {
     logRef.current = log
   }, [log, logRef])
-
-  useEffect(() => {
-    if (!caseLoaded) return
-    const totals = calculateFluidTotals(timetable.fluids)
-    const key = fluidTotalsKey(totals)
-    if (!fluidTotalsInitializedRef.current) {
-      fluidTotalsInitializedRef.current = true
-      lastFluidTotalsRef.current = key
-      return
-    }
-    if (key === lastFluidTotalsRef.current) return
-    lastFluidTotalsRef.current = key
-    patchIntraopSectionRef.current(fluidTotalsPatch(totals)).catch(() => {})
-  }, [caseLoaded, timetable.fluids])
 
   useEffect(() => {
     const timer = setInterval(() => {

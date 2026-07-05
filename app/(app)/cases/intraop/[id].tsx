@@ -459,14 +459,11 @@ export default function IntraopLiveScreen() {
     setCaseLoaded,
   })
   useIntraopRuntimeEffects({
-    caseLoaded,
     log,
     logRef,
     startRef,
-    timetable,
     setElapsedMs,
     setTimetable,
-    patchIntraopSection,
   })
   // ── Computed ──────────────────────────────────────────────────────────
 

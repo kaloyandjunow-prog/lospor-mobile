@@ -9,6 +9,9 @@ Intraop bug fixes (regressions surfaced after the shared-core refactor). Android
 - **Changing an infusion's rate now splits the bar at the column you're editing, not the whole case.** The manage/rate sheet had lost the tapped-column context in the shared-core refactor, so the rate change was stamped at wall-clock "now" instead of the column being edited. The rate change now anchors to the tapped column (v3.5.0 behavior restored); e.g. starting Propofol 4 mg/kg/hr at 12:00 and changing to 6 at 13:00 now correctly shows 4 from 12:00–13:00 and 6 from 13:00 on.
 - **Adding vitals no longer fails and requires a manual "Sync retry".** On a case that had been touched on the web app, the first event save does a full-log migration PUT with a conflict header; if the client's base timestamp was stale it 409'd and stuck in "failed". The single-event save path now self-heals a 409 once with the server's timestamp (mirroring the whole-log sync path), so the first vitals of such a case save automatically.
 
+### Changed
+- **Adding or ending a fluid no longer fires a second, redundant save.** Every fluid change used to also recompute the fluid totals and PATCH them separately — an extra request that always lost a conflict race and retried (three round-trips per fluid change, and the "multiple autosave rolls" in the sync badge). The server now derives fluid totals from the fluid events themselves, so the app just records the fluid event and the totals follow — one save per fluid action.
+
 ## [4.1.3] - 2026-07-05
 
 Version alignment across all four LOSPOR repos (core, app, mobile, docs) — no functional changes beyond v4.1.2. Android `versionCode` 16 (no native changes).
