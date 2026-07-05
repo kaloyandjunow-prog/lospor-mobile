@@ -70,9 +70,10 @@ export function EndCaseSheet({
       {allDecided && (
         <TouchableOpacity
           onPress={async () => {
-            for (const item of items) {
-              if (decisions[item.key] === "stop") await item.onStop()
-            }
+            // Run all stops concurrently instead of one full round-trip at a
+            // time — each item's local optimistic update no longer needs to
+            // wait for the previous item's network save to finish.
+            await Promise.all(items.filter(item => decisions[item.key] === "stop").map(item => item.onStop()))
             const continued = items
               .filter(item => decisions[item.key] === "continue")
               .map(item => `${item.label} (${item.sublabel})`)

@@ -1,5 +1,16 @@
 # Changelog - LOSPOR Mobile
 
+## [4.1.2] - 2026-07-05
+
+Sync-race and correctness fixes in the intraop timetable, following a live incident where the backend's database connection pool was exhausted (see lospor-app v4.1.2) and made these worse. Android `versionCode` 16 (no native changes this round, JS-only fixes).
+
+### Fixed
+- **Stopping an infusion/agent/fluid, and changing rate, no longer feel stuck behind unrelated network activity.** v4.1.1 fixed a lost-update race in the local offline pending-events cache by routing it through the same single-flight queue used for network saves — but that queue is a strict FIFO, so every local bookkeeping step then had to wait behind whatever network call was currently in flight (worse under the connection-pool exhaustion above). Local storage now has its own dedicated queue, decoupled from network latency.
+- **Ending a case with multiple active infusions/agents/fluids is faster.** The end-case confirmation stopped each active item one full round-trip at a time; they now stop concurrently.
+- **Changing a volatile agent's percentage no longer truncates its timeline bar.** There's no dedicated "agent rate change" event (unlike infusions, which have one) — adjusting percent on an already-running agent re-fires a plain start event, and the timetable projection was treating that as a full restart, cutting the bar's visible history back to the adjustment point. It now recognizes a same-agent restart and keeps the original start column.
+- **Adding vitals now closes the entry sheet immediately**, matching how adding a drug, infusion, or fluid already worked — previously it waited for the full network save to finish before dismissing, making vitals entry feel uniquely slow.
+- CI (`npm ci`) lockfile version drift fixed (see lospor-app v4.1.2 for the root cause — regenerated to prevent the same class of issue here, even though this repo's own CI hadn't hit it yet).
+
 ## [4.1.1] - 2026-07-05
 
 Bug-fix follow-up to v4.1.0. Android `versionCode` 16 (no native changes this round, JS-only fixes).

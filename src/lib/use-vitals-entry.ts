@@ -79,7 +79,7 @@ export function useVitalsEntry(
     setVitOpen(true)
   }
 
-  async function confirmVitals() {
+  function confirmVitals() {
     const n = (s: string) => { const v = parseFloat(s); return isNaN(v) ? undefined : v }
     const etco2Raw = n(vEtco2)
     const tempRaw = n(vTemp)
@@ -96,13 +96,15 @@ export function useVitalsEntry(
       logRef.current = newLog
       setLog(newLog)
       if (startRef.current) setTimetable(eventsToTimetable(newLog, roundDown5Min(startRef.current), new Date()))
-      await syncLog(newLog)
+      // Optimistic close, same pattern as confirmInfusion/confirmFluid/confirmAgent —
+      // don't block the sheet on the network round-trip.
       setEditingVitalId(null)
       setVitOpen(false)
+      void syncLog(newLog)
       return
     }
-    await save(vitals)
     setVitOpen(false)
+    void save(vitals)
   }
 
   async function scanVitalsFromCamera() {

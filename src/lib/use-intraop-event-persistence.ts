@@ -1,9 +1,10 @@
-import { useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react"
+import { useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react"
 import * as Haptics from "expo-haptics"
 
 import { apiFetch } from "@/lib/api"
 import { notify } from "@/lib/notify"
 import type { TimetableData } from "@/components/IntraopTimetable"
+import { createSingleFlightQueue } from "@/lib/single-flight-queue"
 import {
   eventsToTimetable,
   roundDown5Min,
@@ -61,6 +62,17 @@ export function useIntraopEventPersistence({
   noteVitalsRef,
 }: UseIntraopEventPersistenceArgs) {
   const [undoEv, setUndoEv] = useState<LogEvent | null>(null)
+  // A queue dedicated to the local SecureStore pending-events cache, separate
+  // from enqueueEventSave (which serializes network POST/PUT/retry work).
+  // v4.1.1 routed the local read-modify-write through the SAME queue as the
+  // network calls to fix a lost-update race — but that queue is a strict
+  // FIFO, so every local bookkeeping step then had to wait behind whatever
+  // network call was currently in flight, including a slow/hung one. That
+  // made every action (even a pure local "stop") feel stuck behind
+  // whatever request happened to be running. A separate queue keeps local
+  // writes serialized against each other without coupling their latency to
+  // the network.
+  const pendingStoreQueueRef = useRef(createSingleFlightQueue())
 
   async function save(partial: Omit<LogEvent, "id" | "ts">, tsOverride?: string, silent = false): Promise<LogEvent> {
     const ev: LogEvent = { id: uid(), ts: tsOverride ?? entryTs ?? new Date().toISOString(), syncStatus: "pending", ...partial }
@@ -68,11 +80,7 @@ export function useIntraopEventPersistence({
     logRef.current = newLog
     setLog(newLog)
     setSyncState("saving")
-    // Serialized through the same single-flight queue as the network save
-    // below — rapid-fire adds otherwise race this read-modify-write against
-    // each other (and against removeEvent's), silently dropping an event
-    // from the offline pending-store.
-    const pendingCountAfterAdd = await enqueueEventSave(async () => {
+    const pendingCountAfterAdd = await pendingStoreQueueRef.current.enqueue(async () => {
       const pending = await loadPendingIntraopEvents<LogEvent>(caseId)
       await storePendingIntraopEvents(caseId, prependPendingIntraopEvent(pending, ev))
       return pending.length + 1
@@ -102,13 +110,17 @@ export function useIntraopEventPersistence({
         const body = await res.json().catch(() => ({}))
         legacyWebLogNeedsSyncRef.current = false
         baseIntraopUpdatedAtRef.current = body?.intraopUpdatedAt ?? baseIntraopUpdatedAtRef.current
-        const remaining = removePendingIntraopEvent(await loadPendingIntraopEvents<LogEvent>(caseId), ev.id)
-        await storePendingIntraopEvents(caseId, remaining)
-        setPendingCount(remaining.length)
+        const remainingCount = await pendingStoreQueueRef.current.enqueue(async () => {
+          const remaining = removePendingIntraopEvent(await loadPendingIntraopEvents<LogEvent>(caseId), ev.id)
+          await storePendingIntraopEvents(caseId, remaining)
+          return remaining.length
+        })
+        setPendingCount(remainingCount)
         setLog(prev => markIntraopEventSynced(prev, ev.id) as LogEvent[])
       })
       setLastSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
-      setSyncState((await loadPendingIntraopEvents<LogEvent>(caseId)).length > 0 ? "failed" : "saved")
+      const stillPendingCount = await pendingStoreQueueRef.current.enqueue(async () => (await loadPendingIntraopEvents<LogEvent>(caseId)).length)
+      setSyncState(stillPendingCount > 0 ? "failed" : "saved")
       if (!silent) {
         setUndoEv(serializeIntraopEventForServer(ev) as LogEvent)
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
@@ -156,7 +168,7 @@ export function useIntraopEventPersistence({
         const body = result.body
         legacyWebLogNeedsSyncRef.current = false
         baseIntraopUpdatedAtRef.current = body?.intraopUpdatedAt ?? baseIntraopUpdatedAtRef.current
-        await storePendingIntraopEvents(caseId, [])
+        await pendingStoreQueueRef.current.enqueue(() => storePendingIntraopEvents(caseId, []))
         setPendingCount(0)
         setLog(prev => stripIntraopLogSyncStatuses(prev) as LogEvent[])
       })
@@ -169,7 +181,7 @@ export function useIntraopEventPersistence({
   }
 
   async function retryPendingEvents() {
-    const pending = await loadPendingIntraopEvents<LogEvent>(caseId)
+    const pending = await pendingStoreQueueRef.current.enqueue(() => loadPendingIntraopEvents<LogEvent>(caseId))
     if (pending.length === 0) {
       if (legacyWebLogNeedsSyncRef.current) {
         setSyncState("saving")
@@ -215,7 +227,7 @@ export function useIntraopEventPersistence({
           const body = await res.json().catch(() => ({}))
           baseIntraopUpdatedAtRef.current = body?.intraopUpdatedAt ?? baseIntraopUpdatedAtRef.current
           legacyWebLogNeedsSyncRef.current = false
-          await storePendingIntraopEvents(caseId, [])
+          await pendingStoreQueueRef.current.enqueue(() => storePendingIntraopEvents(caseId, []))
           setPendingCount(0)
           setLog(prev => stripIntraopLogSyncStatuses(prev) as LogEvent[])
         })
@@ -252,7 +264,7 @@ export function useIntraopEventPersistence({
       }
     }
 
-    await storePendingIntraopEvents(caseId, failed)
+    await pendingStoreQueueRef.current.enqueue(() => storePendingIntraopEvents(caseId, failed))
     setPendingCount(failed.length)
     if (failed.length === 0) {
       setLastSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
@@ -266,7 +278,7 @@ export function useIntraopEventPersistence({
 
   async function removeEvent(ev: LogEvent, sync = true) {
     const next = log.filter(x => x.id !== ev.id)
-    const remainingCount = await enqueueEventSave(async () => {
+    const remainingCount = await pendingStoreQueueRef.current.enqueue(async () => {
       const remainingPending = removePendingIntraopEvent(await loadPendingIntraopEvents<LogEvent>(caseId), ev.id)
       await storePendingIntraopEvents(caseId, remainingPending)
       return remainingPending.length

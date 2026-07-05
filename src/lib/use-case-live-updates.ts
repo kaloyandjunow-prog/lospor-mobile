@@ -26,7 +26,13 @@ export function useCaseLiveUpdates(caseId: string | undefined, refresh: () => vo
 
     let cancelled = false
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null
-    const controller = new AbortController()
+    // A fresh controller per connection attempt — reusing one across the
+    // whole effect lifetime meant that once it was aborted (e.g. on the
+    // first app backgrounding), every later reconnect attempt handed
+    // fetch() an already-aborted signal, which rejects instantly. That
+    // silently broke SSE reconnection for good after the first background/
+    // foreground cycle and left the 5s reconnect timer spinning forever.
+    let controller: AbortController | null = null
 
     async function runRefresh() {
       if (inFlightRef.current || AppState.currentState !== "active") return
@@ -40,11 +46,13 @@ export function useCaseLiveUpdates(caseId: string | undefined, refresh: () => vo
 
     async function connect() {
       if (cancelled || AppState.currentState !== "active") return
+      controller = new AbortController()
+      const thisController = controller
       try {
         const token = await getToken()
         const res = await fetch(`${API_BASE}/api/cases/${caseId}/stream`, {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          signal: controller.signal,
+          signal: thisController.signal,
         })
         const reader = (res.body as ReadableResponseBody | null)?.getReader?.()
         if (!res.ok || !reader) throw new Error("SSE stream unavailable")
@@ -89,7 +97,7 @@ export function useCaseLiveUpdates(caseId: string | undefined, refresh: () => vo
         runRefresh()
         if (!streamingRef.current) connect()
       } else {
-        controller.abort()
+        controller?.abort()
         streamingRef.current = false
       }
     })
@@ -98,7 +106,7 @@ export function useCaseLiveUpdates(caseId: string | undefined, refresh: () => vo
 
     return () => {
       cancelled = true
-      controller.abort()
+      controller?.abort()
       clearInterval(pollTimer)
       if (reconnectTimer) clearTimeout(reconnectTimer)
       appSub.remove()

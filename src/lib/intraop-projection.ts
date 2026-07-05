@@ -80,9 +80,16 @@ export function eventsToTimetable(log: LogEvent[], startTs: Date, now?: Date): T
       }
     } else if (ev.type === "agent_start") {
       if (agentStart && agentStart.name !== ev.name) {
+        // Genuinely switching agents — close the previous bar, start a new one.
         agents.push({ name: agentStart.name, color: agentStart.color, startCol: agentStart.col, endCol: col })
+        agentStart = { name: ev.name!, color: ev.color!, col }
+      } else if (!agentStart) {
+        agentStart = { name: ev.name!, color: ev.color!, col }
       }
-      agentStart = { name: ev.name!, color: ev.color!, col }
+      // else: same agent re-fires agent_start on a percent-only adjustment
+      // (there's no dedicated agent_rate event) — keep the existing
+      // segment's startCol so the timeline bar isn't silently truncated
+      // back to the adjustment point.
     } else if (ev.type === "agent_stop" && agentStart) {
       agents.push({ name: agentStart.name, color: agentStart.color, startCol: agentStart.col, endCol: col })
       agentStart = null
