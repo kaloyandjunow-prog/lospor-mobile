@@ -8,7 +8,7 @@ import { buildPostopRoute } from "@/lib/postop-route"
 export function buildIntraopSheetsProps(props: any): IntraopSheetsHostProps {
   const {
     activeAgent, activeGas, slotOpen, slotTs, timeStr, slotEventSearch, slotCompExpanded,
-    CLINICAL_EVENT_CATS, COMPLICATION_GROUPS, isGACase, setSlotOpen, setSlotEventSearch,
+    CLINICAL_EVENT_CATS, COMPLICATION_GROUPS, COMPLICATION_ITEMS, isGACase, setSlotOpen, setSlotEventSearch,
     setSlotCompExpanded, openSlotEvent, openDrug, openAgent, stopAgent, stopGasSettings,
     openGasSettings,
     airwayOpen, airwayLabel, airwayDetail, setAirwayOpen, setAirwayDetail, confirmAirway,
@@ -30,7 +30,7 @@ export function buildIntraopSheetsProps(props: any): IntraopSheetsHostProps {
       eventSearch: slotEventSearch,
       complicationExpanded: slotCompExpanded,
       eventCategories: CLINICAL_EVENT_CATS,
-      extraComplicationLabels: COMPLICATION_GROUPS.flatMap((g: any) => g.items),
+      extraComplicationLabels: COMPLICATION_ITEMS,
       isGACase,
       activeAgent,
       activeGas,

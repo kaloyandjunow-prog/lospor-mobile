@@ -1,5 +1,6 @@
 import * as SecureStore from "expo-secure-store"
 import { apiFetch, ApiError } from "./api"
+import { enqueueIntraopCaseWrite } from "@/lib/intraop-write-queue"
 
 type PendingIntraopEvent = {
   id: string
@@ -181,57 +182,66 @@ export async function flushPendingIntraopEvents(): Promise<{ saved: number; fail
   let failed = 0
 
   for (const caseId of ids) {
-    // Stored newest-first by the intraop screen - replay oldest-first.
-    const pending = (await loadPending(caseId)).slice().reverse()
-    if (pending.length === 0) {
-      await markPendingIntraopCase(caseId, false)
-      continue
-    }
-
-    const stillPending: PendingIntraopEvent[] = []
-    let networkDown = false
-    for (const ev of pending) {
-      if (networkDown) { stillPending.push(ev); continue }
-      try {
-        const res = await apiFetch(`/api/cases/${caseId}/events`, {
-          method: "POST",
-          headers: {
-            // Stable idempotency key so a replayed event is stored exactly once.
-            "X-Idempotency-Key": `${caseId}:${ev.id}`,
-            "X-Lospor-Source": "mobile",
-          },
-          body: JSON.stringify(serializeIntraopEventForServer(ev)),
-        })
-        if (res.ok) { saved += 1; continue }
-        if (res.status === 401) {
-          // Auth expired - this is transient. Keep the event (it succeeds after
-          // re-login) and stop hitting the server for the rest of this batch so we
-          // don't burn through every queued event on the same expired token.
-          stillPending.push(ev); failed += 1; networkDown = true; continue
-        }
-        if (res.status === 409) {
-          stillPending.push(ev); failed += 1; networkDown = true; continue
-        }
-        if (res.status >= 500) {
-          // Server error - keep for a later attempt.
-          stillPending.push(ev); failed += 1; continue
-        }
-        // Permanent 4xx (400 invalid/PII, 403 finalised/forbidden, 404 gone) - can
-        // never succeed; record it so it isn't silently lost, then drop it.
-        await recordDroppedEvent(caseId, ev, res.status)
-        failed += 1
-      } catch (err) {
-        // Network error - stop hitting the network for this case and keep the rest.
-        if (err instanceof ApiError && err.code === "NETWORK") networkDown = true
-        stillPending.push(ev); failed += 1
-        if (!(err instanceof ApiError)) networkDown = true
-      }
-    }
-
-    // Re-store remaining in newest-first order to match the screen's convention.
-    await storePending(caseId, stillPending.slice().reverse())
-    await markPendingIntraopCase(caseId, stillPending.length > 0)
+    const result = await enqueueIntraopCaseWrite(caseId, () => flushPendingIntraopEventsForCase(caseId))
+    saved += result.saved
+    failed += result.failed
   }
 
+  return { saved, failed }
+}
+
+async function flushPendingIntraopEventsForCase(caseId: string): Promise<{ saved: number; failed: number }> {
+  // Stored newest-first by the intraop screen - replay oldest-first.
+  const pending = (await loadPending(caseId)).slice().reverse()
+  if (pending.length === 0) {
+    await markPendingIntraopCase(caseId, false)
+    return { saved: 0, failed: 0 }
+  }
+
+  let saved = 0
+  let failed = 0
+  const stillPending: PendingIntraopEvent[] = []
+  let networkDown = false
+  for (const ev of pending) {
+    if (networkDown) { stillPending.push(ev); continue }
+    try {
+      const res = await apiFetch(`/api/cases/${caseId}/events`, {
+        method: "POST",
+        headers: {
+          // Stable idempotency key so a replayed event is stored exactly once.
+          "X-Idempotency-Key": `${caseId}:${ev.id}`,
+          "X-Lospor-Source": "mobile",
+        },
+        body: JSON.stringify(serializeIntraopEventForServer(ev)),
+      })
+      if (res.ok) { saved += 1; continue }
+      if (res.status === 401) {
+        // Auth expired - this is transient. Keep the event (it succeeds after
+        // re-login) and stop hitting the server for the rest of this batch so we
+        // don't burn through every queued event on the same expired token.
+        stillPending.push(ev); failed += 1; networkDown = true; continue
+      }
+      if (res.status === 409) {
+        stillPending.push(ev); failed += 1; networkDown = true; continue
+      }
+      if (res.status >= 500) {
+        // Server error - keep for a later attempt.
+        stillPending.push(ev); failed += 1; continue
+      }
+      // Permanent 4xx (400 invalid/PII, 403 finalised/forbidden, 404 gone) - can
+      // never succeed; record it so it isn't silently lost, then drop it.
+      await recordDroppedEvent(caseId, ev, res.status)
+      failed += 1
+    } catch (err) {
+      // Network error - stop hitting the network for this case and keep the rest.
+      if (err instanceof ApiError && err.code === "NETWORK") networkDown = true
+      stillPending.push(ev); failed += 1
+      if (!(err instanceof ApiError)) networkDown = true
+    }
+  }
+
+  // Re-store remaining in newest-first order to match the screen's convention.
+  await storePending(caseId, stillPending.slice().reverse())
+  await markPendingIntraopCase(caseId, stillPending.length > 0)
   return { saved, failed }
 }

@@ -5,6 +5,7 @@ import { API_BASE, getToken } from "./api"
 type Options = {
   enabled?: boolean
   pollIntervalMs?: number
+  streaming?: boolean
 }
 
 type ReadableResponseBody = {
@@ -12,7 +13,7 @@ type ReadableResponseBody = {
 }
 
 export function useCaseLiveUpdates(caseId: string | undefined, refresh: () => void | Promise<void>, options: Options = {}) {
-  const { enabled = true, pollIntervalMs = 10_000 } = options
+  const { enabled = true, pollIntervalMs = 10_000, streaming = false } = options
   const refreshRef = useRef(refresh)
   const streamingRef = useRef(false)
   const inFlightRef = useRef(false)
@@ -26,6 +27,7 @@ export function useCaseLiveUpdates(caseId: string | undefined, refresh: () => vo
 
     let cancelled = false
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+    streamingRef.current = false
     // A fresh controller per connection attempt — reusing one across the
     // whole effect lifetime meant that once it was aborted (e.g. on the
     // first app backgrounding), every later reconnect attempt handed
@@ -90,19 +92,19 @@ export function useCaseLiveUpdates(caseId: string | undefined, refresh: () => vo
     }
 
     const pollTimer = setInterval(() => {
-      if (!streamingRef.current) runRefresh()
+      if (!streaming || !streamingRef.current) runRefresh()
     }, pollIntervalMs)
     const appSub = AppState.addEventListener("change", (state) => {
       if (state === "active") {
         runRefresh()
-        if (!streamingRef.current) connect()
+        if (streaming && !streamingRef.current) connect()
       } else {
         controller?.abort()
         streamingRef.current = false
       }
     })
 
-    connect()
+    if (streaming) connect()
 
     return () => {
       cancelled = true
@@ -111,5 +113,5 @@ export function useCaseLiveUpdates(caseId: string | undefined, refresh: () => vo
       if (reconnectTimer) clearTimeout(reconnectTimer)
       appSub.remove()
     }
-  }, [caseId, enabled, pollIntervalMs])
+  }, [caseId, enabled, pollIntervalMs, streaming])
 }

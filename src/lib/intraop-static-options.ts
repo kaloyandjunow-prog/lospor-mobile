@@ -18,6 +18,7 @@ export const COMPLICATION_TC_TITLES: Record<string, ClinicalStringKey> = {
 // English title stays here for the `tc()` fallback, the Bulgarian title
 // lives in clinical-strings.ts via COMPLICATION_TC_TITLES above.
 export const COMPLICATION_GROUPS = COMPLICATION_CATEGORIES.map(({ id, title, items }) => ({ id, title, items }))
+export const COMPLICATION_ITEMS = COMPLICATION_GROUPS.flatMap(g => g.items)
 
 export const PREMED_QUICK = [
   "Midazolam 7.5 mg PO",

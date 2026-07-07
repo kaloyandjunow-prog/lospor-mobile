@@ -15,7 +15,6 @@ import {
 import { vitalSummary } from "@/lib/intraop-running"
 import { useCaseReminders } from "@/lib/use-case-reminders"
 import { usePreferences } from "@/lib/preferences-context"
-import { createSingleFlightQueue } from "@/lib/single-flight-queue"
 import { emptyTimetable, type TimetableData } from "@/components/IntraopTimetable"
 import { colors } from "@/theme/colors"
 import { useCaseLock } from "@/lib/use-case-lock"
@@ -28,7 +27,7 @@ import { useInfusionEntry } from "@/lib/use-infusion-entry"
 import { useDrugEntry } from "@/lib/use-drug-entry"
 import { BOLUS_SCENARIOS, INFUSION_SCENARIOS } from "@/lib/intraop-scenarios"
 import { useVitalsEntry } from "@/lib/use-vitals-entry"
-import { COMPLICATION_GROUPS, COMPLICATION_TC_TITLES, PREMED_QUICK } from "@/lib/intraop-static-options"
+import { COMPLICATION_GROUPS, COMPLICATION_ITEMS, COMPLICATION_TC_TITLES, PREMED_QUICK } from "@/lib/intraop-static-options"
 import type { IntraopTab } from "@/lib/intraop-tabs"
 import { newChartFluidsWithTimestamps } from "@/lib/intraop-chart-change"
 import type { IntraopPreopSummary } from "@/lib/intraop-preop-summary"
@@ -49,6 +48,7 @@ import { useIntraopRuntimeEffects } from "@/lib/use-intraop-runtime-effects"
 import { useIntraopCaseLoader } from "@/lib/use-intraop-case-loader"
 import { useIntraopAutofillPreferences } from "@/lib/use-intraop-autofill-preferences"
 import { useIntraopClinicalViewState } from "@/lib/use-intraop-clinical-view-state"
+import { enqueueIntraopCaseWrite } from "@/lib/intraop-write-queue"
 import { IntraopScreenChrome } from "@/components/intraop/IntraopScreenChrome"
 import { IntraopRenderSurface } from "@/components/intraop/IntraopRenderSurface"
 import type { EventType, LogEvent, ActiveInfusion, ActiveFluid, ActiveGasSettings } from "@/lib/intraop-log-event"
@@ -114,7 +114,6 @@ export default function IntraopLiveScreen() {
   const logRef = useRef<LogEvent[]>([])
   const legacyWebLogNeedsSyncRef = useRef(false)
   const baseIntraopUpdatedAtRef = useRef<string | null>(null)
-  const eventSaveQueueRef = useRef(createSingleFlightQueue())
   const [activeInfusions, setActiveInfusions] = useState<ActiveInfusion[]>([])
   const [activeFluids,    setActiveFluids]    = useState<ActiveFluid[]>([])
   const [activeAgent,     setActiveAgent]     = useState<{ name: string; color: string; percent?: number } | null>(null)
@@ -149,9 +148,9 @@ export default function IntraopLiveScreen() {
     setLastSavedAt,
   })
 
-  function enqueueEventSave<T>(operation: () => Promise<T>): Promise<T> {
-    return eventSaveQueueRef.current.enqueue(operation)
-  }
+  const enqueueEventSave = useCallback(<T,>(operation: () => Promise<T>): Promise<T> =>
+    enqueueIntraopCaseWrite(id, operation),
+  [id])
   // Vitals sheet — text input refs for auto-advance focus chaining (state +
   // logic now in useVitalsEntry, called further down once setTimetable exists)
   const vSysRef = useRef<TextInput | null>(null)
@@ -408,7 +407,7 @@ export default function IntraopLiveScreen() {
   useIntraopCaseLoader({
     caseId: id,
     monitoringOptions: MONITORING_OPTS,
-    complicationItems: COMPLICATION_GROUPS.flatMap(g => g.items),
+    complicationItems: COMPLICATION_ITEMS,
     errorLabel: tc("errorLabel"),
     enqueueEventSave,
     runBatched,
@@ -609,7 +608,7 @@ export default function IntraopLiveScreen() {
           saveComplications, setCompOpen, eventActions, promptDelete, prevVitalFor, ttColCount,
           chartPage, caseEnded, resumeSecsLeft, resumeCase, setChartPage, setTtColCount,
           handleChartTimetableChange, setEntryTs, slotOpen, slotTs, timeStr, slotEventSearch,
-          slotCompExpanded, CLINICAL_EVENT_CATS, COMPLICATION_GROUPS, isGACase, setSlotOpen,
+          slotCompExpanded, CLINICAL_EVENT_CATS, COMPLICATION_GROUPS, COMPLICATION_ITEMS, isGACase, setSlotOpen,
           setSlotEventSearch, setSlotCompExpanded, openSlotEvent, openDrug, openAgent,
           stopGasSettings, gasOpen, gasFgf, setGasOpen, setGasFgf, gasCarrierGas,
           setGasCarrierGas, gasFio2, setGasFio2, confirmGasSettings, drugOpen, setDrugOpen,

@@ -1,5 +1,6 @@
 import * as SecureStore from "expo-secure-store"
 import { ApiError, apiFetch } from "./api"
+import { enqueueIntraopCaseWrite } from "@/lib/intraop-write-queue"
 
 export type CasePatchSection = "preop" | "postop" | "intraop"
 export type CasePatchResult = "saved" | "queued" | "empty" | "failed"
@@ -200,9 +201,14 @@ async function patchCase(caseId: string, section: CasePatchSection, payload: unk
   return res.json().catch(() => ({}))
 }
 
+function patchCaseInOrder(caseId: string, section: CasePatchSection, payload: unknown, baseUpdatedAt?: string | null): Promise<CasePatchResponse> {
+  const run = () => patchCase(caseId, section, payload, baseUpdatedAt)
+  return section === "intraop" ? enqueueIntraopCaseWrite(caseId, run) : run()
+}
+
 export async function saveCasePatchWithQueue(caseId: string, section: CasePatchSection, payload: unknown, baseUpdatedAt?: string | null): Promise<{ result: CasePatchResult; response?: CasePatchResponse }> {
   try {
-    const response = await patchCase(caseId, section, payload, baseUpdatedAt)
+    const response = await patchCaseInOrder(caseId, section, payload, baseUpdatedAt)
     await clearQueuedCasePatch(caseId, section)
     return { result: "saved", response }
   } catch (err) {
@@ -225,7 +231,7 @@ export async function flushQueuedCasePatch(caseId: string, section: CasePatchSec
   }
   if (!parsed.payload) return { result: "empty" }
   try {
-    const response = await patchCase(caseId, section, parsed.payload, parsed.baseUpdatedAt)
+    const response = await patchCaseInOrder(caseId, section, parsed.payload, parsed.baseUpdatedAt)
     await clearQueuedCasePatch(caseId, section)
     return { result: "saved", response }
   } catch (err) {

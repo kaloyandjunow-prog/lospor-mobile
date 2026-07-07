@@ -9,6 +9,7 @@ import {
   eventsToTimetable,
   roundDown5Min,
 } from "@/lib/intraop-projection"
+import { putFullIntraopLogWithConflictRetry } from "@/lib/intraop-event-sync"
 import {
   loadPendingIntraopEvents,
   markIntraopEventFailed,
@@ -16,7 +17,6 @@ import {
   prependPendingIntraopEvent,
   removePendingIntraopEvent,
   serializeIntraopEventForServer,
-  serializeIntraopLogForServer,
   stripIntraopLogSyncStatuses,
   storePendingIntraopEvents,
 } from "@/lib/pending-intraop-events"
@@ -93,38 +93,22 @@ export function useIntraopEventPersistence({
     setTimetable(eventsToTimetable(newLog, roundDown5Min(startRef.current!), new Date()))
     try {
       await enqueueEventSave(async () => {
-        const doRequest = () => apiFetch(`/api/cases/${caseId}/events`, {
-          method: legacyWebLogNeedsSyncRef.current ? "PUT" : "POST",
-          headers: {
-            "X-Idempotency-Key": `${caseId}:${ev.id}`,
-            "X-Lospor-Source": "mobile",
-            ...(legacyWebLogNeedsSyncRef.current && baseIntraopUpdatedAtRef.current
-              ? { "x-lospor-intraop-updated-at": baseIntraopUpdatedAtRef.current }
-              : {}),
-          },
-          body: legacyWebLogNeedsSyncRef.current
-            ? JSON.stringify(serializeIntraopLogForServer(newLog))
-            : JSON.stringify(serializeIntraopEventForServer(ev)),
-        })
-        let res = await doRequest()
-        // The legacy-web-log migration PUT carries a conflict header; if the
-        // client's base intraop timestamp is stale (common on a web-touched
-        // case's very first event, often the first vitals of the case), the
-        // server 409s. Self-heal once with the server's timestamp instead of
-        // dropping to "failed" and making the user tap Sync retry — mirrors
-        // syncLog()'s existing behavior.
-        if (res.status === 409 && legacyWebLogNeedsSyncRef.current) {
-          const conflictBody = await res.json().catch(() => ({}))
-          const serverUpdatedAt = conflictBody?.serverVersion?.updatedAt as string | undefined
-          if (serverUpdatedAt) {
-            baseIntraopUpdatedAtRef.current = serverUpdatedAt
-            res = await doRequest()
-          }
+        if (legacyWebLogNeedsSyncRef.current) {
+          await putFullIntraopLogWithConflictRetry(caseId, newLog, baseIntraopUpdatedAtRef)
+          legacyWebLogNeedsSyncRef.current = false
+        } else {
+          const res = await apiFetch(`/api/cases/${caseId}/events`, {
+            method: "POST",
+            headers: {
+              "X-Idempotency-Key": `${caseId}:${ev.id}`,
+              "X-Lospor-Source": "mobile",
+            },
+            body: JSON.stringify(serializeIntraopEventForServer(ev)),
+          })
+          if (!res.ok) throw new Error()
+          const body = await res.json().catch(() => ({}))
+          baseIntraopUpdatedAtRef.current = body?.intraopUpdatedAt ?? baseIntraopUpdatedAtRef.current
         }
-        if (!res.ok) throw new Error()
-        const body = await res.json().catch(() => ({}))
-        legacyWebLogNeedsSyncRef.current = false
-        baseIntraopUpdatedAtRef.current = body?.intraopUpdatedAt ?? baseIntraopUpdatedAtRef.current
         const remainingCount = await pendingStoreQueueRef.current.enqueue(async () => {
           const remaining = removePendingIntraopEvent(await loadPendingIntraopEvents<LogEvent>(caseId), ev.id)
           await storePendingIntraopEvents(caseId, remaining)
@@ -156,33 +140,10 @@ export function useIntraopEventPersistence({
     setLog(newLog)
     if (startRef.current) setTimetable(eventsToTimetable(newLog, roundDown5Min(startRef.current), new Date()))
     setSyncState("saving")
-    const putFullLog = async (updatedAt: string | null) => {
-      const res = await apiFetch(`/api/cases/${caseId}/events`, {
-        method: "PUT",
-        headers: updatedAt ? { "x-lospor-intraop-updated-at": updatedAt } : undefined,
-        body: JSON.stringify(serializeIntraopLogForServer(newLog)),
-      })
-      const body = await res.json().catch(() => ({}))
-      if (res.status === 409) {
-        const serverUpdatedAt = body?.serverVersion?.updatedAt as string | undefined
-        if (serverUpdatedAt) {
-          baseIntraopUpdatedAtRef.current = serverUpdatedAt
-        }
-        return { ok: false as const, conflict: true as const, body }
-      }
-      if (!res.ok) return { ok: false as const, conflict: false as const, body }
-      return { ok: true as const, body }
-    }
     try {
       await enqueueEventSave(async () => {
-        let result = await putFullLog(baseIntraopUpdatedAtRef.current)
-        if (!result.ok && result.conflict && baseIntraopUpdatedAtRef.current) {
-          result = await putFullLog(baseIntraopUpdatedAtRef.current)
-        }
-        if (!result.ok) throw new Error()
-        const body = result.body
+        await putFullIntraopLogWithConflictRetry(caseId, newLog, baseIntraopUpdatedAtRef)
         legacyWebLogNeedsSyncRef.current = false
-        baseIntraopUpdatedAtRef.current = body?.intraopUpdatedAt ?? baseIntraopUpdatedAtRef.current
         await pendingStoreQueueRef.current.enqueue(() => storePendingIntraopEvents(caseId, []))
         setPendingCount(0)
         setLog(prev => stripIntraopLogSyncStatuses(prev) as LogEvent[])
@@ -202,14 +163,7 @@ export function useIntraopEventPersistence({
         setSyncState("saving")
         try {
           await enqueueEventSave(async () => {
-            const res = await apiFetch(`/api/cases/${caseId}/events`, {
-              method: "PUT",
-              headers: baseIntraopUpdatedAtRef.current ? { "x-lospor-intraop-updated-at": baseIntraopUpdatedAtRef.current } : undefined,
-              body: JSON.stringify(serializeIntraopLogForServer(logRef.current)),
-            })
-            if (!res.ok) throw new Error()
-            const body = await res.json().catch(() => ({}))
-            baseIntraopUpdatedAtRef.current = body?.intraopUpdatedAt ?? baseIntraopUpdatedAtRef.current
+            await putFullIntraopLogWithConflictRetry(caseId, logRef.current, baseIntraopUpdatedAtRef)
             legacyWebLogNeedsSyncRef.current = false
             setPendingCount(0)
             setLog(prev => stripIntraopLogSyncStatuses(prev) as LogEvent[])
@@ -233,14 +187,7 @@ export function useIntraopEventPersistence({
     if (legacyWebLogNeedsSyncRef.current) {
       try {
         await enqueueEventSave(async () => {
-          const res = await apiFetch(`/api/cases/${caseId}/events`, {
-            method: "PUT",
-            headers: baseIntraopUpdatedAtRef.current ? { "x-lospor-intraop-updated-at": baseIntraopUpdatedAtRef.current } : undefined,
-            body: JSON.stringify(serializeIntraopLogForServer(logRef.current)),
-          })
-          if (!res.ok) throw new Error()
-          const body = await res.json().catch(() => ({}))
-          baseIntraopUpdatedAtRef.current = body?.intraopUpdatedAt ?? baseIntraopUpdatedAtRef.current
+          await putFullIntraopLogWithConflictRetry(caseId, logRef.current, baseIntraopUpdatedAtRef)
           legacyWebLogNeedsSyncRef.current = false
           await pendingStoreQueueRef.current.enqueue(() => storePendingIntraopEvents(caseId, []))
           setPendingCount(0)
