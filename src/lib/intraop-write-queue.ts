@@ -1,26 +1,21 @@
-import { createSingleFlightQueue, type SingleFlightQueue } from "@/lib/single-flight-queue"
+// Thin adapter over the shared per-case write queue in @lospor/core/sync.
+// One app-wide instance: ALL case writes (events, section patches, flushes)
+// are serialized per case through this queue.
+import { createCaseWriteQueue } from "@lospor/core/sync"
 
-const queues = new Map<string, SingleFlightQueue>()
-
-function queueForCase(caseId: string): SingleFlightQueue {
-  const existing = queues.get(caseId)
-  if (existing) return existing
-  const queue = createSingleFlightQueue()
-  queues.set(caseId, queue)
-  return queue
-}
+const queue = createCaseWriteQueue()
 
 export function enqueueIntraopCaseWrite<T>(
   caseId: string,
   operation: () => Promise<T>,
 ): Promise<T> {
-  return queueForCase(caseId).enqueue(operation)
+  return queue.enqueue(caseId, operation)
 }
 
 export function waitForIntraopCaseWrites(caseId: string): Promise<void> {
-  return queueForCase(caseId).idle()
+  return queue.idle(caseId)
 }
 
 export function clearIntraopWriteQueuesForTest(): void {
-  queues.clear()
+  queue.clear()
 }
