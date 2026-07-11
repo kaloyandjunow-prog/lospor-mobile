@@ -32,6 +32,7 @@ import { valuesFromServerPreop, type ServerPreop } from "@/lib/preop-server-valu
 import { PREOP_REQUIRED_FIELD_SECTION, preopInvalidSubmitMessage } from "@/lib/preop-validation-navigation"
 import { postPreopServerCase } from "@/lib/preop-server-create"
 import { patchPreopServerCase } from "@/lib/preop-server-patch"
+import { sectionSnapshots } from "@/lib/section-snapshots"
 import { suggestASAFromTags } from "@/lib/preop-asa-suggestion"
 import {
   ChecklistGroup,
@@ -434,6 +435,7 @@ export default function NewCaseScreen() {
             // First save: try to create the case on the server
             const id = await tryCreateServerCase(values)
             if (id) {
+              sectionSnapshots.confirm(id, "preop", buildPreopPayload(values))
               await clearLocalDraft()
               setDraftState("saved")
               return
@@ -443,12 +445,21 @@ export default function NewCaseScreen() {
             setDraftState("queued")
             return
           }
-          // Subsequent saves: patch the existing server case
+          // Subsequent saves: patch only the fields that changed since the
+          // last confirmed save (field-level saves — see core field-diff).
+          const preopPayload = buildPreopPayload(values)
+          const changes = sectionSnapshots.diff(caseIdRef.current, "preop", preopPayload)
+          if (!changes) {
+            await clearLocalDraft()
+            setDraftState("saved")
+            return
+          }
           const result = await saveCasePatchWithQueue(
-            caseIdRef.current, "preop", buildPreopPayload(values), basePreopUpdatedAtRef.current
+            caseIdRef.current, "preop", changes, basePreopUpdatedAtRef.current
           )
           if (result.result === "saved") {
             basePreopUpdatedAtRef.current = result.response?.preopUpdatedAt ?? basePreopUpdatedAtRef.current
+            sectionSnapshots.confirm(caseIdRef.current, "preop", preopPayload)
             await clearLocalDraft()
             setDraftState("saved")
           } else if (result.result === "queued") {
@@ -469,6 +480,7 @@ export default function NewCaseScreen() {
             basePreopUpdatedAtRef.current = null
             const replacementId = await tryCreateServerCase(values)
             if (replacementId) {
+              sectionSnapshots.confirm(replacementId, "preop", buildPreopPayload(values))
               await clearLocalDraft()
               setDraftState("saved")
               return
@@ -759,6 +771,7 @@ export default function NewCaseScreen() {
         const patchResult = await patchPreopServerCase(caseIdRef.current, preopPayload, basePreopUpdatedAtRef.current, apiFetch)
         if (patchResult.result === "saved") {
           basePreopUpdatedAtRef.current = patchResult.updatedAt ?? basePreopUpdatedAtRef.current
+          sectionSnapshots.confirm(caseIdRef.current, "preop", preopPayload)
           id = caseIdRef.current
         } else if (patchResult.result === "not-found") {
           caseIdRef.current = null

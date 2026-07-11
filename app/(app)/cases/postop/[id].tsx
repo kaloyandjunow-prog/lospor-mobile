@@ -9,6 +9,7 @@ import { useForm, Controller, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ApiError, apiJson } from "@/lib/api"
 import { flushQueuedCasePatch, saveCasePatchWithQueue, type CasePatchResponse, type CasePatchResult } from "@/lib/offline-case-patches"
+import { sectionSnapshots } from "@/lib/section-snapshots"
 import { useLiveRefresh } from "@/lib/use-live-refresh"
 import { ScreenState } from "@/components/clinical-ui"
 import { AppHeader } from "@/components/AppHeader"
@@ -199,7 +200,16 @@ export default function PostopFormScreen() {
 
   const persistPostop = useCallback(async (data: FormData, force = false): Promise<CasePatchResult> => {
     const payload = payloadFrom(data)
-    const { result, response } = await saveCasePatchWithQueue(id, "postop", payload, force ? null : baseUpdatedAtRef.current)
+    // Field-level saves: PATCH only what changed since the last confirmed
+    // save; a forced overwrite (conflict resolution) always sends everything.
+    const body = force ? payload : sectionSnapshots.diff(id, "postop", payload as Record<string, unknown>) ?? {}
+    if (!force && Object.keys(body).length === 0) {
+      lastSavedJsonRef.current = JSON.stringify(payload)
+      markSaveResult("saved")
+      return "saved"
+    }
+    const { result, response } = await saveCasePatchWithQueue(id, "postop", body, force ? null : baseUpdatedAtRef.current)
+    if (result === "saved") sectionSnapshots.confirm(id, "postop", payload as Record<string, unknown>)
     lastSavedJsonRef.current = JSON.stringify(payload)
     markSaveResult(result, response)
     return result
@@ -227,6 +237,8 @@ export default function PostopFormScreen() {
       const nextValues = valuesFromPostop(p)
       baseUpdatedAtRef.current = p.updatedAt ?? null
       lastSavedJsonRef.current = JSON.stringify(payloadFrom(nextValues))
+      // Server state just loaded — future autosaves diff against it.
+      sectionSnapshots.confirm(id, "postop", payloadFrom(nextValues) as Record<string, unknown>)
       reset(nextValues)
       setAutosaveState("saved")
     } catch (err) {
