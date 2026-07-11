@@ -1,5 +1,13 @@
 # Changelog - LOSPOR Mobile
 
+## [4.1.6] - 2026-07-11
+
+Intraop autosave race fix. Android `versionCode` 18 (JS-only, no native changes).
+
+### Fixed
+- **Overlapping intraop autosaves no longer race or clobber each other.** Every event write for a case now goes through a per-case single-flight queue, so saves that previously fired concurrently — rapid vitals/drug/event entry, or a live refresh landing mid-save — run one at a time instead of colliding and overwriting each other.
+- **A stale-timestamp conflict on the full-log save now self-heals.** The full intraop-log save (`PUT /api/cases/[id]/events`) retries once on a `409` using the server's returned `updatedAt`, instead of leaving the save stuck in a failed state that needed a manual "Sync retry".
+
 ## [4.1.5] - 2026-07-05
 
 Android `versionCode` 17.
