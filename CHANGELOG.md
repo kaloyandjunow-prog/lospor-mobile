@@ -1,5 +1,16 @@
 # Changelog - LOSPOR Mobile
 
+## [5.0.0] - 2026-07-11
+
+Unified save/sync engine. Android `versionCode` 19 (JS-only, no native changes). Not yet released — local build only.
+
+### Changed
+- **All save/offline/conflict logic now runs on one shared engine** (`@lospor/core/sync`), used identically by mobile and web. The offline patch queue, pending intraop-event journal, per-case write queue, and 409 self-heal are one tested implementation instead of parallel copies — a fix in one place now reaches both apps. Storage keys and screen behavior are unchanged; queued data on devices survives the upgrade.
+- **Preop and postop saves are now field-level.** Autosaves send only the fields that changed since the last confirmed save, so two clinicians editing *different* fields of the same case no longer overwrite each other, and unchanged autosaves skip the network entirely. Manual submit still sends the complete record as the convergence point.
+
+### Fixed
+- A latent race in the offline queue's index bookkeeping (two flushes running at once could silently lose a queue entry) — index updates are now serialized in the shared engine.
+
 ## [4.1.6] - 2026-07-11
 
 Intraop autosave race fix. Android `versionCode` 18 (JS-only, no native changes).
