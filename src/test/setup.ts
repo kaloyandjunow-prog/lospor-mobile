@@ -23,6 +23,22 @@ vi.mock("react-native", () => {
     Platform: { OS: "ios", select: (o: Record<string, unknown>) => o.ios ?? o.native ?? o.default },
     Alert: { alert: vi.fn() },
     useWindowDimensions: () => ({ width: 400, height: 800 }),
+    // Minimal Animated/PanResponder so components using FeedbackPressable or
+    // the VitalStepper slider render under the shim (no real animation).
+    Animated: {
+      View: host("Animated.View"),
+      createAnimatedComponent: (c: unknown) => c,
+      Value: class {
+        constructor(public _v: number) {}
+        setValue() {}
+        interpolate() { return this }
+      },
+      timing: () => ({ start: (cb?: () => void) => cb?.() }),
+      spring: () => ({ start: (cb?: () => void) => cb?.() }),
+      sequence: () => ({ start: (cb?: () => void) => cb?.() }),
+      parallel: () => ({ start: (cb?: () => void) => cb?.() }),
+    },
+    PanResponder: { create: () => ({ panHandlers: {} }) },
   }
 })
 

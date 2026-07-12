@@ -15,6 +15,8 @@ Unified save/sync engine. Android `versionCode` 19 (JS-only, no native changes).
 
 ### Fixed
 - A latent race in the offline queue's index bookkeeping (two flushes running at once could silently lose a queue entry) — index updates are now serialized in the shared engine.
+- **Rapid multi-select taps in intraop (positions, monitoring, techniques, complications) no longer fail to sync.** Each tap used to fire its own save carrying the timestamp from tap time; later taps then collided with their own predecessor. Taps now coalesce into one save shortly after the last tap, and every queued save reads the freshest timestamp at the moment it actually executes.
+- **Fluid/agent quick-value autofill can no longer be knocked out by a stale offline cache.** Option-library caches from older app builds (before quick values existed for fluids and agents) could shadow the correct data while offline; caches are now version-stamped and stale ones ignored. Selecting a fluid/agent prefilling the first library preset is now covered by component tests.
 
 ## [4.1.6] - 2026-07-11
 

@@ -23,8 +23,14 @@ const globalListeners = new Set<() => void>()
 const RETRY_INTERVAL_MS = 30_000
 const FALLBACK_SNAPSHOT_DATE: string = typedFallbackSnapshot.generatedAt ?? "unknown"
 
+// Bump when the option payload contract grows (e.g. metadata.quickValues for
+// fluids/agents): caches written by older builds/seeds are keyed differently
+// and therefore ignored, so a stale metadata-less list can never shadow the
+// live API or the bundled fallback while the device is offline.
+const LIBRARY_CACHE_VERSION = 2
+
 function storeKey(category: string) {
-  return `lospor_option_library_${category}`
+  return `lospor_option_library_v${LIBRARY_CACHE_VERSION}_${category}`
 }
 
 function bundledOptions(category: string): LibraryOption[] {

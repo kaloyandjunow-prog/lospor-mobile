@@ -8,6 +8,7 @@ import { enqueueIntraopCaseWrite } from "@/lib/intraop-write-queue"
 import {
   createCaseOutbox,
   SECTION_CONFLICT_HEADER,
+  type BaseUpdatedAtInput,
   type CasePatchResponse,
   type CasePatchResult,
   type CaseSection,
@@ -115,7 +116,9 @@ export function saveCasePatchWithQueue(
   caseId: string,
   section: CasePatchSection,
   payload: unknown,
-  baseUpdatedAt?: string | null,
+  // A thunk base is resolved inside the write queue right before the request
+  // goes out — rapid successive saves then carry the freshest timestamp.
+  baseUpdatedAt?: BaseUpdatedAtInput,
 ): Promise<{ result: CasePatchResult; response?: CasePatchResponse }> {
   return outbox.save(caseId, section, payload, baseUpdatedAt)
 }
