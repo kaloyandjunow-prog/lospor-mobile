@@ -54,7 +54,13 @@ function classifyError(err: unknown): PatchFailure {
   // ApiError(code "NETWORK"). Both mean "no connectivity — queue it".
   if (err instanceof TypeError) return { kind: "network" }
   if (err instanceof ApiError) {
-    return err.code === "NETWORK" ? { kind: "network" } : { kind: "http", status: err.status }
+    if (err.code === "NETWORK") return { kind: "network" }
+    // Surface the server timestamp on conflicts so the flush can self-heal
+    // once instead of replaying the same stale base forever.
+    const serverUpdatedAt = typeof (err.serverVersion as { updatedAt?: unknown } | undefined)?.updatedAt === "string"
+      ? (err.serverVersion as { updatedAt: string }).updatedAt
+      : undefined
+    return { kind: "http", status: err.status, serverUpdatedAt }
   }
   return { kind: "other" }
 }

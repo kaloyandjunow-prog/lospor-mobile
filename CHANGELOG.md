@@ -1,5 +1,18 @@
 # Changelog - LOSPOR Mobile
 
+## [5.1.0] - 2026-07-13
+
+Hardening release addressing an external code review of v5.0.0. Android `versionCode` unchanged (19) — JS-only changes; no binary shipped yet.
+
+### Fixed
+- **Queued intraop section patches and queued intraop events no longer share a storage key.** Since v4 both wrote to `lospor_pending_intraop_<case>` in SecureStore, so one could silently overwrite — or a flush could destroy — the other when a case had both queued offline. Patches moved to their own namespace; existing queued data is migrated automatically at startup.
+- **A queued offline save that hits a conflict now self-heals once on flush** (adopts the server timestamp and retries) instead of replaying the same stale base forever.
+- Field-diffing compares values canonically, so nested key order can no longer trigger pointless saves.
+- Mojibake repaired in RELEASE_PLAN.md.
+
+### Changed
+- Password reset now terminates existing mobile sessions: bearer tokens issued before the reset are rejected by the server within ≤5 minutes (you'll be asked to log in again after resetting your password).
+
 ## [5.0.0] - 2026-07-12
 
 Unified save/sync engine. Android `versionCode` 19 (JS-only, no native changes).

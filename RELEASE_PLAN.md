@@ -2,7 +2,7 @@
 
 > **Historical base checklist.** This file started as the original mobile launch checklist and is now superseded by the v3.0.0 release process. See `CHANGELOG.md` for the release history and `app.json` for current store metadata.
 
-Status legend: ⬜ pending В· 🔄 in progress В· ✅ done
+Status legend: ⬜ pending · 🔄 in progress · ✅ done
 
 ---
 
