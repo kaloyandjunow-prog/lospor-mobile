@@ -1,8 +1,8 @@
 # Changelog - LOSPOR Mobile
 
-## [5.0.0] - 2026-07-11
+## [5.0.0] - 2026-07-12
 
-Unified save/sync engine. Android `versionCode` 19 (JS-only, no native changes). Not yet released — local build only.
+Unified save/sync engine. Android `versionCode` 19 (JS-only, no native changes).
 
 ### Added
 - **Settings → "Unsaved events"**: a recovery screen listing intraop events the server permanently rejected (they were always kept on-device so no clinical data is silently lost — now you can actually see and clear them).
