@@ -4,9 +4,14 @@
 
 Unified save/sync engine. Android `versionCode` 19 (JS-only, no native changes). Not yet released — local build only.
 
+### Added
+- **Settings → "Unsaved events"**: a recovery screen listing intraop events the server permanently rejected (they were always kept on-device so no clinical data is silently lost — now you can actually see and clear them).
+
 ### Changed
 - **All save/offline/conflict logic now runs on one shared engine** (`@lospor/core/sync`), used identically by mobile and web. The offline patch queue, pending intraop-event journal, per-case write queue, and 409 self-heal are one tested implementation instead of parallel copies — a fix in one place now reaches both apps. Storage keys and screen behavior are unchanged; queued data on devices survives the upgrade.
 - **Preop and postop saves are now field-level.** Autosaves send only the fields that changed since the last confirmed save, so two clinicians editing *different* fields of the same case no longer overwrite each other, and unchanged autosaves skip the network entirely. Manual submit still sends the complete record as the convergence point.
+- **Toggle and pill taps in preop save near-instantly** (~300 ms after the tap); typing keeps the 2-second pause so half-typed values are never saved.
+- **Smarter retry rhythm.** The background flusher backs off while saves keep failing (5 s → 15 s → 60 s windows) and resets the moment the app returns to the foreground.
 
 ### Fixed
 - A latent race in the offline queue's index bookkeeping (two flushes running at once could silently lose a queue entry) — index updates are now serialized in the shared engine.

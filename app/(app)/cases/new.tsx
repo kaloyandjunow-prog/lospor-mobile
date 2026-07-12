@@ -417,12 +417,29 @@ export default function NewCaseScreen() {
   // useWatch triggers a React re-render on every field change — works on both native and web.
   // (watch(callback) subscription doesn't fire reliably on Expo web builds.)
   const _allFormValues = useWatch({ control })
+  // Previous snapshot so the effect can tell WHAT changed: a tap on a toggle/
+  // pill (boolean value) saves near-instantly; typing keeps the long pause.
+  const prevFormValuesRef = useRef<Record<string, unknown> | null>(null)
 
-  // Autosave on every form change (2s debounce): server-first, local fallback
+  // Autosave on every form change (2s debounce; 300ms for discrete taps):
+  // server-first, local fallback
   useEffect(() => {
     if (submittingRef.current) return
     setDraftState("saving")
     if (autosaveDraftRef.current) clearTimeout(autosaveDraftRef.current)
+
+    // Shallow-diff against the previous snapshot to classify this change.
+    const current = (_allFormValues ?? {}) as Record<string, unknown>
+    const prev = prevFormValuesRef.current
+    prevFormValuesRef.current = current
+    let discreteTap = false
+    if (prev) {
+      const changedKeys = Object.keys(current).filter(
+        (k) => JSON.stringify(current[k]) !== JSON.stringify(prev[k]),
+      )
+      discreteTap = changedKeys.length > 0 &&
+        changedKeys.every((k) => typeof current[k] === "boolean" || typeof prev[k] === "boolean")
+    }
 
     function runAutosave() {
       const previousAutosave = autosaveInFlightRef.current
@@ -501,7 +518,7 @@ export default function NewCaseScreen() {
     }
 
     flushAutosaveRef.current = runAutosave
-    autosaveDraftRef.current = setTimeout(runAutosave, 2000)
+    autosaveDraftRef.current = setTimeout(runAutosave, discreteTap ? 300 : 2000)
 
   }, [_allFormValues, clearLocalDraft, getValues, persistLocalDraft, tryCreateServerCase])
 

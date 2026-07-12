@@ -85,6 +85,11 @@ export function getDroppedIntraopEvents(): Promise<DroppedEvent[]> {
   return store.droppedEvents()
 }
 
+/** Empty only the dropped-events log (the pending queue is untouched). */
+export function clearDroppedIntraopEvents(): Promise<void> {
+  return store.clearDropped()
+}
+
 export function clearAllPendingIntraopEvents(): Promise<number> {
   return store.clearAll()
 }

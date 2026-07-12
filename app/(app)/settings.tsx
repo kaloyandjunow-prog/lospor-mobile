@@ -12,6 +12,7 @@ import {
 } from "@/lib/api"
 import { notify, confirmAction } from "@/lib/notify"
 import { flushAllQueuedCasePatches, getQueuedCasePatchSummary } from "@/lib/offline-case-patches"
+import { getDroppedIntraopEvents } from "@/lib/pending-intraop-events"
 import { clearLocalClinicalCache } from "@/lib/local-clinical-cache"
 import { usePreferences } from "@/lib/preferences-context"
 import { ensurePermission, presentNow, getStatus, type NotifStatus } from "@/lib/notifications"
@@ -279,6 +280,7 @@ export default function SettingsScreen() {
   function refreshNotifStatus() { getStatus().then(setNotifStatus).catch(() => {}) }
 
   // -- Diagnostics --------------------------------------------------------------
+  const [droppedCount, setDroppedCount] = useState(0)
   const [diag, setDiag] = useState<{
     hasToken: boolean; expired: boolean; role?: string; userId?: string
     institution?: string; expiresAt?: string
@@ -325,6 +327,7 @@ export default function SettingsScreen() {
   async function refreshDiagnostics() {
     const token = await getToken()
     const payload = decodeTokenPayload(token)
+    setDroppedCount((await getDroppedIntraopEvents().catch(() => [])).length)
     setDiag({
       hasToken: !!token,
       expired: isTokenExpired(token),
@@ -807,6 +810,11 @@ export default function SettingsScreen() {
           <SettingsRow
             label={t("about")}
             subtitle={t("aboutSubtitle")}
+          />
+          <SettingsRow
+            label={droppedCount > 0 ? `${t("droppedEvents")} (${droppedCount})` : t("droppedEvents")}
+            subtitle={t("droppedEventsSubtitle")}
+            onPress={() => router.push("/(app)/dropped-events" as Href)}
           />
           <SettingsRow
             label={t("clearLocalCache")}
