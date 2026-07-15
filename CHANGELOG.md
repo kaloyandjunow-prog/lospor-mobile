@@ -2,7 +2,7 @@
 
 ## [5.1.0] - 2026-07-13
 
-Hardening release addressing an external code review of v5.0.0. Android `versionCode` unchanged (19) — JS-only changes; no binary shipped yet.
+Hardening release addressing an external code review of v5.0.0. Android `versionCode` 20 — the first binary built from the v5.x sync-engine line (JS-only changes since v5.0.0; no native changes).
 
 ### Fixed
 - **Queued intraop section patches and queued intraop events no longer share a storage key.** Since v4 both wrote to `lospor_pending_intraop_<case>` in SecureStore, so one could silently overwrite — or a flush could destroy — the other when a case had both queued offline. Patches moved to their own namespace; existing queued data is migrated automatically at startup.
