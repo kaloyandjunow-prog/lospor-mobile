@@ -1,5 +1,9 @@
 # Changelog - LOSPOR Mobile
 
+## [5.2.0] - Unreleased
+
+_In development._ The case summary is being aligned with the web summary and the printed protocol (one shared model), and gains an at-a-glance intraoperative timetable visualization.
+
 ## [5.1.0] - 2026-07-13
 
 Hardening release addressing an external code review of v5.0.0. Android `versionCode` 20 — the first binary built from the v5.x sync-engine line (JS-only changes since v5.0.0; no native changes).
