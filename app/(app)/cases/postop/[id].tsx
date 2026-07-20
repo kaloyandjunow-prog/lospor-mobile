@@ -24,11 +24,11 @@ import { useRangeSpec } from "@/lib/use-option-library"
 import { normaliseHandoverCodes, postopFormSchema, type PostopFormData as FormData, type PostopFormInput as FormInput } from "@/lib/postop-form-schema"
 import { DispositionPicker, Field, HandoverChecklist, NRSRow, RecoverySummary, ScoreRow, SectionHeader } from "@/components/postop/PostopFormSections"
 
-// в”Ђв”Ђв”Ђ Schema в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ─── Schema ───────────────────────────────────────────────────────────────────
 
 type AutosaveState = "idle" | "saving" | "saved" | "queued" | "conflict" | "error"
 
-// в”Ђв”Ђв”Ђ Data в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ─── Data ─────────────────────────────────────────────────────────────────────
 
 export default function PostopFormScreen() {
   const { id, continuedItems } = useLocalSearchParams<{ id: string; continuedItems?: string }>()
@@ -53,7 +53,7 @@ export default function PostopFormScreen() {
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const baseUpdatedAtRef = useRef<string | null>(null)
 
-  // в”Ђв”Ђв”Ђ ALDRETE_CRITERIA defined inside component so it can use tc() в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  // ─── ALDRETE_CRITERIA defined inside component so it can use tc() ──────────
   const ALDRETE_CRITERIA: {
     field: keyof Pick<FormData, "aldreteActivity" | "aldreteRespiration" | "aldreteCirculation" | "aldreteConsciousness" | "aldreteSpO2">
     label: string
@@ -387,7 +387,7 @@ export default function PostopFormScreen() {
             </View>
           ) : null}
 
-          {/* в”Ђв”Ђ Modified Aldrete Score в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ */}
+          {/* ── Modified Aldrete Score ─────────────────────────────── */}
           <SectionHeader title={tc("aldreteScore")} />
 
           {ALDRETE_CRITERIA.map((criterion) => (
@@ -408,7 +408,7 @@ export default function PostopFormScreen() {
             </View>
           ))}
 
-          {/* в”Ђв”Ђ Recovery vitals в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ */}
+          {/* ── Recovery vitals ────────────────────────────────────── */}
           <SectionHeader title={tc("recoveryVitals")} />
 
           <View style={{ flexDirection: "row", gap: 10 }}>
@@ -476,7 +476,7 @@ export default function PostopFormScreen() {
             />
           </Field>
 
-          {/* в”Ђв”Ђ Disposition в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ */}
+          {/* ── Disposition ────────────────────────────────────────── */}
           <SectionHeader title={tc("dispositionLabel")} />
 
           <View className="mb-4">
@@ -532,7 +532,7 @@ export default function PostopFormScreen() {
           </Field>
           )}
 
-          {/* в”Ђв”Ђ Handover checklist в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ */}
+          {/* ── Handover checklist ─────────────────────────────────── */}
           {(disposition === "WARD" || disposition === "PACU") && (
             <>
               <SectionHeader title={tc("handoverChecklist")} />
@@ -546,7 +546,7 @@ export default function PostopFormScreen() {
             </>
           )}
 
-          {/* в”Ђв”Ђ Save в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ */}
+          {/* ── Save ───────────────────────────────────────────────── */}
           <TouchableOpacity
             style={{
               backgroundColor: colors.success,

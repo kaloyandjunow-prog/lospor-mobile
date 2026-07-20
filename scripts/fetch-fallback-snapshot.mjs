@@ -12,6 +12,13 @@
 //   OPTION_LIBRARY_SNAPSHOT_SECRET — must match lospor-app's env var of the
 //                                    same name
 //
+// Escape hatch: set EAS_SKIP_SNAPSHOT_FETCH=1 to trust the bundled snapshot
+// and skip the fetch entirely. Needed when the build runs somewhere that
+// cannot reach API_BASE — e.g. a cloud EAS build while API_BASE is a LAN-only
+// dev address. Regenerate the snapshot locally first
+// (`npm run gen:option-library-fallback` in lospor-app, which writes this
+// repo's copy too), otherwise you ship a stale one.
+//
 // Locally (outside EAS), this is a no-op if those aren't set — local dev
 // already has a fresh copy from generate-option-library-fallback.ts writing
 // directly into this repo when run from a sibling lospor-app checkout.
@@ -28,6 +35,13 @@ const SECRET = process.env.OPTION_LIBRARY_SNAPSHOT_SECRET
 const TARGET = path.join(__dirname, "../src/data/option-library-fallback.json")
 
 async function main() {
+  if (process.env.EAS_SKIP_SNAPSHOT_FETCH === "1") {
+    // Build environment has no route to API_BASE (e.g. it's a LAN-only dev
+    // address). Trust the bundled file — the caller is responsible for
+    // regenerating it locally right before the build.
+    console.log("EAS_SKIP_SNAPSHOT_FETCH=1 — using bundled snapshot as-is, skipping fetch.")
+    return
+  }
   if (!API_BASE || !SECRET) {
     if (process.env.EAS_BUILD === "true") {
       throw new Error(

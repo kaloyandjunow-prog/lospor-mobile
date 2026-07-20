@@ -1,24 +1,25 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import {
   View, Text, ScrollView, TouchableOpacity,
-  Linking, ActivityIndicator,
+  ActivityIndicator,
 } from "react-native"
 import { useLocalSearchParams, useRouter, Stack } from "expo-router"
 import { apiFetch, apiJson } from "@/lib/api"
 import { notify, confirmAction } from "@/lib/notify"
+import { openPrintCase } from "@/lib/print-case"
 import { AppHeader } from "@/components/AppHeader"
 import { EditWindowBanner } from "@/components/EditWindowBanner"
 import { STATUS_META, statusLabel } from "@/components/ui"
 import { colors, withAlpha } from "@/theme/colors"
 import { usePreferences } from "@/lib/preferences-context"
 import { AirwayCard, IntraopCard, LabCard, MedicalHistoryCard, PostopCard, PreopCard } from "@/components/case-detail/CaseDetailCards"
+import { SummaryTimetable } from "@/components/case-detail/SummaryTimetable"
 import {
-  API_BASE,
   computedDisplayStatus,
   type CaseData,
 } from "@/lib/case-detail-summary"
 
-// в”Ђв”Ђв”Ђ Types в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export default function CaseSummaryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -79,17 +80,16 @@ export default function CaseSummaryScreen() {
       })
   }, [id, router, t, tc])
 
+  const [printing, setPrinting] = useState(false)
   const handlePrint = useCallback(async () => {
+    setPrinting(true)
     try {
-      const res = await apiFetch(`/api/cases/${id}/print-token`, { method: "POST" })
-      if (res.ok) {
-        const { url } = await res.json()
-        Linking.openURL(url).catch(() => notify(tc("errorLabel"), "Could not open browser"))
-        return
-      }
-    } catch { /* fall through */ }
-    Linking.openURL(`${API_BASE}/cases/${id}`).catch(() => notify(tc("errorLabel"), "Could not open browser"))
-  }, [id, tc])
+      const ok = await openPrintCase(id, language, caseData?.caseCode)
+      if (!ok) notify(tc("errorLabel"), tc("printFailed"))
+    } finally {
+      setPrinting(false)
+    }
+  }, [id, language, caseData?.caseCode, tc])
 
   const [finalizing, setFinalizing] = useState(false)
 
@@ -102,6 +102,12 @@ export default function CaseSummaryScreen() {
           const res = await apiFetch(`/api/cases/${id}/finalize`, { method: "POST" })
           const body = await res.json().catch(() => null)
           setCaseData(prev => prev ? { ...prev, status: "COMPLETE", finalizedAt: body?.finalizedAt ?? new Date().toISOString() } : prev)
+          // Case is finished — offer the two-page record straight away.
+          const wantsPrint = await confirmAction(tc("caseFinalised"), tc("printCasePromptMsg"), { confirmLabel: tc("actionPrintCase"), cancelLabel: tc("cancelLabel") })
+          if (wantsPrint) {
+            const printed = await openPrintCase(id, language, caseData?.caseCode)
+            if (!printed) notify(tc("errorLabel"), tc("printFailed"))
+          }
         } catch {
           notify(tc("errorLabel"), "Could not finalise case.")
         } finally {
@@ -128,7 +134,7 @@ export default function CaseSummaryScreen() {
   if (caseData?.preop?.asaScore) metaParts.push(`ASA ${caseData.preop.asaScore}`)
   if (caseData?.intraop?.monthYear) metaParts.push(caseData.intraop.monthYear)
 
-  // в”Ђв”Ђ Loading state в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  // ── Loading state ──────────────────────────────────────────────────────────
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -142,7 +148,7 @@ export default function CaseSummaryScreen() {
     )
   }
 
-  // в”Ђв”Ђ Error state в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  // ── Error state ────────────────────────────────────────────────────────────
   if (error || !caseData) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -172,7 +178,7 @@ export default function CaseSummaryScreen() {
     )
   }
 
-  // в”Ђв”Ђ Main render в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  // ── Main render ────────────────────────────────────────────────────────────
   const displayStatus = computedDisplayStatus(caseData)
   const sc = STATUS_META[displayStatus]?.color ?? colors.textMuted
   const displayStatusLabel = statusLabel(displayStatus, language)
@@ -212,7 +218,7 @@ export default function CaseSummaryScreen() {
           ) : null}
         </View>
 
-        {/* в”Ђв”Ђ Hero bar в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ */}
+        {/* ── Hero bar ───────────────────────────────────────────────────────── */}
         <View style={{
           backgroundColor: colors.surfaceRaised, borderRadius: 16,
           borderWidth: 1, borderColor: colors.border, padding: 16, marginBottom: 12,
@@ -253,18 +259,18 @@ export default function CaseSummaryScreen() {
               borderWidth: 1, borderColor: withAlpha(colors.success, "55"),
             }}>
               <Text style={{ color: colors.success, fontSize: 12, fontWeight: "700" }}>
-                {"вњ“"} {tc("caseFinalised")}
+                {"✓"} {tc("caseFinalised")}
               </Text>
             </View>
           )}
         </View>
 
-        {/* в”Ђв”Ђ Edit window subheader (shown when case is finalised and window open) */}
+        {/* ── Edit window subheader (shown when case is finalised and window open) */}
         {caseData.finalizedAt != null && editWindowOpen && (
           <EditWindowBanner finalizedAt={caseData.finalizedAt} />
         )}
 
-        {/* в”Ђв”Ђ Review bar в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ */}
+        {/* ── Review bar ─────────────────────────────────────────────────────── */}
         <View style={{
           marginBottom: 16, borderRadius: 12,
           borderWidth: 1, borderColor: withAlpha(sc, "44"),
@@ -320,15 +326,16 @@ export default function CaseSummaryScreen() {
 
             <TouchableOpacity
               onPress={handlePrint}
+              disabled={printing}
               style={{
                 flex: 1, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10,
                 borderWidth: 1, borderColor: withAlpha(colors.textSecondary, "55"),
                 backgroundColor: withAlpha(colors.textSecondary, "0d"),
-                alignItems: "center",
+                alignItems: "center", opacity: printing ? 0.6 : 1,
               }}
             >
               <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: "700" }}>
-                {tc("actionPrintPDF")}
+                {printing ? `⏳ ${tc("printGenerating")}` : tc("actionPrintPDF")}
               </Text>
             </TouchableOpacity>
 
@@ -344,7 +351,7 @@ export default function CaseSummaryScreen() {
                 }}
               >
                 <Text style={{ color: colors.warning, fontSize: 13, fontWeight: "700" }}>
-                  {unfinalizing ? `вЏі ${t("unfinalizing")}` : tc("actionUnfinalize")}
+                  {unfinalizing ? `⏳ ${t("unfinalizing")}` : tc("actionUnfinalize")}
                 </Text>
               </TouchableOpacity>
             )}
@@ -367,10 +374,24 @@ export default function CaseSummaryScreen() {
           </View>
         </View>
 
-        {/* в”Ђв”Ђ Six summary cards в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ */}
+        {/* ── Six summary cards ──────────────────────────────────────────────── */}
         <PreopCard preop={caseData.preop} tc={tc} t={t} />
         <MedicalHistoryCard preop={caseData.preop} tc={tc} />
         <AirwayCard preop={caseData.preop} tc={tc} />
+        {/* Read-only timetable card (same projected data the printed record
+            uses). Ongoing case: tap opens the live intraop cockpit. Finished
+            case: tap opens the read-only timetable viewer — the cockpit is an
+            editing surface and closed cases are read-only. */}
+        <SummaryTimetable
+          keyEvents={caseData.intraop?.keyEvents}
+          startISO={caseData.intraop?.startTime}
+          onPress={() => router.push(
+            caseData.status === "COMPLETE"
+              ? `/(app)/cases/timetable/${id}`
+              : `/(app)/cases/intraop/${id}`,
+          )}
+          actionLabel={caseData.status === "COMPLETE" ? tc("summaryViewTimetable") : undefined}
+        />
         <IntraopCard intraop={caseData.intraop} preop={caseData.preop} tc={tc} t={t} />
         <PostopCard postop={caseData.postop} tc={tc} t={t} />
         <LabCard labResults={caseData.preop?.labResults} tc={tc} />

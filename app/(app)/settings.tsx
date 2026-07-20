@@ -4,6 +4,7 @@ import {
   TouchableOpacity, TextInput, Modal, FlatList, ActivityIndicator,
 } from "react-native"
 import * as SecureStore from "expo-secure-store"
+import Constants from "expo-constants"
 import { Stack, useRouter, type Href } from "expo-router"
 import { useAuth } from "@/lib/auth-context"
 import {
@@ -809,7 +810,7 @@ export default function SettingsScreen() {
           />
           <SettingsRow
             label={t("about")}
-            subtitle={t("aboutSubtitle")}
+            subtitle={`LOSPOR v${Constants.expoConfig?.version ?? "?"} — ${t("aboutSubtitle")}`}
           />
           <SettingsRow
             label={droppedCount > 0 ? `${t("droppedEvents")} (${droppedCount})` : t("droppedEvents")}

@@ -167,7 +167,7 @@ const HANDOVER_GROUPS: HandoverGroup[] = [
   },
 ]
 
-// в”Ђв”Ђв”Ђ Sub-components в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 export function SectionHeader({ title }: { title: string }) {
   return (
@@ -358,7 +358,7 @@ export function HandoverChecklist({
               <Text style={{ color: checkedCount > 0 ? colors.success : colors.textMuted, fontSize: 12, fontWeight: "800" }}>
                 {checkedCount}/{group.items.length}
               </Text>
-              <Text style={{ color: colors.textMuted, fontSize: 13 }}>{isOpen ? "в–І" : "в–ј"}</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 13 }}>{isOpen ? "▲" : "▼"}</Text>
             </TouchableOpacity>
             {isOpen && group.items.map((opt) => {
               const checked = value.includes(opt.v)
@@ -369,7 +369,7 @@ export function HandoverChecklist({
                   style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 12, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: checked ? withAlpha(colors.success, "08") : "transparent" }}
                 >
                   <View style={{ width: 22, height: 22, borderRadius: 7, borderWidth: 2, borderColor: checked ? colors.success : colors.borderStrong, backgroundColor: checked ? colors.success : "transparent", alignItems: "center", justifyContent: "center" }}>
-                    {checked && <Text style={{ color: colors.background, fontSize: 13, fontWeight: "900", lineHeight: 15 }}>вњ“</Text>}
+                    {checked && <Text style={{ color: colors.background, fontSize: 13, fontWeight: "900", lineHeight: 15 }}>✓</Text>}
                   </View>
                   <Text style={{ color: checked ? colors.textPrimary : colors.textSecondary, fontSize: 13, flex: 1, lineHeight: 18 }}>
                     {HANDOVER_TC_ITEMS[opt.v] ? tc(HANDOVER_TC_ITEMS[opt.v]) : opt.label}
@@ -384,7 +384,7 @@ export function HandoverChecklist({
   )
 }
 
-// в”Ђв”Ђв”Ђ Screen в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export function RecoverySummary({
   total,

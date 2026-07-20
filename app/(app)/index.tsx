@@ -14,6 +14,7 @@ import {
 import { Stack, useRouter, type Href } from "expo-router"
 import { ApiError, apiFetch, apiJson, decodeTokenPayload, getToken } from "@/lib/api"
 import { notify } from "@/lib/notify"
+import { openPrintCase } from "@/lib/print-case"
 import { useAuth } from "@/lib/auth-context"
 import { useLiveRefresh } from "@/lib/use-live-refresh"
 import { getQueuedCasePatchSummary, getQueuedCaseIds, clearAllQueuedPatchesForCase } from "@/lib/offline-case-patches"
@@ -130,7 +131,7 @@ function routeFor(item: CaseItem): Href {
 export default function DashboardScreen() {
   const router = useRouter()
   const { logout } = useAuth()
-  const { t } = usePreferences()
+  const { t, tc, language } = usePreferences()
 
   const [cases, setCases] = useState<CaseItem[]>([])
   const [localDrafts, setLocalDrafts] = useState<LocalCaseDraft[]>([])
@@ -591,6 +592,26 @@ const tabCounts: Record<FilterTab, number> = {
                   {menuCase ? getCaseLabel(menuCase) : ""}
                 </Text>
                 <Text style={{ color: colors.textMuted, fontSize: 12, marginBottom: 18 }}>{menuCase?.caseCode ?? ""}</Text>
+
+                {menuCase?.status === "COMPLETE" ? (
+                  <TouchableOpacity
+                    style={{ paddingVertical: 16, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: "row", alignItems: "center" }}
+                    onPress={() => {
+                      const printId = menuCase?.id
+                      const printCode = menuCase?.caseCode
+                      closeMenu()
+                      if (printId) {
+                        notify(tc("actionPrintCase"), tc("printGenerating"))
+                        void openPrintCase(printId, language, printCode).then(ok => {
+                          if (!ok) notify(tc("errorLabel"), tc("printFailed"))
+                        })
+                      }
+                    }}
+                    disabled={actionLoading}
+                  >
+                    <Text style={{ color: colors.primary, fontSize: 16, fontWeight: "700" }}>🖨 {tc("actionPrintCase")}</Text>
+                  </TouchableOpacity>
+                ) : null}
 
                 {menuCase?.status !== "COMPLETE" ? (
                   <TouchableOpacity

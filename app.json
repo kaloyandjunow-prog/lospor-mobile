@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "org.lospor.mobile",
-      "versionCode": 20,
+      "versionCode": 21,
       "adaptiveIcon": {
         "backgroundColor": "#090b0c",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -65,7 +65,8 @@
           "color": "#16b1a9",
           "defaultChannel": "reminders"
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "extra": {
       "router": {},

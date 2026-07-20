@@ -85,7 +85,7 @@ export function AirwayCard({ preop, tc }: { preop: CaseData["preop"]; tc: (key: 
           backgroundColor: withAlpha(colors.danger, "11"),
         }}>
           <Text style={{ color: colors.danger, fontSize: 13, fontWeight: "700" }}>
-            {"вљ пёЏ"} {tc("summaryDifficultAirway")}
+            {"⚠️"} {tc("summaryDifficultAirway")}
           </Text>
           {preop.difficultAirwayNotes ? (
             <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 4 }}>
@@ -137,5 +137,5 @@ export function AirwayCard({ preop, tc }: { preop: CaseData["preop"]; tc: (key: 
   )
 }
 
-// в”Ђв”Ђв”Ђ Card 4: Intraoperative в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ─── Card 4: Intraoperative ───────────────────────────────────────────────────
 

@@ -6,6 +6,7 @@ export type EventType =
   | "fluid_start" | "fluid_end"
   | "agent_start" | "agent_stop"
   | "gas_start" | "gas_change" | "gas_stop"
+  | "position_change" | "phase_change"
 
 export type LogEvent = {
   id: string; ts: string; type: EventType

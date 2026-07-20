@@ -68,7 +68,7 @@ export function SummaryCard({
             </View>
           )}
         </View>
-        <Text style={{ color: colors.textMuted, fontSize: 12 }}>{open ? "в–ј" : "в–¶"}</Text>
+        <Text style={{ color: colors.textMuted, fontSize: 12 }}>{open ? "▼" : "▶"}</Text>
       </Pressable>
       {open && (
         <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>{children}</View>
@@ -147,5 +147,5 @@ export function AldreteRow({
   )
 }
 
-// в”Ђв”Ђв”Ђ Card 1: Preoperative в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ─── Card 1: Preoperative ─────────────────────────────────────────────────────
 

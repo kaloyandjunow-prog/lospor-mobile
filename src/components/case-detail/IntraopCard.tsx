@@ -329,7 +329,7 @@ export function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intr
   )
 }
 
-// в”Ђв”Ђв”Ђ Card 5: Postoperative Recovery в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ─── Card 5: Postoperative Recovery ──────────────────────────────────────────
 
 type AldreteCriterion = {
   field: keyof NonNullable<CaseData["postop"]>

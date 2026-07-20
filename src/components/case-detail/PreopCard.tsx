@@ -86,7 +86,7 @@ export function PreopCard({ preop, tc, t }: { preop: CaseData["preop"]; tc: (key
           <InfoRow label={tc("summarySex")} value={sexLabel ?? null} />
           <InfoRow label={tc("summaryHeight")} value={preop.heightCm != null ? `${preop.heightCm} cm` : null} />
           <InfoRow label={tc("summaryWeight")} value={preop.weightKg != null ? `${preop.weightKg} kg` : null} />
-          <InfoRow label={tc("summaryBMI")} value={bmi != null ? `${bmi} kg/mВІ` : null} />
+          <InfoRow label={tc("summaryBMI")} value={bmi != null ? `${bmi} kg/m²` : null} />
           {showIBW && ibw != null && (
             <InfoRow label={tc("summaryIBW")} value={`${ibw} kg`} valueColor={colors.warning} />
           )}
@@ -175,5 +175,5 @@ export function PreopCard({ preop, tc, t }: { preop: CaseData["preop"]; tc: (key
   )
 }
 
-// в”Ђв”Ђв”Ђ Card 2: Medical History в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ─── Card 2: Medical History ──────────────────────────────────────────────────
 

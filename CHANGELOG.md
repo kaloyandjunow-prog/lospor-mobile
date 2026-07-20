@@ -1,8 +1,15 @@
 # Changelog - LOSPOR Mobile
 
-## [5.2.0] - Unreleased
+## [5.2.0] - 2026-07-20
 
-_In development._ The case summary is being aligned with the web summary and the printed protocol (one shared model), and gains an at-a-glance intraoperative timetable visualization.
+The case summary is aligned with the web summary and the printed protocol (one shared model), and gains an at-a-glance intraoperative timetable visualization plus a zoomable read-only viewer for finished cases. Android `versionCode` 21 — this release adds a native module (`react-native-gesture-handler`), so a new binary is required.
+
+### Added
+- **Case summary timetable card**: the case summary now shows a read-only, paper-style intraoperative timetable (SBP/DBP/HR trend, event flags, Agent/Infusion/Gas/Fluid/Position lanes, numbered drug pins matching the printed record's administration log) rendered from the same projected data as the printed record. The live intraop cockpit itself is unchanged.
+- **Fully native printing — the phone never opens the web app**: long-press a **finished** case in the list → Print case, or use the print action on the case screen; finishing a case offers printing immediately. The app downloads the server-generated A4 PDF using your login (with a "Generating PDF…" state) and opens Android's native share sheet — view it in your PDF app, save, send, or print. No browser, no print token.
+- **Encoding repair**: fixed garbled symbols ("вњ“", "в–ј", "kg/mВІ" …) across the case-detail, preop and postop widgets — checkmarks, chevrons and units (✓ ▾ kg/m²) render correctly again.
+- **Read-only timetable viewer for finished cases**: tapping the summary timetable on a finished case now opens a dedicated in-app viewer — the printed record's stacked chart panels (traces, event flags, numbered drug pins, vitals table, lanes) with the numbered drug administration log below, theme-aware and horizontally scrollable. Ongoing cases still open the live intraop cockpit; the card's hint switches to "View timetable ›" when the case is closed.
+- **Pinch-to-zoom timetable (semantic zoom)**: pinch or use − / + in the viewer — zoomed in shows the full 5-minute detail, zoomed out re-samples the vitals table to the coarse printed look (q10/q15/q30, badge shows the current interval). Traces, drugs, events and lanes always keep every recorded point; the printed record itself is unchanged.
 
 ## [5.1.0] - 2026-07-13
 

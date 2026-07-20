@@ -185,7 +185,7 @@ const BODY_SYSTEM_TC: Record<string, ClinicalStringKey> = {
   "Other":                      "sysOther",
 }
 
-// в”Ђв”Ђ ICD-10 body-system classification (mirrors web lib/icd-categories.ts) в”Ђв”Ђ
+// ── ICD-10 body-system classification (mirrors web lib/icd-categories.ts) ──
 type BodySystem = "Cardiovascular"|"Respiratory"|"Neurological / Psychiatric"|"Endocrine / Metabolic"|"Gastrointestinal / Hepatic"|"Renal / Urological"|"Haematological"|"Musculoskeletal"|"Neoplasms"|"Infectious diseases"|"Ophthalmological / ENT"|"Obstetric"|"Congenital"|"Other"
 
 const SYSTEM_ORDER: BodySystem[] = [
@@ -237,7 +237,7 @@ export function ComorbiditiesBySystem({ items, onRemove }: { items: { label: str
                 <View key={item.label} style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: col + "18", borderWidth: 1, borderColor: col + "55" }}>
                   <Text style={{ color: col, fontSize: 12, fontWeight: "700" }} numberOfLines={1}>{item.label}</Text>
                   <Pressable onPress={() => onRemove(item.label)} hitSlop={6}>
-                    <Text style={{ color: col, fontSize: 12, fontWeight: "700", opacity: 0.7 }}>Г—</Text>
+                    <Text style={{ color: col, fontSize: 12, fontWeight: "700", opacity: 0.7 }}>×</Text>
                   </Pressable>
                 </View>
               ))}
