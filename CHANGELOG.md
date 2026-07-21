@@ -1,5 +1,34 @@
 # Changelog - LOSPOR Mobile
 
+## [5.3.0] - 2026-07-21
+
+No new native modules, so Android `versionCode` stays at 21 — existing builds
+continue to work.
+
+### Fixed
+
+- **The timetable could start at the wrong time when a case was reopened.**
+  Starting a case on the web at 08:25 having entered a start time of 08:00, then
+  reopening it here, drew the chart from the moment charting began rather than
+  the induction time entered. Nobody charts at the moment of induction, so the
+  time you enter is now the chart's origin on both devices.
+- **Offline cases could be lost once enough of them accumulated.** They were held
+  in secure storage, which is meant for small secrets and silently refuses values
+  past a size limit. They are now kept as files, which is what they always should
+  have been.
+- **Sex was pre-selected as male when the record did not specify one.** Reopening
+  a case that never had a sex recorded showed "Male" already chosen, and saving
+  wrote that guess into the record — where it would count as data. Unrecorded now
+  stays visibly unrecorded.
+- Live refresh no longer relies on the server-sent event stream, which never
+  functioned in production.
+
+### Changed
+
+- The drug and infusion menus now read their eight clinical categories from the
+  shared core package instead of a local copy. The menus are unchanged here — the
+  web app had drifted to a different one, and this is what stops that recurring.
+
 ## [5.2.1] - 2026-07-21
 
 ### Fixed

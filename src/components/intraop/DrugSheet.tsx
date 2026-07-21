@@ -3,7 +3,7 @@ import { ScrollView, Text, TextInput, TouchableOpacity, View } from "react-nativ
 import { Sheet } from "@/components/intraop/Sheet"
 import { usePreferences } from "@/lib/preferences-context"
 import { DoseSelector } from "@/components/intraop/DoseSelector"
-import type { ScenarioGroup } from "@/lib/intraop-scenarios"
+import type { ScenarioGroup } from "@lospor/core"
 import { calcSuggestedDose as calcDose } from "@/lib/dose-calc"
 
 type DrugOption = { name: string; unit: string }

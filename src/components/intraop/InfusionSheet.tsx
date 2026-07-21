@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native"
 import { Sheet } from "@/components/intraop/Sheet"
 import { DoseSelector } from "@/components/intraop/DoseSelector"
-import type { ScenarioGroup } from "@/lib/intraop-scenarios"
+import type { ScenarioGroup } from "@lospor/core"
 import { usePreferences } from "@/lib/preferences-context"
 
 type InfusionOption = { name: string; unit: string; color: string }

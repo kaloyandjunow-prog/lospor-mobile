@@ -4,10 +4,16 @@ type Tag = { label: string; code?: string; sub?: string; inn?: string; atcCode?:
 
 type ServerPreopFormBase = Partial<Omit<
   PreopFormInput,
-  "diagnoses" | "procedures" | "comorbidities" | "currentMedications" | "allergyDetails" | "upperLipBiteTest"
+  // `sex` is re-declared below: the database enum is wider than the form's.
+  // Intersecting would narrow it back, so it has to be omitted here first.
+  "sex" | "diagnoses" | "procedures" | "comorbidities" | "currentMedications" | "allergyDetails" | "upperLipBiteTest"
 >>
 
 export type ServerPreop = ServerPreopFormBase & {
+  // The database enum is wider than the form's: it also carries UNKNOWN for
+  // "not recorded", which the form deliberately has no option for — it maps to
+  // an unselected control so the clinician has to answer.
+  sex?: "MALE" | "FEMALE" | "OTHER" | "UNKNOWN"
   diagnosesJson?: unknown
   diagnoses?: unknown
   diagnosis?: unknown
@@ -62,7 +68,12 @@ export function valuesFromServerPreop(p: ServerPreop): Partial<PreopFormInput> {
 
   return {
     ageYears: p.ageYears ?? undefined,
-    sex: p.sex ?? "MALE",
+    // Leave it unselected when the server has no real answer. Defaulting to
+    // MALE meant reopening a case silently asserted a sex nobody recorded, and
+    // the clinician could submit it without ever seeing the question.
+    // UNKNOWN is the server's explicit "not recorded" and maps to the same
+    // blank state, so the required-field check makes the user choose.
+    sex: p.sex && p.sex !== "UNKNOWN" ? p.sex : undefined,
     heightCm: p.heightCm ?? undefined,
     weightKg: p.weightKg ?? undefined,
     bloodType: p.bloodType ?? undefined,

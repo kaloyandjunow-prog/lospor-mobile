@@ -1,21 +1,25 @@
 import { useEffect, useRef } from "react"
 import { AppState } from "react-native"
-import { API_BASE, getToken } from "./api"
 
 type Options = {
   enabled?: boolean
   pollIntervalMs?: number
-  streaming?: boolean
 }
 
-type ReadableResponseBody = {
-  getReader?: () => ReadableStreamDefaultReader<Uint8Array>
-}
-
+/**
+ * Keeps an open case in step with edits made elsewhere.
+ *
+ * This used to try an SSE stream first and fall back to polling. The stream was
+ * served from an in-process event emitter, which cannot work on serverless —
+ * the instance handling the write and the instance holding the stream open are
+ * different processes, so the listener was never notified. In practice the poll
+ * was doing all the work while the stream code reconnected forever against a
+ * channel that would never speak. The stream and its endpoint are gone; this
+ * polls, and only while the app is actually in the foreground.
+ */
 export function useCaseLiveUpdates(caseId: string | undefined, refresh: () => void | Promise<void>, options: Options = {}) {
-  const { enabled = true, pollIntervalMs = 10_000, streaming = false } = options
+  const { enabled = true, pollIntervalMs = 10_000 } = options
   const refreshRef = useRef(refresh)
-  const streamingRef = useRef(false)
   const inFlightRef = useRef(false)
 
   useEffect(() => {
@@ -25,18 +29,8 @@ export function useCaseLiveUpdates(caseId: string | undefined, refresh: () => vo
   useEffect(() => {
     if (!enabled || !caseId) return
 
-    let cancelled = false
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
-    streamingRef.current = false
-    // A fresh controller per connection attempt — reusing one across the
-    // whole effect lifetime meant that once it was aborted (e.g. on the
-    // first app backgrounding), every later reconnect attempt handed
-    // fetch() an already-aborted signal, which rejects instantly. That
-    // silently broke SSE reconnection for good after the first background/
-    // foreground cycle and left the 5s reconnect timer spinning forever.
-    let controller: AbortController | null = null
-
     async function runRefresh() {
+      // Never stack refreshes, and never poll a backgrounded app.
       if (inFlightRef.current || AppState.currentState !== "active") return
       inFlightRef.current = true
       try {
@@ -46,72 +40,16 @@ export function useCaseLiveUpdates(caseId: string | undefined, refresh: () => vo
       }
     }
 
-    async function connect() {
-      if (cancelled || AppState.currentState !== "active") return
-      controller = new AbortController()
-      const thisController = controller
-      try {
-        const token = await getToken()
-        const res = await fetch(`${API_BASE}/api/cases/${caseId}/stream`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          signal: thisController.signal,
-        })
-        const reader = (res.body as ReadableResponseBody | null)?.getReader?.()
-        if (!res.ok || !reader) throw new Error("SSE stream unavailable")
-
-        streamingRef.current = true
-        const decoder = new TextDecoder()
-        let buffer = ""
-
-        while (!cancelled) {
-          const { done, value } = await reader.read()
-          if (done) break
-          buffer += decoder.decode(value, { stream: true })
-
-          const chunks = buffer.split("\n\n")
-          buffer = chunks.pop() ?? ""
-          for (const chunk of chunks) {
-            const line = chunk.split("\n").find((part) => part.startsWith("data:"))
-            if (!line) continue
-            const raw = line.replace(/^data:\s*/, "")
-            try {
-              const event = JSON.parse(raw)
-              if (event?.type !== "connected") runRefresh()
-            } catch {
-              runRefresh()
-            }
-          }
-        }
-      } catch {
-        streamingRef.current = false
-      } finally {
-        if (!cancelled) {
-          reconnectTimer = setTimeout(connect, 5_000)
-        }
-      }
-    }
-
-    const pollTimer = setInterval(() => {
-      if (!streaming || !streamingRef.current) runRefresh()
-    }, pollIntervalMs)
-    const appSub = AppState.addEventListener("change", (state) => {
-      if (state === "active") {
-        runRefresh()
-        if (streaming && !streamingRef.current) connect()
-      } else {
-        controller?.abort()
-        streamingRef.current = false
-      }
+    const pollTimer = setInterval(runRefresh, pollIntervalMs)
+    // Catch up immediately on return to the foreground rather than waiting out
+    // the interval — the case may have moved on while the phone was pocketed.
+    const appSub = AppState.addEventListener("change", state => {
+      if (state === "active") runRefresh()
     })
 
-    if (streaming) connect()
-
     return () => {
-      cancelled = true
-      controller?.abort()
       clearInterval(pollTimer)
-      if (reconnectTimer) clearTimeout(reconnectTimer)
       appSub.remove()
     }
-  }, [caseId, enabled, pollIntervalMs, streaming])
+  }, [caseId, enabled, pollIntervalMs])
 }
