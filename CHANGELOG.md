@@ -1,5 +1,20 @@
 # Changelog - LOSPOR Mobile
 
+## [5.4.1] - 2026-07-22
+
+Version alignment. No new native modules, so Android `versionCode` stays at 21.
+
+### Fixed
+
+- **Four pickers offered values the record refuses**, shared with the web app:
+  systolic pressure started at 1 where the minimum accepted is 40, diastolic at
+  1 against 20, heart rate at 1 against 10, and temperature at 0 against 25.
+  Reaching the bottom of any of those wheels produced a save the server would
+  not store. All picker bounds now match what the record accepts.
+- Creating a case no longer risks losing the whole assessment to one
+  out-of-range value — the server keeps everything else and names what it
+  refused.
+
 ## [5.4.0] - 2026-07-21
 
 Version alignment with the web app's start/end time fix. No new native modules,
