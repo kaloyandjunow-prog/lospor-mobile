@@ -1,5 +1,17 @@
 # Changelog - LOSPOR Mobile
 
+## [5.2.1] - 2026-07-21
+
+### Fixed
+- **Autosave works again.** Entering a height sent the value while it was still being typed; the server rejected anything under 30 cm and refused the *entire* save, so every other field edited at that moment was lost too. The height, weight and age pickers now offer only values the server accepts, and a rejected value no longer takes the rest of the save down with it.
+- **Saving no longer erases fields you did not touch.** The app saves only what changed, and the server was treating every unmentioned field as "cleared" — so editing one value could blank others in the same section.
+- If a value is still refused, the form now says **"Not saved — value out of range"** and names the field, in preop and postop. Previously the value stayed on screen looking saved.
+
+### Changed
+- Login, register and password-reset screens now show the real LOSPOR mark — the anaesthesia machine on its trolley with bellows, matching the app icon — instead of a simplified lamp-and-box drawing, and it is centred on the machine's axis.
+- Chart labels in the case summary and timetable viewer are translated in Bulgarian (АН, СЧ, Темп, Инф, Газова смес, Флуиди, Позиция, Лекарства, mmHg/удм).
+- Settings → About reads its version from the app configuration, so it can no longer drift out of date.
+
 ## [5.2.0] - 2026-07-20
 
 The case summary is aligned with the web summary and the printed protocol (one shared model), and gains an at-a-glance intraoperative timetable visualization plus a zoomable read-only viewer for finished cases. Android `versionCode` 21 — this release adds a native module (`react-native-gesture-handler`), so a new binary is required.

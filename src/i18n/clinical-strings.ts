@@ -527,6 +527,7 @@ export const CLINICAL_STRINGS = {
     // Native PDF printing
     printGenerating:     "Generating PDF…",
     printFailed:         "Could not create the PDF — try again",
+    fieldNotSavedOutOfRange: "Not saved — value out of range",
     viewerZoomHint:      "Pinch or use − / + to zoom — zoomed in shows every 5 min, zoomed out the printed sampling",
     printCasePromptMsg:  "The case is closed and flagged as finished. Open the two-page anaesthesia record to print or save as PDF?",
     actionUnfinalize:    "🔓 Unfinalize",
@@ -1203,6 +1204,7 @@ export const CLINICAL_STRINGS = {
     // Native PDF printing
     printGenerating:     "Генериране на PDF…",
     printFailed:         "PDF-ът не можа да се създаде — опитайте отново",
+    fieldNotSavedOutOfRange: "Незаписано — стойността е извън допустимия обхват",
     viewerZoomHint:      "Щипване или − / + за мащаб — приближено показва всеки 5 мин, отдалечено — както на печат",
     printCasePromptMsg:  "Случаят е затворен и отбелязан като приключен. Да се отвори ли двустраничният протокол за печат или запис като PDF?",
     actionUnfinalize:    "🔓 Отвори отново",

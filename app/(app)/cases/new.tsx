@@ -195,6 +195,26 @@ export default function NewCaseScreen() {
   const scrollRailTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [draftState, setDraftState] = useState<"idle" | "saving" | "saved" | "queued">("idle")
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  // Turn server-rejected paths ("preop.heightCm") into clinical field names.
+  // Defined here rather than reusing requiredFieldLabels below, which is
+  // declared after the autosave callback that needs this.
+  const rejectedFieldsMessage = useCallback((rejected: { path: string }[]) => {
+    const labels: Record<string, string> = {
+      ageYears:         tc("ageYears"),
+      heightCm:         tc("heightCm"),
+      weightKg:         tc("weightKg"),
+      bpSystolic:       tc("sbpLabel"),
+      bpDiastolic:      tc("dbpLabel"),
+      heartRate:        tc("heartRateLabel"),
+      respiratoryRate:  tc("respiratoryRateLabel"),
+    }
+    const names = rejected.map(r => {
+      const key = r.path.split(".").pop() ?? r.path
+      return labels[key] ?? key
+    })
+    return `${tc("fieldNotSavedOutOfRange")}: ${names.join(", ")}`
+  }, [tc])
   const localIdRef = useRef<string | null>(localIdParam ?? null)
   const autosaveDraftRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const autosaveInFlightRef = useRef<Promise<void> | null>(null)
@@ -479,6 +499,12 @@ export default function NewCaseScreen() {
             sectionSnapshots.confirm(caseIdRef.current, "preop", preopPayload)
             await clearLocalDraft()
             setDraftState("saved")
+            // The section saved, but the server refused individual values (out of
+            // range). Name them: they are still visible on screen, so silence
+            // would imply they were stored. Retrying is pointless until the
+            // clinician changes the value, so we don't re-queue.
+            const rejected = result.response?.rejectedFields ?? []
+            setSaveError(rejected.length ? rejectedFieldsMessage(rejected) : null)
           } else if (result.result === "queued") {
             setSaveError("Network error — patch queued")
             await persistLocalDraft(values)
@@ -989,17 +1015,17 @@ export default function NewCaseScreen() {
             )}
             <SectionCard title={tc("sectionPatient")} onLayout={(y) => { sectionY.current.patient = y }} visible={showSection("patient")}>
               <Field label={tc("ageYears")} required error={errors.ageYears?.message}>
-                <Controller control={control} name="ageYears" render={({ field }) => <ClinicalNumberInput value={field.value} onChange={field.onChange} min={ageRange?.min ?? 0} max={149} step={ageRange?.step ?? 1} placeholder={tc("agePlaceholder")} showSteppers={false} />} />
+                <Controller control={control} name="ageYears" render={({ field }) => <ClinicalNumberInput value={field.value} onChange={field.onChange} min={ageRange?.min ?? 0} max={ageRange?.max ?? 149} step={ageRange?.step ?? 1} placeholder={tc("agePlaceholder")} showSteppers={false} />} />
               </Field>
               <Field label={tc("heightCm")} required error={errors.heightCm?.message}>
                 <Controller control={control} name="heightCm" render={({ field }) => {
-                  const cv = convertedMeasurement("height", unitPrefs, field.value, field.onChange, heightRange?.min ?? 0, heightRange?.max ?? 250, heightRange?.step ?? 1)
+                  const cv = convertedMeasurement("height", unitPrefs, field.value, field.onChange, heightRange?.min ?? 30, heightRange?.max ?? 250, heightRange?.step ?? 1)
                   return <ClinicalNumberInput value={cv.value} onChange={cv.onChange} min={cv.min} max={cv.max} step={cv.step} precision={cv.precision} unit={cv.unit} placeholder={tc("heightPlaceholder")} showSteppers={false} />
                 }} />
               </Field>
               <Field label={tc("weightKg")} required error={errors.weightKg?.message}>
                 <Controller control={control} name="weightKg" render={({ field }) => {
-                  const cv = convertedMeasurement("weight", unitPrefs, field.value, field.onChange, weightRange?.min ?? 0, weightRange?.max ?? 250, weightRange?.step ?? 1)
+                  const cv = convertedMeasurement("weight", unitPrefs, field.value, field.onChange, weightRange?.min ?? 0.5, weightRange?.max ?? 250, weightRange?.step ?? 1)
                   return <ClinicalNumberInput value={cv.value} onChange={cv.onChange} min={cv.min} max={cv.max} step={cv.step} precision={cv.precision} unit={cv.unit} placeholder={tc("weightPlaceholder")} showSteppers={false} />
                 }} />
               </Field>

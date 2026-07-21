@@ -43,9 +43,12 @@ export function SummaryTimetable({ keyEvents, startISO, onPress, actionLabel }: 
   /** Override the tap hint (default "Open intraop ›") — e.g. "View timetable ›" for finished cases. */
   actionLabel?: string
 }) {
-  const { theme, tc } = usePreferences()
+  const { theme, tc, language } = usePreferences()
   const P = theme === "dark" ? PALETTES.dark : PALETTES.light
-  const model = useMemo(() => buildSummaryTimetableModel(keyEvents), [keyEvents])
+  const model = useMemo(
+    () => buildSummaryTimetableModel(keyEvents, language === "bg" ? "bg" : "en"),
+    [keyEvents, language],
+  )
   if (!model.hasData) return null
 
   const { nCols, vitals, events, drugTicks, lanes } = model

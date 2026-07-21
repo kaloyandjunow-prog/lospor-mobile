@@ -51,7 +51,7 @@ export default function TimetableViewerScreen() {
 
   const kev = caseData?.intraop?.keyEvents
   const startISO = caseData?.intraop?.startTime
-  const model = useMemo(() => buildSummaryTimetableModel(kev), [kev])
+  const model = useMemo(() => buildSummaryTimetableModel(kev, language === "bg" ? "bg" : "en"), [kev, language])
   const drugLog = useMemo(() => buildDrugLogEntries(kev, startISO), [kev, startISO])
   const panels = useMemo(
     () => (model.hasData ? planPanels({ totalCols: model.nCols }) : []),
@@ -171,6 +171,7 @@ export default function TimetableViewerScreen() {
                       c0={pl.startCol} c1={pl.endCol}
                       step={step} colW={effColW}
                       theme={theme === "dark" ? "dark" : "light"}
+                      lang={language === "bg" ? "bg" : "en"}
                     />
                   </GHScrollView>
                 </View>

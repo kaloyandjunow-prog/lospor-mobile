@@ -95,7 +95,15 @@ const LANE_COLORS = {
 
 function segEnd(s: ProjectedSeg): number { return s.endCol ?? s.startCol ?? 0 }
 
-export function buildSummaryTimetableModel(kev: unknown): SummaryTimetableModel {
+// Lane labels sit in a narrow left gutter, so the Bulgarian ones stay short —
+// the same abbreviations used on the printed record.
+export const LANE_LABELS = {
+  en: { agent: "Agent", infusion: "Inf",  gas: "Gas",         fluid: "Fluid",  position: "Pos" },
+  bg: { agent: "Агент", infusion: "Инф",  gas: "Газова смес", fluid: "Флуиди", position: "Позиция" },
+} as const
+
+export function buildSummaryTimetableModel(kev: unknown, lang: "en" | "bg" = "en"): SummaryTimetableModel {
+  const L = LANE_LABELS[lang] ?? LANE_LABELS.en
   const t: ProjectedTimetable = (kev && typeof kev === "object" && !Array.isArray(kev)) ? kev as ProjectedTimetable : {}
   const vitals    = Array.isArray(t.vitals) ? t.vitals : []
   const drugs     = Array.isArray(t.drugs) ? t.drugs : []
@@ -120,15 +128,15 @@ export function buildSummaryTimetableModel(kev: unknown): SummaryTimetableModel 
 
   const lanes: SummaryLane[] = []
   if (agents.length) lanes.push({
-    label: "Agent", color: LANE_COLORS.agent,
+    label: L.agent, color: LANE_COLORS.agent,
     segments: agents.map(a => ({ startCol: a.startCol ?? 0, endCol: segEnd(a), text: `${a.name ?? ""}${a.percent != null ? ` ${a.percent}%` : ""}`.trim() })),
   })
   if (infusions.length) lanes.push({
-    label: "Inf", color: LANE_COLORS.infusion,
+    label: L.infusion, color: LANE_COLORS.infusion,
     segments: infusions.map(f => ({ startCol: f.startCol ?? 0, endCol: segEnd(f), text: `${f.name ?? ""} ${f.rate ?? ""}${f.unit ? ` ${f.unit}` : ""}`.trim() })),
   })
   if (gas.length) lanes.push({
-    label: "Gas", color: LANE_COLORS.gas,
+    label: L.gas, color: LANE_COLORS.gas,
     segments: gas.map(g => {
       const carrier = g.carrierGas ? (String(g.carrierGas).toLowerCase() === "n2o" ? "N₂O" : "Air") : null
       const parts = [carrier ? `O₂/${carrier}` : "O₂"]
@@ -138,11 +146,11 @@ export function buildSummaryTimetableModel(kev: unknown): SummaryTimetableModel 
     }),
   })
   if (fluids.length) lanes.push({
-    label: "Fluid", color: LANE_COLORS.fluid,
+    label: L.fluid, color: LANE_COLORS.fluid,
     segments: fluids.map(f => ({ startCol: f.startCol ?? 0, endCol: segEnd(f), text: `${f.name ?? ""}${f.volume ? ` ${f.volume} mL` : ""}`.trim() })),
   })
   if (positions.length) lanes.push({
-    label: "Pos", color: LANE_COLORS.position,
+    label: L.position, color: LANE_COLORS.position,
     segments: positions.map(p => ({ startCol: p.startCol ?? 0, endCol: segEnd(p), text: String(p.position ?? "") })),
   })
 

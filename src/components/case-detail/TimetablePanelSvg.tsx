@@ -17,7 +17,16 @@ export function panelSvgWidth(nCols: number, colW: number): number {
   return LBL + nCols * colW
 }
 
-export function TimetablePanelSvg({ model, drugLog, startISO, c0, c1, step, colW, theme }: {
+// Vitals row labels, matching the printed record. SpO₂/EtCO₂ are written the
+// same way in Bulgarian clinical practice, so only BP/HR/Temp differ.
+const VITAL_LABELS = {
+  en: { bp: "BP", hr: "HR", spo2: "SpO₂", etco2: "EtCO₂", temp: "Temp",
+        sbp: "SBP", dbp: "DBP", units: "mmHg/bpm", drugs: "Drugs" },
+  bg: { bp: "АН", hr: "СЧ", spo2: "SpO₂", etco2: "EtCO₂", temp: "Темп",
+        sbp: "САН", dbp: "ДАН", units: "mmHg/удм", drugs: "Лекарства" },
+} as const
+
+export function TimetablePanelSvg({ model, drugLog, startISO, c0, c1, step, colW, theme, lang = "en" }: {
   model: SummaryTimetableModel
   drugLog: DrugLogEntry[]
   startISO?: string | null
@@ -28,7 +37,9 @@ export function TimetablePanelSvg({ model, drugLog, startISO, c0, c1, step, colW
   /** Zoom: pixels per 5-min column. */
   colW: number
   theme: "light" | "dark"
+  lang?: "en" | "bg"
 }) {
+  const VL = VITAL_LABELS[lang] ?? VITAL_LABELS.en
   const P = theme === "dark" ? PALETTES.dark : PALETTES.light
   const { vitals, events, lanes } = model
 
@@ -41,11 +52,11 @@ export function TimetablePanelSvg({ model, drugLog, startISO, c0, c1, step, colW
 
   // Numeric grid rows present in this window
   const gridDefs: { k: string; f: (v: ProjectedVital) => string }[] = [
-    { k: "BP",    f: (v: ProjectedVital) => (v.systolic != null && v.diastolic != null) ? `${v.systolic}/${v.diastolic}` : (v.systolic != null ? `${v.systolic}` : "") },
-    { k: "HR",    f: (v: ProjectedVital) => v.heartRate != null ? `${v.heartRate}` : "" },
-    { k: "SpO₂",  f: (v: ProjectedVital) => v.spO2 != null ? `${v.spO2}` : "" },
-    { k: "EtCO₂", f: (v: ProjectedVital) => v.etco2 != null ? `${v.etco2}` : "" },
-    { k: "Temp",  f: (v: ProjectedVital) => v.temp != null ? Number(v.temp).toFixed(1) : "" },
+    { k: VL.bp,    f: (v: ProjectedVital) => (v.systolic != null && v.diastolic != null) ? `${v.systolic}/${v.diastolic}` : (v.systolic != null ? `${v.systolic}` : "") },
+    { k: VL.hr,    f: (v: ProjectedVital) => v.heartRate != null ? `${v.heartRate}` : "" },
+    { k: VL.spo2,  f: (v: ProjectedVital) => v.spO2 != null ? `${v.spO2}` : "" },
+    { k: VL.etco2, f: (v: ProjectedVital) => v.etco2 != null ? `${v.etco2}` : "" },
+    { k: VL.temp,  f: (v: ProjectedVital) => v.temp != null ? Number(v.temp).toFixed(1) : "" },
   ].filter(row => vitals.some((v, i) => inRange(i) && row.f(v ?? {}) !== ""))
 
   const visibleLanes = lanes
@@ -80,10 +91,10 @@ export function TimetablePanelSvg({ model, drugLog, startISO, c0, c1, step, colW
   els.push(<Line key={key()} x1={LBL} y1={gBot} x2={W} y2={gBot} stroke={P.grid} strokeWidth={1} />)
 
   // graph legend
-  els.push(<SvgText key={key()} x={8} y={gTop + GRAPH_H / 2 - 12} fontSize={10} fill={P.sbp}>▽ SBP</SvgText>)
-  els.push(<SvgText key={key()} x={8} y={gTop + GRAPH_H / 2 + 2} fontSize={10} fill={P.sbp}>△ DBP</SvgText>)
-  els.push(<SvgText key={key()} x={8} y={gTop + GRAPH_H / 2 + 16} fontSize={10} fill={P.hr}>● HR</SvgText>)
-  els.push(<SvgText key={key()} x={8} y={gTop + GRAPH_H / 2 + 30} fontSize={9} fill={P.faint}>mmHg/bpm</SvgText>)
+  els.push(<SvgText key={key()} x={8} y={gTop + GRAPH_H / 2 - 12} fontSize={10} fill={P.sbp}>▽ {VL.sbp}</SvgText>)
+  els.push(<SvgText key={key()} x={8} y={gTop + GRAPH_H / 2 + 2} fontSize={10} fill={P.sbp}>△ {VL.dbp}</SvgText>)
+  els.push(<SvgText key={key()} x={8} y={gTop + GRAPH_H / 2 + 16} fontSize={10} fill={P.hr}>● {VL.hr}</SvgText>)
+  els.push(<SvgText key={key()} x={8} y={gTop + GRAPH_H / 2 + 30} fontSize={9} fill={P.faint}>{VL.units}</SvgText>)
 
   // event flags with labels (2-row stagger)
   const lastEnd = [-Infinity, -Infinity]
@@ -119,7 +130,7 @@ export function TimetablePanelSvg({ model, drugLog, startISO, c0, c1, step, colW
 
   // numbered drug pins (same numbering as the drug log below the chart)
   els.push(<Rect key={key()} x={0} y={pinY} width={W} height={PIN_H} fill={theme === "dark" ? "#1a1c1e" : "#fbfcfe"} />)
-  els.push(<SvgText key={key()} x={LBL - 8} y={pinY + PIN_H / 2 + 4} fontSize={11} fontWeight="700" fill={P.lbl} textAnchor="end">Drugs</SvgText>)
+  els.push(<SvgText key={key()} x={LBL - 8} y={pinY + PIN_H / 2 + 4} fontSize={11} fontWeight="700" fill={P.lbl} textAnchor="end">{VL.drugs}</SvgText>)
   {
     const lastX = [-Infinity, -Infinity]
     drugLog.filter(d => inRange(d.col)).forEach(d => {

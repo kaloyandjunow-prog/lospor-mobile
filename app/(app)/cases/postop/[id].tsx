@@ -193,10 +193,29 @@ export default function PostopFormScreen() {
       baseUpdatedAtRef.current = response?.postopUpdatedAt ?? baseUpdatedAtRef.current
       setLastSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
       setAutosaveState("saved")
+      // The section saved, but the server refused individual values as out of
+      // range. Name them: they are still on screen, so staying quiet would let
+      // the clinician believe they were stored.
+      const rejected = response?.rejectedFields ?? []
+      if (rejected.length) {
+        const labels: Record<string, string> = {
+          recoverySystolic:  tc("sbpLabel"),
+          recoveryDiastolic: tc("dbpLabel"),
+          recoveryHeartRate: tc("heartRateLabel"),
+          recoverySpo2:      "SpO₂",
+          recoveryTemp:      tc("temperatureLabel"),
+          painNrs:           tc("painNRS"),
+        }
+        const names = rejected.map(r => {
+          const key = r.path.split(".").pop() ?? r.path
+          return labels[key] ?? key
+        })
+        notify(tc("fieldNotSavedOutOfRange"), names.join(", "))
+      }
     } else if (result === "queued" || result === "failed") {
       setAutosaveState("queued")
     }
-  }, [])
+  }, [tc])
 
   const persistPostop = useCallback(async (data: FormData, force = false): Promise<CasePatchResult> => {
     const payload = payloadFrom(data)
