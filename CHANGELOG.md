@@ -1,5 +1,22 @@
 # Changelog - LOSPOR Mobile
 
+## [5.4.0] - 2026-07-21
+
+Version alignment with the web app's start/end time fix. No new native modules,
+so Android `versionCode` stays at 21 and existing builds continue to work.
+
+### Fixed
+
+- **The intraoperative chart now starts where the case actually started,
+  wherever you are.** Start times were stored as a bare clock reading with no
+  record of the timezone, while everything charted against them is a real moment
+  in time. Comparing the two put the chart origin out by the local UTC offset —
+  three hours here in summer — which is why a case opened on the phone could
+  still begin at the wrong time even after the previous release's fix. Times now
+  carry their zone, and the correction applies on both devices.
+- A case spanning a daylight-saving change now reports its true elapsed
+  duration rather than the difference on the clock face.
+
 ## [5.3.0] - 2026-07-21
 
 No new native modules, so Android `versionCode` stays at 21 — existing builds
