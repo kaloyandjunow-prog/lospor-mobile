@@ -1,5 +1,21 @@
 # Changelog - LOSPOR Mobile
 
+## [5.4.5] - 2026-07-22
+
+Internal cleanup release — **nothing a user can see changes**. `versionCode`
+stays 21.
+
+### Changed
+- Dead imports now fail the lint gate instead of passing as a hidden warning.
+  This closes the gap that let a feature ship disabled (a hook imported but
+  never called). Cleared the resulting backlog of unused imports.
+- Removed two features that were fully built but had no way to be triggered, so
+  they were never reachable: the emergency crisis shortcuts (one-tap presets for
+  hypotension, bradycardia, desaturation and difficult airway) and the
+  airway-event detail sheet. Both are slated to return in a later feature update
+  with proper triggers; the dead code is removed for now. The airway equipment
+  section (the Airway tab) is a separate, working feature and is untouched.
+
 ## [5.4.4] - 2026-07-22
 
 Mobile-only patch. `versionCode` stays 21.
