@@ -1,18 +1,16 @@
 import React, { useCallback, useRef, useState } from "react"
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+ 
 import {
   View, ScrollView, FlatList,
   TextInput,
   unstable_batchedUpdates, useWindowDimensions,
 } from "react-native"
 import { useLocalSearchParams, useRouter } from "expo-router"
-import { notify } from "@/lib/notify"
 import type { VascularEntry } from "@/lib/intraop-types"
 import { formatHHMM } from "@/lib/intraop-format"
 import {
   eventsToTimetable, roundDown5Min,
 } from "@/lib/intraop-projection"
-import { vitalSummary } from "@/lib/intraop-running"
 import { useCaseReminders } from "@/lib/use-case-reminders"
 import { usePreferences } from "@/lib/preferences-context"
 import { emptyTimetable, type TimetableData } from "@/components/IntraopTimetable"
@@ -22,12 +20,11 @@ import { VASC_PREEXISTING_QUICK, vascDefaultUnit, vascSiteColor } from "@/lib/va
 import { useAgentEntry } from "@/lib/use-agent-entry"
 import { useGasSettingsEntry } from "@/lib/use-gas-settings-entry"
 import { useFluidEntry } from "@/lib/use-fluid-entry"
-import { requiredMonitoringFieldsForTechniques } from "@/lib/intraop-monitoring-defaults"
 import { useInfusionEntry } from "@/lib/use-infusion-entry"
 import { useDrugEntry } from "@/lib/use-drug-entry"
 import { BOLUS_SCENARIOS, INFUSION_SCENARIOS } from "@lospor/core"
 import { useVitalsEntry } from "@/lib/use-vitals-entry"
-import { COMPLICATION_GROUPS, COMPLICATION_ITEMS, COMPLICATION_TC_TITLES, PREMED_QUICK } from "@/lib/intraop-static-options"
+import { COMPLICATION_GROUPS, COMPLICATION_ITEMS, COMPLICATION_TC_TITLES } from "@/lib/intraop-static-options"
 import type { IntraopTab } from "@/lib/intraop-tabs"
 import { newChartFluidsWithTimestamps } from "@/lib/intraop-chart-change"
 import type { IntraopPreopSummary } from "@/lib/intraop-preop-summary"
@@ -51,7 +48,7 @@ import { useIntraopClinicalViewState } from "@/lib/use-intraop-clinical-view-sta
 import { enqueueIntraopCaseWrite } from "@/lib/intraop-write-queue"
 import { IntraopScreenChrome } from "@/components/intraop/IntraopScreenChrome"
 import { IntraopRenderSurface } from "@/components/intraop/IntraopRenderSurface"
-import type { EventType, LogEvent, ActiveInfusion, ActiveFluid, ActiveGasSettings } from "@/lib/intraop-log-event"
+import type { LogEvent, ActiveInfusion, ActiveFluid, ActiveGasSettings } from "@/lib/intraop-log-event"
 
 // react-native-web does NOT export `unstable_batchedUpdates` (it's undefined there),
 // so calling it directly throws "is not a function" and aborts the whole case load
@@ -89,11 +86,11 @@ const runBatched: (fn: () => void) => void =
 
 export default function IntraopLiveScreen() {
   const {
-    DRUG_CATS, drugColor, INF_DRUGS, FLUID_LIST, FLUID_QUICK_VOLUMES, FLUID_CONCENTRATIONS,
+    DRUG_CATS, INF_DRUGS, FLUID_LIST, FLUID_QUICK_VOLUMES, FLUID_CONCENTRATIONS,
     FLUID_DEFAULT_CONCENTRATIONS, VOLATILE_AGENTS, DRUG_QUICK_DOSES, DRUG_ROUTES,
     DRUG_LA_CONCENTRATIONS, DRUG_ROUTE_PROFILES, DRUG_BASE_PROFILES, DRUG_RANGES,
-    DRUG_DOSE_CALCS, drugRange, INFUSION_QUICK_RATES, INFUSION_SUGGESTED_RATES,
-    INFUSION_ROUTES, INFUSION_LA_CONCENTRATIONS, INFUSION_RANGES, infusionRange,
+    DRUG_DOSE_CALCS, INFUSION_QUICK_RATES, INFUSION_SUGGESTED_RATES,
+    INFUSION_ROUTES, INFUSION_LA_CONCENTRATIONS, INFUSION_RANGES,
     INFUSION_ROUTE_PROFILES, INFUSION_BASE_PROFILES, DRUG_CODES, INFUSION_CODES,
     AGENT_QUICK_PERCENTS, CLINICAL_EVENT_CATS, clinicalEventColor,
     POSITIONS_LIST, MONITORING_OPTS, TECHNIQUE_TREE, VASC_TREE, AIRWAY_TOOLS, AIRWAY_DEVICES,
@@ -211,7 +208,7 @@ export default function IntraopLiveScreen() {
   const {
     flOpen, setFlOpen, flFluid, setFlFluid, flVol, setFlVol,
     flConcentration, setFlConcentration,
-    flEndOpen, setFlEndOpen, flEndTarget, setFlEndTarget, flEndCustom, setFlEndCustom,
+    flEndOpen, setFlEndOpen, flEndTarget, flEndCustom, setFlEndCustom,
     openFluid, confirmFluid, openFluidEnd, confirmFluidEnd, stopFluidDirect,
   } = useFluidEntry(save, setEntryTs, setActiveFluids)
 
@@ -222,7 +219,6 @@ export default function IntraopLiveScreen() {
   const { gasOpen, setGasOpen, gasFgf, setGasFgf, gasCarrierGas, setGasCarrierGas, gasFio2, setGasFio2, openGasSettings, confirmGasSettings, stopGasSettings } =
     useGasSettingsEntry(save, setEntryTs, activeGas, setActiveGas)
   const { favouriteDrugs, favouriteInfusions } = useIntraopFavourites()
-  const gasInitializedRef  = useRef(false)
 
   // Airway detail sheet
   const {
@@ -255,7 +251,6 @@ export default function IntraopLiveScreen() {
     setPremedEveningText,
     premedMorningText,
     setPremedMorningText,
-    premedSaving,
     savePremedication,
     openPremedPicker,
     premedPickOpen,
@@ -392,7 +387,6 @@ export default function IntraopLiveScreen() {
     setAwVentExpanded,
     awNotes,
     setAwNotes,
-    airwaySectionSaving,
     saveAirwaySection,
   } = useIntraopAirwaySection(caseLoaded, patchIntraopSection, tc("errorLabel"))
 
@@ -404,7 +398,7 @@ export default function IntraopLiveScreen() {
   const [otherTechText, setOtherTechText] = useState("")
 
   const {
-    vitOpen, setVitOpen, vitMode, setVitMode, vitScanBusy, editingVitalId, setEditingVitalId,
+    vitOpen, setVitOpen, vitMode, vitScanBusy, editingVitalId, setEditingVitalId,
     vSys, setVSys, vDia, setVDia, vHR, setVHR, vSpO2, setVSpO2, vEtco2, setVEtco2, vTemp, setVTemp, vBgl, setVBgl,
     openVitals, confirmVitals, scanVitalsFromCamera, setAndAdvance,
   } = useVitalsEntry(save, syncLog, setEntryTs, entryTs, log, logRef, setLog, startRef, setTimetable, eventsToTimetable, roundDown5Min, id, tc("errorLabel"), etco2Unit, temperatureUnit)
@@ -504,12 +498,10 @@ export default function IntraopLiveScreen() {
     editOpen,
     setEditOpen,
     editEv,
-    setEditEv,
     editDose,
     setEditDose,
     editTime,
     setEditTime,
-    emergencyShortcut,
     eventActions,
     confirmEdit,
     promptDelete,

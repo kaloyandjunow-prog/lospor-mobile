@@ -68,7 +68,7 @@ function depsFor(props: any, keys: string[]) {
 }
 
 export function IntraopRenderSurface(props: any) {
-  const { screenWidth, tabSwipeResponder, eventLabel, timetable } = props
+  const { screenWidth, tabSwipeResponder, eventLabel } = props
   const logEventText = useCallback((event: LogEvent) => eventLabel(event).text, [eventLabel])
   const logBuildSummary = useCallback(
     (vital: VitalsEntry | undefined, rowEvents: LogEvent[]) => buildRowSummary(vital, rowEvents, logEventText),

@@ -2,34 +2,21 @@
 import { View, Text } from "react-native"
 import { colors, withAlpha } from "@/theme/colors"
 import type { ClinicalStringKey, TranslationKey } from "@/lib/preferences-context"
-import { SummaryCard, InfoRow, Chip, ChipRow, Divider, AldreteRow } from "./CaseDetailPrimitives"
+import { SummaryCard, InfoRow, Chip, ChipRow, Divider } from "./CaseDetailPrimitives"
 import {
   AIRWAY_TOOL_LABELS,
-  BODY_SYSTEM_COLORS,
-  BODY_SYSTEM_TC,
   MONITOR_MAP,
   POSITION_LABELS,
-  SYSTEM_ORDER,
-  asaColor,
-  apfelRiskLabel,
   calcDrugTotals,
   calcIBW,
   calcInfusionTotals,
   formatAirway,
   formatDuration,
-  formatHandoverItem,
   formatTimeHHMM,
   getActiveInfusions,
-  getBodySystem,
-  rcriRiskLabel,
-  riskColor,
-  stopBangRiskLabel,
   techniqueLabel,
   type CaseData,
-  type Comorbidity,
   type KeyEvent,
-  type LabResult,
-  type RiskLevel,
 } from "@/lib/case-detail-summary"
 
 function legacyKeyEventsToSummaryLog(keyEvents: unknown): KeyEvent[] {
@@ -331,9 +318,4 @@ export function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intr
 
 // ─── Card 5: Postoperative Recovery ──────────────────────────────────────────
 
-type AldreteCriterion = {
-  field: keyof NonNullable<CaseData["postop"]>
-  label: string
-  descriptions: [string, string, string]
-}
 

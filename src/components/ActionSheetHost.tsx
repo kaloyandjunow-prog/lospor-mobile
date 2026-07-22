@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react"
-import { Modal, View, Text, Pressable, TouchableOpacity } from "react-native"
+import { Modal, Text, Pressable, TouchableOpacity } from "react-native"
 import {
   subscribeActionSheet,
   getActionSheetSnapshot,

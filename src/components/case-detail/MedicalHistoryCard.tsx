@@ -1,35 +1,15 @@
 ﻿import React from "react"
 import { View, Text } from "react-native"
-import { colors, withAlpha } from "@/theme/colors"
-import type { ClinicalStringKey, TranslationKey } from "@/lib/preferences-context"
-import { SummaryCard, InfoRow, Chip, ChipRow, Divider, AldreteRow } from "./CaseDetailPrimitives"
+import { colors } from "@/theme/colors"
+import type { ClinicalStringKey } from "@/lib/preferences-context"
+import { SummaryCard, Chip, ChipRow, Divider } from "./CaseDetailPrimitives"
 import {
-  AIRWAY_TOOL_LABELS,
   BODY_SYSTEM_COLORS,
   BODY_SYSTEM_TC,
-  MONITOR_MAP,
-  POSITION_LABELS,
   SYSTEM_ORDER,
-  asaColor,
-  apfelRiskLabel,
-  calcDrugTotals,
-  calcIBW,
-  calcInfusionTotals,
-  formatAirway,
-  formatDuration,
-  formatHandoverItem,
-  formatTimeHHMM,
-  getActiveInfusions,
   getBodySystem,
-  rcriRiskLabel,
-  riskColor,
-  stopBangRiskLabel,
-  techniqueLabel,
   type CaseData,
   type Comorbidity,
-  type KeyEvent,
-  type LabResult,
-  type RiskLevel,
 } from "@/lib/case-detail-summary"
 
 export function MedicalHistoryCard({ preop, tc }: { preop: CaseData["preop"]; tc: (key: ClinicalStringKey) => string }) {

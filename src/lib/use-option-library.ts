@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react"
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as SecureStore from "expo-secure-store"
 import { apiJson } from "./api"
 import fallbackSnapshot from "../data/option-library-fallback.json"

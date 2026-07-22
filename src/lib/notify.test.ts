@@ -4,7 +4,6 @@ import { notify, confirmAction, actionSheet } from "./notify"
 import { getActionSheetSnapshot, dismissActionSheet } from "./action-sheet-store"
 
 const alertMock = Alert.alert as unknown as ReturnType<typeof vi.fn>
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const setOS = (os: string) => { (Platform as any).OS = os }
 
 describe("notify helpers (native paths)", () => {
