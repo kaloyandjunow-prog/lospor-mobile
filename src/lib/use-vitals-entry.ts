@@ -7,6 +7,7 @@ import { notify } from "@/lib/notify"
 import { uid } from "@/lib/intraop-log-event"
 import type { LogEvent } from "@/lib/intraop-log-event"
 import { prepareVitalsScanImage, getImagePicker, type ScanImageAsset } from "@/lib/vitals-scan"
+import { pickVitalsForColumn } from "@/lib/intraop-projection"
 import type { TimetableData } from "@/components/IntraopTimetable"
 import { mmHgToKPa, kPaToMmHg, celsiusToFahrenheit, fahrenheitToCelsius } from "@/lib/unit-conversion"
 
@@ -55,20 +56,14 @@ export function useVitalsEntry(
   function openVitals(mode: "full"|"bp" = "full", ts?: string) {
     setEntryTs(ts ?? null)
     setVitMode(mode)
-    // Find existing vital at this 5-min column to support change-not-add
-    let existingAtCol: LogEvent | undefined
-    if (ts && startRef.current) {
-      const tsMs    = new Date(ts).getTime()
-      const startMs = startRef.current.getTime()
-      const targetCol = Math.floor((tsMs - startMs) / (5 * 60_000))
-      existingAtCol = log.find(e => {
-        if (e.type !== "vital") return false
-        const evCol = Math.floor((new Date(e.ts).getTime() - startMs) / (5 * 60_000))
-        return evCol === targetCol
-      })
-    }
+    const { existing: existingAtCol, carryForward } = pickVitalsForColumn(log, startRef.current, ts)
     setEditingVitalId(existingAtCol?.id ?? null)
-    const prefill = existingAtCol ?? log.find(e => e.type === "vital")
+    // Editing a cell shows that cell's own values; opening an empty cell carries
+    // the previous cell's vitals forward, so the clinician only adjusts what
+    // changed. (The old code took the first vital in the log array here, which
+    // is neither the previous cell nor reliably ordered — so carry-forward
+    // pulled a stale value or nothing at all.)
+    const prefill = existingAtCol ?? carryForward
     setVSys(prefill?.systolic  != null ? String(prefill.systolic)  : "")
     setVDia(prefill?.diastolic != null ? String(prefill.diastolic) : "")
     setVHR( prefill?.heartRate != null ? String(prefill.heartRate) : "")

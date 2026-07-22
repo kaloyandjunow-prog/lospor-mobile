@@ -1,5 +1,24 @@
 # Changelog - LOSPOR Mobile
 
+## [5.4.4] - 2026-07-22
+
+Mobile-only patch. `versionCode` stays 21.
+
+### Fixed
+- **Automatic vitals carry-forward now actually runs.** The setting to carry
+  EtCO₂, temperature and SpO₂ (and optionally BP/HR) forward as the timetable
+  advances had no effect — the hook that does the work was imported but never
+  called, so toggling the setting did nothing. It is now wired in and respects
+  the Settings toggle as before. (It slipped through because an unused import is
+  only a lint warning, which the quiet lint run hides.)
+- **Carry-forward now copies the *previous* cell, not the first reading of the
+  case.** The source vital was taken by array position, which is only the most
+  recent reading while the log stays newest-first — after a reload or sync it
+  could be the oldest, so the first vitals of the case were carried forward
+  instead. It now picks the most recent reading before the column, by time,
+  regardless of order. The same fix applies to the values pre-filled when you
+  open a vitals cell by hand.
+
 ## [5.4.3] - 2026-07-22
 
 Mobile-only patch (web, core and docs stay at 5.4.2). `versionCode` stays 21.

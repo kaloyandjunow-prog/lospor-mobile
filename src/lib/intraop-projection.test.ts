@@ -5,6 +5,7 @@ import {
   loadedTimetableStateFromLog,
   safeTimetableScrollIndex,
   timetableTabInitialScrollTarget,
+  pickVitalsForColumn,
 } from "./intraop-projection"
 import type { LogEvent } from "@/lib/intraop-log-event"
 
@@ -133,5 +134,57 @@ describe("loadedTimetableStateFromLog", () => {
     expect(state.elapsedMs).toBe(30 * 60_000)
     expect(state.columnCount).toBe(18)
     expect(state.timetable?.drugs[0]).toMatchObject({ name: "Fentanyl", colIdx: 2 })
+  })
+})
+
+describe("pickVitalsForColumn — carry-forward and change-not-add", () => {
+  // Columns are 5 min. Two vitals: one at col 0 (08:00), one at col 2 (08:10).
+  const v0 = ev({ id: "v0", type: "vital", ts: at(0),  systolic: 120, diastolic: 80, heartRate: 88 })
+  const v2 = ev({ id: "v2", type: "vital", ts: at(10), systolic: 110, diastolic: 70, heartRate: 95 })
+  const drug = ev({ id: "d1", type: "drug", ts: at(5), name: "Propofol" })
+
+  it("carries the previous cell forward into a new later cell", () => {
+    // Open col 4 (08:20): the nearest earlier vital is v2 (col 2), not v0.
+    const { existing, carryForward } = pickVitalsForColumn([v0, v2, drug], START, at(20))
+    expect(existing).toBeUndefined()
+    expect(carryForward?.id).toBe("v2")
+  })
+
+  it("carries forward the cell immediately before, not the first ever", () => {
+    // Open col 1 (08:05): only v0 (col 0) is earlier; v2 (col 2) is later and
+    // must be ignored. The old code returned the first array element regardless.
+    const { carryForward } = pickVitalsForColumn([v0, v2], START, at(5))
+    expect(carryForward?.id).toBe("v0")
+  })
+
+  it("does not depend on log array order", () => {
+    // Same inputs, reversed order (as a DB round-trip might return them).
+    const forward  = pickVitalsForColumn([v0, v2], START, at(20)).carryForward?.id
+    const reversed = pickVitalsForColumn([v2, v0], START, at(20)).carryForward?.id
+    expect(forward).toBe("v2")
+    expect(reversed).toBe("v2")
+  })
+
+  it("returns the existing cell for editing, and it wins over carry-forward", () => {
+    // Open col 2 (08:10) where v2 already sits: edit v2, don't carry v0 in.
+    const { existing, carryForward } = pickVitalsForColumn([v0, v2], START, at(10))
+    expect(existing?.id).toBe("v2")
+    expect(carryForward?.id).toBe("v0")
+  })
+
+  it("has nothing to carry into the very first cell", () => {
+    const { existing, carryForward } = pickVitalsForColumn([v0, v2], START, at(0))
+    expect(existing?.id).toBe("v0")   // editing the first cell
+    expect(carryForward).toBeUndefined()
+  })
+
+  it("without a timestamp, carries the most recent vital", () => {
+    // A generic "add vitals" with no column picks the latest reading.
+    const { carryForward } = pickVitalsForColumn([v0, v2], START, undefined)
+    expect(carryForward?.id).toBe("v2")
+  })
+
+  it("returns nothing when the case has no start anchor", () => {
+    expect(pickVitalsForColumn([v0, v2], null, at(20))).toEqual({})
   })
 })

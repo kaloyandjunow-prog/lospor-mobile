@@ -443,3 +443,44 @@ export function timetableTabInitialScrollTarget(
     : Math.min(currentCol, rowCount - 1)
   return target
 }
+
+/**
+ * The vitals to show when the vitals sheet opens on a column.
+ *
+ * Two things at once, both keyed off the tapped column rather than array order
+ * (which is not reliably chronological after a sync or reload):
+ *
+ *  - `existing`: a vital already charted in this exact column, so opening it
+ *    edits that entry instead of adding a duplicate ("change, not add").
+ *  - `carryForward`: the vital from the nearest earlier column, so opening an
+ *    empty cell pre-fills the previous cell's readings and the clinician only
+ *    changes what moved.
+ *
+ * `ts` is the tapped column's timestamp; when it is absent (a generic "add
+ * vitals" with no column) carry-forward falls back to the most recent vital.
+ */
+export function pickVitalsForColumn(
+  log: LogEvent[],
+  start: Date | null,
+  ts?: string | null,
+): { existing?: LogEvent; carryForward?: LogEvent } {
+  const startMs = start?.getTime()
+  if (startMs == null) return {}
+  const colOf = (t: string) => Math.floor((new Date(t).getTime() - startMs) / (5 * 60_000))
+  const targetCol = ts ? colOf(ts) : Number.POSITIVE_INFINITY
+
+  let existing: LogEvent | undefined
+  let carryForward: LogEvent | undefined
+  let carryCol = -1
+  for (const e of log) {
+    if (e.type !== "vital") continue
+    const evCol = colOf(e.ts)
+    if (evCol === targetCol) {
+      if (!existing) existing = e
+    } else if (evCol < targetCol && evCol > carryCol) {
+      carryCol = evCol
+      carryForward = e
+    }
+  }
+  return { existing, carryForward }
+}

@@ -38,7 +38,18 @@ export function useIntraopAutofillVitals(
         })
         if (alreadyRecorded) continue
 
-        const source = logRef.current.find(ev => ev.type === "vital" && new Date(ev.ts).getTime() < colStart)
+        // The most recent vital strictly before this column — the "previous
+        // cell". Scanned by timestamp rather than array position: .find() would
+        // return whatever vital happens to be first in the array, which is only
+        // the latest if the log is still newest-first (it is not after a reload
+        // or sync), so it could carry the first-ever readings forward instead.
+        let source: LogEvent | undefined
+        let sourceMs = -Infinity
+        for (const ev of logRef.current) {
+          if (ev.type !== "vital") continue
+          const ms = new Date(ev.ts).getTime()
+          if (ms < colStart && ms > sourceMs) { sourceMs = ms; source = ev }
+        }
         if (!source) continue
 
         const copied = buildAutoFilledVitalEvent(source, autoFillBP)

@@ -352,6 +352,12 @@ export default function IntraopLiveScreen() {
   const [advMonOpen, setAdvMonOpen] = useState(false)
   const { autoFillVitals, autoFillBP, autoFillBg } = useIntraopAutofillPreferences()
 
+  // Carry vitals forward as the timetable advances, when enabled in Settings.
+  // This hook was imported but never called — so the feature silently did
+  // nothing regardless of the toggle. (An unused import is only a lint warning,
+  // and mobile lints with --quiet, so it went unnoticed.)
+  useIntraopAutofillVitals(caseLoaded, autoFillVitals, autoFillBP, autoFillBg, logRef, startRef, save)
+
   const {
     awTools,
     setAwTools,
