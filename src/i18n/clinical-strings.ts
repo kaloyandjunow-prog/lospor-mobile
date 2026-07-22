@@ -267,15 +267,6 @@ export const CLINICAL_STRINGS = {
     mhRetrySync:         "Retry sync",
 
     // Intraop — emergency shortcuts
-    esHypotensionMsg:    "Log event or open a common rescue drug.",
-    esDesaturationMsg:   "Fast airway/oxygenation event.",
-    esBradycardiaMsg:    "Log event or open atropine.",
-    esAirwayMsg:         "Log a difficult airway event or add airway detail.",
-    esLogEvent:          "Log event",
-    esLogDesaturation:   "Log desaturation",
-    esAirwayNote:        "Airway note",
-    esAirwayDetail:      "Airway detail",
-    esLogDifficultAirway:"Log difficult airway",
 
     // Intraop — slot action sheet
     sasSearchEvents:     "Search events...",
@@ -944,15 +935,6 @@ export const CLINICAL_STRINGS = {
     mhRetrySync:         "Синхронизирай отново",
 
     // Intraop — emergency shortcuts
-    esHypotensionMsg:    "Регистрирай събитие или отвори често използван спешен медикамент.",
-    esDesaturationMsg:   "Бързо събитие за дихателни пътища/оксигенация.",
-    esBradycardiaMsg:    "Регистрирай събитие или отвори атропин.",
-    esAirwayMsg:         "Регистрирай трудни дихателни пътища или добави детайли.",
-    esLogEvent:          "Регистрирай събитие",
-    esLogDesaturation:   "Регистрирай десатурация",
-    esAirwayNote:        "Бележка за дихателни пътища",
-    esAirwayDetail:      "Детайли за дихателни пътища",
-    esLogDifficultAirway:"Регистрирай трудни дихателни пътища",
 
     // Intraop — slot action sheet
     sasSearchEvents:     "Търсене на събития...",

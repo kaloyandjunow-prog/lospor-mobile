@@ -1,6 +1,5 @@
 import type { ComponentProps } from "react"
 
-import { AirwayDetailSheet } from "@/components/intraop/AirwayDetailSheet"
 import { AgentSheet } from "@/components/intraop/AgentSheet"
 import { ComplicationsSheet } from "@/components/intraop/ComplicationsSheet"
 import { DrugSheet } from "@/components/intraop/DrugSheet"
@@ -27,7 +26,6 @@ export type IntraopSheetsHostProps = {
   fluid: ComponentProps<typeof FluidSheet>
   fluidEnd: ComponentProps<typeof FluidEndSheet>
   agent: ComponentProps<typeof AgentSheet>
-  airwayDetail: ComponentProps<typeof AirwayDetailSheet>
   editEvent: ComponentProps<typeof EditEventSheet>
   complications: ComponentProps<typeof ComplicationsSheet>
   startAt: ComponentProps<typeof StartAtSheet>
@@ -46,7 +44,6 @@ export function IntraopSheetsHost({
   fluid,
   fluidEnd,
   agent,
-  airwayDetail,
   editEvent,
   complications,
   startAt,
@@ -65,7 +62,6 @@ export function IntraopSheetsHost({
       <FluidSheet {...fluid} />
       <FluidEndSheet {...fluidEnd} />
       <AgentSheet {...agent} />
-      <AirwayDetailSheet {...airwayDetail} />
       <EditEventSheet {...editEvent} />
       <ComplicationsSheet {...complications} />
       <StartAtSheet {...startAt} />

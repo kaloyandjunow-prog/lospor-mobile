@@ -39,7 +39,7 @@ const SHEET_DEP_KEYS = [
   "infRoute", "infConcentration", "infActOpen", "infActTgt", "infActRate",
   "infActConcentration", "flOpen", "flFluid", "flVol", "flConcentration",
   "flEndOpen", "flEndTarget", "flEndCustom", "agOpen", "agPick", "agPercent",
-  "airwayOpen", "airwayLabel", "airwayDetail", "editOpen", "editEv", "editDose",
+  "editOpen", "editEv", "editDose",
   "editTime", "compOpen", "selectedComplications", "compGroupExpanded", "compSaving",
   "startAtOpen", "startAtInput", "endCaseOpen", "endCaseRunningItems",
   "endCaseDecisions", "premedPickOpen", "premedPickPhase", "premedPickCat",
@@ -59,7 +59,7 @@ const SHEET_DEP_KEYS = [
   "openGasSettings", "confirmGasSettings", "confirmDrug", "startDrugAsInfusion",
   "scanVitalsFromCamera", "confirmVitals", "confirmInfusion", "changeRate",
   "stopInfusion", "confirmFluid", "confirmFluidEnd", "confirmAgent",
-  "confirmAirway", "confirmEdit", "toggleComplicationGroup", "toggleComplication",
+  "confirmEdit", "toggleComplicationGroup", "toggleComplication",
   "saveComplications", "startCaseAt", "finaliseCase", "addSelectedPremedication",
 ]
 

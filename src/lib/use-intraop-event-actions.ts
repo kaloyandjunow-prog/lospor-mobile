@@ -4,10 +4,8 @@ import { actionSheet, confirmAction } from "@/lib/notify"
 import { formatTs } from "@/lib/intraop-format"
 import { applyIntraopEventEdit, intraopEventEditDraft } from "@/lib/intraop-event-edit"
 import { buildIntraopEventActions, repeatDrugEventPayload } from "@/lib/intraop-event-actions"
-import { buildEmergencyShortcutSheet, type EmergencyShortcutKind } from "@/lib/intraop-emergency-shortcuts"
 import { dispatchRowQuickAdd, slotIsoTimestamp, type RowQuickAddAction } from "@/lib/intraop-row-quick-add"
 import type { LogEvent } from "@/lib/intraop-log-event"
-import type { ClinicalStringKey } from "@/lib/preferences-context"
 
 type EventLabel = (ev: LogEvent) => { text: string }
 type SaveIntraopEvent = (
@@ -23,11 +21,6 @@ type UseIntraopEventActionsArgs = {
   removeEvent: (ev: LogEvent, sync?: boolean) => Promise<void>
   eventLabel: EventLabel
   cancelLabel: string
-  tc: (key: ClinicalStringKey) => string
-  setEntryTs: Dispatch<SetStateAction<string | null>>
-  openDrugPreset: (name: string, dose: string) => void
-  setAirwayLabel: Dispatch<SetStateAction<string>>
-  setAirwayOpen: Dispatch<SetStateAction<boolean>>
   chartStart: Date
   openVitals: (mode: "full" | "bp", ts: string) => void
   openDrug: (ts: string) => void
@@ -48,11 +41,6 @@ export function useIntraopEventActions({
   removeEvent,
   eventLabel,
   cancelLabel,
-  tc,
-  setEntryTs,
-  openDrugPreset,
-  setAirwayLabel,
-  setAirwayOpen,
   chartStart,
   openVitals,
   openDrug,
@@ -70,22 +58,6 @@ export function useIntraopEventActions({
   const [editDose, setEditDose] = useState("")
   const [editTime, setEditTime] = useState("")
 
-  function emergencyShortcut(kind: EmergencyShortcutKind) {
-    const ts = new Date().toISOString()
-    const openAirwayDetail = () => {
-      setAirwayLabel("Intubated")
-      setAirwayOpen(true)
-    }
-    const sheet = buildEmergencyShortcutSheet(kind, cancelLabel, {
-      openDrugPreset: (name, dose) => {
-        setEntryTs(ts)
-        openDrugPreset(name, dose)
-      },
-      logEvent: (label, color) => save({ type: "clinical_event", label, color }),
-      openAirwayDetail,
-    }, tc)
-    actionSheet(sheet.title, sheet.message, sheet.actions)
-  }
 
   function eventActions(ev: LogEvent) {
     const openEdit = () => {
@@ -151,7 +123,6 @@ export function useIntraopEventActions({
     setEditDose,
     editTime,
     setEditTime,
-    emergencyShortcut,
     eventActions,
     confirmEdit,
     promptDelete,

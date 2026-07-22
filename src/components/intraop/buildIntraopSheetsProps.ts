@@ -11,7 +11,6 @@ export function buildIntraopSheetsProps(props: any): IntraopSheetsHostProps {
     CLINICAL_EVENT_CATS, COMPLICATION_GROUPS, COMPLICATION_ITEMS, isGACase, setSlotOpen, setSlotEventSearch,
     setSlotCompExpanded, openSlotEvent, openDrug, openAgent, stopAgent, stopGasSettings,
     openGasSettings,
-    airwayOpen, airwayLabel, airwayDetail, setAirwayOpen, setAirwayDetail, confirmAirway,
     editOpen, editEv, editDose, editTime, setEditOpen, setEditDose, setEditTime, confirmEdit,
     compOpen, setCompOpen, COMPLICATION_TC_TITLES, selectedComplications, compGroupExpanded,
     compSaving, toggleComplicationGroup, toggleComplication, setSelectedComplications,
@@ -45,14 +44,6 @@ export function buildIntraopSheetsProps(props: any): IntraopSheetsHostProps {
       onOpenGas: () => { const ts = slotIsoTimestamp(slotTs); setSlotOpen(false); openGasSettings(ts) },
     },
     ...buildIntraopMedicationSheetProps(props),
-    airwayDetail: {
-      visible: airwayOpen,
-      label: airwayLabel,
-      detail: airwayDetail,
-      onClose: () => setAirwayOpen(false),
-      onDetailChange: setAirwayDetail,
-      onConfirm: confirmAirway,
-    },
     editEvent: {
       visible: editOpen,
       event: editEv,

@@ -38,7 +38,6 @@ import { useIntraopAutofillVitals } from "@/lib/use-intraop-autofill-vitals"
 import { useIntraopSectionPatch } from "@/lib/use-intraop-section-patch"
 import { useIntraopTimetableViewport } from "@/lib/use-intraop-timetable-viewport"
 import { useIntraopFavourites } from "@/lib/use-intraop-favourites"
-import { useIntraopAirwayEvent } from "@/lib/use-intraop-airway-event"
 import { useIntraopEventPersistence } from "@/lib/use-intraop-event-persistence"
 import { useIntraopEventActions } from "@/lib/use-intraop-event-actions"
 import { useIntraopRuntimeEffects } from "@/lib/use-intraop-runtime-effects"
@@ -92,7 +91,7 @@ export default function IntraopLiveScreen() {
     DRUG_DOSE_CALCS, INFUSION_QUICK_RATES, INFUSION_SUGGESTED_RATES,
     INFUSION_ROUTES, INFUSION_LA_CONCENTRATIONS, INFUSION_RANGES,
     INFUSION_ROUTE_PROFILES, INFUSION_BASE_PROFILES, DRUG_CODES, INFUSION_CODES,
-    AGENT_QUICK_PERCENTS, CLINICAL_EVENT_CATS, clinicalEventColor,
+    AGENT_QUICK_PERCENTS, CLINICAL_EVENT_CATS,
     POSITIONS_LIST, MONITORING_OPTS, TECHNIQUE_TREE, VASC_TREE, AIRWAY_TOOLS, AIRWAY_DEVICES,
     PREMED_LIBRARY, eventLabel, techniqueLabel,
   } = useIntraopOptionSets()
@@ -201,7 +200,7 @@ export default function IntraopLiveScreen() {
   const {
     drugOpen, setDrugOpen, drugCat, setDrugCat, drugPick, setDrugPick, drugDose, setDrugDose,
     drugRoute, setDrugRoute, drugConcentration, setDrugConcentration,
-    openDrug, confirmDrug, startDrugAsInfusion, openDrugPreset,
+    openDrug, confirmDrug, startDrugAsInfusion,
   } = useDrugEntry(save, setEntryTs, DRUG_CATS, INF_DRUGS, setInfDrug, setInfRate, setInfOpen, DRUG_CODES, INFUSION_QUICK_RATES, DRUG_DOSE_CALCS)
 
   // Fluid sheet + end options
@@ -219,17 +218,6 @@ export default function IntraopLiveScreen() {
   const { gasOpen, setGasOpen, gasFgf, setGasFgf, gasCarrierGas, setGasCarrierGas, gasFio2, setGasFio2, openGasSettings, confirmGasSettings, stopGasSettings } =
     useGasSettingsEntry(save, setEntryTs, activeGas, setActiveGas)
   const { favouriteDrugs, favouriteInfusions } = useIntraopFavourites()
-
-  // Airway detail sheet
-  const {
-    airwayOpen,
-    setAirwayOpen,
-    airwayLabel,
-    setAirwayLabel,
-    airwayDetail,
-    setAirwayDetail,
-    confirmAirway,
-  } = useIntraopAirwayEvent(save, clinicalEventColor)
 
   const {
     compOpen,
@@ -514,11 +502,6 @@ export default function IntraopLiveScreen() {
     removeEvent,
     eventLabel,
     cancelLabel: tc("cancelLabel"),
-    tc,
-    setEntryTs,
-    openDrugPreset,
-    setAirwayLabel,
-    setAirwayOpen,
     chartStart,
     openVitals,
     openDrug,
@@ -629,8 +612,7 @@ export default function IntraopLiveScreen() {
           FLUID_CONCENTRATIONS, FLUID_DEFAULT_CONCENTRATIONS, flConcentration, flEndOpen,
           setFlEndOpen, flEndTarget, flEndCustom, setFlEndCustom, confirmFluidEnd, agOpen,
           setAgOpen, setAgPick, setAgPercent, VOLATILE_AGENTS, agPick, confirmAgent,
-          AGENT_QUICK_PERCENTS, agPercent, airwayOpen, airwayLabel, airwayDetail, setAirwayOpen,
-          setAirwayDetail, confirmAirway, editOpen, editEv, editDose, editTime, setEditOpen,
+          AGENT_QUICK_PERCENTS, agPercent, editOpen, editEv, editDose, editTime, setEditOpen,
           setEditDose, setEditTime, confirmEdit, compOpen, COMPLICATION_TC_TITLES,
           compGroupExpanded, compSaving, toggleComplicationGroup, toggleComplication,
           setSelectedComplications, startAtOpen, startAtInput, setStartAtOpen, setStartAtInput,
