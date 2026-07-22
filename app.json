@@ -2,7 +2,7 @@
   "expo": {
     "name": "LOSPOR",
     "slug": "lospor-mobile",
-    "version": "5.4.1",
+    "version": "5.4.2",
     "scheme": "lospor",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

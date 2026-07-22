@@ -1,5 +1,15 @@
 # Changelog - LOSPOR Mobile
 
+## [5.4.2] - 2026-07-22
+
+Version alignment. `versionCode` stays 21.
+
+### Fixed
+- Whole-number weights are accepted again. The shared weight step is now 0.5 kg,
+  so both whole and half kilos are valid — the phone wheel already stepped in
+  half-kilos under 20 kg, so this only affected the web app in practice, but the
+  definition is shared and now correct for both.
+
 ## [5.4.1] - 2026-07-22
 
 Version alignment. No new native modules, so Android `versionCode` stays at 21.
