@@ -1,5 +1,17 @@
 # Changelog - LOSPOR Mobile
 
+## [5.4.3] - 2026-07-22
+
+Mobile-only patch (web, core and docs stay at 5.4.2). `versionCode` stays 21.
+
+### Fixed
+- **The intraoperative input sheets no longer bounce up and down when a field is
+  focused.** The shared sheet wrapped its content in a keyboard-avoiding view set
+  to adjust by the keyboard's height on Android — but Android already resizes the
+  window under the keyboard, so inside a modal the two adjustments fought and the
+  sheet oscillated. Android now leaves the native resize to do the work; iOS is
+  unchanged. Affects every input sheet — vitals, drug dose, infusion rate, gas.
+
 ## [5.4.2] - 2026-07-22
 
 Version alignment. `versionCode` stays 21.

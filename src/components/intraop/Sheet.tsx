@@ -17,7 +17,13 @@ export function Sheet({ visible, onClose, title, children, full }: {
     : 0
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex:1 }}>
+      {/* Android already resizes the window under the keyboard (Expo's default
+          softwareKeyboardLayoutMode is "resize"). Adding behavior="height" here
+          made this view ALSO shrink by the keyboard height, and inside a Modal
+          the two adjustments fought and oscillated — the sheet visibly bounced
+          up and down while a field was focused. Passing no behavior on Android
+          lets the native resize handle it alone; iOS still needs "padding". */}
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex:1 }}>
         <Pressable style={{ flex:1, backgroundColor:"rgba(0,0,0,0.65)" }} onPress={onClose} />
         <View style={{
           backgroundColor:"#1c1c1c", borderTopLeftRadius:22, borderTopRightRadius:22,
