@@ -1,5 +1,14 @@
 # Changelog - LOSPOR Mobile
 
+## [5.5.0] - 2026-07-23
+
+Version alignment with web, core, and docs. No mobile runtime or native module
+changes; Android `versionCode` stays 21.
+
+### Changed
+- App/package version set to `5.5.0` so the four LOSPOR repos share one release
+  line again.
+
 ## [5.4.5] - 2026-07-22
 
 Internal cleanup release — **nothing a user can see changes**. `versionCode`
