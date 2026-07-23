@@ -170,7 +170,7 @@ export default function DashboardScreen() {
       }
       notify(t("error"), message)
     }
-  }, [logout])
+  }, [logout, t])
 
   const loadTransfers = useCallback(async () => {
     try {

@@ -259,8 +259,7 @@ export default function PostopFormScreen() {
       })
       .catch((err: Error) => notify(tc("errorLabel"), err.message))
       .finally(() => setLoading(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [continuedItems, id, payloadFrom, reset, t, tc, valuesFromPostop])
+  }, [continuedItems, id, markSaveResult, payloadFrom, reset, t, tc, valuesFromPostop])
 
   useEffect(() => {
     if (loading) return

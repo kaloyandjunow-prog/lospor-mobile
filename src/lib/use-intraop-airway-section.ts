@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import * as Haptics from "expo-haptics"
 import { notify } from "@/lib/notify"
 import { buildAirwaySectionPatch, isAirwayDeviceComplete, syncAirwayDeviceSelection } from "@/lib/intraop-airway-section"
@@ -31,7 +31,7 @@ export function useIntraopAirwaySection(
   const airwaySaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const awInitializedRef = useRef(false)
 
-  async function saveAirwaySection() {
+  const saveAirwaySection = useCallback(async () => {
     setAirwaySectionSaving(true)
     try {
       await patchIntraopSection(buildAirwaySectionPatch({
@@ -56,7 +56,24 @@ export function useIntraopAirwaySection(
     } finally {
       setAirwaySectionSaving(false)
     }
-  }
+  }, [
+    awClGrade,
+    awDevices,
+    awDltSide,
+    awDltSize,
+    awDltType,
+    awEbSize,
+    awLmaSize,
+    awNasalCuffed,
+    awNasalTubeSize,
+    awNotes,
+    awOralCuffed,
+    awOralTubeSize,
+    awTools,
+    awVentModes,
+    errorLabel,
+    patchIntraopSection,
+  ])
 
   useEffect(() => {
     if (!caseLoaded) return
@@ -67,7 +84,7 @@ export function useIntraopAirwaySection(
     if (airwaySaveTimerRef.current) clearTimeout(airwaySaveTimerRef.current)
     airwaySaveTimerRef.current = setTimeout(() => { void saveAirwaySection() }, 600)
     return () => { if (airwaySaveTimerRef.current) clearTimeout(airwaySaveTimerRef.current) }
-  }, [awTools, awDevices, awLmaSize, awOralTubeSize, awOralCuffed, awNasalTubeSize, awNasalCuffed, awDltType, awDltSide, awDltSize, awEbSize, awClGrade, awVentModes, awNotes, caseLoaded])
+  }, [caseLoaded, saveAirwaySection])
 
   useEffect(() => {
     if (!awExpandedDevice) return

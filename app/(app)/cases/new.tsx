@@ -536,7 +536,7 @@ export default function NewCaseScreen() {
     flushAutosaveRef.current = runAutosave
     autosaveDraftRef.current = setTimeout(runAutosave, discreteTap ? 300 : 2000)
 
-  }, [_allFormValues, clearLocalDraft, getValues, persistLocalDraft, tryCreateServerCase])
+  }, [_allFormValues, clearLocalDraft, getValues, persistLocalDraft, rejectedFieldsMessage, tryCreateServerCase])
 
   useEffect(() => {
     activeSectionRef.current = activeSection

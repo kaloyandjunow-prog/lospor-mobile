@@ -12,6 +12,7 @@ import type { LogEvent, ActiveInfusion, ActiveFluid, ActiveGasSettings } from "@
 import type { VascularEntry } from "@/lib/intraop-types"
 import type { IntraopPreopSummary } from "@/lib/intraop-preop-summary"
 import type { VentilationPanel } from "@/lib/airway-ventilation"
+import type { CaseDetailDto } from "@lospor/core/case-detail"
 
 type CaseInfo = {
   caseCode: string
@@ -131,7 +132,7 @@ export function useIntraopCaseLoader({
 }: UseIntraopCaseLoaderArgs) {
   const loadCase = useCallback(async (silent = false) => {
     try {
-      const data = await apiJson<any>(`/api/cases/${caseId}`)
+      const data = await apiJson<CaseDetailDto>(`/api/cases/${caseId}`)
       const pending = await loadPendingIntraopEvents<LogEvent>(caseId)
       const pendingMutations = await autosaveManager.eventMutations.load(caseId)
       const hydrated = buildLoadedIntraopCaseState(
@@ -216,7 +217,6 @@ export function useIntraopCaseLoader({
     baseIntraopUpdatedAtRef,
     caseId,
     complicationItems,
-    enqueueEventSave,
     errorLabel,
     legacyWebLogNeedsSyncRef,
     monitoringOptions,

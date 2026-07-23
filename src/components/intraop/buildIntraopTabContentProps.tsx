@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { ComponentProps, MutableRefObject } from "react"
 import { VascularTab } from "@/components/intraop/tabs/VascularTab"
 import type { IntraopTabContentHostProps } from "@/components/intraop/IntraopTabContentHost"
 import { formatComplications } from "@/lib/intraop-complications"
@@ -9,7 +9,155 @@ import { techniqueColor } from "@/lib/intraop-technique"
 import type { LogEvent } from "@/lib/intraop-log-event"
 import type { VitalsEntry } from "@/components/IntraopTimetable"
 
-export function buildIntraopTabContentProps(props: any): IntraopTabContentHostProps {
+type Host = IntraopTabContentHostProps
+type LogProps = Host["log"]
+type TechniqueProps = Host["technique"]
+type TimingProps = Host["timing"]
+type PositionProps = Host["position"]
+type MonitoringProps = Host["monitoring"]
+type AirwayProps = Host["airway"]
+type PremedicationProps = Host["premedication"]
+type EventsProps = Host["events"]
+type ChartProps = Host["chart"]
+type VascularProps = ComponentProps<typeof VascularTab>
+
+export type IntraopTabContentBuilderProps = {
+  screenWidth: LogProps["screenWidth"]
+  tab: Host["tab"]
+  undoEv: LogProps["undoEvent"]
+  chartRows: LogProps["chartRows"]
+  chartStart: LogProps["chartStart"]
+  currentCol: LogProps["currentCol"]
+  expandedRow: LogProps["expandedRow"]
+  nowSlotPercent: LogProps["nowSlotPercent"]
+  timetable: LogProps["timetable"]
+  eventRows: LogProps["eventRows"]
+  activeInfusions: LogProps["activeInfusions"]
+  activeFluids: LogProps["activeFluids"]
+  activeAgent: LogProps["activeAgent"]
+  activeGas: LogProps["activeGas"]
+  startRef: MutableRefObject<Date | null>
+  isWatching: LogProps["isWatching"]
+  verticalTimetableRef: LogProps["listRef"]
+  undoLastEvent: LogProps["onUndo"]
+  setUndoEv: (event: null) => void
+  setExpandedRow: LogProps["onSetExpandedRow"]
+  eventLabel: EventsProps["eventLabel"]
+  setInfActTgt: (infusion: Parameters<LogProps["onManageInfusion"]>[0]) => void
+  setInfActRate: (rate: string) => void
+  setInfActOpen: (open: boolean) => void
+  setInfActTs: (timestamp: string | null) => void
+  openFluidEnd: LogProps["onEndFluid"]
+  openGasSettings: (timestamp: string, gas: NonNullable<LogProps["activeGas"]>, mode: "change") => void
+  tc: TechniqueProps["tc"]
+  stopAgent: () => void
+  openRowQuickAdd: LogProps["onQuickAdd"]
+  jumpVerticalTimetableToNow: LogProps["onJumpToNow"]
+  openEndCase: LogProps["onEndCase"]
+  preop: Host["equipment"]["preop"]
+  techPath: TechniqueProps["techPath"]
+  setTechPath: TechniqueProps["setTechPath"]
+  TECHNIQUE_TREE: TechniqueProps["techniqueTree"]
+  techniques: TechniqueProps["techniques"]
+  setTechniques: TechniqueProps["setTechniques"]
+  saveTechniques: TechniqueProps["saveTechniques"]
+  techniqueLabel: TechniqueProps["techniqueLabel"]
+  otherTechText: TechniqueProps["otherTechText"]
+  setOtherTechText: TechniqueProps["setOtherTechText"]
+  caseMonthYear: TimingProps["caseMonthYear"]
+  setCaseMonthYear: TimingProps["setCaseMonthYear"]
+  caseStartTime: TimingProps["caseStartTime"]
+  setCaseStartTime: TimingProps["setCaseStartTime"]
+  caseEndTime: TimingProps["caseEndTime"]
+  setCaseEndTime: TimingProps["setCaseEndTime"]
+  caseEndNextDay: TimingProps["caseEndNextDay"]
+  setCaseEndNextDay: TimingProps["setCaseEndNextDay"]
+  timingSaving: TimingProps["timingSaving"]
+  saveTiming: TimingProps["saveTiming"]
+  positions: PositionProps["positions"]
+  setPositions: PositionProps["setPositions"]
+  savePositions: PositionProps["savePositions"]
+  fieldSaving: PositionProps["fieldSaving"]
+  POSITIONS_LIST: PositionProps["positionsList"]
+  monitoring: MonitoringProps["monitoring"]
+  setMonitoring: MonitoringProps["setMonitoring"]
+  saveMonitoring: MonitoringProps["saveMonitoring"]
+  MONITORING_OPTS: MonitoringProps["monitoringOpts"]
+  advMonOpen: MonitoringProps["advMonOpen"]
+  setAdvMonOpen: MonitoringProps["setAdvMonOpen"]
+  awTools: AirwayProps["awTools"]
+  setAwTools: AirwayProps["setAwTools"]
+  awClGrade: AirwayProps["awClGrade"]
+  setAwClGrade: AirwayProps["setAwClGrade"]
+  awDevices: AirwayProps["awDevices"]
+  setAwDevices: AirwayProps["setAwDevices"]
+  awLmaSize: AirwayProps["awLmaSize"]
+  setAwLmaSize: AirwayProps["setAwLmaSize"]
+  awOralTubeSize: AirwayProps["awOralTubeSize"]
+  setAwOralTubeSize: AirwayProps["setAwOralTubeSize"]
+  awOralCuffed: AirwayProps["awOralCuffed"]
+  setAwOralCuffed: AirwayProps["setAwOralCuffed"]
+  awNasalTubeSize: AirwayProps["awNasalTubeSize"]
+  setAwNasalTubeSize: AirwayProps["setAwNasalTubeSize"]
+  awNasalCuffed: AirwayProps["awNasalCuffed"]
+  setAwNasalCuffed: AirwayProps["setAwNasalCuffed"]
+  awDltType: AirwayProps["awDltType"]
+  setAwDltType: AirwayProps["setAwDltType"]
+  awDltSide: AirwayProps["awDltSide"]
+  setAwDltSide: AirwayProps["setAwDltSide"]
+  awDltSize: AirwayProps["awDltSize"]
+  setAwDltSize: AirwayProps["setAwDltSize"]
+  awEbSize: AirwayProps["awEbSize"]
+  setAwEbSize: AirwayProps["setAwEbSize"]
+  awVentModes: AirwayProps["awVentModes"]
+  setAwVentModes: AirwayProps["setAwVentModes"]
+  awNotes: AirwayProps["awNotes"]
+  setAwNotes: AirwayProps["setAwNotes"]
+  saveAirwaySection: AirwayProps["saveAirwaySection"]
+  awExpandedDevice: AirwayProps["awExpandedDevice"]
+  setAwExpandedDevice: AirwayProps["setAwExpandedDevice"]
+  awExpandedWasComplete: AirwayProps["awExpandedWasComplete"]
+  AIRWAY_TOOLS: AirwayProps["airwayTools"]
+  AIRWAY_DEVICES: AirwayProps["airwayDevices"]
+  awVentExpanded: AirwayProps["awVentExpanded"]
+  setAwVentExpanded: AirwayProps["setAwVentExpanded"]
+  vascularAccesses: VascularProps["vascularAccesses"]
+  setVascularAccesses: VascularProps["setVascularAccesses"]
+  saveVascularAccesses: VascularProps["saveVascularAccesses"]
+  vascularSaving: VascularProps["vascularSaving"]
+  vascSiteColor: VascularProps["vascSiteColor"]
+  VASC_TREE: VascularProps["vascTree"]
+  vascDefaultUnit: VascularProps["vascDefaultUnit"]
+  VASC_PREEXISTING_QUICK: VascularProps["vascPreexistingQuick"]
+  premedEveningText: PremedicationProps["premedEveningText"]
+  setPremedEveningText: PremedicationProps["setPremedEveningText"]
+  premedMorningText: PremedicationProps["premedMorningText"]
+  setPremedMorningText: PremedicationProps["setPremedMorningText"]
+  savePremedication: PremedicationProps["savePremedication"]
+  openPremedPicker: PremedicationProps["openPremedPicker"]
+  log: EventsProps["log"]
+  selectedComplications: EventsProps["selectedComplications"]
+  complicationsNotes: EventsProps["complicationsNotes"]
+  setComplicationsNotes: EventsProps["onComplicationsNotesChange"]
+  saveComplications: () => void
+  setCompOpen: (open: boolean) => void
+  eventActions: EventsProps["onEventActions"]
+  promptDelete: EventsProps["onPromptDelete"]
+  prevVitalFor: EventsProps["previousVitalFor"]
+  ttColCount: ChartProps["totalColumns"]
+  chartPage: ChartProps["page"]
+  caseEnded: boolean
+  resumeSecsLeft: number
+  resumeCase: NonNullable<ChartProps["resumeCase"]>
+  setChartPage: ChartProps["onPageChange"]
+  setTtColCount: ChartProps["onColumnCountChange"]
+  handleChartTimetableChange: ChartProps["onTimetableChange"]
+  setEntryTs: ChartProps["onSetEntryTs"]
+  logEventText?: LogProps["eventText"]
+  logBuildSummary?: LogProps["buildSummary"]
+}
+
+export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps): IntraopTabContentHostProps {
   const {
     screenWidth, tab, undoEv, chartRows, chartStart, currentCol, expandedRow, nowSlotPercent,
     timetable, eventRows, activeInfusions, activeFluids, activeAgent, activeGas, startRef,

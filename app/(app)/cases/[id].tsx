@@ -121,7 +121,7 @@ export default function CaseSummaryScreen() {
           setFinalizing(false)
         }
       })
-  }, [id, tc])
+  }, [caseData?.caseCode, id, language, tc])
 
   const screenTitle = caseData?.caseCode ?? (loading ? "…" : tc("cardPreop"))
 

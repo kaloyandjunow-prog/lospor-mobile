@@ -1,5 +1,27 @@
 # Changelog - LOSPOR Mobile
 
+## [5.6.1] - 2026-07-24
+
+Strict lint and shared type hardening. Android `versionCode` is 23.
+
+### Fixed
+
+- Mobile now rejects malformed server timetable rows and queued event edits
+  before they enter the intraoperative screen.
+- Hook dependencies were corrected so callbacks use the current case,
+  language, save function, and translated messages.
+
+### Changed
+
+- Case-detail and intraoperative wire types now come from the shared Core
+  package instead of mobile-only copies.
+- The intraoperative render surface keeps unchanged tab and sheet props stable,
+  reducing avoidable rerenders while callbacks still invoke current logic.
+- CI now runs lint with zero warnings and ignores inline suppression comments.
+  The existing suppression directives and explicit `any` render-builder types
+  were removed.
+- App/package version set to `5.6.1`; shared Core dependency targets `v5.6.1`.
+
 ## [5.6.0] - 2026-07-23
 
 Autosave Manager implementation. Android `versionCode` is 22.

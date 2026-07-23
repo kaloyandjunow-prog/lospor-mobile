@@ -81,7 +81,7 @@ export function useIntraopAutofillVitals(
       })
     }, 10_000)
     return () => clearInterval(timer)
-  }, [autoFillPreferences.enabled, autoFillPreferences.includeBloodPressure])
+  }, [autoFillPreferences.enabled, autoFillPreferences.includeBloodPressure, startRef])
 
   useEffect(() => {
     if (!caseLoaded) return
@@ -98,5 +98,7 @@ export function useIntraopAutofillVitals(
     autoFillPreferences.enabled,
     autoFillPreferences.includeBloodPressure,
     autoFillPreferences.backfillOnReopen,
+    logRef,
+    startRef,
   ])
 }

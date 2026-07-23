@@ -1,9 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // Pure projection/conversion between the intraop event log and the timetable
 // widget's column model, plus the time/column helpers they share. Mirrors web's
 // projectTimetable. Extracted from cases/intraop/[id].tsx so it is unit-testable.
 import type { LogEvent } from "@/lib/intraop-log-event"
 import type { TimetableData, VitalsEntry } from "@/components/IntraopTimetable"
+import { parseLegacyKeyEvents } from "@lospor/core/intraop-types"
 
 // Replays the event log (newest-first) into the timetable's per-5-minute-column
 // lanes (vitals/drugs/infusions/fluids/agents/gas). Open items extend one column
@@ -25,10 +25,10 @@ export function eventsToTimetable(log: LogEvent[], startTs: Date, now?: Date): T
 
   const vitals: VitalsEntry[] = []
   const drugs: { colIdx: number; name: string; dose: string; unit: string; drugId?: string; atcCode?: string; inn?: string; route?: string }[] = []
-  const infusions: any[] = []
-  const fluids: any[] = []
-  const agents: any[] = []
-  const gasSettings: any[] = []
+  const infusions: TimetableData["infusions"] = []
+  const fluids: TimetableData["fluids"] = []
+  const agents: TimetableData["agents"] = []
+  const gasSettings: NonNullable<TimetableData["gasSettings"]> = []
 
   // log is newest-first; process oldest-first for state reconstruction
   const chrono = [...log].reverse()
@@ -273,7 +273,8 @@ export function hasAnyValue(value: Record<string, unknown>, keys: string[]): boo
 
 // Inverse of eventsToTimetable: convert a web-shaped timetable edit back into
 // log events (newest-first), so web-side changes merge into the mobile log.
-export function webTimetableToLog(kev: any, startTs: Date): LogEvent[] {
+export function webTimetableToLog(value: unknown, startTs: Date): LogEvent[] {
+  const kev = parseLegacyKeyEvents(value)
   const events: LogEvent[] = []
   const push = (event: Omit<LogEvent, "id">, stableId: string) => {
     events.push({ id: stableId, ...event })
@@ -299,7 +300,7 @@ export function webTimetableToLog(kev: any, startTs: Date): LogEvent[] {
   }
 
   if (Array.isArray(kev?.drugs)) {
-    kev.drugs.forEach((drug: any, index: number) => {
+    kev.drugs.forEach((drug, index) => {
       if (!drug?.name) return
       push({
         type: "drug",
@@ -316,7 +317,7 @@ export function webTimetableToLog(kev: any, startTs: Date): LogEvent[] {
   }
 
   if (Array.isArray(kev?.infusions)) {
-    kev.infusions.forEach((inf: any, index: number) => {
+    kev.infusions.forEach((inf, index) => {
       const infId = String(inf?.id ?? `web-inf-${index}`)
       if (!inf?.name) return
       const common = {
@@ -332,7 +333,7 @@ export function webTimetableToLog(kev: any, startTs: Date): LogEvent[] {
       }
       push({ type: "infusion_start", ts: eventTimeForCol(startTs, inf.startCol), rate: inf.rate != null ? String(inf.rate) : undefined, ...common }, `web-inf-start-${infId}`)
       if (Array.isArray(inf.rateChanges)) {
-        inf.rateChanges.forEach((change: any, changeIndex: number) => {
+        inf.rateChanges.forEach((change, changeIndex) => {
           push({
             type: "infusion_rate",
             ts: eventTimeForCol(startTs, change.col),
@@ -348,7 +349,7 @@ export function webTimetableToLog(kev: any, startTs: Date): LogEvent[] {
   }
 
   if (Array.isArray(kev?.fluids)) {
-    kev.fluids.forEach((fluid: any, index: number) => {
+    kev.fluids.forEach((fluid, index) => {
       const fluidId = String(fluid?.id ?? `web-fluid-${index}`)
       if (!fluid?.name) return
       push({
@@ -365,7 +366,7 @@ export function webTimetableToLog(kev: any, startTs: Date): LogEvent[] {
   }
 
   if (Array.isArray(kev?.agents)) {
-    kev.agents.forEach((agent: any, index: number) => {
+    kev.agents.forEach((agent, index) => {
       if (!agent?.name) return
       push({
         type: "agent_start",
@@ -379,7 +380,7 @@ export function webTimetableToLog(kev: any, startTs: Date): LogEvent[] {
   }
 
   if (Array.isArray(kev?.clinicalEvents)) {
-    kev.clinicalEvents.forEach((event: any, index: number) => {
+    kev.clinicalEvents.forEach((event, index) => {
       if (!event?.label) return
       push({
         type: "clinical_event",
@@ -391,7 +392,7 @@ export function webTimetableToLog(kev: any, startTs: Date): LogEvent[] {
   }
 
   if (Array.isArray(kev?.gasSettings)) {
-    kev.gasSettings.forEach((gas: any, index: number) => {
+    kev.gasSettings.forEach((gas, index) => {
       const gasId = `web-gas-${index}`
       push({
         type: "gas_start",
@@ -403,7 +404,7 @@ export function webTimetableToLog(kev: any, startTs: Date): LogEvent[] {
         fiN2O: numOrUndefined(gas.fiN2O),
       }, `${gasId}-start`)
       if (Array.isArray(gas.settingsChanges)) {
-        gas.settingsChanges.forEach((change: any, changeIndex: number) => {
+        gas.settingsChanges.forEach((change, changeIndex) => {
           push({
             type: "gas_change",
             ts: eventTimeForCol(startTs, change.col),

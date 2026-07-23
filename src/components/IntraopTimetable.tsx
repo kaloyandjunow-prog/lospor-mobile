@@ -6,26 +6,27 @@ import {
 import { useOptionLibrary } from "@/lib/use-option-library"
 import { confirmAction } from "@/lib/notify"
 import { calcSuggestedDose as calcDose, type DoseEntry, type DoseRule } from "@/lib/dose-calc"
+import type {
+  AgentSegment,
+  GasSettingsSegment,
+  TimetableData,
+  TimetableDrug,
+  TimetableFluid,
+  TimetableInfusion,
+  VitalsEntry,
+} from "@lospor/core/intraop-types"
 import { packLaneRows } from "@lospor/core/timetable"
 
 // ─── Types (API-compatible with web timetable) ────────────────────────────────
 
-export type VitalsEntry = {
-  systolic?: number; diastolic?: number; heartRate?: number
-  spO2?: number; etco2?: number; temp?: number; bgl?: number
-}
-export type TimetableDrug = { colIdx: number; name: string; dose: string; unit: string }
-export type TimetableFluid = { id: string; name: string; category: string; volume: string; color: string; startCol: number; endCol: number }
-export type TimetableInfusion = { id: string; name: string; rate: string; unit: string; startCol: number; endCol: number; color: string; rateChanges?: { col: number; rate: string; unit: string }[] }
-export type AgentSegment = { name: string; color: string; startCol: number; endCol: number }
-export type GasSettingsSegment = { id: string; startCol: number; endCol: number; stopped?: boolean; fgf: number; carrierGas: string | null; fio2: number; fiAir?: number; fiN2O?: number; settingsChanges?: { col: number; fgf: number; carrierGas: string | null; fio2: number; fiAir?: number; fiN2O?: number }[] }
-export type TimetableData = {
-  vitals:    VitalsEntry[]
-  drugs:     TimetableDrug[]
-  fluids:    TimetableFluid[]
-  infusions: TimetableInfusion[]
-  agents:    AgentSegment[]
-  gasSettings?: GasSettingsSegment[]
+export type {
+  AgentSegment,
+  GasSettingsSegment,
+  TimetableData,
+  TimetableDrug,
+  TimetableFluid,
+  TimetableInfusion,
+  VitalsEntry,
 }
 export function emptyTimetable(): TimetableData {
   return { vitals: [], drugs: [], fluids: [], infusions: [], agents: [], gasSettings: [] }
@@ -651,7 +652,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
           {(showAgents || data.agents.length > 0) && data.agents.map(a => (
             <BarRow key={a.name} label="Agent" labelColor="#a78bfa"
               id={a.name} type="agent" startCol={a.startCol} endCol={a.endCol}
-              barColor={a.color} name={a.name}
+              barColor={a.color ?? "#a78bfa"} name={a.name}
             />
           ))}
 
@@ -713,7 +714,8 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
           {data.infusions.map(inf => (
             <BarRow key={inf.id} label={inf.name} labelColor={inf.color}
               id={inf.id} type="infusion" startCol={inf.startCol} endCol={inf.endCol}
-              barColor={inf.color} rate={`${inf.rate} ${inf.unit}`} rateChanges={inf.rateChanges}
+              barColor={inf.color ?? "#3b82f6"} rate={`${inf.rate} ${inf.unit}`}
+              rateChanges={inf.rateChanges?.map(change => ({ ...change, rate: String(change.rate) }))}
             />
           ))}
 

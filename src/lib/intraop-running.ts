@@ -9,7 +9,7 @@ export type RunningItem = { id: string; label: string; color: string }
 export function runningItemsAt(timetable: TimetableData, col: number): RunningItem[] {
   const items: RunningItem[] = []
   for (const a of timetable.agents) {
-    if (col >= a.startCol && col <= a.endCol) items.push({ id: `agent-${a.name}`, label: a.name, color: a.color })
+    if (col >= a.startCol && col <= a.endCol) items.push({ id: `agent-${a.name}`, label: a.name, color: a.color ?? "#a78bfa" })
   }
   for (const gas of timetable.gasSettings ?? []) {
     if (col >= gas.startCol && col <= gas.endCol) {
@@ -26,11 +26,11 @@ export function runningItemsAt(timetable: TimetableData, col: number): RunningIt
       const sorted = (i.rateChanges ?? []).slice().sort((a, b) => a.col - b.col)
       const active = sorted.filter(rc => rc.col <= col).pop()
       const curRate = active?.rate ?? i.rate
-      items.push({ id: `inf-${i.id}`, label: `${i.name} ${curRate}`, color: i.color })
+      items.push({ id: `inf-${i.id}`, label: `${i.name} ${curRate}`, color: i.color ?? "#3b82f6" })
     }
   }
   for (const f of timetable.fluids) {
-    if (col >= f.startCol && col <= f.endCol) items.push({ id: `fluid-${f.id}`, label: `${f.name} ${f.volume}mL`, color: f.color })
+    if (col >= f.startCol && col <= f.endCol) items.push({ id: `fluid-${f.id}`, label: `${f.name} ${f.volume}mL`, color: f.color ?? "#38bdf8" })
   }
   return items // no cap — show all parallel infusions, fluids and agents
 }
@@ -45,7 +45,7 @@ export function runningItemsByCol(timetable: TimetableData, cols: number[]): Map
 
   for (const a of timetable.agents) {
     for (const col of cols) {
-      if (col >= a.startCol && col <= a.endCol) push(col, { id: `agent-${a.name}`, label: a.name, color: a.color })
+      if (col >= a.startCol && col <= a.endCol) push(col, { id: `agent-${a.name}`, label: a.name, color: a.color ?? "#a78bfa" })
     }
   }
   for (const gas of timetable.gasSettings ?? []) {
@@ -64,12 +64,12 @@ export function runningItemsByCol(timetable: TimetableData, cols: number[]): Map
       if (col < i.startCol || col > i.endCol) continue
       const active = sorted.filter(rc => rc.col <= col).pop()
       const curRate = active?.rate ?? i.rate
-      push(col, { id: `inf-${i.id}`, label: `${i.name} ${curRate}`, color: i.color })
+      push(col, { id: `inf-${i.id}`, label: `${i.name} ${curRate}`, color: i.color ?? "#3b82f6" })
     }
   }
   for (const f of timetable.fluids) {
     for (const col of cols) {
-      if (col >= f.startCol && col <= f.endCol) push(col, { id: `fluid-${f.id}`, label: `${f.name} ${f.volume}mL`, color: f.color })
+      if (col >= f.startCol && col <= f.endCol) push(col, { id: `fluid-${f.id}`, label: `${f.name} ${f.volume}mL`, color: f.color ?? "#38bdf8" })
     }
   }
   return rows
