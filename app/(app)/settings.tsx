@@ -23,6 +23,14 @@ import { colors, withAlpha } from "@/theme/colors"
 import { AppHeader } from "@/components/AppHeader"
 import { MedicalDisclaimer } from "@/components/MedicalDisclaimer"
 import { useOptionLibrary, type LibraryOption } from "@/lib/use-option-library"
+import {
+  loadIntraopAutofillPreferences,
+  saveIntraopAutofillPreferences,
+} from "@/lib/intraop-autofill-preferences"
+import {
+  normalizeAutoFillVitalsPreferences,
+  type AutoFillVitalsPreferences,
+} from "@/lib/intraop-vital-log"
 
 // --- Types --------------------------------------------------------------------
 
@@ -314,16 +322,20 @@ export default function SettingsScreen() {
     }
   }
 
+  const applyAutoFillPreferences = useCallback((preferences: AutoFillVitalsPreferences) => {
+    setAutoFillVitalsState(preferences.enabled)
+    setAutoFillBPState(preferences.includeBloodPressure)
+    setAutoFillBgState(preferences.backfillOnReopen)
+  }, [])
+
   const loadAutomation = useCallback(() => {
-    SecureStore.getItemAsync("intraop_autofill_vitals").then(v => setAutoFillVitalsState(v === "on"))
-    SecureStore.getItemAsync("intraop_autofill_bp").then(v => setAutoFillBPState(v === "on"))
-    SecureStore.getItemAsync("intraop_autofill_bg").then(v => setAutoFillBgState(v === "on"))
+    loadIntraopAutofillPreferences().then(applyAutoFillPreferences).catch(() => {})
     SecureStore.getItemAsync(REMINDERS_KEY).then(v => setRemindersOnState(v === "on"))
     SecureStore.getItemAsync(VITALS_INTERVAL_KEY).then(v => {
       const n = Number(v); if (Number.isFinite(n) && n > 0) setVitalsIntervalState(n)
     })
     refreshNotifStatus()
-  }, [])
+  }, [applyAutoFillPreferences])
 
   async function refreshDiagnostics() {
     const token = await getToken()
@@ -372,17 +384,31 @@ export default function SettingsScreen() {
 
   // -- Automation setters -------------------------------------------------------
   function setAutoFillVitals(v: boolean) {
-    setAutoFillVitalsState(v)
-    SecureStore.setItemAsync("intraop_autofill_vitals", v ? "on" : "off")
-    if (!v) { setAutoFillBPState(false); SecureStore.setItemAsync("intraop_autofill_bp", "off") }
+    const next = normalizeAutoFillVitalsPreferences({
+      enabled: v,
+      includeBloodPressure: autoFillBP,
+      backfillOnReopen: autoFillBg,
+    })
+    applyAutoFillPreferences(next)
+    void saveIntraopAutofillPreferences(next).then(applyAutoFillPreferences).catch(() => {})
   }
   function setAutoFillBP(v: boolean) {
-    setAutoFillBPState(v)
-    SecureStore.setItemAsync("intraop_autofill_bp", v ? "on" : "off")
+    const next = normalizeAutoFillVitalsPreferences({
+      enabled: autoFillVitals,
+      includeBloodPressure: v,
+      backfillOnReopen: autoFillBg,
+    })
+    applyAutoFillPreferences(next)
+    void saveIntraopAutofillPreferences(next).then(applyAutoFillPreferences).catch(() => {})
   }
   function setAutoFillBg(v: boolean) {
-    setAutoFillBgState(v)
-    SecureStore.setItemAsync("intraop_autofill_bg", v ? "on" : "off")
+    const next = normalizeAutoFillVitalsPreferences({
+      enabled: autoFillVitals,
+      includeBloodPressure: autoFillBP,
+      backfillOnReopen: v,
+    })
+    applyAutoFillPreferences(next)
+    void saveIntraopAutofillPreferences(next).then(applyAutoFillPreferences).catch(() => {})
   }
 
   // -- Notification setters -----------------------------------------------------
@@ -710,6 +736,7 @@ export default function SettingsScreen() {
           <SettingsRow
             label={t("autoFillVitals")}
             subtitle={t("autoFillVitalsSub")}
+            last={!autoFillVitals}
             rightElement={
               <Switch
                 value={autoFillVitals}
@@ -720,32 +747,34 @@ export default function SettingsScreen() {
             }
           />
           {autoFillVitals && (
-            <SettingsRow
-              label={t("autoFillBpHr")}
-              subtitle={t("autoFillBpHrSub")}
-              rightElement={
-                <Switch
-                  value={autoFillBP}
-                  onValueChange={setAutoFillBP}
-                  trackColor={{ false: colors.border, true: colors.primarySoft }}
-                  thumbColor={autoFillBP ? colors.primary : colors.textMuted}
-                />
-              }
-            />
-          )}
-          <SettingsRow
-            label={t("backgroundAutoFill")}
-            subtitle={t("backgroundAutoFillSub")}
-            last
-            rightElement={
-              <Switch
-                value={autoFillBg}
-                onValueChange={setAutoFillBg}
-                trackColor={{ false: colors.border, true: colors.primarySoft }}
-                thumbColor={autoFillBg ? colors.primary : colors.textMuted}
+            <>
+              <SettingsRow
+                label={t("autoFillBpHr")}
+                subtitle={t("autoFillBpHrSub")}
+                rightElement={
+                  <Switch
+                    value={autoFillBP}
+                    onValueChange={setAutoFillBP}
+                    trackColor={{ false: colors.border, true: colors.primarySoft }}
+                    thumbColor={autoFillBP ? colors.primary : colors.textMuted}
+                  />
+                }
               />
-            }
-          />
+              <SettingsRow
+                label={t("backgroundAutoFill")}
+                subtitle={t("backgroundAutoFillSub")}
+                last
+                rightElement={
+                  <Switch
+                    value={autoFillBg}
+                    onValueChange={setAutoFillBg}
+                    trackColor={{ false: colors.border, true: colors.primarySoft }}
+                    thumbColor={autoFillBg ? colors.primary : colors.textMuted}
+                  />
+                }
+              />
+            </>
+          )}
         </Card>
 
         {/* -- Notifications ------------------------------------------------------ */}

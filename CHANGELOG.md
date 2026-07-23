@@ -1,5 +1,24 @@
 # Changelog - LOSPOR Mobile
 
+## [5.5.1] - 2026-07-23
+
+Auto-fill vitals correctness release. No new native modules; Android
+`versionCode` stays 21.
+
+### Fixed
+- Auto-fill settings now use the same shared semantics as the web app. Turning
+  off Auto-fill vitals also clears BP/HR carry-forward and background backfill,
+  so hidden stale options cannot create observations later.
+- Background backfill can no longer run while the master Auto-fill vitals switch
+  is off.
+- Intraop screens refresh auto-fill preferences while the app is open, so
+  changing settings no longer requires remounting the case screen.
+- Multi-column gaps are planned by the shared core helper, matching the web app.
+
+### Changed
+- App/package version set to `5.5.1` so the four LOSPOR repos share one release
+  line.
+
 ## [5.5.0] - 2026-07-23
 
 Version alignment with web, core, and docs. No mobile runtime or native module

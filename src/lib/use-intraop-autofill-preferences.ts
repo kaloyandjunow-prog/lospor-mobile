@@ -1,20 +1,34 @@
-import { useEffect, useState } from "react"
-import * as SecureStore from "expo-secure-store"
+import { useCallback, useEffect, useState } from "react"
+import { AppState } from "react-native"
+
+import {
+  getCachedIntraopAutofillPreferences,
+  loadIntraopAutofillPreferences,
+  subscribeIntraopAutofillPreferences,
+} from "@/lib/intraop-autofill-preferences"
 
 export function useIntraopAutofillPreferences() {
-  const [autoFillVitals, setAutoFillVitals] = useState(false)
-  const [autoFillBP, setAutoFillBP] = useState(false)
-  const [autoFillBg, setAutoFillBg] = useState(false)
+  const [preferences, setPreferences] = useState(getCachedIntraopAutofillPreferences)
 
-  useEffect(() => {
-    SecureStore.getItemAsync("intraop_autofill_vitals").then(v => setAutoFillVitals(v === "on"))
-    SecureStore.getItemAsync("intraop_autofill_bp").then(v => setAutoFillBP(v === "on"))
-    SecureStore.getItemAsync("intraop_autofill_bg").then(v => setAutoFillBg(v === "on"))
+  const refresh = useCallback(() => {
+    void loadIntraopAutofillPreferences().then(setPreferences).catch(() => {})
   }, [])
 
+  useEffect(() => {
+    refresh()
+    const unsubscribe = subscribeIntraopAutofillPreferences(setPreferences)
+    const appStateSub = AppState.addEventListener("change", state => {
+      if (state === "active") refresh()
+    })
+    return () => {
+      unsubscribe()
+      appStateSub.remove()
+    }
+  }, [refresh])
+
   return {
-    autoFillVitals,
-    autoFillBP,
-    autoFillBg,
+    autoFillVitals: preferences.enabled,
+    autoFillBP: preferences.includeBloodPressure,
+    autoFillBg: preferences.backfillOnReopen,
   }
 }
