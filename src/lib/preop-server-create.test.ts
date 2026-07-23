@@ -27,7 +27,7 @@ describe("postPreopServerCase", () => {
       procedures: [{ label: "Appendectomy" }],
     }, "draft-1", fetcher)
 
-    expect(result).toEqual({ ok: true, id: "case-1", updatedAt: "2026-07-02T10:00:00Z" })
+    expect(result).toEqual({ ok: true, id: "case-1", updatedAt: "2026-07-02T10:00:00Z", revision: null })
     expect(calls[0].url).toBe("/api/cases")
     expect(calls[0].init.headers).toEqual({ "X-Idempotency-Key": "draft-1" })
     expect(JSON.parse(calls[0].init.body as string).preop.plannedProcedure).toBe("Appendectomy")

@@ -4,6 +4,7 @@ import { apiJson } from "@/lib/api"
 import { notify } from "@/lib/notify"
 import { useCaseLiveUpdates } from "@/lib/use-case-live-updates"
 import { loadPendingIntraopEvents } from "@/lib/pending-intraop-events"
+import { autosaveManager } from "@/lib/autosave-manager"
 import { buildLoadedIntraopCaseState } from "@/lib/intraop-case-hydration"
 import type { MonitoringOption } from "@/lib/intraop-option-mappers"
 import type { TimetableData } from "@/components/IntraopTimetable"
@@ -132,14 +133,22 @@ export function useIntraopCaseLoader({
     try {
       const data = await apiJson<any>(`/api/cases/${caseId}`)
       const pending = await loadPendingIntraopEvents<LogEvent>(caseId)
+      const pendingMutations = await autosaveManager.eventMutations.load(caseId)
       const hydrated = buildLoadedIntraopCaseState(
         data,
         pending,
         monitoringOptions,
         complicationItems,
+        pendingMutations,
       )
       legacyWebLogNeedsSyncRef.current = hydrated.legacyWebLogNeedsSync
       baseIntraopUpdatedAtRef.current = hydrated.baseIntraopUpdatedAt ?? baseIntraopUpdatedAtRef.current
+      autosaveManager.hydrateSection(
+        caseId,
+        "intraop",
+        (data.intraop ?? {}) as Record<string, unknown>,
+        hydrated.baseIntraopRevision ?? hydrated.baseIntraopUpdatedAt ?? null,
+      )
       runBatched(() => {
         setCaseInfo(hydrated.caseInfo)
         if (!silent) {

@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from "react"
 
-import { ApiError } from "@/lib/api"
-import { notify } from "@/lib/notify"
-import { saveCasePatchWithQueue, type CasePatchResponse, type CasePatchResult } from "@/lib/offline-case-patches"
+import { autosaveManager } from "@/lib/autosave-manager"
+import type { CasePatchResponse, CasePatchResult } from "@/lib/offline-case-patches"
 import { createCoalescingBatcher, type CoalescingBatcher } from "@lospor/core/sync"
 
 type SyncState = "saved" | "saving" | "failed" | "offline"
@@ -11,7 +10,6 @@ type PatchOutcome = { result: CasePatchResult; response?: CasePatchResponse } | 
 
 type UseIntraopSectionPatchArgs = {
   caseId: string
-  baseIntraopUpdatedAtRef: MutableRefObject<string | null>
   pendingSaveCountRef: MutableRefObject<number>
   setSyncState: Dispatch<SetStateAction<SyncState>>
   setLastSavedAt: Dispatch<SetStateAction<string | null>>
@@ -19,7 +17,6 @@ type UseIntraopSectionPatchArgs = {
 
 export function useIntraopSectionPatch({
   caseId,
-  baseIntraopUpdatedAtRef,
   pendingSaveCountRef,
   setSyncState,
   setLastSavedAt,
@@ -31,45 +28,19 @@ export function useIntraopSectionPatch({
   //  2. the base is a THUNK resolved inside the write queue at execution time
   const runSave = useCallback(async (payload: Record<string, unknown>): Promise<PatchOutcome> => {
     try {
-      const result = await saveCasePatchWithQueue(caseId, "intraop", payload, () => baseIntraopUpdatedAtRef.current)
+      const result = await autosaveManager.saveSection(caseId, "intraop", payload, { partial: true })
       if (result.result === "saved") {
-        baseIntraopUpdatedAtRef.current = result.response?.intraopUpdatedAt ?? baseIntraopUpdatedAtRef.current
         setLastSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
         setSyncState("saved")
-      } else if (result.result === "queued") {
+      } else if (result.result === "queued" || result.result === "failed") {
         setSyncState("offline")
       }
       return result
-    } catch (err) {
-      // Safety net for genuine cross-writer staleness (e.g. an event save
-      // bumped intraop.updatedAt mid-flight): adopt the server timestamp and
-      // retry once.
-      if (err instanceof ApiError && err.status === 409) {
-        const serverUpdatedAt = (err.serverVersion as { updatedAt?: string } | undefined)?.updatedAt
-        if (serverUpdatedAt) {
-          baseIntraopUpdatedAtRef.current = serverUpdatedAt
-          try {
-            const retryResult = await saveCasePatchWithQueue(caseId, "intraop", payload, () => baseIntraopUpdatedAtRef.current)
-            if (retryResult.result === "saved") {
-              baseIntraopUpdatedAtRef.current = retryResult.response?.intraopUpdatedAt ?? serverUpdatedAt
-              setLastSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
-              setSyncState("saved")
-              return retryResult
-            }
-          } catch {
-            // fall through to failed state
-          }
-        }
-        setSyncState("failed")
-      } else {
-        setSyncState("failed")
-        if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
-          notify("Save rejected", err.message)
-        }
-      }
+    } catch {
+      setSyncState("failed")
       return undefined
     }
-  }, [baseIntraopUpdatedAtRef, caseId, setLastSavedAt, setSyncState])
+  }, [caseId, setLastSavedAt, setSyncState])
 
   const runSaveRef = useRef(runSave)
   useEffect(() => { runSaveRef.current = runSave }, [runSave])

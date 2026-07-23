@@ -5,6 +5,7 @@ import {
 } from "react-native"
 import { useLocalSearchParams, useRouter, Stack } from "expo-router"
 import { apiFetch, apiJson } from "@/lib/api"
+import { autosaveManager } from "@/lib/autosave-manager"
 import { notify, confirmAction } from "@/lib/notify"
 import { openPrintCase } from "@/lib/print-case"
 import { AppHeader } from "@/components/AppHeader"
@@ -99,6 +100,12 @@ export default function CaseSummaryScreen() {
         if (!ok) return
         setFinalizing(true)
         try {
+          await autosaveManager.flushCase(id)
+          await autosaveManager.waitForCase(id)
+          if (autosaveManager.getState(id).pending > 0) {
+            notify(tc("errorLabel"), "Some changes are still waiting to sync. Reconnect and try again.")
+            return
+          }
           const res = await apiFetch(`/api/cases/${id}/finalize`, { method: "POST" })
           const body = await res.json().catch(() => null)
           setCaseData(prev => prev ? { ...prev, status: "COMPLETE", finalizedAt: body?.finalizedAt ?? new Date().toISOString() } : prev)

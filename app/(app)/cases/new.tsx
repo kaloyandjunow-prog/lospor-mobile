@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Controller, useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ApiError, apiFetch, apiJson } from "@/lib/api"
-import { flushQueuedCasePatch, saveCasePatchWithQueue } from "@/lib/offline-case-patches"
+import { autosaveManager } from "@/lib/autosave-manager"
 import { deleteLocalCaseDraft, loadLocalCaseDraft, makeLocalCaseId, saveLocalCaseDraft } from "@/lib/local-case-store"
 import { buildPreopPayload } from "@/lib/preop-payload"
 import { preopFormSchema, type PreopFormData as FormData, type PreopFormInput as FormInput, type PreopSection } from "@/lib/preop-form-schema"
@@ -31,8 +31,6 @@ import { buildPreopSectionItems, type PreopSectionLabel } from "@/lib/preop-sect
 import { valuesFromServerPreop, type ServerPreop } from "@/lib/preop-server-values"
 import { PREOP_REQUIRED_FIELD_SECTION, preopInvalidSubmitMessage } from "@/lib/preop-validation-navigation"
 import { postPreopServerCase } from "@/lib/preop-server-create"
-import { patchPreopServerCase } from "@/lib/preop-server-patch"
-import { sectionSnapshots } from "@/lib/section-snapshots"
 import { suggestASAFromTags } from "@/lib/preop-asa-suggestion"
 import {
   ChecklistGroup,
@@ -225,7 +223,6 @@ export default function NewCaseScreen() {
   const [,       setCaseId]       = useState<string | null>(null)
   const [preopFinalizedAt, setPreopFinalizedAt] = useState<string | null>(null)
   const [preopCaseStatus,  setPreopCaseStatus]  = useState<string | null>(null)
-  const basePreopUpdatedAtRef = useRef<string | null>(null)
 
   const { control, handleSubmit, setValue, getValues, reset, formState: { errors } } = useForm<FormInput, unknown, FormData>({
     resolver: zodResolver(preopFormSchema),
@@ -374,7 +371,12 @@ export default function NewCaseScreen() {
     caseIdRef.current = result.id
     setCaseId(result.id)
     void clearLocalDraft()
-    basePreopUpdatedAtRef.current = result.updatedAt
+    autosaveManager.hydrateSection(
+      result.id,
+      "preop",
+      buildPreopPayload(values),
+      result.revision ?? result.updatedAt,
+    )
     return result.id
   }, [clearLocalDraft])
 
@@ -398,13 +400,19 @@ export default function NewCaseScreen() {
     // until the periodic background flusher's next tick (up to 15s), and the
     // GET below would silently reset the form to that stale pre-edit
     // snapshot in the meantime, discarding the queued edit.
-    flushQueuedCasePatch(continueId, "preop").catch(() => {}).then(() =>
+    autosaveManager.flushCase(continueId).catch(() => {}).then(() =>
       apiJson<{ preop?: ServerPreop; finalizedAt?: string | null; status?: string }>(`/api/cases/${continueId}`)
     )
       .then((caseData) => {
         const p = caseData.preop ?? {}
-        basePreopUpdatedAtRef.current = p.updatedAt ?? null
-        reset(valuesFromServerPreop(p) as FormInput)
+        const loadedValues = valuesFromServerPreop(p) as FormInput
+        autosaveManager.hydrateSection(
+          continueId,
+          "preop",
+          buildPreopPayload(loadedValues),
+          p.syncRevision ?? p.updatedAt ?? null,
+        )
+        reset(loadedValues)
         setPreopFinalizedAt(caseData.finalizedAt ?? null)
         setPreopCaseStatus(caseData.status ?? null)
         void clearLocalDraft()
@@ -413,7 +421,6 @@ export default function NewCaseScreen() {
         if (err instanceof ApiError && err.status === 404) {
           caseIdRef.current = null
           setCaseId(null)
-          basePreopUpdatedAtRef.current = null
           notify(tc("errorLabel"), "This draft no longer exists. Returning to the dashboard.")
           router.replace("/(app)")
           return
@@ -472,7 +479,6 @@ export default function NewCaseScreen() {
             // First save: try to create the case on the server
             const id = await tryCreateServerCase(values)
             if (id) {
-              sectionSnapshots.confirm(id, "preop", buildPreopPayload(values))
               await clearLocalDraft()
               setDraftState("saved")
               return
@@ -482,21 +488,11 @@ export default function NewCaseScreen() {
             setDraftState("queued")
             return
           }
-          // Subsequent saves: patch only the fields that changed since the
-          // last confirmed save (field-level saves — see core field-diff).
           const preopPayload = buildPreopPayload(values)
-          const changes = sectionSnapshots.diff(caseIdRef.current, "preop", preopPayload)
-          if (!changes) {
-            await clearLocalDraft()
-            setDraftState("saved")
-            return
-          }
-          const result = await saveCasePatchWithQueue(
-            caseIdRef.current, "preop", changes, basePreopUpdatedAtRef.current
-          )
+          const result = await autosaveManager.saveSection(caseIdRef.current, "preop", preopPayload, {
+            fullPayload: preopPayload,
+          })
           if (result.result === "saved") {
-            basePreopUpdatedAtRef.current = result.response?.preopUpdatedAt ?? basePreopUpdatedAtRef.current
-            sectionSnapshots.confirm(caseIdRef.current, "preop", preopPayload)
             await clearLocalDraft()
             setDraftState("saved")
             // The section saved, but the server refused individual values (out of
@@ -505,7 +501,7 @@ export default function NewCaseScreen() {
             // clinician changes the value, so we don't re-queue.
             const rejected = result.response?.rejectedFields ?? []
             setSaveError(rejected.length ? rejectedFieldsMessage(rejected) : null)
-          } else if (result.result === "queued") {
+          } else if (result.result === "queued" || result.result === "failed") {
             setSaveError("Network error — patch queued")
             await persistLocalDraft(values)
             setDraftState("queued")
@@ -513,17 +509,11 @@ export default function NewCaseScreen() {
             setDraftState("idle")
           }
         } catch (error) {
-          if (error instanceof ApiError && error.status === 409) {
-            const sv = error.serverVersion as { updatedAt?: string } | undefined
-            if (sv?.updatedAt) basePreopUpdatedAtRef.current = sv.updatedAt
-          }
           if (error instanceof ApiError && error.status === 404 && caseIdRef.current) {
             caseIdRef.current = null
             setCaseId(null)
-            basePreopUpdatedAtRef.current = null
             const replacementId = await tryCreateServerCase(values)
             if (replacementId) {
-              sectionSnapshots.confirm(replacementId, "preop", buildPreopPayload(values))
               await clearLocalDraft()
               setDraftState("saved")
               return
@@ -810,34 +800,18 @@ export default function NewCaseScreen() {
       const preopPayload = buildPreopPayload(data)
       let id: string
       if (caseIdRef.current) {
-        // Case already created by autosave; do a final PATCH with complete data
-        const patchResult = await patchPreopServerCase(caseIdRef.current, preopPayload, basePreopUpdatedAtRef.current, apiFetch)
+        const patchResult = await autosaveManager.saveSection(caseIdRef.current, "preop", preopPayload, {
+          fullPayload: preopPayload,
+        })
         if (patchResult.result === "saved") {
-          basePreopUpdatedAtRef.current = patchResult.updatedAt ?? basePreopUpdatedAtRef.current
-          sectionSnapshots.confirm(caseIdRef.current, "preop", preopPayload)
           id = caseIdRef.current
-        } else if (patchResult.result === "not-found") {
-          caseIdRef.current = null
-          setCaseId(null)
-          basePreopUpdatedAtRef.current = null
-          const replacementId = await tryCreateServerCase(data)
-          if (replacementId) {
-            id = replacementId
-            await clearLocalDraft()
-            router.replace(`/(app)/cases/intraop/${id}`)
-            return
-          }
-          throw new Error("Save failed")
         } else {
-          if (patchResult.result === "unauthorized") {
-            await persistLocalDraft(getValues())
-            notify(
-              "Session expired",
-              "Your work has been saved locally. After logging in, return to this case to continue."
-            )
-            return
-          }
-          throw new Error(patchResult.message)
+          await persistLocalDraft(getValues())
+          notify(
+            "Save pending",
+            "Your work is saved on this device. Reconnect and try Continue again."
+          )
+          return
         }
       } else {
         // No server case yet (offline during autosave); create it now
@@ -847,7 +821,12 @@ export default function NewCaseScreen() {
         id = createResult.id
         caseIdRef.current = createResult.id
         setCaseId(createResult.id)
-        basePreopUpdatedAtRef.current = createResult.updatedAt
+        autosaveManager.hydrateSection(
+          createResult.id,
+          "preop",
+          preopPayload,
+          createResult.revision ?? createResult.updatedAt,
+        )
       }
       await clearLocalDraft()
       router.replace(`/(app)/cases/intraop/${id}`)

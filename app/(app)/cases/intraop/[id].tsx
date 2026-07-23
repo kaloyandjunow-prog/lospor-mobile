@@ -138,7 +138,6 @@ export default function IntraopLiveScreen() {
   const pendingSaveCountRef = useRef(0)
   const patchIntraopSection = useIntraopSectionPatch({
     caseId: id,
-    baseIntraopUpdatedAtRef,
     pendingSaveCountRef,
     setSyncState,
     setLastSavedAt,

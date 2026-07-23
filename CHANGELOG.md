@@ -1,5 +1,26 @@
 # Changelog - LOSPOR Mobile
 
+## [5.6.0] - 2026-07-23
+
+Autosave Manager implementation. Android `versionCode` is 22.
+
+### Added
+
+- Preop, intraop, and postop now share one durable save manager backed by
+  SecureStore. It owns ordering, revision tracking, offline replay, and status.
+- Intraoperative event edits and deletions are stored as targeted operations,
+  so offline removal cannot resurrect an older full timeline.
+- Reopening a case reapplies pending event edits/deletes before rendering.
+- Final submission and case finalization wait for queued work and refuse to
+  advance while changes remain unsynced.
+
+### Changed
+
+- Removed the obsolete direct preop PATCH, private section snapshot, and
+  whole-intraop-log save engines. Live clinical writes can no longer bypass the
+  shared manager.
+- App/package version set to `5.6.0`; shared Core dependency targets `v5.6.0`.
+
 ## [5.5.1] - 2026-07-23
 
 Auto-fill vitals correctness release. No new native modules; Android

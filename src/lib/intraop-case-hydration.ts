@@ -14,6 +14,7 @@ import { buildIntraopPreopSummary } from "@/lib/intraop-preop-summary"
 import { expandedVentilationPanelForModes } from "@/lib/airway-ventilation"
 import type { LogEvent } from "@/lib/intraop-log-event"
 import type { VascularEntry } from "@/lib/intraop-types"
+import type { EventMutation } from "@lospor/core/sync"
 
 function storedHHMM(raw: unknown): string | undefined {
   if (typeof raw !== "string" || !raw) return undefined
@@ -33,6 +34,7 @@ export function buildLoadedIntraopCaseState(
   pending: LogEvent[],
   monitoringOptions: MonitoringOption[],
   complicationItems: string[],
+  pendingMutations: EventMutation[] = [],
 ) {
   const caseTechniques: string[] = Array.isArray(data.intraop?.techniques) ? data.intraop.techniques as string[] : []
   const keyEvents = (data.intraop?.keyEvents ?? {}) as any
@@ -40,7 +42,17 @@ export function buildLoadedIntraopCaseState(
   const startHHMM = hhmmFromStoredTime(data.intraop?.startTime)
   const webStartRef = startHHMM ? caseDateForHHMM(startHHMM) : null
   const webRaw = serverRaw.length === 0 && webStartRef ? webTimetableToLog(keyEvents, roundDown5Min(webStartRef)) : []
-  const rawLog = mergeLogWithPendingIntraopEvents(serverRaw.length > 0 ? serverRaw : webRaw, pending)
+  let rawLog = mergeLogWithPendingIntraopEvents(serverRaw.length > 0 ? serverRaw : webRaw, pending)
+  // Reapply durable edits/deletes before rendering after a restart. Otherwise
+  // an offline deletion briefly resurrects from the server snapshot.
+  for (const operation of pendingMutations) {
+    if (operation.kind === "event.delete") {
+      rawLog = rawLog.filter((event) => event.id !== operation.eventId)
+    } else {
+      const event = operation.event as LogEvent
+      rawLog = [event, ...rawLog.filter((item) => item.id !== operation.eventId)]
+    }
+  }
   const loadedTimetable = loadedTimetableStateFromLog(rawLog)
 
   const ventilationModes = Array.isArray(data.intraop?.ventilationModes)
@@ -55,6 +67,7 @@ export function buildLoadedIntraopCaseState(
     rawLog,
     legacyWebLogNeedsSync: serverRaw.length === 0 && webRaw.length > 0,
     baseIntraopUpdatedAt: data.intraop?.updatedAt ?? data.intraopUpdatedAt,
+    baseIntraopRevision: data.intraop?.syncRevision ?? data.intraopRevision,
     caseInfo: {
       caseCode: data.caseCode,
       procedure: data.preop?.plannedProcedure,

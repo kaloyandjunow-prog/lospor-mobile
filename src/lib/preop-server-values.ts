@@ -30,6 +30,7 @@ export type ServerPreop = ServerPreopFormBase & {
   height?: number
   difficultAirway?: boolean
   updatedAt?: string
+  syncRevision?: number
 }
 
 export function commaToTags(value: unknown): Tag[] {

@@ -1,141 +1,91 @@
-// Thin adapter over the shared offline outbox in @lospor/core/sync.
-// Storage: expo-secure-store. Transport: apiFetch PATCH with per-section
-// conflict headers. Historical function names and storage keys are preserved
-// so callers and devices with queued data are unaffected.
-import * as SecureStore from "expo-secure-store"
-import { ApiError, apiFetch } from "./api"
-import { enqueueIntraopCaseWrite } from "@/lib/intraop-write-queue"
+// Compatibility facade for existing screens. The v5.6 Autosave Manager owns
+// the durable outbox, revisions, ordering, and replay; callers keep the old
+// function names while no longer creating their own save pipeline.
 import {
-  createCaseOutbox,
-  SECTION_CONFLICT_HEADER,
   type BaseUpdatedAtInput,
   type CasePatchResponse,
   type CasePatchResult,
   type CaseSection,
-  type KVAdapter,
   type OutboxSummary,
-  type PatchFailure,
+  type SectionRevision,
 } from "@lospor/core/sync"
+
+import { autosaveManager } from "./autosave-manager"
 
 export type CasePatchSection = CaseSection
 export type { CasePatchResult, CasePatchResponse }
 export type QueueSummary = OutboxSummary
 
-const kv: KVAdapter = {
-  get: (key) => SecureStore.getItemAsync(key),
-  set: (key, value) => SecureStore.setItemAsync(key, value),
-  delete: (key) => SecureStore.deleteItemAsync(key),
+function resolveRevision(input?: BaseUpdatedAtInput): SectionRevision | undefined {
+  return typeof input === "function" ? input() : input
 }
-
-async function patchCase(
-  caseId: string,
-  section: CaseSection,
-  payload: unknown,
-  baseUpdatedAt?: string | null,
-): Promise<CasePatchResponse> {
-  // No idempotency key here, unlike the event POSTs: this PATCH replaces the
-  // whole section with the latest local payload, so a retried/replayed
-  // request converges to the same end state. The conflict header below is the
-  // stale-write guard, not a dedup key.
-  const res = await apiFetch(`/api/cases/${caseId}`, {
-    method: "PATCH",
-    headers: baseUpdatedAt ? { [SECTION_CONFLICT_HEADER[section]]: baseUpdatedAt } : undefined,
-    body: JSON.stringify({ [section]: payload }),
-  })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new ApiError(body.error ?? "Save failed", res.status, undefined, body.serverVersion)
-  }
-  return res.json().catch(() => ({}))
-}
-
-function classifyError(err: unknown): PatchFailure {
-  // Raw fetch throws TypeError offline; apiJson-level helpers throw
-  // ApiError(code "NETWORK"). Both mean "no connectivity — queue it".
-  if (err instanceof TypeError) return { kind: "network" }
-  if (err instanceof ApiError) {
-    if (err.code === "NETWORK") return { kind: "network" }
-    // Surface the server timestamp on conflicts so the flush can self-heal
-    // once instead of replaying the same stale base forever.
-    const serverUpdatedAt = typeof (err.serverVersion as { updatedAt?: unknown } | undefined)?.updatedAt === "string"
-      ? (err.serverVersion as { updatedAt: string }).updatedAt
-      : undefined
-    return { kind: "http", status: err.status, serverUpdatedAt }
-  }
-  return { kind: "other" }
-}
-
-const outbox = createCaseOutbox({
-  kv,
-  sendPatch: patchCase,
-  classifyError,
-  // Intraop patches share the per-case write queue with event saves so a
-  // section patch can never interleave with an in-flight event write.
-  orderWrite: (caseId, section, run) =>
-    section === "intraop" ? enqueueIntraopCaseWrite(caseId, run) : run(),
-})
 
 export function getQueuedCasePatchSummary(): Promise<QueueSummary> {
-  return outbox.summary()
+  return autosaveManager.outbox.summary()
 }
 
-/** Returns the list of case IDs that have at least one queued offline patch. */
 export function getQueuedCaseIds(): Promise<string[]> {
-  return outbox.queuedCaseIds()
+  return autosaveManager.outbox.queuedCaseIds()
 }
 
 export function clearAllQueuedCasePatches(): Promise<number> {
-  return outbox.clearAll()
+  return autosaveManager.outbox.clearAll()
 }
 
-export function queueCasePatch(
+export async function queueCasePatch(
   caseId: string,
   section: CasePatchSection,
   payload: unknown,
-  baseUpdatedAt?: string | null,
+  baseUpdatedAt?: BaseUpdatedAtInput,
 ): Promise<void> {
-  return outbox.queue(caseId, section, payload, baseUpdatedAt)
+  const revision = resolveRevision(baseUpdatedAt)
+  if (revision != null) autosaveManager.setRevision(caseId, section, revision)
+  await autosaveManager.outbox.queue(caseId, section, payload, revision)
 }
 
-/**
- * Reconcile the queue index against actual SecureStore contents. Call once at
- * app startup so a crash mid-write cannot leave the queue inconsistent.
- */
 export function reconcileQueue(): Promise<void> {
-  return outbox.reconcile()
+  return autosaveManager.outbox.reconcile()
 }
 
 export function clearQueuedCasePatch(caseId: string, section: CasePatchSection): Promise<void> {
-  return outbox.clearOne(caseId, section)
+  return autosaveManager.outbox.clearOne(caseId, section)
 }
 
-/** Remove all queued patches for a case (call after the case is deleted). */
 export function clearAllQueuedPatchesForCase(caseId: string): Promise<void> {
-  return outbox.clearAllForCase(caseId)
+  return autosaveManager.discardCase(caseId)
 }
 
-export function loadQueuedCasePatch<T = unknown>(caseId: string, section: CasePatchSection): Promise<T | null> {
-  return outbox.load<T>(caseId, section)
+export function loadQueuedCasePatch<T = unknown>(
+  caseId: string,
+  section: CasePatchSection,
+): Promise<T | null> {
+  return autosaveManager.outbox.load<T>(caseId, section)
 }
 
-export function saveCasePatchWithQueue(
+export async function saveCasePatchWithQueue(
   caseId: string,
   section: CasePatchSection,
   payload: unknown,
-  // A thunk base is resolved inside the write queue right before the request
-  // goes out — rapid successive saves then carry the freshest timestamp.
   baseUpdatedAt?: BaseUpdatedAtInput,
 ): Promise<{ result: CasePatchResult; response?: CasePatchResponse }> {
-  return outbox.save(caseId, section, payload, baseUpdatedAt)
+  const revision = resolveRevision(baseUpdatedAt)
+  if (revision != null) autosaveManager.setRevision(caseId, section, revision)
+  return autosaveManager.saveSection(caseId, section, payload as Record<string, unknown>, {
+    partial: true,
+  })
 }
 
 export function flushQueuedCasePatch(
   caseId: string,
   section: CasePatchSection,
 ): Promise<{ result: CasePatchResult; response?: CasePatchResponse }> {
-  return outbox.flushOne(caseId, section)
+  return autosaveManager.outbox.flushOne(caseId, section)
 }
 
-export function flushAllQueuedCasePatches(): Promise<{ saved: number; failed: number; discarded: number }> {
-  return outbox.flushAll()
+export async function flushAllQueuedCasePatches(): Promise<{
+  saved: number
+  failed: number
+  discarded: number
+}> {
+  return autosaveManager.outbox.flushAll()
 }

@@ -1,26 +1,20 @@
-import { useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react"
 import * as Haptics from "expo-haptics"
+import { useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react"
 
-import { apiFetch } from "@/lib/api"
-import { notify } from "@/lib/notify"
 import type { TimetableData } from "@/components/IntraopTimetable"
-import { createSingleFlightQueue } from "@/lib/single-flight-queue"
-import {
-  eventsToTimetable,
-  roundDown5Min,
-} from "@/lib/intraop-projection"
-import { putFullIntraopLogWithConflictRetry } from "@/lib/intraop-event-sync"
+import { autosaveManager } from "@/lib/autosave-manager"
+import { eventsToTimetable, roundDown5Min } from "@/lib/intraop-projection"
 import {
   loadPendingIntraopEvents,
   markIntraopEventFailed,
   markIntraopEventSynced,
-  prependPendingIntraopEvent,
   removePendingIntraopEvent,
   serializeIntraopEventForServer,
   stripIntraopLogSyncStatuses,
   storePendingIntraopEvents,
 } from "@/lib/pending-intraop-events"
 import { uid, type LogEvent } from "@/lib/intraop-log-event"
+import { notify } from "@/lib/notify"
 
 type SyncState = "saved" | "saving" | "failed" | "offline"
 
@@ -43,6 +37,10 @@ type UseIntraopEventPersistenceArgs = {
   noteVitalsRef: MutableRefObject<() => void>
 }
 
+function sameEvent(a: LogEvent, b: LogEvent): boolean {
+  return JSON.stringify(serializeIntraopEventForServer(a)) === JSON.stringify(serializeIntraopEventForServer(b))
+}
+
 export function useIntraopEventPersistence({
   caseId,
   entryTs,
@@ -52,7 +50,7 @@ export function useIntraopEventPersistence({
   startRef,
   legacyWebLogNeedsSyncRef,
   baseIntraopUpdatedAtRef,
-  enqueueEventSave,
+  enqueueEventSave: _enqueueEventSave,
   setLog,
   setTimetable,
   setElapsedMs,
@@ -62,194 +60,170 @@ export function useIntraopEventPersistence({
   noteVitalsRef,
 }: UseIntraopEventPersistenceArgs) {
   const [undoEv, setUndoEv] = useState<LogEvent | null>(null)
-  // A queue dedicated to the local SecureStore pending-events cache, separate
-  // from enqueueEventSave (which serializes network POST/PUT/retry work).
-  // v4.1.1 routed the local read-modify-write through the SAME queue as the
-  // network calls to fix a lost-update race — but that queue is a strict
-  // FIFO, so every local bookkeeping step then had to wait behind whatever
-  // network call was currently in flight, including a slow/hung one. That
-  // made every action (even a pure local "stop") feel stuck behind
-  // whatever request happened to be running. A separate queue keeps local
-  // writes serialized against each other without coupling their latency to
-  // the network.
-  const pendingStoreQueueRef = useRef(createSingleFlightQueue())
 
-  async function save(partial: Omit<LogEvent, "id" | "ts">, tsOverride?: string, silent = false): Promise<LogEvent> {
-    const ev: LogEvent = { id: uid(), ts: tsOverride ?? entryTs ?? new Date().toISOString(), syncStatus: "pending", ...partial }
-    const newLog = [ev, ...logRef.current]
-    logRef.current = newLog
-    setLog(newLog)
+  function seedLegacyRevision(): void {
+    if (
+      autosaveManager.getRevision(caseId, "intraop") == null &&
+      baseIntraopUpdatedAtRef.current
+    ) {
+      autosaveManager.setRevision(caseId, "intraop", baseIntraopUpdatedAtRef.current)
+    }
+  }
+
+  async function updateVisibleSyncState(silent = false): Promise<boolean> {
+    const pending = await loadPendingIntraopEvents<LogEvent>(caseId)
+    const mutations = await autosaveManager.eventMutations.load(caseId)
+    const state = autosaveManager.getState(caseId)
+    const pendingCount = pending.length + mutations.length
+    setPendingCount(pendingCount)
+    const saved = pendingCount === 0 && state.status !== "failed"
+    setSyncState(saved ? "saved" : state.status === "queued" ? "offline" : "failed")
+    if (saved) {
+      setLastSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+      setLog((current) => stripIntraopLogSyncStatuses(current) as LogEvent[])
+      if (!silent) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
+    }
+    return saved
+  }
+
+  async function migrateLegacyLog(events: LogEvent[]): Promise<void> {
+    if (!legacyWebLogNeedsSyncRef.current) return
+    for (const event of [...events].reverse()) {
+      await autosaveManager.stageEventMutation({
+        operationId: uid(),
+        caseId,
+        kind: "event.upsert",
+        eventId: event.id,
+        event: serializeIntraopEventForServer(event) as Record<string, unknown>,
+        baseRevision: autosaveManager.getRevision(caseId, "intraop"),
+        queuedAt: new Date().toISOString(),
+      })
+    }
+    legacyWebLogNeedsSyncRef.current = false
+  }
+
+  async function save(
+    partial: Omit<LogEvent, "id" | "ts">,
+    tsOverride?: string,
+    silent = false,
+  ): Promise<LogEvent> {
+    seedLegacyRevision()
+    const event: LogEvent = {
+      id: uid(),
+      ts: tsOverride ?? entryTs ?? new Date().toISOString(),
+      syncStatus: "pending",
+      ...partial,
+    }
+    const next = [event, ...logRef.current]
+    logRef.current = next
+    setLog(next)
     setSyncState("saving")
-    const pendingCountAfterAdd = await pendingStoreQueueRef.current.enqueue(async () => {
-      const pending = await loadPendingIntraopEvents<LogEvent>(caseId)
-      await storePendingIntraopEvents(caseId, prependPendingIntraopEvent(pending, ev))
-      return pending.length + 1
-    })
-    setPendingCount(pendingCountAfterAdd)
+
     if (!startRef.current) {
-      startRef.current = new Date(ev.ts)
+      startRef.current = new Date(event.ts)
       setElapsedMs(0)
     }
-    setTimetable(eventsToTimetable(newLog, roundDown5Min(startRef.current!), new Date()))
+    setTimetable(eventsToTimetable(next, roundDown5Min(startRef.current), new Date()))
+
     try {
-      await enqueueEventSave(async () => {
-        if (legacyWebLogNeedsSyncRef.current) {
-          await putFullIntraopLogWithConflictRetry(caseId, newLog, baseIntraopUpdatedAtRef)
-          legacyWebLogNeedsSyncRef.current = false
-        } else {
-          const res = await apiFetch(`/api/cases/${caseId}/events`, {
-            method: "POST",
-            headers: {
-              "X-Idempotency-Key": `${caseId}:${ev.id}`,
-              "X-Lospor-Source": "mobile",
-            },
-            body: JSON.stringify(serializeIntraopEventForServer(ev)),
-          })
-          if (!res.ok) throw new Error()
-          const body = await res.json().catch(() => ({}))
-          baseIntraopUpdatedAtRef.current = body?.intraopUpdatedAt ?? baseIntraopUpdatedAtRef.current
-        }
-        const remainingCount = await pendingStoreQueueRef.current.enqueue(async () => {
-          const remaining = removePendingIntraopEvent(await loadPendingIntraopEvents<LogEvent>(caseId), ev.id)
-          await storePendingIntraopEvents(caseId, remaining)
-          return remaining.length
-        })
-        setPendingCount(remainingCount)
-        setLog(prev => markIntraopEventSynced(prev, ev.id) as LogEvent[])
-      })
-      setLastSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
-      const stillPendingCount = await pendingStoreQueueRef.current.enqueue(async () => (await loadPendingIntraopEvents<LogEvent>(caseId)).length)
-      setSyncState(stillPendingCount > 0 ? "failed" : "saved")
+      await migrateLegacyLog(next)
+      await autosaveManager.appendEvent(caseId, event)
+      const saved = await updateVisibleSyncState(silent)
+      setLog((current) => saved
+        ? markIntraopEventSynced(current, event.id) as LogEvent[]
+        : markIntraopEventFailed(current, event.id) as LogEvent[])
       if (!silent) {
-        setUndoEv(serializeIntraopEventForServer(ev) as LogEvent)
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
-        if (ev.type === "vital") noteVitalsRef.current()
+        setUndoEv(saved ? serializeIntraopEventForServer(event) as LogEvent : { ...event, syncStatus: "failed" })
+        if (event.type === "vital") noteVitalsRef.current()
       }
     } catch {
-      setLog(prev => markIntraopEventFailed(prev, ev.id) as LogEvent[])
+      setLog((current) => markIntraopEventFailed(current, event.id) as LogEvent[])
       setSyncState("failed")
-      if (!silent) setUndoEv({ ...ev, syncStatus: "failed" })
-      if (!silent) notify("Saved locally", "Network save failed. The event is still visible and will retry from this screen.")
+      if (!silent) {
+        setUndoEv({ ...event, syncStatus: "failed" })
+        notify("Saved locally", "The event is still on this device and will retry automatically.")
+      }
     }
     setEntryTs(null)
-    return ev
+    return event
   }
 
   async function syncLog(newLog: LogEvent[]) {
+    seedLegacyRevision()
+    const previousLog = log
     logRef.current = newLog
     setLog(newLog)
-    if (startRef.current) setTimetable(eventsToTimetable(newLog, roundDown5Min(startRef.current), new Date()))
+    if (startRef.current) {
+      setTimetable(eventsToTimetable(newLog, roundDown5Min(startRef.current), new Date()))
+    }
     setSyncState("saving")
+
     try {
-      await enqueueEventSave(async () => {
-        await putFullIntraopLogWithConflictRetry(caseId, newLog, baseIntraopUpdatedAtRef)
-        legacyWebLogNeedsSyncRef.current = false
-        await pendingStoreQueueRef.current.enqueue(() => storePendingIntraopEvents(caseId, []))
-        setPendingCount(0)
-        setLog(prev => stripIntraopLogSyncStatuses(prev) as LogEvent[])
-      })
-      setLastSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
-      setSyncState("saved")
+      const previousById = new Map(previousLog.map((event) => [event.id, event]))
+      const nextById = new Map(newLog.map((event) => [event.id, event]))
+
+      for (const event of newLog) {
+        const previous = previousById.get(event.id)
+        if (previous && sameEvent(previous, event)) continue
+        await autosaveManager.stageEventMutation({
+          operationId: uid(),
+          caseId,
+          kind: "event.upsert",
+          eventId: event.id,
+          event: serializeIntraopEventForServer(event) as Record<string, unknown>,
+          baseRevision: autosaveManager.getRevision(caseId, "intraop"),
+          queuedAt: new Date().toISOString(),
+        })
+      }
+      for (const event of previousLog) {
+        if (nextById.has(event.id)) continue
+        await autosaveManager.stageEventMutation({
+          operationId: uid(),
+          caseId,
+          kind: "event.delete",
+          eventId: event.id,
+          baseRevision: autosaveManager.getRevision(caseId, "intraop"),
+          queuedAt: new Date().toISOString(),
+        })
+      }
+      legacyWebLogNeedsSyncRef.current = false
+      const saved = await updateVisibleSyncState()
+      if (!saved) notify("Saved locally", "The change will sync when the connection is available.")
     } catch {
       setSyncState("failed")
-      notify("Sync error", "Could not save change. Reload to restore.")
+      notify("Saved locally", "The change is still on this device and will retry automatically.")
     }
   }
 
   async function retryPendingEvents() {
-    const pending = await pendingStoreQueueRef.current.enqueue(() => loadPendingIntraopEvents<LogEvent>(caseId))
-    if (pending.length === 0) {
-      if (legacyWebLogNeedsSyncRef.current) {
-        setSyncState("saving")
-        try {
-          await enqueueEventSave(async () => {
-            await putFullIntraopLogWithConflictRetry(caseId, logRef.current, baseIntraopUpdatedAtRef)
-            legacyWebLogNeedsSyncRef.current = false
-            setPendingCount(0)
-            setLog(prev => stripIntraopLogSyncStatuses(prev) as LogEvent[])
-          })
-          setLastSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
-          setSyncState("saved")
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
-          return
-        } catch {
-          setSyncState("failed")
-          notify("Still offline", "The reconstructed web timeline could not sync.")
-          return
-        }
-      }
-      setPendingCount(0)
-      setSyncState("saved")
-      return
-    }
-
+    seedLegacyRevision()
     setSyncState("saving")
-    if (legacyWebLogNeedsSyncRef.current) {
-      try {
-        await enqueueEventSave(async () => {
-          await putFullIntraopLogWithConflictRetry(caseId, logRef.current, baseIntraopUpdatedAtRef)
-          legacyWebLogNeedsSyncRef.current = false
-          await pendingStoreQueueRef.current.enqueue(() => storePendingIntraopEvents(caseId, []))
-          setPendingCount(0)
-          setLog(prev => stripIntraopLogSyncStatuses(prev) as LogEvent[])
-        })
-        setLastSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
-        setSyncState("saved")
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
-        return
-      } catch {
-        setSyncState("failed")
-        notify("Still offline", `${pending.length} event${pending.length === 1 ? "" : "s"} could not sync.`)
-        return
+    try {
+      await migrateLegacyLog(logRef.current)
+      await autosaveManager.flushCase(caseId)
+      const saved = await updateVisibleSyncState()
+      if (!saved) {
+        const pending = await loadPendingIntraopEvents<LogEvent>(caseId)
+        notify("Still offline", `${pending.length} event${pending.length === 1 ? "" : "s"} still waiting.`)
       }
-    }
-
-    const failed: LogEvent[] = []
-    for (const ev of [...pending].reverse()) {
-      try {
-        await enqueueEventSave(async () => {
-          const res = await apiFetch(`/api/cases/${caseId}/events`, {
-            method: "POST",
-            headers: {
-              "X-Idempotency-Key": `${caseId}:${ev.id}`,
-              "X-Lospor-Source": "mobile",
-            },
-            body: JSON.stringify(serializeIntraopEventForServer(ev)),
-          })
-          if (!res.ok) throw new Error()
-          const body = await res.json().catch(() => ({}))
-          baseIntraopUpdatedAtRef.current = body?.intraopUpdatedAt ?? baseIntraopUpdatedAtRef.current
-          setLog(prev => markIntraopEventSynced(prev, ev.id) as LogEvent[])
-        })
-      } catch {
-        failed.push({ ...ev, syncStatus: "failed" })
-      }
-    }
-
-    await pendingStoreQueueRef.current.enqueue(() => storePendingIntraopEvents(caseId, failed))
-    setPendingCount(failed.length)
-    if (failed.length === 0) {
-      setLastSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
-      setSyncState("saved")
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
-    } else {
+    } catch {
       setSyncState("failed")
-      notify("Still offline", `${failed.length} event${failed.length === 1 ? "" : "s"} could not sync.`)
+      notify("Still offline", "Changes remain safely stored on this device.")
     }
   }
 
-  async function removeEvent(ev: LogEvent, sync = true) {
-    const next = log.filter(x => x.id !== ev.id)
-    const remainingCount = await pendingStoreQueueRef.current.enqueue(async () => {
-      const remainingPending = removePendingIntraopEvent(await loadPendingIntraopEvents<LogEvent>(caseId), ev.id)
-      await storePendingIntraopEvents(caseId, remainingPending)
-      return remainingPending.length
-    })
-    setPendingCount(remainingCount)
+  async function removeEvent(event: LogEvent, sync = true) {
+    const next = log.filter((item) => item.id !== event.id)
+    const remainingPending = removePendingIntraopEvent(
+      await loadPendingIntraopEvents<LogEvent>(caseId),
+      event.id,
+    )
+    await storePendingIntraopEvents(caseId, remainingPending)
+    setPendingCount(remainingPending.length)
     setLog(next)
     if (startRef.current) setTimetable(eventsToTimetable(next, roundDown5Min(startRef.current)))
-    if (sync && !ev.syncStatus) await syncLog(next)
-    else setSyncState(remainingCount > 0 ? "failed" : "saved")
+    if (sync && !event.syncStatus) await syncLog(next)
+    else setSyncState(remainingPending.length > 0 ? "failed" : "saved")
   }
 
   async function undoLastEvent() {

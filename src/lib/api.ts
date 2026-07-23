@@ -1,5 +1,4 @@
 import * as SecureStore from "expo-secure-store"
-import { clearLocalClinicalCache } from "./local-clinical-cache"
 
 export const API_BASE = (process.env.EXPO_PUBLIC_API_BASE ?? "https://app.lospor.org").replace(/\/$/, "")
 
@@ -211,6 +210,7 @@ export async function logout(): Promise<void> {
   } catch {
     /* offline or server unreachable — local clear below still logs the user out */
   }
+  const { clearLocalClinicalCache } = await import("./local-clinical-cache")
   await clearLocalClinicalCache().catch(() => {})
   await clearToken()
 }

@@ -7,6 +7,7 @@ type PostPreopServerCaseSuccess = {
   ok: true
   id: string
   updatedAt: string | null
+  revision: number | null
 }
 
 type PostPreopServerCaseFailure = {
@@ -45,7 +46,12 @@ export async function postPreopServerCase(
 
     const json = await res.json()
     const updatedAt = json.preopUpdatedAt ?? json.preop?.updatedAt ?? json.updatedAt ?? null
-    return { ok: true, id: json.id, updatedAt }
+    const revision = typeof json.preopRevision === "number"
+      ? json.preopRevision
+      : typeof json.preop?.syncRevision === "number"
+        ? json.preop.syncRevision
+        : null
+    return { ok: true, id: json.id, updatedAt, revision }
   } catch (error) {
     return {
       ok: false,

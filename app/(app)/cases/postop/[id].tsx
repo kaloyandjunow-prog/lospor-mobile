@@ -4,12 +4,12 @@ import {
   ActivityIndicator, Switch, KeyboardAvoidingView, Platform,
 } from "react-native"
 import { useLocalSearchParams, useRouter, Stack } from "expo-router"
-import { notify, confirmAction } from "@/lib/notify"
+import { notify } from "@/lib/notify"
 import { useForm, Controller, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { ApiError, apiJson } from "@/lib/api"
-import { flushQueuedCasePatch, saveCasePatchWithQueue, type CasePatchResponse, type CasePatchResult } from "@/lib/offline-case-patches"
-import { sectionSnapshots } from "@/lib/section-snapshots"
+import { apiJson } from "@/lib/api"
+import type { CasePatchResponse, CasePatchResult } from "@/lib/offline-case-patches"
+import { autosaveManager } from "@/lib/autosave-manager"
 import { useLiveRefresh } from "@/lib/use-live-refresh"
 import { ScreenState } from "@/components/clinical-ui"
 import { AppHeader } from "@/components/AppHeader"
@@ -26,7 +26,7 @@ import { DispositionPicker, Field, HandoverChecklist, NRSRow, RecoverySummary, S
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
-type AutosaveState = "idle" | "saving" | "saved" | "queued" | "conflict" | "error"
+type AutosaveState = "idle" | "saving" | "saved" | "queued" | "error"
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -51,7 +51,6 @@ export default function PostopFormScreen() {
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const lastSavedJsonRef = useRef("")
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const baseUpdatedAtRef = useRef<string | null>(null)
 
   // ─── ALDRETE_CRITERIA defined inside component so it can use tc() ──────────
   const ALDRETE_CRITERIA: {
@@ -140,6 +139,7 @@ export default function PostopFormScreen() {
     spO2Score?: number
     temperaturePostop?: number
     updatedAt?: string
+    syncRevision?: number
   }
   type CaseResponse = { postop?: PostopRecord; finalizedAt?: string | null; status?: string }
 
@@ -190,7 +190,6 @@ export default function PostopFormScreen() {
 
   const markSaveResult = useCallback((result: CasePatchResult, response?: CasePatchResponse) => {
     if (result === "saved") {
-      baseUpdatedAtRef.current = response?.postopUpdatedAt ?? baseUpdatedAtRef.current
       setLastSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
       setAutosaveState("saved")
       // The section saved, but the server refused individual values as out of
@@ -217,62 +216,28 @@ export default function PostopFormScreen() {
     }
   }, [tc])
 
-  const persistPostop = useCallback(async (data: FormData, force = false): Promise<CasePatchResult> => {
+  const persistPostop = useCallback(async (data: FormData): Promise<CasePatchResult> => {
     const payload = payloadFrom(data)
-    // Field-level saves: PATCH only what changed since the last confirmed
-    // save; a forced overwrite (conflict resolution) always sends everything.
-    const body = force ? payload : sectionSnapshots.diff(id, "postop", payload as Record<string, unknown>) ?? {}
-    if (!force && Object.keys(body).length === 0) {
-      lastSavedJsonRef.current = JSON.stringify(payload)
-      markSaveResult("saved")
-      return "saved"
-    }
-    const { result, response } = await saveCasePatchWithQueue(id, "postop", body, force ? null : baseUpdatedAtRef.current)
-    if (result === "saved") sectionSnapshots.confirm(id, "postop", payload as Record<string, unknown>)
+    const { result, response } = await autosaveManager.saveSection(
+      id,
+      "postop",
+      payload as Record<string, unknown>,
+      { fullPayload: payload as Record<string, unknown> },
+    )
     lastSavedJsonRef.current = JSON.stringify(payload)
     markSaveResult(result, response)
     return result
   }, [id, markSaveResult, payloadFrom])
 
-  function overwriteWithMine() {
-    void confirmAction(t("overwriteNewerTitle"), t("overwriteNewerMsg"), { destructive: true, confirmLabel: t("overwrite"), cancelLabel: tc("cancelLabel") })
-      .then(async ok => {
-        if (!ok) return
-        setAutosaveState("saving")
-        try {
-          await persistPostop(postopFormSchema.parse(getValues()), true)
-        } catch (err) {
-          notify(tc("errorLabel"), err instanceof Error ? err.message : t("couldNotOverwrite"))
-          setAutosaveState("conflict")
-        }
-      })
-  }
-
-  async function reloadLatest() {
-    setLoading(true)
-    try {
-      const c = await apiJson<CaseResponse>(`/api/cases/${id}`)
-      const p = c.postop ?? {}
-      const nextValues = valuesFromPostop(p)
-      baseUpdatedAtRef.current = p.updatedAt ?? null
-      lastSavedJsonRef.current = JSON.stringify(payloadFrom(nextValues))
-      // Server state just loaded — future autosaves diff against it.
-      sectionSnapshots.confirm(id, "postop", payloadFrom(nextValues) as Record<string, unknown>)
-      reset(nextValues)
-      setAutosaveState("saved")
-    } catch (err) {
-      notify(tc("errorLabel"), err instanceof Error ? err.message : t("couldNotReload"))
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
-    apiJson<CaseResponse>(`/api/cases/${id}`)
+    // Drain a durable local change before hydrating the form so a stale server
+    // snapshot cannot overwrite work recovered after an app restart.
+    autosaveManager.flushCase(id).catch(() => {}).then(() =>
+      apiJson<CaseResponse>(`/api/cases/${id}`)
+    )
       .then(async (c) => {
         const p = c.postop ?? {}
         const nextValues = valuesFromPostop(p)
-        baseUpdatedAtRef.current = p.updatedAt ?? null
         lastSavedJsonRef.current = JSON.stringify(payloadFrom(nextValues))
         // Pre-populate dispositionNotes with continued-postop items if field is empty
         if (continuedItems && !nextValues.dispositionNotes) {
@@ -281,11 +246,16 @@ export default function PostopFormScreen() {
             nextValues.dispositionNotes = t("continuedPostop") + " " + itemList.join(", ")
           }
         }
+        autosaveManager.hydrateSection(
+          id,
+          "postop",
+          payloadFrom(nextValues) as Record<string, unknown>,
+          p.syncRevision ?? p.updatedAt ?? null,
+        )
         reset(nextValues)
         setFinalizedAt(c.finalizedAt ?? null)
         setCaseStatus(c.status ?? null)
-        const queued = await flushQueuedCasePatch(id, "postop")
-        markSaveResult(queued.result === "empty" ? "saved" : queued.result, queued.response)
+        markSaveResult("saved")
       })
       .catch((err: Error) => notify(tc("errorLabel"), err.message))
       .finally(() => setLoading(false))
@@ -307,12 +277,8 @@ export default function PostopFormScreen() {
       try {
         await persistPostop(parsed.data)
       } catch (err) {
-        if (err instanceof ApiError && err.status >= 400 && err.status < 500 && err.status !== 409) {
-          setAutosaveErrMsg(err.message)
-        } else {
-          setAutosaveErrMsg(null)
-        }
-        setAutosaveState(err instanceof ApiError && err.status === 409 ? "conflict" : "error")
+        setAutosaveErrMsg(err instanceof Error ? err.message : null)
+        setAutosaveState("error")
       }
     }, 900)
 
@@ -322,8 +288,8 @@ export default function PostopFormScreen() {
   }, [formValues, getValues, loading, persistPostop, payloadFrom])
 
   useLiveRefresh(async () => {
-    const result = await flushQueuedCasePatch(id, "postop")
-    if (result.result === "saved") markSaveResult(result.result, result.response)
+    await autosaveManager.flushCase(id)
+    if (autosaveManager.getState(id).pending === 0) markSaveResult("saved")
   }, { enabled: !loading && autosaveState === "queued", intervalMs: 10_000 })
 
   async function onSubmit(data: FormData) {
@@ -376,36 +342,17 @@ export default function PostopFormScreen() {
             pain={painScoreNRS}
             ponv={ponv}
           />
-          <Text style={{ color: autosaveState === "error" || autosaveState === "conflict" ? colors.danger : autosaveState === "queued" ? colors.warning : colors.textMuted, fontSize: 12, fontWeight: "800", marginTop: 2, marginBottom: 4, textAlign: "right" }}>
+          <Text style={{ color: autosaveState === "error" ? colors.danger : autosaveState === "queued" ? colors.warning : colors.textMuted, fontSize: 12, fontWeight: "800", marginTop: 2, marginBottom: 4, textAlign: "right" }}>
             {autosaveState === "saving"
               ? tc("autosaveSaving")
               : autosaveState === "queued"
               ? tc("autosaveQueued")
-              : autosaveState === "conflict"
-              ? tc("autosaveConflict")
               : autosaveState === "error"
               ? (autosaveErrMsg ?? tc("autosaveError"))
               : lastSavedAt
               ? `${t("savedAt")} ${lastSavedAt}`
               : tc("autosaveReady")}
           </Text>
-          {autosaveState === "conflict" ? (
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8, marginBottom: 8 }}>
-              <TouchableOpacity
-                onPress={reloadLatest}
-                style={{ borderRadius: 10, borderWidth: 1, borderColor: colors.danger, paddingHorizontal: 12, paddingVertical: 8 }}
-              >
-                <Text style={{ color: colors.danger, fontSize: 12, fontWeight: "900" }}>{tc("reloadLatest")}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={overwriteWithMine}
-                style={{ borderRadius: 10, borderWidth: 1, borderColor: colors.danger, backgroundColor: withAlpha(colors.danger, "18"), paddingHorizontal: 12, paddingVertical: 8 }}
-              >
-                <Text style={{ color: colors.danger, fontSize: 12, fontWeight: "900" }}>{tc("overwriteMine")}</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
-
           {/* ── Modified Aldrete Score ─────────────────────────────── */}
           <SectionHeader title={tc("aldreteScore")} />
 

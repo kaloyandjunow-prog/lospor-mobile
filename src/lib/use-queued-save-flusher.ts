@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef } from "react"
 import { AppState } from "react-native"
 import { createBackoffPolicy } from "@lospor/core/sync"
-import { flushAllQueuedCasePatches, getQueuedCasePatchSummary, reconcileQueue } from "./offline-case-patches"
-import { flushPendingIntraopEvents } from "./pending-intraop-events"
+import { getQueuedCasePatchSummary } from "./offline-case-patches"
+import { autosaveManager } from "./autosave-manager"
 import { getAllLocalCaseDrafts, deleteLocalCaseDraft } from "./local-case-store"
 import { buildPreopPayload } from "./preop-payload"
 import { apiFetch } from "./api"
@@ -50,20 +50,13 @@ export function useQueuedSaveFlusher(enabled: boolean, onChange?: (count: number
   const flush = useCallback(async () => {
     if (!enabled) return
     if (Date.now() < nextAllowedAtRef.current) return // inside a backoff window
-    // Repair the queue index once at startup (crash-recovery: removes orphan entries)
-    if (!reconciledRef.current) {
-      reconciledRef.current = true
-      await reconcileQueue()
-    }
+    if (!reconciledRef.current) reconciledRef.current = true
     // Flush local-first offline case drafts (initial creation failed while offline)
     await flushLocalCaseDrafts()
-    // Flush queued patches for existing server cases
-    const patches = await flushAllQueuedCasePatches()
-    // Replay any intraop events captured offline (idempotent server-side)
-    const events = await flushPendingIntraopEvents()
-    const outcome =
-      patches.failed + events.failed > 0 ? "failed" :
-      patches.saved + events.saved > 0 ? "ok" : "idle"
+    const before = await getQueuedCasePatchSummary()
+    await autosaveManager.flushAll()
+    const after = await getQueuedCasePatchSummary()
+    const outcome = after.count > 0 ? "failed" : before.count > 0 ? "ok" : "idle"
     const delay = policyRef.current.nextDelay(outcome)
     nextAllowedAtRef.current = outcome === "failed" ? Date.now() + delay : 0
     if (onChange) {
