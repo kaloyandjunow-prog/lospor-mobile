@@ -1,4 +1,4 @@
-// Colour palettes + technique drug favourites for the intraop screen.
+// Presentation-only colour palettes for the intraop screen.
 // The option *lists* come from the OptionLibrary API; these are presentation
 // constants (category accents) and clinical quick-pick defaults.
 
@@ -18,14 +18,3 @@ export const MOBILE_POSITION_COLOR: Record<string, string> = {
   SITTING: "#22c55e", JACKKNIFE: "#64748b", KNEE_CHEST: "#64748b",
 }
 
-export const TECHNIQUE_FAVORITES: Record<string, string[]> = {
-  "GENERAL_INHALATION": ["Propofol", "Fentanyl", "Rocuronium", "Sugammadex", "Ondansetron"],
-  "GENERAL_TIVA":       ["Propofol", "Remifentanil", "Fentanyl", "Sugammadex"],
-  "GENERAL_COMBINED":   ["Propofol", "Fentanyl", "Rocuronium", "Sugammadex"],
-  "SPINAL_SINGLE_LUMBAR":       ["Bupivacaine", "Fentanyl", "Ephedrine", "Ondansetron"],
-  "SPINAL_SINGLE_LOW_THORACIC": ["Bupivacaine", "Fentanyl", "Ephedrine", "Ondansetron"],
-  "EPIDURAL_LUMBAR":    ["Bupivacaine", "Ropivacaine", "Fentanyl", "Ephedrine"],
-  "CSE_LUMBAR":         ["Bupivacaine", "Fentanyl", "Ephedrine"],
-  "SEDATION_CONSCIOUS": ["Midazolam", "Propofol", "Fentanyl", "Ketamine"],
-  "SEDATION_MAC":       ["Propofol", "Ketamine", "Midazolam"],
-}

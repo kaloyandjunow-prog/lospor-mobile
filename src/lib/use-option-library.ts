@@ -1,155 +1,79 @@
 import { useEffect, useState } from "react"
 import * as SecureStore from "expo-secure-store"
-import { apiJson } from "./api"
-import fallbackSnapshot from "../data/option-library-fallback.json"
+import {
+  CLINICAL_CATALOG_GENERATED_AT,
+  bundledOptions,
+} from "@lospor/core/catalog"
+import {
+  isLibraryCategory,
+  type LibraryCategory,
+} from "@lospor/core/option-contracts"
 import {
   rangeSpecFromOption,
   type LibraryOption,
   type RangeSpec,
 } from "@lospor/core/option-library"
-import { parseLibraryOptions } from "@lospor/core/option-contracts"
-
-type FallbackSnapshot = {
-  generatedAt?: string
-} & Record<string, unknown>
-
-const typedFallbackSnapshot =
-  fallbackSnapshot as unknown as FallbackSnapshot
+import {
+  OptionLibraryRepository,
+  type OptionLibrarySource,
+} from "@lospor/core/sync"
+import { apiJson } from "./api"
 
 export type { LibraryOption, RangeSpec }
+export type LibrarySource = OptionLibrarySource
 
-export type LibrarySource = "live" | "cached" | "bundled"
-type CategoryState = { data: LibraryOption[]; source: LibrarySource }
-
-const state = new Map<string, CategoryState>()
-const inflight = new Map<string, Promise<void>>()
-const listeners = new Map<string, Set<() => void>>()
-const retryTimers = new Map<string, ReturnType<typeof setInterval>>()
+const loadedCategories = new Set<LibraryCategory>()
 const globalListeners = new Set<() => void>()
 
-const RETRY_INTERVAL_MS = 30_000
-const FALLBACK_SNAPSHOT_DATE =
-  typedFallbackSnapshot.generatedAt ?? "unknown"
-const LIBRARY_CACHE_VERSION = 3
-
-function storeKey(category: string) {
-  return `lospor_option_library_v${LIBRARY_CACHE_VERSION}_${category}`
-}
-
-function bundledOptions(category: string): LibraryOption[] {
-  return parseLibraryOptions(typedFallbackSnapshot[category])
-}
-
-function parseCachedOptions(raw: string | null): LibraryOption[] | null {
-  if (!raw) return null
-  try {
-    const options = parseLibraryOptions(JSON.parse(raw))
-    return options.length ? options : null
-  } catch {
-    return null
-  }
-}
-
-function notify(category: string) {
-  listeners.get(category)?.forEach(callback => callback())
-  globalListeners.forEach(callback => callback())
-}
-
-function setState(category: string, next: CategoryState) {
-  state.set(category, next)
-  notify(category)
-}
-
-function stopRetry(category: string) {
-  const timer = retryTimers.get(category)
-  if (timer) {
-    clearInterval(timer)
-    retryTimers.delete(category)
-  }
-}
-
-function scheduleRetry(category: string) {
-  if (retryTimers.has(category)) return
-  const timer = setInterval(
-    () => { void attemptLiveFetch(category) },
-    RETRY_INTERVAL_MS,
-  )
-  retryTimers.set(category, timer)
-}
-
-async function attemptLiveFetch(category: string): Promise<void> {
-  const currentRequest = inflight.get(category)
-  if (currentRequest) return currentRequest
-
-  const request = (async () => {
-    try {
-      const data = parseLibraryOptions(
-        await apiJson<unknown>(`/api/library/${category}`),
-      )
-      if (data.length === 0) {
-        throw new Error("empty or invalid option library response")
-      }
-      setState(category, { data, source: "live" })
-      stopRetry(category)
-      await SecureStore
-        .setItemAsync(storeKey(category), JSON.stringify(data))
-        .catch(() => {})
-    } catch {
-      if (!state.has(category)) {
-        const cached = await SecureStore
-          .getItemAsync(storeKey(category))
-          .catch(() => null)
-        const cachedOptions = parseCachedOptions(cached)
-        setState(
-          category,
-          cachedOptions
-            ? { data: cachedOptions, source: "cached" }
-            : { data: bundledOptions(category), source: "bundled" },
-        )
-      }
-      scheduleRetry(category)
-    } finally {
-      inflight.delete(category)
-    }
-  })()
-
-  inflight.set(category, request)
-  return request
-}
+const repository = new OptionLibraryRepository({
+  storage: {
+    get: key => SecureStore.getItemAsync(key),
+    set: (key, value) => SecureStore.setItemAsync(key, value),
+    delete: key => SecureStore.deleteItemAsync(key),
+  },
+  fetchCategory: category => apiJson<unknown>(`/api/library/${category}`),
+  bundled: bundledOptions,
+  scheduler: {
+    schedule: (callback, delayMs) => setTimeout(callback, delayMs),
+    cancel: handle => clearTimeout(handle as ReturnType<typeof setTimeout>),
+  },
+})
 
 export function useOptionLibrary(category: string): {
   options: LibraryOption[]
   loading: boolean
   source: LibrarySource | null
 } {
-  const current = state.get(category)
+  const validCategory = isLibraryCategory(category) ? category : null
   const [, forceRender] = useState(0)
-  const [loading, setLoading] = useState(!current)
+  const [loading, setLoading] = useState(
+    validCategory ? repository.state(validCategory) === null : false,
+  )
 
   useEffect(() => {
-    const callback = () => forceRender(value => value + 1)
-    if (!listeners.has(category)) listeners.set(category, new Set())
-    listeners.get(category)!.add(callback)
-
-    if (!state.has(category)) {
+    if (!validCategory) {
+      setLoading(false)
+      return
+    }
+    loadedCategories.add(validCategory)
+    const unsubscribe = repository.subscribe(validCategory, () => {
+      forceRender(value => value + 1)
+      globalListeners.forEach(listener => listener())
+    })
+    if (!repository.state(validCategory)) {
       setLoading(true)
-      void attemptLiveFetch(category).finally(() => setLoading(false))
+      void repository.load(validCategory).finally(() => setLoading(false))
     } else {
       setLoading(false)
     }
-    return () => {
-      listeners.get(category)?.delete(callback)
-    }
-  }, [category])
+    return unsubscribe
+  }, [validCategory])
 
-  const latest = state.get(category)
-  const effective = latest && latest.data.length === 0
-    ? { data: bundledOptions(category), source: "bundled" as const }
-    : latest
+  const latest = validCategory ? repository.state(validCategory) : null
   return {
-    options: effective?.data ?? [],
+    options: latest?.data ?? [],
     loading,
-    source: effective?.source ?? null,
+    source: latest?.source ?? null,
   }
 }
 
@@ -171,7 +95,9 @@ export function useAnyLibraryFallback(): {
     }
   }, [])
   return {
-    active: [...state.values()].some(entry => entry.source !== "live"),
-    snapshotDate: FALLBACK_SNAPSHOT_DATE,
+    active: [...loadedCategories].some(category =>
+      repository.state(category)?.source !== "live",
+    ),
+    snapshotDate: CLINICAL_CATALOG_GENERATED_AT,
   }
 }

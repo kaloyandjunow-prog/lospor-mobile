@@ -153,6 +153,13 @@ export const CLINICAL_STRINGS = {
     draftSaving:         "Saving…",
     draftSaved:          "Draft saved",
     draftLocal:          "Saved locally — syncs when online",
+    draftBlocked:        "Not saved — edit the highlighted field",
+    piiLikelyName:       "{field} may contain a person's name. Remove identifying information to save.",
+    piiEgn:              "{field} may contain a Bulgarian personal ID number. Remove it to save.",
+    piiLongNumber:       "{field} may contain a long identifying number. Remove it to save.",
+    piiDate:             "{field} may contain a full date that could identify a patient. Remove it to save.",
+    piiEmail:            "{field} may contain an email address. Remove it to save.",
+    piiGeneric:          "{field} contains identifying information and was not saved.",
 
     // Overview mode
     preopTitle:          "Preoperative assessment",
@@ -822,6 +829,13 @@ export const CLINICAL_STRINGS = {
     draftSaving:         "Запазва се…",
     draftSaved:          "Чернова запазена",
     draftLocal:          "Запазено локално — синхронизира се при връзка",
+    draftBlocked:        "Не е запазено — редактирайте маркираното поле",
+    piiLikelyName:       "{field} може да съдържа име на пациент. Премахнете идентифициращата информация, за да се запази.",
+    piiEgn:              "{field} може да съдържа ЕГН. Премахнете го, за да се запази.",
+    piiLongNumber:       "{field} може да съдържа дълъг идентификационен номер. Премахнете го, за да се запази.",
+    piiDate:             "{field} може да съдържа пълна дата, която идентифицира пациент. Премахнете я, за да се запази.",
+    piiEmail:            "{field} може да съдържа имейл адрес. Премахнете го, за да се запази.",
+    piiGeneric:          "{field} съдържа идентифицираща информация и не беше запазено.",
 
     // Overview mode
     preopTitle:          "Предоперативна оценка",

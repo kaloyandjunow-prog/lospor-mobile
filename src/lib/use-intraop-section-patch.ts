@@ -12,6 +12,7 @@ type UseIntraopSectionPatchArgs = {
   caseId: string
   pendingSaveCountRef: MutableRefObject<number>
   setSyncState: Dispatch<SetStateAction<SyncState>>
+  setSyncErrorMessage: Dispatch<SetStateAction<string | null>>
   setLastSavedAt: Dispatch<SetStateAction<string | null>>
 }
 
@@ -19,6 +20,7 @@ export function useIntraopSectionPatch({
   caseId,
   pendingSaveCountRef,
   setSyncState,
+  setSyncErrorMessage,
   setLastSavedAt,
 }: UseIntraopSectionPatchArgs) {
   // Rapid taps (positions, monitoring, techniques, complication toggles) used
@@ -31,16 +33,22 @@ export function useIntraopSectionPatch({
       const result = await autosaveManager.saveSection(caseId, "intraop", payload, { partial: true })
       if (result.result === "saved") {
         setLastSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+        setSyncErrorMessage(null)
         setSyncState("saved")
+      } else if (result.result === "blocked" && result.blocked) {
+        setSyncErrorMessage(result.blocked.message)
+        setSyncState("failed")
       } else if (result.result === "queued" || result.result === "failed") {
+        setSyncErrorMessage(null)
         setSyncState("offline")
       }
       return result
-    } catch {
+    } catch (error) {
+      setSyncErrorMessage(error instanceof Error ? error.message : null)
       setSyncState("failed")
       return undefined
     }
-  }, [caseId, setLastSavedAt, setSyncState])
+  }, [caseId, setLastSavedAt, setSyncErrorMessage, setSyncState])
 
   const runSaveRef = useRef(runSave)
   useEffect(() => { runSaveRef.current = runSave }, [runSave])

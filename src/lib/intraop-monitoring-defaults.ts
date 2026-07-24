@@ -1,51 +1,38 @@
-const GENERAL_TECHNIQUES = new Set(["GENERAL_INHALATION", "GENERAL_TIVA", "GENERAL_COMBINED"])
-const NEURAXIAL_TECHNIQUES = new Set(["CSE", "DPE"])
-const DEFAULT_MONITORING_LABELS = {
-  ecg: "ECG",
-  spO2: "SpOв‚‚",
-  nbp: "NIBP",
-  etco2: "Capnography (EtCOв‚‚)",
-  temperature: "Temperature",
-  bis: "BIS",
+import { MONITORING } from "@lospor/core/catalog"
+import {
+  isGeneralAnesthesiaCase,
+  isGeneralAnesthesiaTechnique,
+  isNeuraxialTechnique,
+  isTivaTechnique,
+  requiredMonitoringFieldsForTechniques,
+} from "@lospor/core/intraop"
+
+export {
+  isGeneralAnesthesiaCase,
+  isGeneralAnesthesiaTechnique,
+  isNeuraxialTechnique,
+  isTivaTechnique,
+  requiredMonitoringFieldsForTechniques,
 }
 
 type MonitoringOption = { label: string; field: string; section?: string }
 
-export function isGeneralAnesthesiaTechnique(value: string): boolean {
-  return GENERAL_TECHNIQUES.has(value)
-}
+const canonicalLabelByField = new Map(
+  MONITORING.map(option => [option.field, option.label]),
+)
 
-export function isTivaTechnique(value: string): boolean {
-  return value === "GENERAL_TIVA"
-}
-
-export function isNeuraxialTechnique(value: string): boolean {
-  return value.startsWith("SPINAL") || value.startsWith("EPIDURAL") || NEURAXIAL_TECHNIQUES.has(value)
-}
-
-export function activeTechniquesForCase(localTechniques: string[], caseTechniques?: string[]): string[] {
+export function activeTechniquesForCase(
+  localTechniques: string[],
+  caseTechniques?: string[],
+): string[] {
   return localTechniques.length > 0 ? localTechniques : (caseTechniques ?? [])
 }
 
-export function isGeneralAnesthesiaCase(techniques: string[]): boolean {
-  return techniques.some(technique => technique.startsWith("GENERAL") || /ga|ett|lma|tiva/i.test(technique))
-}
-
 export function monitoringDefaultLabelsForTechniques(techniques: string[]): string[] {
-  const isGA = techniques.some(isGeneralAnesthesiaTechnique)
-  const isTIVA = techniques.some(isTivaTechnique)
-  const isNeuraxial = techniques.some(isNeuraxialTechnique)
-
-  return [
-    ...(isGA || isNeuraxial ? [
-      DEFAULT_MONITORING_LABELS.ecg,
-      DEFAULT_MONITORING_LABELS.spO2,
-      DEFAULT_MONITORING_LABELS.nbp,
-      DEFAULT_MONITORING_LABELS.etco2,
-    ] : []),
-    ...(isGA ? [DEFAULT_MONITORING_LABELS.temperature] : []),
-    ...(isTIVA ? [DEFAULT_MONITORING_LABELS.bis] : []),
-  ]
+  return requiredMonitoringFieldsForTechniques(techniques).flatMap(field => {
+    const label = canonicalLabelByField.get(field)
+    return label ? [label] : []
+  })
 }
 
 export function addMonitoringDefaultsForTechniques(
@@ -63,9 +50,9 @@ export function buildMonitoringSelectionPatch(
   options: MonitoringOption[],
   selectedLabels: string[],
 ): Record<string, boolean> {
-  const patch: Record<string, boolean> = {}
-  for (const option of options) patch[option.field] = selectedLabels.includes(option.label)
-  return patch
+  return Object.fromEntries(
+    options.map(option => [option.field, selectedLabels.includes(option.label)]),
+  )
 }
 
 export function selectedMonitoringLabelsFromRecord(
@@ -74,7 +61,7 @@ export function selectedMonitoringLabelsFromRecord(
 ): string[] {
   if (!record) return []
   return options
-    .filter(option => !!record[option.field])
+    .filter(option => Boolean(record[option.field]))
     .map(option => option.label)
 }
 
@@ -83,7 +70,9 @@ export function hasAdvancedMonitoringSelected(
   record: Record<string, unknown> | null | undefined,
 ): boolean {
   if (!record) return false
-  return options.some(option => option.section !== "standard" && !!record[option.field])
+  return options.some(option =>
+    option.section !== "standard" && Boolean(record[option.field]),
+  )
 }
 
 export function buildTechniqueMonitoringUpdate(
@@ -92,37 +81,18 @@ export function buildTechniqueMonitoringUpdate(
   nextTechniques: string[],
 ): { patch: Record<string, unknown>; monitoring: string[] | null } {
   const patch: Record<string, unknown> = { techniques: nextTechniques }
-  let monitoring: string[] | null = null
-
-  const defaults = addMonitoringDefaultsForTechniques(nextTechniques, currentMonitoring)
-  if (defaults) {
-    Object.assign(patch, buildMonitoringSelectionPatch(options, defaults))
-    monitoring = defaults
-  }
-
   const requiredFields = requiredMonitoringFieldsForTechniques(nextTechniques)
-  if (requiredFields.length) {
-    const byField = new Map(options.map(opt => [opt.field, opt.label]))
-    const withRequiredLabels = [...currentMonitoring]
-    for (const field of requiredFields) {
-      patch[field] = true
-      const label = byField.get(field)
-      if (label && !withRequiredLabels.includes(label)) withRequiredLabels.push(label)
-    }
-    monitoring = withRequiredLabels
+  if (!requiredFields.length) return { patch, monitoring: null }
+
+  const labelsByField = new Map(options.map(option => [option.field, option.label]))
+  const monitoring = [...currentMonitoring]
+  for (const field of requiredFields) {
+    patch[field] = true
+    const label = labelsByField.get(field)
+    if (label && !monitoring.includes(label)) monitoring.push(label)
   }
-
-  return { patch, monitoring }
-}
-
-export function requiredMonitoringFieldsForTechniques(techniques: string[]): string[] {
-  const isGA = techniques.some(isGeneralAnesthesiaTechnique)
-  const isTIVA = techniques.some(isTivaTechnique)
-  const isNeuraxial = techniques.some(isNeuraxialTechnique)
-
-  return [
-    ...(isGA || isNeuraxial ? ["ecg", "spO2Monitor", "nbpMonitor", "etco2Monitor"] : []),
-    ...(isGA ? ["tempMonitor"] : []),
-    ...(isTIVA ? ["bis"] : []),
-  ]
+  return {
+    patch,
+    monitoring: monitoring.length > currentMonitoring.length ? monitoring : null,
+  }
 }

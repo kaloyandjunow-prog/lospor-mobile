@@ -6,8 +6,17 @@ import { useOptionLibrary } from "@/lib/use-option-library"
 import { usePreferences, type ClinicalStringKey } from "@/lib/preferences-context"
 import { LAB_CATEGORIES, getLabOutOfRange, searchLabs, type LabTest } from "@/lib/labs"
 import type { ASASuggestion } from "@/lib/preop-asa-suggestion"
-import { getIcd10BodySystem } from "@lospor/core/preop"
+import {
+  getIcd10BodySystem,
+  ICD10_BODY_SYSTEM_ORDER,
+  type BodySystem,
+} from "@lospor/core/preop"
 import { metadataString } from "@lospor/core/option-contracts"
+import {
+  apfelRiskBand,
+  rcriRiskBand,
+  stopBangRiskBand,
+} from "@lospor/core/risk"
 
 function impact() {
   hapticTick()
@@ -177,13 +186,16 @@ export function BloodGrid({ bloodType, rhFactor, onChange }: {
 
 // Risk label helpers — identical thresholds to web lib/scores.ts
 export function rcriRiskLabel(s: number, tc: (k: ClinicalStringKey) => string) {
-  return s === 0 ? tc("rcriVeryLow") : s === 1 ? tc("rcriLow") : s === 2 ? tc("rcriModerate") : tc("rcriHigh")
+  const key = rcriRiskBand(s).key
+  return tc(key === "very_low" ? "rcriVeryLow" : key === "low" ? "rcriLow" : key === "moderate" ? "rcriModerate" : "rcriHigh")
 }
 export function apfelRiskLabel(s: number, tc: (k: ClinicalStringKey) => string) {
-  return s <= 1 ? tc("apfelLow") : s === 2 ? tc("apfelModerate") : tc("apfelHigh")
+  const key = apfelRiskBand(s).key
+  return tc(key === "low" ? "apfelLow" : key === "moderate" ? "apfelModerate" : "apfelHigh")
 }
 export function stopBangRiskLabel(s: number, tc: (k: ClinicalStringKey) => string) {
-  return s <= 2 ? tc("osaLow") : s <= 4 ? tc("osaIntermediate") : tc("osaHigh")
+  const key = stopBangRiskBand(s).key
+  return tc(key === "low" ? "osaLow" : key === "intermediate" ? "osaIntermediate" : "osaHigh")
 }
 
 const BODY_SYSTEM_TC: Record<string, ClinicalStringKey> = {
@@ -202,15 +214,6 @@ const BODY_SYSTEM_TC: Record<string, ClinicalStringKey> = {
   "Congenital":                 "sysCongenital",
   "Other":                      "sysOther",
 }
-
-// ── ICD-10 body-system classification (mirrors web lib/icd-categories.ts) ──
-type BodySystem = "Cardiovascular"|"Respiratory"|"Neurological / Psychiatric"|"Endocrine / Metabolic"|"Gastrointestinal / Hepatic"|"Renal / Urological"|"Haematological"|"Musculoskeletal"|"Neoplasms"|"Infectious diseases"|"Ophthalmological / ENT"|"Obstetric"|"Congenital"|"Other"
-
-const SYSTEM_ORDER: BodySystem[] = [
-  "Cardiovascular","Respiratory","Neurological / Psychiatric","Endocrine / Metabolic",
-  "Gastrointestinal / Hepatic","Renal / Urological","Haematological","Musculoskeletal",
-  "Neoplasms","Infectious diseases","Ophthalmological / ENT","Obstetric","Congenital","Other",
-]
 
 const SYSTEM_HEX: Record<BodySystem, string> = {
   "Cardiovascular":             "#ef4444",
@@ -244,7 +247,7 @@ export function ComorbiditiesBySystem({ items, onRemove }: { items: { label: str
   }
   return (
     <View style={{ marginTop: 12, gap: 10 }}>
-      {SYSTEM_ORDER.filter(s => grouped[s]).map(system => {
+      {ICD10_BODY_SYSTEM_ORDER.filter(s => grouped[s]).map(system => {
         const col = SYSTEM_HEX[system]
         const tcKey = BODY_SYSTEM_TC[system]
         return (

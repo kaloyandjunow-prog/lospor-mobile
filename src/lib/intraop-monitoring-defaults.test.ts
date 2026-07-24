@@ -73,17 +73,17 @@ describe("intraop monitoring defaults", () => {
   it("maps techniques to additive monitoring labels", () => {
     expect(monitoringDefaultLabelsForTechniques(["GENERAL_TIVA"])).toEqual([
       "ECG",
-      "SpOв‚‚",
-      "NIBP",
-      "Capnography (EtCOв‚‚)",
+      "SpO₂",
+      "NBP",
+      "Capnography (EtCO₂)",
       "Temperature",
       "BIS",
     ])
     expect(monitoringDefaultLabelsForTechniques(["SPINAL_SINGLE_SHOT"])).toEqual([
       "ECG",
-      "SpOв‚‚",
-      "NIBP",
-      "Capnography (EtCOв‚‚)",
+      "SpO₂",
+      "NBP",
+      "Capnography (EtCO₂)",
     ])
   })
 
@@ -91,9 +91,9 @@ describe("intraop monitoring defaults", () => {
     expect(addMonitoringDefaultsForTechniques(["GENERAL_INHALATION"], ["Custom monitor", "ECG"])).toEqual([
       "Custom monitor",
       "ECG",
-      "SpOв‚‚",
-      "NIBP",
-      "Capnography (EtCOв‚‚)",
+      "SpO₂",
+      "NBP",
+      "Capnography (EtCO₂)",
       "Temperature",
     ])
     expect(addMonitoringDefaultsForTechniques(["LOCAL"], ["Custom monitor"])).toBeNull()

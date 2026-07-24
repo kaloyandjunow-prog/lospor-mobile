@@ -19,6 +19,7 @@ import {
   computedDisplayStatus,
   type CaseData,
 } from "@/lib/case-detail-summary"
+import { INTRAOP_RESUME_WINDOW_MS } from "@lospor/core/intraop-engine"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,7 +48,7 @@ export default function CaseSummaryScreen() {
 
   const editWindowOpen = useMemo(() => {
     if (!caseData?.finalizedAt) return true
-    return Date.now() - new Date(caseData.finalizedAt).getTime() < 30 * 60 * 1000
+    return Date.now() - new Date(caseData.finalizedAt).getTime() < INTRAOP_RESUME_WINDOW_MS
   }, [caseData?.finalizedAt])
 
   const canEdit = caseData?.status !== "COMPLETE"
@@ -217,10 +218,10 @@ export default function CaseSummaryScreen() {
           {caseData.caseCode ? (
             <Text style={{ color: colors.textMuted, fontSize: 12 }}>{caseData.caseCode}</Text>
           ) : null}
-          {caseData.user?.institution?.name ? (
+          {caseData.institution?.name ? (
             <Text style={{ color: colors.textMuted, fontSize: 12 }} numberOfLines={1}>
-              {caseData.user.institution.name}
-              {caseData.user.institution.city ? `, ${caseData.user.institution.city}` : ""}
+              {caseData.institution.name}
+              {caseData.institution.city ? `, ${caseData.institution.city}` : ""}
             </Text>
           ) : null}
         </View>
@@ -401,7 +402,7 @@ export default function CaseSummaryScreen() {
         />
         <IntraopCard intraop={caseData.intraop} preop={caseData.preop} tc={tc} t={t} />
         <PostopCard postop={caseData.postop} tc={tc} t={t} />
-        <LabCard labResults={caseData.preop?.labResults} tc={tc} />
+        <LabCard labResults={caseData.preop?.labResults ?? undefined} tc={tc} />
       </ScrollView>
     </View>
   )

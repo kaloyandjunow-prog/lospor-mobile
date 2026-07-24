@@ -3,9 +3,11 @@ import {
   createAutosaveManager,
   eventIdempotencyKey,
   IDEMPOTENCY_HEADER,
-  SECTION_CONFLICT_HEADER,
-  SECTION_REVISION_HEADER,
+  OPERATION_ID_HEADER,
   SOURCE_HEADER,
+  buildSectionRevisionHeaders,
+  readBlockedSaveIssue,
+  serverVersionRevision,
   type EventMutation,
   type KVAdapter,
   type PatchFailure,
@@ -20,15 +22,6 @@ const kv: KVAdapter = {
   delete: (key) => SecureStore.deleteItemAsync(key),
 }
 
-function revisionHeaders(
-  section: "preop" | "postop" | "intraop",
-  revision: SectionRevision | undefined,
-): Record<string, string> | undefined {
-  if (typeof revision === "number") return { [SECTION_REVISION_HEADER[section]]: String(revision) }
-  if (typeof revision === "string") return { [SECTION_CONFLICT_HEADER[section]]: revision }
-  return undefined
-}
-
 function classifyPatchError(error: unknown): PatchFailure {
   if (error instanceof TypeError) return { kind: "network" }
   if (error instanceof ApiError) {
@@ -37,6 +30,8 @@ function classifyPatchError(error: unknown): PatchFailure {
     return {
       kind: "http",
       status: error.status,
+      blocked: readBlockedSaveIssue(error.details) ?? undefined,
+      message: error.message,
       serverRevision: typeof version?.revision === "number" ? version.revision : undefined,
       serverUpdatedAt: typeof version?.updatedAt === "string" ? version.updatedAt : undefined,
     }
@@ -51,8 +46,8 @@ function isNetworkError(error: unknown): boolean {
 async function mutationRequest(operation: EventMutation, revision: SectionRevision) {
   const headers: Record<string, string> = {
     [SOURCE_HEADER]: "mobile",
-    "x-lospor-operation-id": operation.operationId,
-    ...(revisionHeaders("intraop", revision) ?? {}),
+    [OPERATION_ID_HEADER]: operation.operationId,
+    ...buildSectionRevisionHeaders("intraop", revision),
   }
   const response = await apiFetch(
     `/api/cases/${operation.caseId}/events/${encodeURIComponent(operation.eventId)}`,
@@ -71,10 +66,7 @@ async function mutationRequest(operation: EventMutation, revision: SectionRevisi
     typeof body.intraopRevision === "number" ? body.intraopRevision :
     typeof body.intraopUpdatedAt === "string" ? body.intraopUpdatedAt :
     undefined
-  const serverRevision =
-    typeof body.serverVersion?.revision === "number" ? body.serverVersion.revision :
-    typeof body.serverVersion?.updatedAt === "string" ? body.serverVersion.updatedAt :
-    undefined
+  const serverRevision = serverVersionRevision(body) ?? undefined
   return { ok: response.ok, status: response.status, revision: acknowledged, serverRevision }
 }
 
@@ -84,13 +76,19 @@ export const autosaveManager = createAutosaveManager({
     sendPatch: async (caseId, section, payload, revision) => {
       const response = await apiFetch(`/api/cases/${caseId}`, {
         method: "PATCH",
-        headers: revisionHeaders(section, revision),
+        headers: buildSectionRevisionHeaders(section, revision),
         body: JSON.stringify({ [section]: payload }),
       })
       const body = await response.json().catch(() => ({}))
       if (!response.ok) {
         const typed = body as { error?: string; serverVersion?: Record<string, unknown> }
-        throw new ApiError(typed.error ?? "Save failed", response.status, undefined, typed.serverVersion)
+        throw new ApiError(
+          typed.error ?? "Save failed",
+          response.status,
+          typeof (body as { code?: unknown }).code === "string" ? (body as { code: string }).code : undefined,
+          typed.serverVersion,
+          body as Record<string, unknown>,
+        )
       }
       return body
     },
@@ -104,7 +102,7 @@ export const autosaveManager = createAutosaveManager({
         headers: {
           [IDEMPOTENCY_HEADER]: eventIdempotencyKey(caseId, String(event.id)),
           [SOURCE_HEADER]: "mobile",
-          ...(revisionHeaders("intraop", revision) ?? {}),
+          ...buildSectionRevisionHeaders("intraop", revision),
         },
         body: JSON.stringify(event),
       })
@@ -120,10 +118,7 @@ export const autosaveManager = createAutosaveManager({
           typeof body.intraopRevision === "number" ? body.intraopRevision :
           typeof body.intraopUpdatedAt === "string" ? body.intraopUpdatedAt :
           null,
-        serverRevision:
-          typeof body.serverVersion?.revision === "number" ? body.serverVersion.revision :
-          typeof body.serverVersion?.updatedAt === "string" ? body.serverVersion.updatedAt :
-          undefined,
+        serverRevision: serverVersionRevision(body) ?? undefined,
       }
     },
     isNetworkError,

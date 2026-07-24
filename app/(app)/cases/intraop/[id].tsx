@@ -137,6 +137,7 @@ export default function IntraopLiveScreen() {
   const [slotEventSearch, setSlotEventSearch] = useState("")
   const [slotCompExpanded, setSlotCompExpanded] = useState(false)
   const [syncState, setSyncState] = useState<"saved" | "saving" | "failed" | "offline">("saved")
+  const [syncErrorMessage, setSyncErrorMessage] = useState<string | null>(null)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const [pendingCount, setPendingCount] = useState(0)
   // Tracks concurrent in-flight section saves so case refresh does not reset
@@ -146,6 +147,7 @@ export default function IntraopLiveScreen() {
     caseId: id,
     pendingSaveCountRef,
     setSyncState,
+    setSyncErrorMessage,
     setLastSavedAt,
   })
 
@@ -268,6 +270,7 @@ export default function IntraopLiveScreen() {
   const [caseStartTime,   setCaseStartTime]   = useState("")
   const [caseEndTime,     setCaseEndTime]     = useState("")
   const [caseEndNextDay,  setCaseEndNextDay]  = useState(false)
+  const [caseTimezone,    setCaseTimezone]    = useState<string | null>(null)
 
   // Position / Monitoring / Techniques tab state
   const [positions,      setPositions]      = useState<string[]>([])
@@ -292,6 +295,8 @@ export default function IntraopLiveScreen() {
     caseStartTime,
     caseEndTime,
     caseEndNextDay,
+    caseTimezone,
+    startRef,
   })
 
   const {
@@ -318,6 +323,8 @@ export default function IntraopLiveScreen() {
     setCaseInfo,
     setCaseStartTime,
     setCaseEndTime,
+    setCaseEndNextDay,
+    caseTimezone,
     save,
     saveTiming,
     patchIntraopSection,
@@ -330,6 +337,21 @@ export default function IntraopLiveScreen() {
     stopGasSettings,
     stopInfusion,
     stopFluidDirect,
+    getReadinessInput: () => ({
+      startedAt: startRef.current?.toISOString(),
+      startTime: caseStartTime,
+      techniques,
+      airwayDevices: awDevices,
+      ventilationModes: awVentModes,
+      positions,
+      vascularAccesses,
+      ...Object.fromEntries(monitoring.map(field => [field, true])),
+      timetableData: timetable,
+      keyEvents: log,
+      complications: selectedComplications.length > 0 || complicationsNotes.trim()
+        ? selectedComplications.join(", ") || complicationsNotes
+        : "",
+    }),
   })
 
   // Vitals reminder notifications (opt-in; reset on each manual vitals entry)
@@ -422,6 +444,7 @@ export default function IntraopLiveScreen() {
     setCaseStartTime,
     setCaseEndTime,
     setCaseEndNextDay,
+    setCaseTimezone,
     setAwTools,
     setAwDevices,
     setAwLmaSize,
@@ -445,6 +468,7 @@ export default function IntraopLiveScreen() {
     setComplicationsNotes,
     setPendingCount,
     setSyncState,
+    setSyncErrorMessage,
     setLog,
     setElapsedMs,
     setActiveInfusions,
@@ -564,6 +588,7 @@ export default function IntraopLiveScreen() {
               setStartAtOpen(true)
             },
             syncState,
+            syncErrorMessage,
             pendingCount,
             lastSavedAt,
             onRetrySync: retryPendingEvents,

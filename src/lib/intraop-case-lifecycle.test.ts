@@ -23,7 +23,7 @@ describe("buildResumeCaseState", () => {
       endTime: "",
       endedAt: null,
       resumeSecsLeft: 0,
-      patch: { endTime: null },
+      patch: { endTime: null, endedAt: null },
     })
   })
 })

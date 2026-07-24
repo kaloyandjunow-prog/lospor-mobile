@@ -10,6 +10,12 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { Field, StyledInput, SectionHeader, PrimaryButton, SingleToggle, Chip } from "@/components/ui"
 import { API_BASE, registerAccount } from "@/lib/api"
 import { AuthBackdrop, AuthBrand } from "@/components/AuthBrand"
+import {
+  ACCOUNT_COUNTRIES,
+  PROFESSIONAL_TITLES,
+  passwordPolicyIssues,
+  type PasswordPolicyIssue,
+} from "@lospor/core/account"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -19,21 +25,22 @@ interface Institution {
   city: string
 }
 
-const COUNTRIES = [
-  "Bulgaria", "Romania", "Greece", "Turkey", "Serbia",
-  "North Macedonia", "Germany", "United Kingdom", "France",
-  "Italy", "Spain", "Portugal", "Netherlands", "Belgium",
-  "Austria", "Switzerland", "Poland", "Czech Republic",
-  "Hungary", "Croatia", "Slovenia", "Slovakia", "Other",
-] as const
+const COUNTRIES = ACCOUNT_COUNTRIES
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
-const passwordSchema = z.string()
-  .min(8, "At least 8 characters")
-  .regex(/[A-Z]/, "At least one uppercase letter")
-  .regex(/[0-9]/, "At least one number")
-  .regex(/[^A-Za-z0-9]/, "At least one special character")
+const PASSWORD_MESSAGES: Record<PasswordPolicyIssue, string> = {
+  too_short: "At least 8 characters",
+  missing_uppercase: "At least one uppercase letter",
+  missing_number: "At least one number",
+  missing_special: "At least one special character",
+}
+
+const passwordSchema = z.string().superRefine((password, context) => {
+  for (const issue of passwordPolicyIssues(password)) {
+    context.addIssue({ code: "custom", message: PASSWORD_MESSAGES[issue] })
+  }
+})
 
 const schema = z.object({
   firstName:     z.string().min(1, "Required"),
@@ -54,24 +61,15 @@ type FormValues = z.infer<typeof schema>
 
 // ─── Title options ────────────────────────────────────────────────────────────
 
-const TITLE_OPTIONS = [
-  { v: "Dr.", label: "Dr." },
-  { v: "Assoc. Prof.", label: "Assoc. Prof." },
-  { v: "Prof.", label: "Prof." },
-  { v: "Nurse", label: "Nurse" },
-  { v: "Other", label: "Other" },
-]
+const TITLE_OPTIONS = PROFESSIONAL_TITLES.map(title => ({
+  v: title.value,
+  label: title.value,
+}))
 
 // ─── Password strength ────────────────────────────────────────────────────────
 
 function getPasswordStrength(pw: string): { score: number; color: string; label: string } {
-  const criteria = [
-    pw.length >= 8,
-    /[A-Z]/.test(pw),
-    /[0-9]/.test(pw),
-    /[^A-Za-z0-9]/.test(pw),
-  ]
-  const score = criteria.filter(Boolean).length
+  const score = 4 - passwordPolicyIssues(pw).length
   if (pw.length === 0) return { score: 0, color: "#2e2e2e", label: "" }
   if (score < 2)       return { score, color: "#ef4444", label: "Weak" }
   if (score < 4)       return { score, color: "#f59e0b", label: "Fair" }

@@ -13,6 +13,7 @@ export class ApiError extends Error {
     public status: number,
     public code?: string,
     public serverVersion?: Record<string, unknown>,
+    public details?: Record<string, unknown>,
   ) {
     super(message)
     this.name = "ApiError"
@@ -113,7 +114,7 @@ export async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
       : res.status === 403 ? "You do not have access to this item."
       : res.status === 404 ? "This item was not found."
       : `Request failed (${res.status}).`
-    throw new ApiError(body.error ?? fallback, res.status)
+    throw new ApiError(body.error ?? fallback, res.status, body.code, body.serverVersion, body)
   }
 
   return res.json()

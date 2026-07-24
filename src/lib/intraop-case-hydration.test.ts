@@ -5,7 +5,10 @@ import type { EventMutation } from "@lospor/core/sync"
 
 import { buildLoadedIntraopCaseState } from "./intraop-case-hydration"
 
-function caseWithKeyEvents(keyEvents: unknown): CaseDetailDto {
+function caseWithKeyEvents(
+  keyEvents: unknown,
+  timing: Partial<NonNullable<CaseDetailDto["intraop"]>> = {},
+): CaseDetailDto {
   return {
     id: "case-1",
     caseCode: "DEMO-1",
@@ -27,6 +30,7 @@ function caseWithKeyEvents(keyEvents: unknown): CaseDetailDto {
       techniques: [],
       updatedAt: "2026-07-24T08:00:00.000Z",
       syncRevision: 1,
+      ...timing,
     } as CaseDetailDto["intraop"],
   }
 }
@@ -48,12 +52,61 @@ describe("buildLoadedIntraopCaseState", () => {
 
     const loaded = buildLoadedIntraopCaseState(data, [], [], [], pendingMutations)
 
-    expect(loaded.rawLog).toHaveLength(1)
-    expect(loaded.rawLog[0]).toMatchObject({
-      type: "drug",
+    expect(loaded.rawLog).toHaveLength(0)
+    expect(loaded.loadedTimetable.startDate).toBeNull()
+    expect(loaded.loadedTimetable.timetable?.drugs[0]).toMatchObject({
       name: "Propofol",
       dose: "100",
       unit: "mg",
     })
+  })
+
+  it("uses startedAt as the chart anchor in the persisted timezone", () => {
+    const data = caseWithKeyEvents({
+      log: [{
+        id: "start",
+        type: "clinical_event",
+        ts: "2026-07-24T08:45:00.000Z",
+        label: "Anaesthesia start",
+      }],
+    }, {
+      startTime: "11:45",
+      startedAt: "2026-07-24T08:45:00.000Z",
+      timezone: "Europe/Sofia",
+    })
+    const loaded = buildLoadedIntraopCaseState(
+      data,
+      [],
+      [],
+      [],
+      [],
+      new Date("2026-07-24T10:00:00.000Z"),
+    )
+
+    expect(loaded.timing.startTime).toBe("11:45")
+    expect(loaded.loadedTimetable.startDate?.toISOString()).toBe("2026-07-24T08:45:00.000Z")
+  })
+
+  it("keeps future legacy columns readable but never turns them into events", () => {
+    const vitals = Array.from({ length: 37 }, () => ({}))
+    vitals[0] = { systolic: 150 }
+    vitals[36] = { systolic: 150 }
+    const data = caseWithKeyEvents({ vitals }, {
+      startTime: "11:45",
+      startedAt: "2026-07-24T08:45:00.000Z",
+      timezone: "Europe/Sofia",
+    })
+    const loaded = buildLoadedIntraopCaseState(
+      data,
+      [],
+      [],
+      [],
+      [],
+      new Date("2026-07-24T10:00:00.000Z"),
+    )
+
+    expect(loaded.rawLog).toHaveLength(0)
+    expect(loaded.legacyWebLogNeedsSync).toBe(false)
+    expect(loaded.loadedTimetable.timetable?.vitals[36]).toMatchObject({ systolic: 150 })
   })
 })

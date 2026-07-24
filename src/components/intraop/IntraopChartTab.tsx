@@ -1,6 +1,10 @@
 import { ScrollView, Text, TouchableOpacity, View } from "react-native"
 import { IntraopTimetable, type TimetableData } from "@/components/IntraopTimetable"
 import type { ActiveInfusion } from "@/lib/intraop-log-event"
+import {
+  INTRAOP_COLUMN_MINUTES,
+  intraopInstantForColumn,
+} from "@lospor/core/intraop-engine"
 
 type Props = {
   startTime: Date | null
@@ -23,7 +27,7 @@ type Props = {
 const PAGE_COLS = 12
 
 function timeAtCol(base: Date, col: number) {
-  return new Date(base.getTime() + col * 5 * 60_000)
+  return intraopInstantForColumn(base, col)
 }
 
 export function IntraopChartTab({
@@ -47,8 +51,9 @@ export function IntraopChartTab({
   const safePage = Math.min(page, totalPages - 1)
   const offset = safePage * PAGE_COLS
   function pageLabel() {
-    const h0 = (startTime ? startTime.getHours() * 60 + startTime.getMinutes() : 480) + offset * 5
-    const h1 = h0 + PAGE_COLS * 5
+    const h0 = (startTime ? startTime.getHours() * 60 + startTime.getMinutes() : 480)
+      + offset * INTRAOP_COLUMN_MINUTES
+    const h1 = h0 + PAGE_COLS * INTRAOP_COLUMN_MINUTES
     const fmt = (m: number) => `${String(Math.floor(m/60)%24).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`
     return `${fmt(h0)}-${fmt(h1)}`
   }

@@ -9,7 +9,12 @@ import type { LogEvent } from "@/lib/intraop-log-event"
 import { prepareVitalsScanImage, getImagePicker, type ScanImageAsset } from "@/lib/vitals-scan"
 import { pickVitalsForColumn } from "@/lib/intraop-projection"
 import type { TimetableData } from "@/components/IntraopTimetable"
-import { mmHgToKPa, kPaToMmHg, celsiusToFahrenheit, fahrenheitToCelsius } from "@/lib/unit-conversion"
+import {
+  celsiusToFahrenheit,
+  fahrenheitToCelsius,
+  kPaToMmHg,
+  mmHgToKPa,
+} from "@lospor/core/units"
 
 // Vitals entry, including the "change, not add" behavior (editing the vital
 // already charted for this 5-minute column instead of creating a duplicate)

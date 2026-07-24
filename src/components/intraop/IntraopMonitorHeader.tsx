@@ -10,7 +10,7 @@ import { usePreferences } from "@/lib/preferences-context"
 // Presentational — markup moved verbatim from cases/intraop/[id].tsx.
 export function IntraopMonitorHeader({
   techniquesLabel, procedure, diagnosis, timeStr, started, elapsedMs,
-  onStartNow, onStartAt, syncState, pendingCount, lastSavedAt, onRetrySync, lastVitals,
+  onStartNow, onStartAt, syncState, syncErrorMessage, pendingCount, lastSavedAt, onRetrySync, lastVitals,
 }: {
   techniquesLabel: string
   procedure: string
@@ -21,6 +21,7 @@ export function IntraopMonitorHeader({
   onStartNow: () => void
   onStartAt: () => void
   syncState: "saved" | "saving" | "failed" | "offline"
+  syncErrorMessage: string | null
   pendingCount: number
   lastSavedAt: string | null
   onRetrySync: () => void
@@ -73,7 +74,8 @@ export function IntraopMonitorHeader({
         <SyncBadge
           state={syncState}
           detail={
-            pendingCount > 0 ? `${pendingCount} unsynced`
+            syncState === "failed" && syncErrorMessage ? syncErrorMessage
+            : pendingCount > 0 ? `${pendingCount} unsynced`
             : syncState === "saved" && lastSavedAt ? `Saved ${lastSavedAt}`
             : undefined
           }

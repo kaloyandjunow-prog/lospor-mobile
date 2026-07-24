@@ -2,8 +2,7 @@ import { rebuildActiveState } from "@/lib/intraop-active-state"
 import { parseComplications } from "@/lib/intraop-complications"
 import type { MonitoringOption } from "@/lib/intraop-option-mappers"
 import {
-  caseDateForHHMM,
-  hhmmFromStoredTime,
+  loadedTimetableStateFromLegacySnapshot,
   loadedTimetableStateFromLog,
   roundDown5Min,
   webTimetableToLog,
@@ -17,6 +16,9 @@ import type { VascularEntry } from "@/lib/intraop-types"
 import type { CaseDetailDto } from "@lospor/core/case-detail"
 import { parseLegacyKeyEvents, parseLogEvent } from "@lospor/core/intraop-types"
 import type { EventMutation } from "@lospor/core/sync"
+import { isValidTimeZone, localTimeOf } from "@lospor/core/intraop-time"
+import { INTRAOP_COLUMN_MS } from "@lospor/core/intraop-engine"
+import { normalizeOptionCodes } from "@lospor/core/option-aliases"
 
 function storedHHMM(raw: unknown): string | undefined {
   if (typeof raw !== "string" || !raw) return undefined
@@ -37,13 +39,28 @@ export function buildLoadedIntraopCaseState(
   monitoringOptions: MonitoringOption[],
   complicationItems: string[],
   pendingMutations: EventMutation[] = [],
+  now = new Date(),
 ) {
-  const caseTechniques: string[] = Array.isArray(data.intraop?.techniques) ? data.intraop.techniques as string[] : []
+  const caseTechniques = normalizeOptionCodes(
+    "TECHNIQUE",
+    Array.isArray(data.intraop?.techniques)
+      ? data.intraop.techniques.filter((value): value is string => typeof value === "string")
+      : [],
+  )
   const keyEvents = parseLegacyKeyEvents(data.intraop?.keyEvents)
   const serverRaw = keyEvents.log ?? []
-  const startHHMM = hhmmFromStoredTime(data.intraop?.startTime)
-  const webStartRef = startHHMM ? caseDateForHHMM(startHHMM) : null
-  const webRaw = serverRaw.length === 0 && webStartRef ? webTimetableToLog(keyEvents, roundDown5Min(webStartRef)) : []
+  const timezone = isValidTimeZone(data.intraop?.timezone) ? data.intraop.timezone : null
+  const startedAt = typeof data.intraop?.startedAt === "string"
+    ? new Date(data.intraop.startedAt)
+    : null
+  const trustedStart = startedAt && !Number.isNaN(startedAt.getTime()) ? startedAt : null
+  const projectedWebRaw = serverRaw.length === 0 && trustedStart
+    ? webTimetableToLog(keyEvents, roundDown5Min(trustedStart))
+    : []
+  const futureLimit = now.getTime() + INTRAOP_COLUMN_MS
+  const webRaw = projectedWebRaw.some(event => Date.parse(event.ts) > futureLimit)
+    ? []
+    : projectedWebRaw
   let rawLog = mergeLogWithPendingIntraopEvents(serverRaw.length > 0 ? serverRaw : webRaw, pending)
   // Reapply durable edits/deletes before rendering after a restart. Otherwise
   // an offline deletion briefly resurrects from the server snapshot.
@@ -55,7 +72,10 @@ export function buildLoadedIntraopCaseState(
       if (event) rawLog = [event, ...rawLog.filter((item) => item.id !== operation.eventId)]
     }
   }
-  const loadedTimetable = loadedTimetableStateFromLog(rawLog)
+  const loadedFromLog = loadedTimetableStateFromLog(rawLog, now, trustedStart)
+  const loadedTimetable = loadedFromLog.timetable
+    ? loadedFromLog
+    : loadedTimetableStateFromLegacySnapshot(keyEvents) ?? loadedFromLog
 
   const ventilationModes = Array.isArray(data.intraop?.ventilationModes)
     ? data.intraop.ventilationModes as string[]
@@ -83,9 +103,14 @@ export function buildLoadedIntraopCaseState(
     preop: buildIntraopPreopSummary(data.preop),
     timing: {
       monthYear: data.intraop?.monthYear ?? defaultMonthYear(),
-      startTime: storedHHMM(data.intraop?.startTime),
-      endTime: storedHHMM(data.intraop?.endTime),
+      startTime: trustedStart && timezone
+        ? localTimeOf(trustedStart, timezone) ?? undefined
+        : storedHHMM(data.intraop?.startTime),
+      endTime: data.intraop?.endedAt && timezone
+        ? localTimeOf(new Date(data.intraop.endedAt), timezone) ?? undefined
+        : storedHHMM(data.intraop?.endTime),
       endTimeNextDay: data.intraop?.endTimeNextDay != null ? !!data.intraop.endTimeNextDay : undefined,
+      timezone,
     },
     airway: {
       tools: Array.isArray(data.intraop?.airwayTools) ? data.intraop.airwayTools as string[] : undefined,

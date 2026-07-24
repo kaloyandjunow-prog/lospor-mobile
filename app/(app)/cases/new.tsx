@@ -52,6 +52,7 @@ import { EditWindowBanner } from "@/components/EditWindowBanner"
 import { colors, withAlpha } from "@/theme/colors"
 import { usePreferences } from "@/lib/preferences-context"
 import { useOptionLibrary, useRangeSpec } from "@/lib/use-option-library"
+import type { BlockedSaveIssue } from "@lospor/core/sync"
 import { suggestRcriIschemicHeart, suggestRcriCHF, suggestRcriCVD, suggestRcriInsulinDM, suggestRcriCreatinine, suggestStopBangBP } from "@/lib/risk-derivation"
 import {
   AsaPicker,
@@ -191,8 +192,36 @@ export default function NewCaseScreen() {
   const [railHeight, setRailHeight] = useState(1)
   const [maxScrollY, setMaxScrollY] = useState(1)
   const scrollRailTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [draftState, setDraftState] = useState<"idle" | "saving" | "saved" | "queued">("idle")
+  const [draftState, setDraftState] = useState<"idle" | "saving" | "saved" | "queued" | "blocked">("idle")
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [blockedIssue, setBlockedIssue] = useState<BlockedSaveIssue | null>(null)
+
+  const blockedMessage = useCallback((issue: BlockedSaveIssue) => {
+    const field = (() => {
+      switch (issue.field) {
+        case "diagnosis":
+        case "diagnoses": return tc("diagnosisLabel")
+        case "plannedProcedure":
+        case "procedures": return tc("procedureLabel")
+        case "comorbidities": return tc("activeComorbidities")
+        case "teamNotes": return tc("teamNotesLabel")
+        case "allergyDetails": return tc("allergenSearch")
+        case "currentMedications": return tc("medicationSearch")
+        case "familyAnesthesiaDetails": return tc("familyAnesthesiaDetails")
+        case "difficultAirwayNotes": return tc("difficultAirwayNotes")
+        case "physicalExamReport": return tc("physicalExamReport")
+        default: return issue.field
+      }
+    })()
+    switch (issue.reason) {
+      case "likely_name": return tc("piiLikelyName").replace("{field}", field)
+      case "egn": return tc("piiEgn").replace("{field}", field)
+      case "long_number": return tc("piiLongNumber").replace("{field}", field)
+      case "date": return tc("piiDate").replace("{field}", field)
+      case "email": return tc("piiEmail").replace("{field}", field)
+      default: return tc("piiGeneric").replace("{field}", field)
+    }
+  }, [tc])
 
   // Turn server-rejected paths ("preop.heightCm") into clinical field names.
   // Defined here rather than reusing requiredFieldLabels below, which is
@@ -374,11 +403,22 @@ export default function NewCaseScreen() {
     autosaveManager.hydrateSection(
       result.id,
       "preop",
-      buildPreopPayload(values),
+      result.acceptedPayload,
       result.revision ?? result.updatedAt,
     )
+    if (result.blocked) {
+      const fullPayload = buildPreopPayload(values)
+      const outcome = await autosaveManager.saveSection(result.id, "preop", fullPayload, {
+        fullPayload,
+      })
+      const issue = outcome.blocked ?? result.blocked
+      setBlockedIssue(issue)
+      setSaveError(blockedMessage(issue))
+    } else {
+      setBlockedIssue(null)
+    }
     return result.id
-  }, [clearLocalDraft])
+  }, [blockedMessage, clearLocalDraft])
 
   const persistLocalDraft = useCallback(async (values: FormInput): Promise<boolean> => {
     if (!localIdRef.current) localIdRef.current = makeLocalCaseId()
@@ -400,19 +440,26 @@ export default function NewCaseScreen() {
     // until the periodic background flusher's next tick (up to 15s), and the
     // GET below would silently reset the form to that stale pre-edit
     // snapshot in the meantime, discarding the queued edit.
-    autosaveManager.flushCase(continueId).catch(() => {}).then(() =>
-      apiJson<{ preop?: ServerPreop; finalizedAt?: string | null; status?: string }>(`/api/cases/${continueId}`)
-    )
-      .then((caseData) => {
+    autosaveManager.flushCase(continueId).catch(() => {}).then(() => Promise.all([
+      apiJson<{ preop?: ServerPreop; finalizedAt?: string | null; status?: string }>(`/api/cases/${continueId}`),
+      autosaveManager.outbox.load<Record<string, unknown>>(continueId, "preop").catch(() => null),
+    ]))
+      .then(([caseData, queuedPreop]) => {
         const p = caseData.preop ?? {}
-        const loadedValues = valuesFromServerPreop(p) as FormInput
+        const loadedValues = valuesFromServerPreop({ ...p, ...(queuedPreop ?? {}) }) as FormInput
         autosaveManager.hydrateSection(
           continueId,
           "preop",
-          buildPreopPayload(loadedValues),
+          buildPreopPayload(valuesFromServerPreop(p) as FormInput),
           p.syncRevision ?? p.updatedAt ?? null,
         )
         reset(loadedValues)
+        const managerState = autosaveManager.getState(continueId)
+        if (managerState.status === "blocked" && managerState.blocked) {
+          setBlockedIssue(managerState.blocked)
+          setSaveError(blockedMessage(managerState.blocked))
+          setDraftState("blocked")
+        }
         setPreopFinalizedAt(caseData.finalizedAt ?? null)
         setPreopCaseStatus(caseData.status ?? null)
         void clearLocalDraft()
@@ -428,7 +475,7 @@ export default function NewCaseScreen() {
         notify(tc("errorLabel"), err.message ?? "Could not load case.")
       })
 
-  }, [clearLocalDraft, continueId, reset, router, tc])
+  }, [blockedMessage, clearLocalDraft, continueId, reset, router, tc])
 
   // Restore local draft silently when opened from the dashboard via ?localId=
   useEffect(() => {
@@ -480,7 +527,7 @@ export default function NewCaseScreen() {
             const id = await tryCreateServerCase(values)
             if (id) {
               await clearLocalDraft()
-              setDraftState("saved")
+              setDraftState(autosaveManager.getState(id).status === "blocked" ? "blocked" : "saved")
               return
             }
             // Offline or error: save locally so the case appears on the dashboard
@@ -495,12 +542,17 @@ export default function NewCaseScreen() {
           if (result.result === "saved") {
             await clearLocalDraft()
             setDraftState("saved")
+            setBlockedIssue(null)
             // The section saved, but the server refused individual values (out of
             // range). Name them: they are still visible on screen, so silence
             // would imply they were stored. Retrying is pointless until the
             // clinician changes the value, so we don't re-queue.
             const rejected = result.response?.rejectedFields ?? []
             setSaveError(rejected.length ? rejectedFieldsMessage(rejected) : null)
+          } else if (result.result === "blocked" && result.blocked) {
+            setBlockedIssue(result.blocked)
+            setSaveError(blockedMessage(result.blocked))
+            setDraftState("blocked")
           } else if (result.result === "queued" || result.result === "failed") {
             setSaveError("Network error — patch queued")
             await persistLocalDraft(values)
@@ -515,7 +567,7 @@ export default function NewCaseScreen() {
             const replacementId = await tryCreateServerCase(values)
             if (replacementId) {
               await clearLocalDraft()
-              setDraftState("saved")
+              setDraftState(autosaveManager.getState(replacementId).status === "blocked" ? "blocked" : "saved")
               return
             }
           }
@@ -536,7 +588,7 @@ export default function NewCaseScreen() {
     flushAutosaveRef.current = runAutosave
     autosaveDraftRef.current = setTimeout(runAutosave, discreteTap ? 300 : 2000)
 
-  }, [_allFormValues, clearLocalDraft, getValues, persistLocalDraft, rejectedFieldsMessage, tryCreateServerCase])
+  }, [_allFormValues, blockedMessage, clearLocalDraft, getValues, persistLocalDraft, rejectedFieldsMessage, tryCreateServerCase])
 
   useEffect(() => {
     activeSectionRef.current = activeSection
@@ -805,6 +857,13 @@ export default function NewCaseScreen() {
         })
         if (patchResult.result === "saved") {
           id = caseIdRef.current
+        } else if (patchResult.result === "blocked" && patchResult.blocked) {
+          const message = blockedMessage(patchResult.blocked)
+          setBlockedIssue(patchResult.blocked)
+          setSaveError(message)
+          setDraftState("blocked")
+          notify(tc("errorLabel"), message)
+          return
         } else {
           await persistLocalDraft(getValues())
           notify(
@@ -824,9 +883,24 @@ export default function NewCaseScreen() {
         autosaveManager.hydrateSection(
           createResult.id,
           "preop",
-          preopPayload,
+          createResult.acceptedPayload,
           createResult.revision ?? createResult.updatedAt,
         )
+        if (createResult.blocked) {
+          const patchResult = await autosaveManager.saveSection(
+            createResult.id,
+            "preop",
+            preopPayload,
+            { fullPayload: preopPayload },
+          )
+          const issue = patchResult.blocked ?? createResult.blocked
+          const message = blockedMessage(issue)
+          setBlockedIssue(issue)
+          setSaveError(message)
+          setDraftState("blocked")
+          notify(tc("errorLabel"), message)
+          return
+        }
       }
       await clearLocalDraft()
       router.replace(`/(app)/cases/intraop/${id}`)
@@ -851,6 +925,13 @@ export default function NewCaseScreen() {
       asaRequired: tc("overviewASAReq"),
     })
   }
+
+  const blockedField =
+    blockedIssue?.field === "diagnosis" ? "diagnoses"
+    : blockedIssue?.field === "plannedProcedure" ? "procedures"
+    : blockedIssue?.field
+  const blockedFieldMessage = blockedIssue ? blockedMessage(blockedIssue) : undefined
+  const blockedErrorFor = (field: string) => blockedField === field ? blockedFieldMessage : undefined
 
   return (
     <>
@@ -983,11 +1064,11 @@ export default function NewCaseScreen() {
           <Animated.View style={preopLayout === "sections" ? { transform: [{ translateX: slideAnim }, { scale: gestureScale }] } : undefined}>
           <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
             {draftState !== "idle" && (
-              <Text style={{ color: draftState === "queued" ? colors.warning : colors.textMuted, fontSize: 11, fontWeight: "700", textAlign: "right", marginBottom: saveError ? 2 : 4 }}>
-                {draftState === "saving" ? tc("draftSaving") : draftState === "saved" ? tc("draftSaved") : tc("draftLocal")}
+              <Text style={{ color: draftState === "blocked" ? colors.danger : draftState === "queued" ? colors.warning : colors.textMuted, fontSize: 11, fontWeight: "700", textAlign: "right", marginBottom: saveError ? 2 : 4 }}>
+                {draftState === "saving" ? tc("draftSaving") : draftState === "saved" ? tc("draftSaved") : draftState === "blocked" ? tc("draftBlocked") : tc("draftLocal")}
               </Text>
             )}
-            {saveError && draftState === "queued" && (
+            {saveError && (draftState === "queued" || draftState === "blocked") && (
               <Text style={{ color: colors.danger, fontSize: 10, textAlign: "right", marginBottom: 4 }} selectable>
                 {saveError}
               </Text>
@@ -1027,17 +1108,17 @@ export default function NewCaseScreen() {
 
             <SectionCard title={tc("sectionCaseDetails")} onLayout={(y) => { sectionY.current.case = y }} visible={showSection("case")}>
               <Controller control={control} name="diagnoses" render={({ field }) => (
-                <SearchTagInput label={tc("diagnosisLabel")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label, system: item.system, labelEn: item.labelEn, labelBg: item.labelBg }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, sub: item.code, label: item.label, system: item.system ?? "ICD-10", labelEn: item.labelEn, labelBg: item.labelBg })))} endpoint="/api/search/icd10" placeholder={tc("diagnosisPlaceholder")} onFocus={() => scrollToSection("case", 60)} required error={errors.diagnoses?.message} />
+                <SearchTagInput kind="icd10" label={tc("diagnosisLabel")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label, system: item.system, labelEn: item.labelEn, labelBg: item.labelBg }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, sub: item.code, label: item.label, system: item.system ?? "ICD-10", labelEn: item.labelEn, labelBg: item.labelBg })))} endpoint="/api/search/icd10" placeholder={tc("diagnosisPlaceholder")} onFocus={() => scrollToSection("case", 60)} required error={errors.diagnoses?.message ?? blockedErrorFor("diagnoses")} />
               )} />
               <Controller control={control} name="procedures" render={({ field }) => (
-                <SearchTagInput label={tc("procedureLabel")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, label: item.label })))} endpoint="/api/search/procedures" placeholder={tc("procedureSearchPlaceholder")} onFocus={() => scrollToSection("case", 160)} required error={errors.procedures?.message} />
+                <SearchTagInput kind="procedure" label={tc("procedureLabel")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, label: item.label })))} endpoint="/api/search/procedures" placeholder={tc("procedureSearchPlaceholder")} onFocus={() => scrollToSection("case", 160)} required error={errors.procedures?.message ?? blockedErrorFor("procedures")} />
               )} />
               <Controller control={control} name="highRiskSurgery" render={({ field }) => <ClinicalSwitchRow label={tc("highRiskSurgery")} value={!!field.value} onValueChange={field.onChange} activeColor={colors.warning} />} />
               <Controller control={control} name="emergencySurgery" render={({ field }) => (
                 <ClinicalSwitchRow label={field.value ? tc("emergencySurgery") : tc("electiveSurgery")} value={!!field.value}
                   onValueChange={(v) => { field.onChange(v); setValue("elective", !v) }} activeColor={colors.danger} />
               )} />
-              <Field label={tc("teamNotesLabel")}>
+              <Field label={tc("teamNotesLabel")} error={blockedErrorFor("teamNotes")}>
                 <Controller control={control} name="teamNotes" render={({ field }) => (
                   <StyledInput value={field.value ?? ""} onChangeText={field.onChange} maxLength={500} multiline placeholder={tc("teamNotesPlaceholder")} />
                 )} />
@@ -1047,7 +1128,7 @@ export default function NewCaseScreen() {
             <SectionCard title={tc("sectionHistory")} subtitle={tc("historySubtitle")} onLayout={(y) => { sectionY.current.history = y }} visible={showSection("history")}>
               <Controller control={control} name="comorbidities" render={({ field }) => (
                 <>
-                  <SearchTagInput label={tc("activeComorbidities")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label, system: item.system, labelEn: item.labelEn, labelBg: item.labelBg }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, sub: item.code, label: item.label, system: item.system ?? "ICD-10", labelEn: item.labelEn, labelBg: item.labelBg })))} endpoint="/api/search/icd10" placeholder={tc("searchComorbidities")} onFocus={() => scrollToSection("history", 80)} />
+                  <SearchTagInput kind="icd10" label={tc("activeComorbidities")} value={(field.value ?? []).map((item) => ({ code: item.code ?? item.label, label: item.label, system: item.system, labelEn: item.labelEn, labelBg: item.labelBg }))} onChange={(items) => field.onChange(items.map((item) => ({ code: item.code, sub: item.code, label: item.label, system: item.system ?? "ICD-10", labelEn: item.labelEn, labelBg: item.labelBg })))} endpoint="/api/search/icd10" placeholder={tc("searchComorbidities")} onFocus={() => scrollToSection("history", 80)} error={blockedErrorFor("comorbidities")} />
                   <ComorbiditiesBySystem
                     items={field.value ?? []}
                     onRemove={(label) => field.onChange((field.value ?? []).filter((c: { label: string }) => c.label !== label))}
@@ -1058,7 +1139,7 @@ export default function NewCaseScreen() {
 
             <SectionCard title={tc("sectionMeds")} onLayout={(y) => { sectionY.current.meds = y }} visible={showSection("meds")}>
               <Controller control={control} name="currentMedications" render={({ field }) => (
-                <SearchTagInput label={tc("medicationSearch")} value={(field.value ?? []).map((item) => ({ code: item.label, label: item.label }))} onChange={(items) => field.onChange(items.map((item) => ({ label: item.label, inn: item.inn, atcCode: item.atcCode })))} endpoint="/api/search/drugs" placeholder={tc("searchMedications")} onFocus={() => scrollToSection("meds", 60)} />
+                <SearchTagInput kind="medication" label={tc("medicationSearch")} value={(field.value ?? []).map((item) => ({ code: item.atcCode ?? item.inn ?? item.label, label: item.label, inn: item.inn, atcCode: item.atcCode }))} onChange={(items) => field.onChange(items.map((item) => ({ label: item.label, inn: item.inn, atcCode: item.atcCode })))} endpoint="/api/search/drugs" placeholder={tc("searchMedications")} onFocus={() => scrollToSection("meds", 60)} error={blockedErrorFor("currentMedications")} />
               )} />
             </SectionCard>
 
@@ -1069,7 +1150,7 @@ export default function NewCaseScreen() {
               }} activeColor={colors.danger} />} />
               {allergies ? (
                 <Controller control={control} name="allergyDetails" render={({ field }) => (
-                  <SearchTagInput label={tc("allergenSearch")} value={(field.value ?? []).map((item) => ({ code: item.label, label: item.label }))} onChange={(items) => field.onChange(items.map((item) => ({ label: item.label, inn: item.inn, atcCode: item.atcCode })))} endpoint="/api/search/drugs" placeholder={tc("allergenSearchPlaceholder")} onFocus={() => scrollToSection("history", 200)} />
+                  <SearchTagInput kind="medication" label={tc("allergenSearch")} value={(field.value ?? []).map((item) => ({ code: item.atcCode ?? item.inn ?? item.label, label: item.label, inn: item.inn, atcCode: item.atcCode }))} onChange={(items) => field.onChange(items.map((item) => ({ label: item.label, inn: item.inn, atcCode: item.atcCode })))} endpoint="/api/search/drugs" placeholder={tc("allergenSearchPlaceholder")} onFocus={() => scrollToSection("history", 200)} error={blockedErrorFor("allergyDetails")} />
                 )} />
               ) : null}
               <Controller control={control} name="latexAllergy" render={({ field }) => <ClinicalSwitchRow label={tc("latexAllergy")} value={!!field.value} onValueChange={field.onChange} activeColor={colors.danger} />} />
@@ -1077,7 +1158,7 @@ export default function NewCaseScreen() {
                 field.onChange(value)
                 if (!value) setValue("familyAnesthesiaDetails", "", { shouldDirty: true })
               }} activeColor={colors.warning} />} />
-              {familyAnesthesiaProblems ? <Field label={tc("familyAnesthesiaDetails")}><Controller control={control} name="familyAnesthesiaDetails" render={({ field }) => <StyledInput value={field.value ?? ""} onChangeText={field.onChange} maxLength={500} multiline placeholder={tc("familyAnesthesiaHint")} />} /></Field> : null}
+              {familyAnesthesiaProblems ? <Field label={tc("familyAnesthesiaDetails")} error={blockedErrorFor("familyAnesthesiaDetails")}><Controller control={control} name="familyAnesthesiaDetails" render={({ field }) => <StyledInput value={field.value ?? ""} onChangeText={field.onChange} maxLength={500} multiline placeholder={tc("familyAnesthesiaHint")} />} /></Field> : null}
               <Controller control={control} name="dentalProsthetics" render={({ field }) => <ClinicalSwitchRow label={tc("dentalProsthetics")} value={!!field.value} onValueChange={field.onChange} />} />
               <Controller control={control} name="looseTeeth" render={({ field }) => <ClinicalSwitchRow label={tc("looseTeeth")} value={!!field.value} onValueChange={field.onChange} activeColor={colors.warning} />} />
               <Controller control={control} name="smoking" render={({ field }) => <ClinicalSwitchRow label={tc("smoking")} value={!!field.value} onValueChange={field.onChange} />} />
@@ -1152,7 +1233,7 @@ export default function NewCaseScreen() {
                   <VitalNumber label={tc("respiratoryRateLabel")} unit="/min" value={field.value} onChange={field.onChange} min={respiratoryRange?.min ?? 0} max={respiratoryRange?.max ?? 50} step={respiratoryRange?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} required error={errors.respiratoryRate?.message} />
                 )} />
               )} />
-              <Field label={tc("physicalExamReport")}>
+              <Field label={tc("physicalExamReport")} error={blockedErrorFor("physicalExamReport")}>
                 <Controller control={control} name="physicalExamReport" render={({ field }) => <StyledInput value={field.value ?? ""} onChangeText={field.onChange} maxLength={500} multiline placeholder={tc("physicalExamHint")} />} />
               </Field>
             </SectionCard>
@@ -1186,7 +1267,7 @@ export default function NewCaseScreen() {
                     field.onChange(value)
                     if (!value) setValue("difficultAirwayNotes", "", { shouldDirty: true })
                   }} activeColor={colors.danger} />} />
-                  {difficultAirwayHistory ? <Field label={tc("difficultAirwayNotes")}><Controller control={control} name="difficultAirwayNotes" render={({ field }) => <StyledInput value={field.value ?? ""} onChangeText={field.onChange} maxLength={500} multiline placeholder={tc("difficultAirwayHint")} />} /></Field> : null}
+                  {difficultAirwayHistory ? <Field label={tc("difficultAirwayNotes")} error={blockedErrorFor("difficultAirwayNotes")}><Controller control={control} name="difficultAirwayNotes" render={({ field }) => <StyledInput value={field.value ?? ""} onChangeText={field.onChange} maxLength={500} multiline placeholder={tc("difficultAirwayHint")} />} /></Field> : null}
                 </>
               ) : null}
             </SectionCard>

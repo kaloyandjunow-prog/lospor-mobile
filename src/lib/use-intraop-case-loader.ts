@@ -43,6 +43,7 @@ type UseIntraopCaseLoaderArgs = {
   setCaseStartTime: Dispatch<SetStateAction<string>>
   setCaseEndTime: Dispatch<SetStateAction<string>>
   setCaseEndNextDay: Dispatch<SetStateAction<boolean>>
+  setCaseTimezone: Dispatch<SetStateAction<string | null>>
   setAwTools: Dispatch<SetStateAction<string[]>>
   setAwDevices: Dispatch<SetStateAction<string[]>>
   setAwLmaSize: Dispatch<SetStateAction<string | null>>
@@ -66,6 +67,7 @@ type UseIntraopCaseLoaderArgs = {
   setComplicationsNotes: Dispatch<SetStateAction<string>>
   setPendingCount: Dispatch<SetStateAction<number>>
   setSyncState: Dispatch<SetStateAction<"saved" | "saving" | "failed" | "offline">>
+  setSyncErrorMessage: Dispatch<SetStateAction<string | null>>
   setLog: Dispatch<SetStateAction<LogEvent[]>>
   setElapsedMs: Dispatch<SetStateAction<number>>
   setActiveInfusions: Dispatch<SetStateAction<ActiveInfusion[]>>
@@ -97,6 +99,7 @@ export function useIntraopCaseLoader({
   setCaseStartTime,
   setCaseEndTime,
   setCaseEndNextDay,
+  setCaseTimezone,
   setAwTools,
   setAwDevices,
   setAwLmaSize,
@@ -120,6 +123,7 @@ export function useIntraopCaseLoader({
   setComplicationsNotes,
   setPendingCount,
   setSyncState,
+  setSyncErrorMessage,
   setLog,
   setElapsedMs,
   setActiveInfusions,
@@ -132,11 +136,16 @@ export function useIntraopCaseLoader({
 }: UseIntraopCaseLoaderArgs) {
   const loadCase = useCallback(async (silent = false) => {
     try {
+      if (!silent) await autosaveManager.flushCase(caseId).catch(() => {})
       const data = await apiJson<CaseDetailDto>(`/api/cases/${caseId}`)
+      const localIntraop = await autosaveManager.outbox.load<Record<string, unknown>>(caseId, "intraop")
+      const visibleData: CaseDetailDto = localIntraop
+        ? ({ ...data, intraop: { ...(data.intraop ?? {}), ...localIntraop } } as CaseDetailDto)
+        : data
       const pending = await loadPendingIntraopEvents<LogEvent>(caseId)
       const pendingMutations = await autosaveManager.eventMutations.load(caseId)
       const hydrated = buildLoadedIntraopCaseState(
-        data,
+        visibleData,
         pending,
         monitoringOptions,
         complicationItems,
@@ -187,11 +196,20 @@ export function useIntraopCaseLoader({
           if (hydrated.timing.startTime) setCaseStartTime(hydrated.timing.startTime)
           if (hydrated.timing.endTime) setCaseEndTime(hydrated.timing.endTime)
           if (hydrated.timing.endTimeNextDay != null) setCaseEndNextDay(hydrated.timing.endTimeNextDay)
+          setCaseTimezone(hydrated.timing.timezone)
           if (hydrated.hasAdvancedMonitoring) setAdvMonOpen(true)
         }
 
+        const managerState = autosaveManager.getState(caseId)
         setPendingCount(pending.length)
-        setSyncState(pending.length > 0 ? "failed" : "saved")
+        setSyncErrorMessage(managerState.blocked?.message ?? null)
+        setSyncState(
+          managerState.status === "blocked" || managerState.status === "failed"
+            ? "failed"
+            : pending.length > 0 || managerState.status === "queued"
+              ? "offline"
+              : "saved",
+        )
         setLog(hydrated.rawLog)
         const loadedTimetable = hydrated.loadedTimetable
         startRef.current = loadedTimetable.startDate
@@ -244,6 +262,7 @@ export function useIntraopCaseLoader({
     setAwVentModes,
     setCaseEndNextDay,
     setCaseEndTime,
+    setCaseTimezone,
     setCaseInfo,
     setCaseLoaded,
     setCaseMonthYear,
@@ -258,6 +277,7 @@ export function useIntraopCaseLoader({
     setPremedMorningText,
     setPreop,
     setSelectedComplications,
+    setSyncErrorMessage,
     setSyncState,
     setTechniques,
     setTimetable,

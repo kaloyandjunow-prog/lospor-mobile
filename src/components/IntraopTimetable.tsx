@@ -16,7 +16,10 @@ import type {
   VitalsEntry,
 } from "@lospor/core/intraop-types"
 import { packLaneRows } from "@lospor/core/timetable"
-import { doseCalcMap } from "@lospor/core/option-library"
+import { baseProfilesMap, doseCalcMap } from "@lospor/core/option-library"
+import { metadataString } from "@lospor/core/option-contracts"
+import { gasSettingsAtColumn } from "@lospor/core/intraop-summary"
+import { INTRAOP_COLUMN_MINUTES } from "@lospor/core/intraop-engine"
 
 // ─── Types (API-compatible with web timetable) ────────────────────────────────
 
@@ -37,57 +40,27 @@ export function emptyTimetable(): TimetableData {
 
 const COL_W   = 56  // px per 5-min column
 const LABEL_W = 72  // label column width
-const EXTEND  = 6   // columns added per "+" tap = 30 min
+const EXTEND  = 30 / INTRAOP_COLUMN_MINUTES
 
 // ─── Data libraries ───────────────────────────────────────────────────────────
 
-const DRUG_CATS = [
-  { cat: "Induction",    color: "#3b82f6", drugs: [{name:"Propofol",unit:"mg"},{name:"Thiopental",unit:"mg"},{name:"Ketamine",unit:"mg"},{name:"Etomidate",unit:"mg"},{name:"Midazolam",unit:"mg"}] },
-  { cat: "Opioids",      color: "#a855f7", drugs: [{name:"Fentanyl",unit:"mcg"},{name:"Morphine",unit:"mg"},{name:"Remifentanil",unit:"mcg"},{name:"Sufentanil",unit:"mcg"},{name:"Alfentanil",unit:"mcg"}] },
-  { cat: "Relaxants",    color: "#f59e0b", drugs: [{name:"Succinylcholine",unit:"mg"},{name:"Rocuronium",unit:"mg"},{name:"Vecuronium",unit:"mg"},{name:"Atracurium",unit:"mg"},{name:"Cisatracurium",unit:"mg"}] },
-  { cat: "Reversal",     color: "#10b981", drugs: [{name:"Sugammadex",unit:"mg"},{name:"Neostigmine",unit:"mg"},{name:"Atropine",unit:"mg"}] },
-  { cat: "Vasopressors", color: "#ef4444", drugs: [{name:"Ephedrine",unit:"mg"},{name:"Phenylephrine",unit:"mcg"},{name:"Epinephrine",unit:"mg"},{name:"Norepinephrine",unit:"mg"}] },
-  { cat: "Antiemetics",  color: "#14b8a6", drugs: [{name:"Ondansetron",unit:"mg"},{name:"Dexamethasone",unit:"mg"},{name:"Metoclopramide",unit:"mg"},{name:"Droperidol",unit:"mg"}] },
-  { cat: "Analgesics",   color: "#f97316", drugs: [{name:"Paracetamol",unit:"g"},{name:"Ketorolac",unit:"mg"},{name:"Lidocaine",unit:"mg"},{name:"Magnesium",unit:"mg"},{name:"Ketoprofen",unit:"mg"}] },
-  { cat: "Local anaesthetics", color: "#0891b2", drugs: [{name:"Bupivacaine",unit:"mg"},{name:"Ropivacaine",unit:"mg"},{name:"Levobupivacaine",unit:"mg"},{name:"Prilocaine",unit:"mg"}] },
+type DrugChoice = { name: string; unit: string }
+type DrugCategory = { cat: string; color: string; drugs: DrugChoice[] }
+type InfusionChoice = { name: string; unit: string; color: string }
+type FluidChoice = { name: string; cat: string; color: string }
+type AgentChoice = { name: string; color: string }
+
+const OPTION_COLORS = [
+  "#3b82f6", "#a855f7", "#f59e0b", "#10b981", "#ef4444",
+  "#14b8a6", "#f97316", "#0891b2", "#ec4899", "#6366f1",
 ]
 
-const INF_DRUGS = [
-  {name:"Propofol",unit:"mcg/kg/min",color:"#6366f1"},
-  {name:"Remifentanil",unit:"mcg/kg/min",color:"#a855f7"},
-  {name:"Norepinephrine",unit:"mcg/kg/min",color:"#ef4444"},
-  {name:"Epinephrine",unit:"mcg/kg/min",color:"#b91c1c"},
-  {name:"Phenylephrine",unit:"mcg/min",color:"#dc2626"},
-  {name:"Dexmedetomidine",unit:"mcg/kg/hr",color:"#0ea5e9"},
-  {name:"Ketamine",unit:"mg/kg/hr",color:"#f59e0b"},
-  {name:"Rocuronium",unit:"mcg/kg/min",color:"#d97706"},
-  {name:"Oxytocin",unit:"mIU/min",color:"#ec4899"},
-  {name:"Insulin",unit:"units/hr",color:"#06b6d4"},
-  {name:"Magnesium",unit:"g/hr",color:"#0d9488"},
-  {name:"Lidocaine",unit:"mg/hr",color:"#0891b2"},
-  {name:"Vasopressin",unit:"units/hr",color:"#991b1b"},
-]
-
-const FLUID_LIST = [
-  {name:"NaCl 0.9%",       cat:"Crystalloids",   color:"#06b6d4"},
-  {name:"Ringer's Lactate", cat:"Crystalloids",   color:"#06b6d4"},
-  {name:"Hartmann's",       cat:"Crystalloids",   color:"#06b6d4"},
-  {name:"Plasma-Lyte",      cat:"Crystalloids",   color:"#06b6d4"},
-  {name:"Gelofusine",       cat:"Colloids",       color:"#818cf8"},
-  {name:"HES 130/0.4",     cat:"Colloids",       color:"#818cf8"},
-  {name:"Albumin 4%",       cat:"Colloids",       color:"#818cf8"},
-  {name:"PRBC",             cat:"Blood products", color:"#fb7185"},
-  {name:"FFP",              cat:"Blood products", color:"#fb7185"},
-  {name:"Platelets",        cat:"Blood products", color:"#fb7185"},
-  {name:"Mannitol 20%",     cat:"Other",          color:"#94a3b8"},
-  {name:"NaHCO₃ 8.4%",     cat:"Other",          color:"#94a3b8"},
-]
-
-const VOLATILE_AGENTS = [
-  {name:"Sevoflurane", color:"#a855f7"},
-  {name:"Desflurane",  color:"#3b82f6"},
-  {name:"Isoflurane",  color:"#10b981"},
-]
+const FLUID_COLORS: Record<string, string> = {
+  Crystalloids: "#06b6d4",
+  Colloids: "#818cf8",
+  "Blood products": "#fb7185",
+  Other: "#94a3b8",
+}
 
 const VITAL_DEFS: { key: keyof VitalsEntry; label: string; color: string }[] = [
   {key:"systolic",  label:"BP Sys", color:"#ef4444"},
@@ -125,15 +98,8 @@ function computeFluidRows(fluids: TimetableFluid[]): FluidLaneRow[] {
 function colToTime(startTime: string, col: number): string {
   const m = startTime.match(/^(\d+):(\d+)$/)
   const h = m ? parseInt(m[1]) : 0, mm = m ? parseInt(m[2]) : 0
-  const total = h * 60 + mm + col * 5
+  const total = h * 60 + mm + col * INTRAOP_COLUMN_MINUTES
   return `${String(Math.floor(total / 60) % 24).padStart(2,"0")}:${String(total % 60).padStart(2,"0")}`
-}
-
-function drugColor(name: string): string {
-  for (const cat of DRUG_CATS) {
-    if (cat.drugs.some(d => d.name === name)) return cat.color
-  }
-  return "#64748b"
 }
 
 function uid() { return Math.random().toString(36).slice(2,9) }
@@ -294,7 +260,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
     const [eh, em] = hhmm.split(":").map(Number)
     const [sh, sm] = startTime.split(":").map(Number)
     const diffMins = (eh * 60 + em) - (sh * 60 + sm)
-    return Math.max(0, Math.floor(diffMins / 5))
+    return Math.max(0, Math.floor(diffMins / INTRAOP_COLUMN_MINUTES))
   }, [endTime, startTime])
 
   // Chart toggle
@@ -315,16 +281,16 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
   const [drugHint, setDrugHint]   = useState("")
 
   // Infusion
-  const [selInfDrug, setSelInfDrug] = useState<typeof INF_DRUGS[0] | null>(null)
+  const [selInfDrug, setSelInfDrug] = useState<InfusionChoice | null>(null)
   const [infRate, setInfRate]       = useState("")
   const [infUnit, setInfUnit]       = useState("")
 
   // Fluid
-  const [selFluid, setSelFluid]   = useState<typeof FLUID_LIST[0] | null>(null)
+  const [selFluid, setSelFluid]   = useState<FluidChoice | null>(null)
   const [fluidVol, setFluidVol]   = useState("500")
 
   // Agent
-  const [selAgent, setSelAgent]   = useState<typeof VOLATILE_AGENTS[0] | null>(null)
+  const [selAgent, setSelAgent]   = useState<AgentChoice | null>(null)
 
   // Vitals modal
   const [vModal, setVModal]       = useState<{ colIdx:number; key:keyof VitalsEntry } | null>(null)
@@ -336,10 +302,58 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
 
   // Drug dose autofill
   const { options: drugLibOptions } = useOptionLibrary("INTRAOP_DRUG")
+  const { options: infusionLibOptions } = useOptionLibrary("INTRAOP_INFUSION")
+  const { options: fluidLibOptions } = useOptionLibrary("INTRAOP_FLUID")
+  const { options: agentLibOptions } = useOptionLibrary("INHALATIONAL_AGENT")
   const drugDoseCalculations = useMemo(
     () => doseCalcMap(drugLibOptions),
     [drugLibOptions],
   )
+  const drugCategories = useMemo<DrugCategory[]>(() => {
+    const groups = new Map<string, DrugCategory>()
+    for (const option of drugLibOptions) {
+      const group = option.group ?? "Other"
+      if (!groups.has(group)) {
+        groups.set(group, {
+          cat: group,
+          color: OPTION_COLORS[groups.size % OPTION_COLORS.length],
+          drugs: [],
+        })
+      }
+      groups.get(group)!.drugs.push({
+        name: option.label,
+        unit: metadataString(option.metadata, "unit") ?? "mg",
+      })
+    }
+    return [...groups.values()]
+  }, [drugLibOptions])
+  const infusionChoices = useMemo<InfusionChoice[]>(() => {
+    const profiles = baseProfilesMap(infusionLibOptions)
+    return infusionLibOptions.map(option => ({
+      name: option.label,
+      unit: profiles[option.label]?.unit ?? "mg/hr",
+      color: option.color?.startsWith("#") ? option.color : "#64748b",
+    }))
+  }, [infusionLibOptions])
+  const fluidChoices = useMemo<FluidChoice[]>(() => fluidLibOptions.map(option => ({
+    name: option.label,
+    cat: option.group ?? "Other",
+    color: FLUID_COLORS[option.group ?? "Other"] ?? "#94a3b8",
+  })), [fluidLibOptions])
+  const fluidCategories = useMemo(
+    () => [...new Set(fluidChoices.map(option => option.cat))],
+    [fluidChoices],
+  )
+  const agentChoices = useMemo<AgentChoice[]>(() => agentLibOptions.map((option, index) => ({
+    name: option.label,
+    color: OPTION_COLORS[(index + 1) % OPTION_COLORS.length],
+  })), [agentLibOptions])
+
+  function drugColor(name: string): string {
+    return drugCategories.find(category =>
+      category.drugs.some(drug => drug.name === name),
+    )?.color ?? "#64748b"
+  }
 
   function calcSuggestedDose(name: string): { dose: string; hint: string } {
     const option = drugLibOptions.find(candidate =>
@@ -662,11 +676,8 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
                 const seg = gasSegmentAt(col)
                 const isStart = seg?.startCol === col
                 const isEnd = !!seg && seg.endCol === col
-                const change = seg?.settingsChanges?.filter(c => c.col <= col).sort((a, b) => a.col - b.col).pop()
-                const fgf = change?.fgf ?? seg?.fgf
-                const carrierGas = change?.carrierGas ?? seg?.carrierGas
-                const fio2 = change?.fio2 ?? seg?.fio2
-                const isLabel = !!seg && (isStart || change?.col === col)
+                const settings = seg ? gasSettingsAtColumn(seg, col) : null
+                const isLabel = !!settings && (isStart || settings.changeCol === col)
                 const isPastEnd = endCol !== null && col > endCol
                 return (
                   <TouchableOpacity
@@ -682,13 +693,13 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
                         : isPastEnd ? "rgba(0,0,0,0.25)" : "transparent",
                       borderRightWidth: col % 3 === 2 ? 1 : 0,
                       borderRightColor:"#2e2e2e",
-                      borderLeftWidth: change?.col === col ? 2 : 0,
+                      borderLeftWidth: settings?.changeCol === col ? 2 : 0,
                       borderLeftColor:"#818cf8",
                     }}
                   >
                     {seg && isLabel ? (
                       <Text style={{ color:"#c4b5fd", fontSize:8, fontWeight:"700" }} numberOfLines={1}>
-                        FGF {fgf} · FiO2 {fio2}%{carrierGas ? ` · ${carrierGas.toUpperCase()}` : ""}
+                        FGF {settings.fgf} · FiO2 {settings.fio2}%{settings.carrierGas ? ` · ${settings.carrierGas.toUpperCase()}` : ""}
                       </Text>
                     ) : !seg ? (
                       <Text style={{ color:"#1e2d40", fontSize:12 }}>+</Text>
@@ -780,7 +791,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
           drugStep === "pick" && drugCat === null ? (
             /* Level 1: category landing */
             <View style={{ flexDirection:"row", flexWrap:"wrap", gap:8 }}>
-              {DRUG_CATS.map(cat => (
+              {drugCategories.map(cat => (
                 <TouchableOpacity
                   key={cat.cat}
                   onPress={() => setDrugCat(cat.cat)}
@@ -800,9 +811,9 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
               </TouchableOpacity>
               <ScrollView style={{ maxHeight:260 }} showsVerticalScrollIndicator={false}>
                 <View style={{ flexDirection:"row", flexWrap:"wrap", gap:6 }}>
-                  {(DRUG_CATS.find(c => c.cat === drugCat)?.drugs ?? []).map(d => {
+                  {(drugCategories.find(c => c.cat === drugCat)?.drugs ?? []).map(d => {
                     const suggested = calcSuggestedDose(d.name)
-                    const catColor = DRUG_CATS.find(c => c.cat === drugCat)?.color ?? "#64748b"
+                    const catColor = drugCategories.find(c => c.cat === drugCat)?.color ?? "#64748b"
                     return (
                       <TouchableOpacity
                         key={d.name}
@@ -856,7 +867,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
             <Text style={{ color:"#64748b", fontSize:11, fontWeight:"600", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Select drug</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom:14 }}>
               <View style={{ flexDirection:"row", gap:8 }}>
-                {INF_DRUGS.map(d => (
+                {infusionChoices.map(d => (
                   <TouchableOpacity
                     key={d.name}
                     onPress={() => { setSelInfDrug(d); setInfUnit(d.unit) }}
@@ -896,11 +907,11 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
         {addTab === "fluid" && (
           <View>
             <ScrollView style={{ maxHeight:200 }} showsVerticalScrollIndicator={false}>
-              {["Crystalloids","Colloids","Blood products","Other"].map(cat => (
+              {fluidCategories.map(cat => (
                 <View key={cat} style={{ marginBottom:10 }}>
                   <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{cat}</Text>
                   <View style={{ flexDirection:"row", flexWrap:"wrap", gap:6 }}>
-                    {FLUID_LIST.filter(f => f.cat === cat).map(f => (
+                    {fluidChoices.filter(f => f.cat === cat).map(f => (
                       <TouchableOpacity
                         key={f.name}
                         onPress={() => setSelFluid(f)}
@@ -948,7 +959,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
           <View>
             <Text style={{ color:"#94a3b8", fontSize:13, marginBottom:12 }}>Select volatile agent</Text>
             <View style={{ flexDirection:"row", gap:10, marginBottom:16 }}>
-              {VOLATILE_AGENTS.map(a => (
+              {agentChoices.map(a => (
                 <TouchableOpacity
                   key={a.name}
                   onPress={() => setSelAgent(a)}

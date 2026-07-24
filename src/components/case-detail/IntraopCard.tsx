@@ -4,9 +4,8 @@ import { colors, withAlpha } from "@/theme/colors"
 import type { ClinicalStringKey, TranslationKey } from "@/lib/preferences-context"
 import { SummaryCard, InfoRow, Chip, ChipRow, Divider } from "./CaseDetailPrimitives"
 import {
-  AIRWAY_TOOL_LABELS,
   MONITOR_MAP,
-  POSITION_LABELS,
+  airwayToolLabel,
   calcDrugTotals,
   calcIBW,
   calcInfusionTotals,
@@ -14,6 +13,7 @@ import {
   formatDuration,
   formatTimeHHMM,
   getActiveInfusions,
+  positionLabel,
   techniqueLabel,
   type CaseData,
   type KeyEvent,
@@ -99,14 +99,14 @@ export function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intr
   })()
 
   const airwayStr = formatAirway(intraop)
-  const airwayTools = (intraop.airwayTools ?? []).map(t => AIRWAY_TOOL_LABELS[t] ?? t)
+  const airwayTools = (intraop.airwayTools ?? []).map(airwayToolLabel)
 
   const monitors = MONITOR_MAP.filter(m => {
     const val = (intraop as Record<string, unknown>)[m.key as string]
     return !!val
   })
 
-  const positions = (intraop.positions ?? []).map(p => POSITION_LABELS[p] ?? p)
+  const positions = (intraop.positions ?? []).map(positionLabel)
   const ventText = (intraop.ventilationModes ?? []).join(" + ")
 
   let timingStr = ""

@@ -3,13 +3,21 @@ import { View, Text, ScrollView, TouchableOpacity, TextInput } from "react-nativ
 import * as Haptics from "expo-haptics"
 import { CL_GRADES, AIRWAY_HAS_SUBOPTIONS, VENT_ASSISTED, VENT_CONTROLLED } from "@/lib/airway-ventilation"
 import { usePreferences } from "@/lib/preferences-context"
+import {
+  DLT_SIDES,
+  DLT_SIZES,
+  DLT_TYPES,
+  ENDOBRONCHIAL_SIZES,
+  ETT_SIZES,
+  LMA_SIZES as CORE_LMA_SIZES,
+} from "@lospor/core/intraop"
 
 type Opt = { code: string; label: string }
 
 // 2 to 10, in 0.5 steps — Oral ETT / Nasal ETT tube size range
-const TUBE_SIZES = Array.from({ length: 17 }, (_, i) => (2 + i * 0.5).toFixed(1).replace(/\.0$/, ""))
+const TUBE_SIZES = ETT_SIZES.map(String)
 // Real-world LMA sizes — not a continuous half-step scale (no 3.5 or 4.5)
-const LMA_SIZES = ["1", "1.5", "2", "2.5", "3", "4", "5"]
+const LMA_SIZES = CORE_LMA_SIZES.map(String)
 
 export function AirwayTab({
   awTools, setAwTools, awClGrade, setAwClGrade, awDevices, setAwDevices,
@@ -275,7 +283,7 @@ export function AirwayTab({
                 <Text style={{ color:"#93c5fd", fontSize:12, fontWeight:"700", marginBottom:10 }}>Double Lumen Tube</Text>
                 <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{tc("awDltType")}</Text>
                 <View style={{ flexDirection:"row", gap:8, marginBottom:10 }}>
-                  {(["Carlens","Robertshaw"] as const).map(t => (
+                  {DLT_TYPES.map(t => (
                     <TouchableOpacity key={t} onPress={() => setAwDltType(awDltType === t ? null : t)}
                       style={{ flex:1, paddingVertical:9, borderRadius:8, alignItems:"center",
                         backgroundColor: awDltType === t ? "#1e3a5f" : "#0a0f1a",
@@ -286,7 +294,7 @@ export function AirwayTab({
                 </View>
                 <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{tc("awDltSide")}</Text>
                 <View style={{ flexDirection:"row", gap:8, marginBottom:10 }}>
-                  {(["Left","Right"] as const).map(s => (
+                  {DLT_SIDES.map(s => (
                     <TouchableOpacity key={s} onPress={() => setAwDltSide(awDltSide === s ? null : s)}
                       style={{ flex:1, paddingVertical:9, borderRadius:8, alignItems:"center",
                         backgroundColor: awDltSide === s ? "#1e3a5f" : "#0a0f1a",
@@ -298,7 +306,7 @@ export function AirwayTab({
                 <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{tc("awSizeFr")}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View style={{ flexDirection:"row", gap:6 }}>
-                    {[26,28,32,35,37,39,41].map(sz => (
+                    {DLT_SIZES.map(sz => (
                       <TouchableOpacity key={sz} onPress={() => setAwDltSize(awDltSize === sz ? null : sz)}
                         style={{ paddingHorizontal:14, paddingVertical:8, borderRadius:8,
                           backgroundColor: awDltSize === sz ? "#3b82f6" : "#1e2d40",
@@ -319,7 +327,7 @@ export function AirwayTab({
                 <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{tc("awSizeMmId")}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View style={{ flexDirection:"row", gap:6 }}>
-                    {[6.0,6.5,7.0,7.5,8.0].map(sz => (
+                    {ENDOBRONCHIAL_SIZES.map(sz => (
                       <TouchableOpacity key={sz} onPress={() => setAwEbSize(awEbSize === sz ? null : sz)}
                         style={{ paddingHorizontal:14, paddingVertical:8, borderRadius:8,
                           backgroundColor: awEbSize === sz ? "#3b82f6" : "#1e2d40",

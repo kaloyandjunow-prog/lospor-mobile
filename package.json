@@ -59,10 +59,10 @@
     "web": "expo start --web",
     "lint": "node --max-old-space-size=4096 ./node_modules/eslint/bin/eslint.js app src scripts App.tsx index.ts babel.config.js metro.config.js tailwind.config.js",
     "lint:strict": "npm run lint -- --max-warnings 0 --no-inline-config",
+    "check:shared-core": "node scripts/check-shared-core-boundaries.mjs",
     "typecheck": "tsc --noEmit --pretty false",
     "test": "vitest run",
-    "export:web": "node scripts/fetch-fallback-snapshot.mjs && expo export --platform web --clear && node scripts/patch-pwa.mjs",
-    "eas-build-pre-install": "node scripts/fetch-fallback-snapshot.mjs",
+    "export:web": "expo export --platform web --clear && node scripts/patch-pwa.mjs",
     "postinstall": "patch-package"
   },
   "overrides": {

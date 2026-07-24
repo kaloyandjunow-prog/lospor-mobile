@@ -11,26 +11,21 @@ import { apiJson } from "@/lib/api"
 import { usePreferences } from "@/lib/preferences-context"
 import { Chip } from "@/components/ui"
 import { colors, withAlpha } from "@/theme/colors"
+import {
+  CLINICAL_SEARCH_MIN_LENGTH,
+  parseClinicalSearchResults,
+  type CanonicalSearchTag,
+  type ClinicalSearchKind,
+} from "@lospor/core/search"
 
-export type TagItem = { code: string; label: string; sub?: string; system?: string; labelEn?: string; labelBg?: string; inn?: string; atcCode?: string }
-type SearchResult = {
-  code?: string
-  description?: string
-  descriptionBg?: string
-  group?: string
-  domain?: string
-  system?: string
-  inn?: string
-  atcCode?: string
-  name?: string
-  term?: string
-}
+export type TagItem = CanonicalSearchTag
 
 type Props = {
   label: string
   value: TagItem[]
   onChange: (v: TagItem[]) => void
   endpoint: string
+  kind: ClinicalSearchKind
   queryParam?: string
   extraParams?: Record<string, string>
   placeholder?: string
@@ -45,6 +40,7 @@ export function SearchTagInput({
   value,
   onChange,
   endpoint,
+  kind,
   queryParam = "q",
   extraParams = {},
   placeholder = "Search...",
@@ -59,7 +55,7 @@ export function SearchTagInput({
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const isIcdSearch = endpoint.includes("icd11") || endpoint.includes("icd10")
+  const minQueryLength = CLINICAL_SEARCH_MIN_LENGTH[kind]
 
   useEffect(() => {
     return () => {
@@ -69,7 +65,8 @@ export function SearchTagInput({
 
   const search = useCallback((q: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (q.length < 2) {
+    const trimmed = q.trim()
+    if (trimmed.length < minQueryLength) {
       setResults([])
       setLoading(false)
       return
@@ -78,41 +75,21 @@ export function SearchTagInput({
     debounceRef.current = setTimeout(async () => {
       setLoading(true)
       try {
-        const mergedParams: Record<string, string> = { [queryParam]: q, ...extraParams }
-        if (isIcdSearch) mergedParams.locale = language
+        const mergedParams: Record<string, string> = {
+          [queryParam]: trimmed,
+          ...extraParams,
+        }
+        if (kind === "icd10") mergedParams.locale = language
         const params = new URLSearchParams(mergedParams)
-        const data = await apiJson<SearchResult[]>(`${endpoint}?${params}`)
-        setResults(
-          data.map((d) => {
-            // ICD diagnosis / comorbidity result — format matches web: "K37 — Unspecified appendicitis"
-            if (d.code && d.description && !d.group && !d.domain) {
-              const displayLabel = (language === "bg" && d.descriptionBg) ? d.descriptionBg : d.description
-              return {
-                code: d.code,
-                label: displayLabel,
-                sub: d.code,
-                system: d.system ?? "ICD-10",
-                labelEn: d.description,
-                labelBg: d.descriptionBg,
-              }
-            }
-            // Procedure result (group + domain) or drug / fallback
-            return {
-              code: d.code ?? d.inn ?? d.name ?? d.term ?? "",
-              label: d.group ?? d.description ?? d.name ?? d.term ?? d.code ?? "",
-              sub: d.domain ? `${d.code ?? ""}${d.code ? " · " : ""}${d.domain}` : undefined,
-              inn: d.inn ?? undefined,
-              atcCode: d.atcCode ?? undefined,
-            }
-          })
-        )
+        const data = await apiJson<unknown>(`${endpoint}?${params}`)
+        setResults(parseClinicalSearchResults(kind, data, language))
       } catch {
         setResults([])
       } finally {
         setLoading(false)
       }
     }, 300)
-  }, [endpoint, queryParam, extraParams, language, isIcdSearch])
+  }, [endpoint, queryParam, extraParams, language, kind, minQueryLength])
 
   function handleChange(q: string) {
     setQuery(q)
@@ -210,13 +187,15 @@ export function SearchTagInput({
                 </View>
               ) : null}
 
-              {!loading && query.length < 2 ? (
+              {!loading && query.trim().length < minQueryLength ? (
                 <View style={{ padding: 14 }}>
-                  <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: "800" }}>{t("typeAtLeast2")}</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: "800" }}>
+                    {t("typeAtLeast2").replace("2", String(minQueryLength))}
+                  </Text>
                 </View>
               ) : null}
 
-              {!loading && query.length >= 2 && visibleResults.length === 0 ? (
+              {!loading && query.trim().length >= minQueryLength && visibleResults.length === 0 ? (
                 <View style={{ padding: 14 }}>
                   <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: "800" }}>{t("noResultsFor")} "{query}"</Text>
                 </View>

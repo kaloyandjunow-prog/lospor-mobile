@@ -3,6 +3,7 @@ import { ScrollView, Text, TouchableOpacity, View } from "react-native"
 import { Stack, useLocalSearchParams } from "expo-router"
 import { GestureHandlerRootView, GestureDetector, Gesture, ScrollView as GHScrollView } from "react-native-gesture-handler"
 import { planPanels } from "@lospor/core/print"
+import { INTRAOP_COLUMN_MINUTES } from "@lospor/core/intraop-engine"
 import { apiJson } from "@/lib/api"
 import { usePreferences } from "@/lib/preferences-context"
 import { AppHeader } from "@/components/AppHeader"
@@ -135,7 +136,7 @@ export default function TimetableViewerScreen() {
                 borderWidth: 1, borderColor: withAlpha(colors.primary, "33"),
               }}>
                 <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "800", fontVariant: ["tabular-nums"] }}>
-                  q{step * 5} min
+                  q{step * INTRAOP_COLUMN_MINUTES} min
                 </Text>
               </View>
               {zoomBtn("+", () => applyZoom(effColW * 1.5), effColW >= MAX_COL_W)}
@@ -180,7 +181,7 @@ export default function TimetableViewerScreen() {
           </GestureDetector>
           {panels.length > 0 && (
             <Text style={{ color: colors.textMuted, fontSize: 10.5, marginBottom: 14 }}>
-              {sampledNote(step * 5)}
+              {sampledNote(step * INTRAOP_COLUMN_MINUTES)}
             </Text>
           )}
 

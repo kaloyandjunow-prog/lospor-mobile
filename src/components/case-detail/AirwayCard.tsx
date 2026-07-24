@@ -75,7 +75,7 @@ export function AirwayCard({ preop, tc }: { preop: CaseData["preop"]; tc: (key: 
           <InfoRow
             label={tc("summaryMallampati")}
             value={preop?.mallampati ?? null}
-            valueColor={mallampatiColor(preop?.mallampati)}
+            valueColor={mallampatiColor(preop?.mallampati ?? undefined)}
           />
           <InfoRow
             label={tc("summaryMouthOpening")}
@@ -90,11 +90,11 @@ export function AirwayCard({ preop, tc }: { preop: CaseData["preop"]; tc: (key: 
           <InfoRow
             label={tc("summaryNeckMobility")}
             value={preop?.neckMobility ?? null}
-            valueColor={neckColor(preop?.neckMobility)}
+            valueColor={neckColor(preop?.neckMobility ?? undefined)}
           />
           <InfoRow
             label="ULBT"
-            value={ulbtLabel(preop?.upperLipBiteTest)}
+            value={ulbtLabel(preop?.upperLipBiteTest ?? undefined)}
           />
           <InfoRow
             label={tc("summaryCL")}

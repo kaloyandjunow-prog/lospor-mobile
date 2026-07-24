@@ -1,5 +1,41 @@
 # Changelog - LOSPOR Mobile
 
+## [6.0.0] - Unreleased
+
+### Changed
+
+- Mobile and PWA now read the complete clinical option catalog and offline
+  fallback directly from Core; copied JSON and hardcoded drug, infusion,
+  fluid, agent, technique-favourite, and handover lists were removed.
+- Labs, ASA/risk bands, ICD body systems, preop completion, intraop end-case
+  blockers/warnings, postoperative/Aldrete rules, event labels, summaries,
+  timing, units, account policy, and search result mapping use Core.
+- Option caching, case-lock leases, live polling, and revision/conflict
+  decisions use shared Core controllers with native storage and AppState
+  adapters.
+- Existing cases normalize legacy technique codes while translations,
+  styling, animations, haptics, and native controls remain mobile-owned.
+- CI rejects reintroduced clinical copies and hardcoded timetable intervals.
+
+### Fixed
+
+- PII-rejected values remain on the device and are shown with a specific reason
+  in preop, postop, and intraop save status instead of becoming a generic
+  queued/offline failure.
+- Reopening a form restores a blocked value over the server copy. The same
+  unchanged value is not sent in a loop; editing that field retries it.
+- Coded ICD-10 catalogue labels may contain legitimate uppercase Bulgarian
+  clinical wording without disabling stronger identifier checks.
+- Mobile and web now resolve the gas settings active at each timetable column
+  through the same Core helper.
+- Starting or ending a case persists the exact instant and case timezone before
+  timetable events are sent.
+- Reopening uses `startedAt` as the chart anchor in every timezone. Legacy
+  wall-clock-only snapshots stay readable without being converted into guessed
+  or future event timestamps.
+- The shared readiness check now handles database Date/ISO times, overnight
+  wall clocks, and the projected `keyEvents.log` shape consistently.
+
 ## [5.6.1] - 2026-07-24
 
 Strict lint and shared type hardening. Android `versionCode` is 23.

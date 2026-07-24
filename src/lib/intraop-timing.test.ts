@@ -22,6 +22,9 @@ describe("loaded intraop timing", () => {
       startTime: "08:30",
       endTime: "10:15",
       endTimeNextDay: true,
+      startedAt: null,
+      endedAt: null,
+      timezone: null,
     })
   })
 
@@ -34,6 +37,21 @@ describe("loaded intraop timing", () => {
       startTime: "08:30",
       endTime: "09:45",
       endTimeNextDay: null,
+      startedAt: null,
+      endedAt: null,
+      timezone: null,
+    })
+  })
+
+  it("renders explicit instants in the persisted case timezone", () => {
+    expect(normalizeLoadedIntraopTiming({
+      startedAt: "2026-07-24T08:45:00.000Z",
+      endedAt: "2026-07-24T10:00:00.000Z",
+      timezone: "Europe/Sofia",
+    }, new Date("2026-07-24T10:00:00.000Z"))).toMatchObject({
+      startTime: "11:45",
+      endTime: "13:00",
+      timezone: "Europe/Sofia",
     })
   })
 })
@@ -64,6 +82,22 @@ describe("buildIntraopTimingPatch", () => {
       startTime: "07:30",
       endTime: null,
       endTimeNextDay: true,
+    })
+  })
+
+  it("preserves explicit instant fields and allows endedAt to be cleared", () => {
+    expect(buildIntraopTimingPatch({
+      monthYear: "2026-07",
+      startTime: "11:45",
+      endTime: "13:00",
+      endTimeNextDay: false,
+      startedAt: "2026-07-24T08:45:00.000Z",
+      endedAt: "2026-07-24T10:00:00.000Z",
+      timezone: "Europe/Sofia",
+    }, { endedAt: null })).toMatchObject({
+      startedAt: "2026-07-24T08:45:00.000Z",
+      endedAt: null,
+      timezone: "Europe/Sofia",
     })
   })
 })

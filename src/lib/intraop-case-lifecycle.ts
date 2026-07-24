@@ -1,6 +1,7 @@
 import { formatHHMM } from "./intraop-format"
+import { INTRAOP_RESUME_WINDOW_SECONDS } from "@lospor/core/intraop-engine"
 
-export const CASE_RESUME_WINDOW_SECONDS = 30 * 60
+export const CASE_RESUME_WINDOW_SECONDS = INTRAOP_RESUME_WINDOW_SECONDS
 
 export function buildFinaliseCaseState(
   continuedItems: string[],
@@ -23,12 +24,12 @@ export function buildResumeCaseState(): {
   endTime: string
   endedAt: Date | null
   resumeSecsLeft: number
-  patch: { endTime: null }
+  patch: { endTime: null; endedAt: null }
 } {
   return {
     endTime: "",
     endedAt: null,
     resumeSecsLeft: 0,
-    patch: { endTime: null },
+    patch: { endTime: null, endedAt: null },
   }
 }

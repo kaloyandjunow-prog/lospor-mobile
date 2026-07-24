@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { AppState, type AppStateStatus } from "react-native"
 import * as SecureStore from "expo-secure-store"
+import {
+  CASE_LOCK_HEARTBEAT_MS,
+  CaseLockLease,
+  type CaseLockState,
+  type CaseLockTransport,
+  type CaseLockWireResult,
+} from "@lospor/core/sync"
 import { apiFetch } from "@/lib/api"
 import { randomHex } from "@/lib/random-id"
 
@@ -17,135 +24,120 @@ async function getDeviceId(): Promise<string> {
   return id
 }
 
+function legacyState(state: CaseLockState): LockState {
+  if (state.status === "acquiring") return "acquiring"
+  if (state.status === "locked") return "watching"
+  if (state.status === "owned" || state.status === "unavailable") return "held"
+  return "idle"
+}
+
+async function readWireResult(response: Response): Promise<CaseLockWireResult> {
+  const body = await response.json().catch(() => ({})) as CaseLockWireResult
+  if (response.status === 409) return { ...body, acquired: false, locked: true }
+  if (!response.ok) throw new Error(`Lock request failed (${response.status})`)
+  return { ...body, acquired: true, locked: false }
+}
+
+function mobileLockTransport(): CaseLockTransport {
+  const request = async (
+    method: "POST" | "PATCH",
+    caseId: string,
+    deviceId: string,
+  ): Promise<CaseLockWireResult> => readWireResult(await apiFetch(`/api/cases/${caseId}/lock`, {
+    method,
+    body: JSON.stringify({ deviceId }),
+  }))
+
+  return {
+    acquire: ({ caseId, deviceId }) => request("POST", caseId, deviceId),
+    heartbeat: ({ caseId, deviceId }) => request("PATCH", caseId, deviceId),
+    async release({ caseId, deviceId, force }) {
+      const response = await apiFetch(`/api/cases/${caseId}/lock`, {
+        method: "DELETE",
+        body: JSON.stringify(force ? { force: true } : { deviceId }),
+      })
+      if (!response.ok) throw new Error(`Lock release failed (${response.status})`)
+    },
+  }
+}
+
 export function useCaseLock(caseId: string, enabled = true): {
   lockState: LockState
   isWatching: boolean
   takeover: () => Promise<void>
 } {
   const [lockState, setLockState] = useState<LockState>("idle")
+  const leaseRef = useRef<CaseLockLease | null>(null)
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const deviceIdRef  = useRef("")
-  const appStateRef  = useRef<AppStateStatus>(AppState.currentState)
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState)
 
-  function stopHeartbeat() {
-    if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null }
-  }
+  const stopHeartbeat = useCallback(() => {
+    if (heartbeatRef.current) clearInterval(heartbeatRef.current)
+    heartbeatRef.current = null
+  }, [])
 
-  const releaseLock = useCallback(async (deviceId: string) => {
-    try {
-      await apiFetch(`/api/cases/${caseId}/lock`, {
-        method: "DELETE",
-        body: JSON.stringify({ deviceId }),
-      })
-    } catch {}
-  }, [caseId])
+  const startHeartbeat = useCallback(() => {
+    stopHeartbeat()
+    heartbeatRef.current = setInterval(() => {
+      const lease = leaseRef.current
+      if (!lease) return
+      if (lease.state().status === "unavailable") void lease.acquire()
+      else void lease.heartbeat()
+    }, CASE_LOCK_HEARTBEAT_MS)
+  }, [stopHeartbeat])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!enabled) { setLockState("idle"); return }
 
-    let mounted = true
+    let disposed = false
+    let unsubscribe = () => {}
 
-    async function init() {
-      const deviceId = await getDeviceId()
-      deviceIdRef.current = deviceId
-      if (!mounted) return
+    void getDeviceId().then(deviceId => {
+      if (disposed) return
+      const lease = new CaseLockLease(caseId, deviceId, mobileLockTransport())
+      leaseRef.current = lease
+      unsubscribe = lease.subscribe(state => {
+        if (!disposed) setLockState(legacyState(state))
+      })
+      void lease.acquire().then(state => {
+        if (!disposed && state.status !== "locked") startHeartbeat()
+      })
+    })
 
-      setLockState("acquiring")
-      try {
-        const res = await apiFetch(`/api/cases/${caseId}/lock`, {
-          method: "POST",
-          body: JSON.stringify({ deviceId }),
-        })
-        if (!mounted) return
-        if (res.status === 409) { setLockState("watching"); return }
-        setLockState("held")
-        heartbeatRef.current = setInterval(async () => {
-          try {
-            const r = await apiFetch(`/api/cases/${caseId}/lock`, {
-              method: "PATCH",
-              body: JSON.stringify({ deviceId }),
-            })
-            if (r.status === 409 && mounted) setLockState("watching")
-          } catch {}
-        }, 15_000)
-      } catch {
-        if (mounted) setLockState("held") // fail open on network error
-      }
-    }
-
-    init()
-
-    // Pause/resume on app background/foreground
-    const sub = AppState.addEventListener("change", async (nextState) => {
-      if (appStateRef.current === "active" && nextState !== "active") {
-        // Going to background — stop heartbeat, lock will expire naturally
-        stopHeartbeat()
-      } else if (appStateRef.current !== "active" && nextState === "active") {
-        // Coming to foreground — reacquire
-        const deviceId = deviceIdRef.current
-        if (!deviceId) return
-        try {
-          const res = await apiFetch(`/api/cases/${caseId}/lock`, {
-            method: "POST",
-            body: JSON.stringify({ deviceId }),
-          })
-          if (res.status === 409) { setLockState("watching"); return }
-          setLockState("held")
-          heartbeatRef.current = setInterval(async () => {
-            try {
-              const r = await apiFetch(`/api/cases/${caseId}/lock`, {
-                method: "PATCH",
-                body: JSON.stringify({ deviceId }),
-              })
-              if (r.status === 409) setLockState("watching")
-            } catch {}
-          }, 15_000)
-        } catch {}
-      }
+    const subscription = AppState.addEventListener("change", nextState => {
+      const wasActive = appStateRef.current === "active"
+      const isActive = nextState === "active"
       appStateRef.current = nextState
+      if (wasActive && !isActive) {
+        stopHeartbeat()
+      } else if (!wasActive && isActive) {
+        const lease = leaseRef.current
+        if (!lease) return
+        void lease.acquire().then(state => {
+          if (!disposed && state.status !== "locked") startHeartbeat()
+        })
+      }
     })
 
     return () => {
-      mounted = false
+      disposed = true
+      subscription.remove()
+      unsubscribe()
       stopHeartbeat()
-      sub.remove()
-      const deviceId = deviceIdRef.current
-      if (deviceId) releaseLock(deviceId)
+      const lease = leaseRef.current
+      leaseRef.current = null
+      if (lease) void lease.release()
     }
-  }, [caseId, enabled, releaseLock])
+  }, [caseId, enabled, startHeartbeat, stopHeartbeat])
 
-  // Called directly by the UI after it handles its own confirmation — no Alert here
-  async function takeover() {
-    const deviceId = deviceIdRef.current
-    if (!deviceId) return
+  const takeover = useCallback(async () => {
+    const lease = leaseRef.current
+    if (!lease) return
     stopHeartbeat()
-    // Force-release whatever lock exists (server allows this for case owner)
-    try {
-      await apiFetch(`/api/cases/${caseId}/lock`, {
-        method: "DELETE",
-        body: JSON.stringify({ force: true }),
-      })
-    } catch {}
-    // Acquire the lock with our own device ID
-    try {
-      const res = await apiFetch(`/api/cases/${caseId}/lock`, {
-        method: "POST",
-        body: JSON.stringify({ deviceId }),
-      })
-      if (res.status !== 409) {
-        setLockState("held")
-        heartbeatRef.current = setInterval(async () => {
-          try {
-            const r = await apiFetch(`/api/cases/${caseId}/lock`, {
-              method: "PATCH",
-              body: JSON.stringify({ deviceId }),
-            })
-            if (r.status === 409) setLockState("watching")
-          } catch {}
-        }, 15_000)
-      }
-    } catch {}
-  }
+    const state = await lease.takeover()
+    if (state.status !== "locked") startHeartbeat()
+  }, [startHeartbeat, stopHeartbeat])
 
   return { lockState, isWatching: lockState === "watching", takeover }
 }

@@ -24,10 +24,15 @@ import { useRangeSpec } from "@/lib/use-option-library"
 import { normaliseHandoverCodes, postopFormSchema, type PostopFormData as FormData, type PostopFormInput as FormInput } from "@/lib/postop-form-schema"
 import { DispositionPicker, Field, HandoverChecklist, NRSRow, RecoverySummary, ScoreRow, SectionHeader } from "@/components/postop/PostopFormSections"
 import { canonicalizePostopPatch } from "@lospor/core/case-payloads"
+import type { BlockedSaveIssue } from "@lospor/core/sync"
+import {
+  aldreteBand,
+  aldreteTotal as calculateAldreteTotal,
+} from "@lospor/core/postop"
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
-type AutosaveState = "idle" | "saving" | "saved" | "queued" | "error"
+type AutosaveState = "idle" | "saving" | "saved" | "queued" | "blocked" | "error"
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -49,6 +54,7 @@ export default function PostopFormScreen() {
   const [caseStatus,  setCaseStatus]  = useState<string | null>(null)
   const [autosaveState, setAutosaveState] = useState<AutosaveState>("idle")
   const [autosaveErrMsg, setAutosaveErrMsg] = useState<string | null>(null)
+  const [blockedIssue, setBlockedIssue] = useState<BlockedSaveIssue | null>(null)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const lastSavedJsonRef = useRef("")
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -118,17 +124,19 @@ export default function PostopFormScreen() {
     if (dispositionNotes) setValue("dispositionNotes", "", { shouldDirty: true })
   }, [disposition, dispositionNotes, handoverItems.length, setValue])
 
-  const aldreteTotal =
-    (aldreteActivity ?? 0) +
-    (aldreteRespiration ?? 0) +
-    (aldreteCirculation ?? 0) +
-    (aldreteConsciousness ?? 0) +
-    (aldreteSpO2 ?? 0)
+  const aldreteTotal = calculateAldreteTotal({
+    aldreteActivity,
+    aldreteRespiration,
+    aldreteCirculation,
+    aldreteConsciousness,
+    aldreteSpO2,
+  })
+  const aldreteStatus = aldreteBand(aldreteTotal)
 
   const aldreteLabel =
-    aldreteTotal >= 9
+    aldreteStatus === "ready"
       ? tc("summaryReadyDischarge")
-      : aldreteTotal >= 7
+      : aldreteStatus === "observe"
       ? tc("summaryMonitor")
       : tc("summaryContinueRecovery")
 
@@ -173,10 +181,28 @@ export default function PostopFormScreen() {
     return canonicalizePostopPatch(data)
   }, [])
 
-  const markSaveResult = useCallback((result: CasePatchResult, response?: CasePatchResponse) => {
+  const blockedMessage = useCallback((issue: BlockedSaveIssue) => {
+    const field = issue.field === "dispositionNotes" ? tc("dispNotes") : issue.field
+    switch (issue.reason) {
+      case "likely_name": return tc("piiLikelyName").replace("{field}", field)
+      case "egn": return tc("piiEgn").replace("{field}", field)
+      case "long_number": return tc("piiLongNumber").replace("{field}", field)
+      case "date": return tc("piiDate").replace("{field}", field)
+      case "email": return tc("piiEmail").replace("{field}", field)
+      default: return issue.message || tc("piiGeneric").replace("{field}", field)
+    }
+  }, [tc])
+
+  const markSaveResult = useCallback((
+    result: CasePatchResult,
+    response?: CasePatchResponse,
+    blocked?: BlockedSaveIssue,
+  ) => {
     if (result === "saved") {
       setLastSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
       setAutosaveState("saved")
+      setAutosaveErrMsg(null)
+      setBlockedIssue(null)
       // The section saved, but the server refused individual values as out of
       // range. Name them: they are still on screen, so staying quiet would let
       // the clinician believe they were stored.
@@ -196,21 +222,27 @@ export default function PostopFormScreen() {
         })
         notify(tc("fieldNotSavedOutOfRange"), names.join(", "))
       }
+    } else if (result === "blocked" && blocked) {
+      setBlockedIssue(blocked)
+      setAutosaveErrMsg(blockedMessage(blocked))
+      setAutosaveState("blocked")
     } else if (result === "queued" || result === "failed") {
+      setBlockedIssue(null)
+      setAutosaveErrMsg(null)
       setAutosaveState("queued")
     }
-  }, [tc])
+  }, [blockedMessage, tc])
 
   const persistPostop = useCallback(async (data: FormData): Promise<CasePatchResult> => {
     const payload = payloadFrom(data)
-    const { result, response } = await autosaveManager.saveSection(
+    const { result, response, blocked } = await autosaveManager.saveSection(
       id,
       "postop",
       payload as Record<string, unknown>,
       { fullPayload: payload as Record<string, unknown> },
     )
     lastSavedJsonRef.current = JSON.stringify(payload)
-    markSaveResult(result, response)
+    markSaveResult(result, response, blocked)
     return result
   }, [id, markSaveResult, payloadFrom])
 
@@ -222,7 +254,9 @@ export default function PostopFormScreen() {
     )
       .then(async (c) => {
         const p = c.postop ?? {}
-        const nextValues = valuesFromPostop(p)
+        const serverValues = valuesFromPostop(p)
+        const queuedPostop = await autosaveManager.outbox.load<Record<string, unknown>>(id, "postop")
+        const nextValues = valuesFromPostop({ ...p, ...(queuedPostop ?? {}) })
         lastSavedJsonRef.current = JSON.stringify(payloadFrom(nextValues))
         // Pre-populate dispositionNotes with continued-postop items if field is empty
         if (continuedItems && !nextValues.dispositionNotes) {
@@ -234,13 +268,20 @@ export default function PostopFormScreen() {
         autosaveManager.hydrateSection(
           id,
           "postop",
-          payloadFrom(nextValues) as Record<string, unknown>,
+          payloadFrom(serverValues) as Record<string, unknown>,
           p.syncRevision ?? p.updatedAt ?? null,
         )
         reset(nextValues)
         setFinalizedAt(c.finalizedAt ?? null)
         setCaseStatus(c.status ?? null)
-        markSaveResult("saved")
+        const managerState = autosaveManager.getState(id)
+        if (managerState.status === "blocked" && managerState.blocked) {
+          markSaveResult("blocked", undefined, managerState.blocked)
+        } else if (managerState.pending > 0) {
+          markSaveResult("queued")
+        } else {
+          markSaveResult("saved")
+        }
       })
       .catch((err: Error) => notify(tc("errorLabel"), err.message))
       .finally(() => setLoading(false))
@@ -258,6 +299,7 @@ export default function PostopFormScreen() {
       if (nextJson === lastSavedJsonRef.current) return
 
       setAutosaveState("saving")
+      setAutosaveErrMsg(null)
       try {
         await persistPostop(parsed.data)
       } catch (err) {
@@ -282,6 +324,8 @@ export default function PostopFormScreen() {
       const result = await persistPostop(data)
       if (result === "saved") {
         router.replace(`/(app)/cases/${id}`)
+      } else if (result === "blocked") {
+        notify(tc("draftBlocked"), autosaveManager.getState(id).error ?? tc("autosaveError"))
       } else {
         notify(t("savedLocally"), t("savedLocallyMsg"))
       }
@@ -326,11 +370,13 @@ export default function PostopFormScreen() {
             pain={painScoreNRS}
             ponv={ponv}
           />
-          <Text style={{ color: autosaveState === "error" ? colors.danger : autosaveState === "queued" ? colors.warning : colors.textMuted, fontSize: 12, fontWeight: "800", marginTop: 2, marginBottom: 4, textAlign: "right" }}>
+          <Text style={{ color: autosaveState === "error" || autosaveState === "blocked" ? colors.danger : autosaveState === "queued" ? colors.warning : colors.textMuted, fontSize: 12, fontWeight: "800", marginTop: 2, marginBottom: 4, textAlign: "right" }}>
             {autosaveState === "saving"
               ? tc("autosaveSaving")
               : autosaveState === "queued"
               ? tc("autosaveQueued")
+              : autosaveState === "blocked"
+              ? (autosaveErrMsg ?? tc("draftBlocked"))
               : autosaveState === "error"
               ? (autosaveErrMsg ?? tc("autosaveError"))
               : lastSavedAt
@@ -479,6 +525,11 @@ export default function PostopFormScreen() {
                 />
               )}
             />
+            {blockedIssue?.field === "dispositionNotes" ? (
+              <Text style={{ color: colors.danger, fontSize: 12, marginTop: 6 }}>
+                {blockedMessage(blockedIssue)}
+              </Text>
+            ) : null}
           </Field>
           )}
 

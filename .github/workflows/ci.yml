@@ -17,5 +17,6 @@ jobs:
       # .npmrc sets legacy-peer-deps; postinstall runs patch-package.
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run check:shared-core
       - run: npm test
       - run: npm run lint:strict

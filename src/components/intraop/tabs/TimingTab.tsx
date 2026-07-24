@@ -1,6 +1,7 @@
 import { View, Text, ScrollView, TextInput, TouchableOpacity } from "react-native"
 import type { RefObject } from "react"
 import type { ClinicalStringKey } from "@/lib/preferences-context"
+import type { IntraopTimingOverrides } from "@/lib/intraop-timing"
 
 export function TimingTab({
   caseMonthYear, setCaseMonthYear, caseStartTime, setCaseStartTime, caseEndTime, setCaseEndTime,
@@ -15,7 +16,7 @@ export function TimingTab({
   caseEndNextDay: boolean
   setCaseEndNextDay: (updater: (v: boolean) => boolean) => void
   timingSaving: boolean
-  saveTiming: (overrides?: { startTime?: string; endTime?: string }) => void
+  saveTiming: (overrides?: IntraopTimingOverrides) => void
   startRef: RefObject<Date | null>
   tc: (key: ClinicalStringKey) => string
 }) {
@@ -72,7 +73,7 @@ export function TimingTab({
               placeholderTextColor="#475569"
               value={caseStartTime}
               onChangeText={setCaseStartTime}
-              onBlur={() => saveTiming()}
+              onBlur={() => saveTiming({ startTime: caseStartTime })}
             />
             <TouchableOpacity
               onPress={() => { setCaseStartTime(nowHHMM); saveTiming({ startTime: nowHHMM }) }}
@@ -97,10 +98,15 @@ export function TimingTab({
           placeholderTextColor="#475569"
           value={caseEndTime}
           onChangeText={setCaseEndTime}
-          onBlur={() => saveTiming()}
+          onBlur={() => saveTiming({ endTime: caseEndTime })}
         />
         <TouchableOpacity
-          onPress={() => { setCaseEndTime(nowHHMM); saveTiming({ endTime: nowHHMM }) }}
+          onPress={() => {
+            const nextDay = !!caseStartTime && nowHHMM < caseStartTime
+            setCaseEndTime(nowHHMM)
+            if (nextDay !== caseEndNextDay) setCaseEndNextDay(() => nextDay)
+            saveTiming({ endTime: nowHHMM, endTimeNextDay: nextDay })
+          }}
           style={{ paddingHorizontal:14, paddingVertical:12, borderRadius:10,
             backgroundColor:"#1e3a5f", borderWidth:1, borderColor:"#3b82f644",
             justifyContent:"center" }}>
@@ -110,7 +116,11 @@ export function TimingTab({
 
       {/* Next day toggle */}
       <TouchableOpacity
-        onPress={() => { setCaseEndNextDay(v => !v); setTimeout(saveTiming, 100) }}
+        onPress={() => {
+          const nextDay = !caseEndNextDay
+          setCaseEndNextDay(() => nextDay)
+          saveTiming({ endTimeNextDay: nextDay })
+        }}
         style={{ flexDirection:"row", alignItems:"center", gap:10, marginBottom:20,
           paddingHorizontal:14, paddingVertical:10, borderRadius:10,
           backgroundColor: caseEndNextDay ? "#1e3a5f" : "#111111",

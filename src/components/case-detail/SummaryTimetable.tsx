@@ -1,7 +1,10 @@
 import React, { useMemo } from "react"
 import { View, Text, TouchableOpacity } from "react-native"
 import Svg, { Line, Polyline, Polygon, Circle, Rect, Text as SvgText } from "react-native-svg"
-import { buildSummaryTimetableModel } from "@/lib/summary-timetable-model"
+import {
+  buildSummaryTimetableModel,
+  colToHHMM,
+} from "@/lib/summary-timetable-model"
 import { usePreferences } from "@/lib/preferences-context"
 
 // Read-only timetable card for the case summary — the mobile twin of the
@@ -28,13 +31,6 @@ export const PALETTES = {
 
 const VB_W = 1000
 const LBL = 54
-
-function colToHHMM(col: number, startISO?: string | null): string {
-  if (!startISO) return `+${col * 5}m`
-  const d = new Date(startISO)
-  const mins = d.getUTCHours() * 60 + d.getUTCMinutes() + col * 5
-  return `${String(Math.floor(mins / 60) % 24).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`
-}
 
 export function SummaryTimetable({ keyEvents, startISO, onPress, actionLabel }: {
   keyEvents: unknown

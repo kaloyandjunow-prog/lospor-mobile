@@ -1,117 +1,47 @@
 import { colors } from "@/theme/colors"
 import type { ClinicalStringKey } from "@/lib/preferences-context"
-import { getIcd10BodySystem } from "@lospor/core/preop"
+import { getIcd10BodySystem, ICD10_BODY_SYSTEM_ORDER } from "@lospor/core/preop"
+import { normalizeOptionCode } from "@lospor/core/option-aliases"
 import { deriveCaseStage } from "@lospor/core/case-status"
 import { calcIBW as calculateIdealBodyWeight } from "@lospor/core/scores"
 import { calculateDrugTotals } from "@lospor/core/intraop-summary"
+import { handoverLabel } from "@lospor/core/postop"
+import type {
+  CaseDetailDto,
+  ClinicalTagDto,
+  IntraopKeyEventDto,
+  LabResultDto,
+  VascularAccessDto,
+} from "@lospor/core/case-detail"
+import {
+  apfelRiskBand,
+  rcriRiskBand,
+  stopBangRiskBand,
+  type RiskSeverity,
+} from "@lospor/core/risk"
 import {
   calcInfusionTotals as calculateInfusionTotals,
   DEFAULT_INFUSION_WEIGHT_BASIS,
 } from "@lospor/core/intraop-totals"
+import {
+  AIRWAY_TOOLS,
+  MONITORING,
+  POSITIONS,
+  TECHNIQUE_TREE,
+  findLabeledValuePath,
+  formatTechniquePath,
+} from "@lospor/core/catalog"
 
-export type LabResult = { test: string; value: string; unit: string }
-export type Comorbidity = { label: string; code?: string; sub?: string }
-export type TaggedItem = { label: string; code?: string }
-export type VascularAccess = {
-  siteLabel: string; size: string; sizeUnit: string
-  lumens?: string; preexisting?: boolean
-}
-export type KeyEvent = {
-  type: string; name?: string; dose?: number | string; unit?: string
-  infId?: string; fluidId?: string; rate?: number | string; col?: number; timestamp?: number | string
-}
+export type LabResult = LabResultDto
+export type Comorbidity = ClinicalTagDto
+export type TaggedItem = ClinicalTagDto
+export type VascularAccess = VascularAccessDto
+export type KeyEvent = IntraopKeyEventDto
 
-export type CaseData = {
-  id: string
-  caseCode?: string
-  status: "DRAFT" | "IN_PROGRESS" | "AWAITING_REVIEW" | "COMPLETE"
-  finalizedAt?: string
-  notes?: string
-  user?: { name?: string; institution?: { name?: string; city?: string } }
-  preop?: {
-    ageYears?: number; sex?: string; heightCm?: number; weightKg?: number; bmi?: number
-    bloodType?: string; rhFactor?: string
-    diagnosis?: string; diagnosesJson?: TaggedItem[]
-    plannedProcedure?: string; proceduresJson?: TaggedItem[]
-    teamNotes?: string; emergencySurgery?: boolean; highRiskSurgery?: boolean
-    comorbidities?: Comorbidity[]
-    allergies?: boolean; allergyDetails?: string; latexAllergy?: boolean
-    currentMedications?: string
-    familyAnesthesiaProblems?: boolean; familyAnesthesiaDetails?: string
-    dentalProsthetics?: boolean; looseTeeth?: boolean; smoking?: boolean; substanceAbuse?: boolean
-    bpSystolic?: number; bpDiastolic?: number; heartRate?: number; heartArrhythmia?: boolean
-    spO2?: number; temperature?: number; respiratoryRate?: number
-    mallampati?: string; mouthOpeningCm?: number; thyromental?: number
-    neckMobility?: string; upperLipBiteTest?: string; cormackLehane?: string
-    retrognathia?: boolean; prominentIncisors?: boolean; facialHair?: boolean
-    difficultAirwayHistory?: boolean; difficultAirwayNotes?: string
-    asaScore?: string
-    rcriScore?: number; apfelScore?: number; stopBangScore?: number
-    labResults?: LabResult[]
-    aiOptIn?: boolean
-    updatedAt?: string
-  }
-  intraop?: {
-    techniques?: string[]; positions?: string[]; ventilationModes?: string[]
-    airwayTools?: string[]; airwayDevices?: string[]
-    tubeSize?: number; cuffed?: boolean; dltType?: string; dltSide?: string; dltSize?: number
-    volatileAgent?: string
-    ecg?: boolean; spO2Monitor?: boolean; nbpMonitor?: boolean; etco2Monitor?: boolean
-    tempMonitor?: boolean; invasiveBP?: boolean; cvpMonitor?: boolean; paCatheter?: boolean
-    tee?: boolean; bis?: boolean; entropyMonitor?: boolean; nirsMonitor?: boolean
-    evokedPotentials?: boolean; tofMonitor?: boolean; bglMonitor?: boolean
-    bloodGasMonitor?: boolean; urinaryCatheter?: boolean; stomachTube?: boolean
-    vascularAccesses?: VascularAccess[]
-    premedicationEvening?: string; premedicationMorning?: string
-    startTime?: string; endTime?: string; monthYear?: string; durationMinutes?: number
-    crystalloidsMl?: number; colloidsMl?: number; bloodMl?: number; urineMl?: number
-    bloodProductsNote?: string
-    complications?: string
-    keyEvents?: { log?: KeyEvent[] }
-    updatedAt?: string
-  }
-  postop?: {
-    aldreteActivity?: number; aldreteRespiration?: number; aldreteCirculation?: number
-    aldreteConsciousness?: number; aldreteSpO2?: number; aldreteTotal?: number
-    painScoreNRS?: number; temperatureCelsius?: number
-    recoveryBpSystolic?: number; recoveryBpDiastolic?: number; recoveryHeartRate?: number; recoverySpO2?: number
-    ponv?: boolean; disposition?: "WARD" | "PACU" | "ICU"
-    handoverItems?: string[]
-    updatedAt?: string
-  }
-}
-
+export type CaseData = CaseDetailDto
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const API_BASE = (process.env.EXPO_PUBLIC_API_BASE ?? "https://app.lospor.org").replace(/\/$/, "")
-
-export const TECHNIQUE_LABELS: Record<string, string> = {
-  GENERAL_INHALATION: "Inhalational GA", GENERAL_TIVA: "TIVA", GENERAL_COMBINED: "Balanced GA",
-  SPINAL: "Spinal (SAB)", SPINAL_SINGLE: "Spinal — single shot", SPINAL_SINGLE_LUMBAR: "Spinal lumbar",
-  SPINAL_SINGLE_LOW_THORACIC: "Spinal low thor.", SPINAL_SINGLE_MID_THORACIC: "Spinal mid thor.",
-  SPINAL_SINGLE_HIGH_THORACIC: "Spinal high thor.", SPINAL_CONTINUOUS: "Spinal continuous",
-  EPIDURAL: "Epidural", EPIDURAL_CAUDAL: "Epidural caudal", EPIDURAL_LUMBAR: "Epidural lumbar",
-  EPIDURAL_LOW_THORACIC: "Epidural low thor.", EPIDURAL_MID_THORACIC: "Epidural mid thor.",
-  EPIDURAL_HIGH_THORACIC: "Epidural high thor.", COMBINED_SPINAL_EPIDURAL: "CSE",
-  CSE_LUMBAR: "CSE lumbar", CSE_LOW_THORACIC: "CSE low thor.", CSE_MID_THORACIC: "CSE mid thor.",
-  CSE_HIGH_THORACIC: "CSE high thor.", DPE: "DPE",
-  BLOCK_INTERSCALENE: "Interscalene", BLOCK_SUPRACLAVICULAR: "Supraclavicular",
-  BLOCK_INFRACLAVICULAR: "Infraclavicular", BLOCK_AXILLARY: "Axillary",
-  BLOCK_FEMORAL: "Femoral", BLOCK_ADDUCTOR: "Adductor canal", BLOCK_SCIATIC: "Sciatic",
-  BLOCK_POPLITEAL: "Popliteal", BLOCK_TAP: "TAP", BLOCK_ESP: "Erector spinae",
-  BLOCK_PARAVERTEBRAL: "Paravertebral", BLOCK_QL: "QL block", BLOCK_PECS1: "PECS I",
-  BLOCK_PECS2: "PECS II", BLOCK_ILIOINGUINAL: "Ilioinguinal", BLOCK_INTERCOSTAL: "Intercostal",
-  LOCAL: "Local infiltration", SEDATION: "Sedation", SEDATION_CONSCIOUS: "Conscious sedation",
-  SEDATION_DEEP: "Deep sedation", SEDATION_MAC: "MAC",
-}
-
-export const POSITION_LABELS: Record<string, string> = {
-  SUPINE: "Supine", PRONE: "Prone", LEFT_LATERAL: "Left lateral", RIGHT_LATERAL: "Right lateral",
-  GYNECOLOGICAL: "Lithotomy", TRENDELENBURG: "Trendelenburg", REVERSE_TRENDELENBURG: "Rev. Trendelenburg",
-  FOWLER: "Fowler's", BEACH_CHAIR: "Beach chair", LLOYD_DAVIES: "Lloyd-Davies",
-  LATERAL_DECUBITUS_LEFT: "Lat. decubitus L", LATERAL_DECUBITUS_RIGHT: "Lat. decubitus R",
-  SITTING: "Sitting", JACKKNIFE: "Jackknife", KNEE_CHEST: "Knee-chest",
-}
 
 export const BODY_SYSTEM_COLORS: Record<string, string> = {
   "Cardiovascular": "#ef4444",
@@ -125,70 +55,66 @@ export const BODY_SYSTEM_COLORS: Record<string, string> = {
   "Neoplasms": "#f472b6",
   "Infectious diseases": "#d97706",
   "Ophthalmological / ENT": "#22d3ee",
+  "Obstetric": "#e879f9",
+  "Congenital": "#818cf8",
   "Other": "#94a3b8",
 }
 
-export const SYSTEM_ORDER = [
-  "Cardiovascular", "Respiratory", "Neurological / Psychiatric", "Endocrine / Metabolic",
-  "Gastrointestinal / Hepatic", "Renal / Urological", "Haematological", "Musculoskeletal",
-  "Neoplasms", "Infectious diseases", "Ophthalmological / ENT", "Other",
-]
-
-export const AIRWAY_TOOL_LABELS: Record<string, string> = {
-  VIDEO_LARY: "Video lary", DIRECT_LARY: "Direct lary", FOB: "FOB",
-  BOUGIE: "Bougie", STYLET: "Stylet", AWAKE: "Awake", RETROGRADE: "Retrograde",
-}
+export const SYSTEM_ORDER = ICD10_BODY_SYSTEM_ORDER
 
 export type MonitorKey = keyof NonNullable<CaseData["intraop"]>
-export const MONITOR_MAP: { key: MonitorKey; label: string }[] = [
-  { key: "ecg", label: "ECG" }, { key: "spO2Monitor", label: "SpO₂" },
-  { key: "nbpMonitor", label: "NIBP" }, { key: "etco2Monitor", label: "EtCO₂" },
-  { key: "tempMonitor", label: "Temp" }, { key: "invasiveBP", label: "IBP" },
-  { key: "cvpMonitor", label: "CVP" }, { key: "paCatheter", label: "PA cath" },
-  { key: "tee", label: "TEE" }, { key: "bis", label: "BIS" },
-  { key: "entropyMonitor", label: "Entropy" }, { key: "nirsMonitor", label: "NIRS" },
-  { key: "evokedPotentials", label: "SSEP/MEP" }, { key: "tofMonitor", label: "TOF/NMT" },
-  { key: "bglMonitor", label: "Serum/peripheral glucose" }, { key: "bloodGasMonitor", label: "ABG" },
-  { key: "urinaryCatheter", label: "Urine" }, { key: "stomachTube", label: "NGT" },
-]
-
-export const HANDOVER_LABELS: Record<string, string> = {
-  analgesia: "Analgesia", nausea: "Nausea / PONV", fluids: "IV fluids",
-  obs_freq: "Obs frequency", drain: "Drain", catheter: "Catheter",
-  antibiotics: "Antibiotics", glucose: "Serum/peripheral glucose monitoring", o2: "Oxygen therapy",
-  positioning: "Positioning", diet: "Diet restrictions", follow_up: "Follow-up",
-  other: "Other",
-}
+export const MONITOR_MAP: { key: MonitorKey; label: string }[] = MONITORING.map(option => ({
+  key: option.field as MonitorKey,
+  label: option.label,
+}))
 
 // ─── Utility functions ────────────────────────────────────────────────────────
 
 export function techniqueLabel(code: string): string {
-  if (TECHNIQUE_LABELS[code]) return TECHNIQUE_LABELS[code]
-  if (code.startsWith("OTHER:")) return code.slice(6)
-  return code
+  const normalized = normalizeOptionCode("TECHNIQUE", code)
+  return formatTechniquePath(
+    normalized,
+    findLabeledValuePath(normalized, TECHNIQUE_TREE),
+  )
+}
+
+const POSITION_LABEL_BY_CODE = Object.fromEntries(
+  POSITIONS.map(option => [option.v, option.label]),
+)
+const AIRWAY_TOOL_LABEL_BY_CODE = Object.fromEntries(AIRWAY_TOOLS)
+
+export function positionLabel(code: string): string {
+  return POSITION_LABEL_BY_CODE[code] ?? code
+}
+
+export function airwayToolLabel(code: string): string {
+  return AIRWAY_TOOL_LABEL_BY_CODE[code] ?? code
 }
 
 export const getBodySystem = getIcd10BodySystem
 
-export type RiskLevel = "low" | "mid" | "high"
+export type RiskLevel = RiskSeverity
 
 export function rcriRiskLabel(score: number, tc: (k: ClinicalStringKey) => string): { label: string; level: RiskLevel } {
-  if (score === 0) return { label: tc("rcriVeryLow"), level: "low" }
-  if (score === 1) return { label: tc("rcriLow"), level: "low" }
-  if (score === 2) return { label: tc("rcriModerate"), level: "mid" }
-  return { label: tc("rcriHigh"), level: "high" }
+  const band = rcriRiskBand(score)
+  const label = band.key === "very_low" ? tc("rcriVeryLow")
+    : band.key === "low" ? tc("rcriLow")
+    : band.key === "moderate" ? tc("rcriModerate") : tc("rcriHigh")
+  return { label, level: band.severity }
 }
 
 export function apfelRiskLabel(score: number, tc: (k: ClinicalStringKey) => string): { label: string; level: RiskLevel } {
-  if (score <= 1) return { label: tc("apfelLow"), level: "low" }
-  if (score === 2) return { label: tc("apfelModerate"), level: "mid" }
-  return { label: tc("apfelHigh"), level: "high" }
+  const band = apfelRiskBand(score)
+  const label = band.key === "low" ? tc("apfelLow")
+    : band.key === "moderate" ? tc("apfelModerate") : tc("apfelHigh")
+  return { label, level: band.severity }
 }
 
 export function stopBangRiskLabel(score: number, tc: (k: ClinicalStringKey) => string): { label: string; level: RiskLevel } {
-  if (score <= 2) return { label: tc("osaLow"), level: "low" }
-  if (score <= 4) return { label: tc("osaIntermediate"), level: "mid" }
-  return { label: tc("osaHigh"), level: "high" }
+  const band = stopBangRiskBand(score)
+  const label = band.key === "low" ? tc("osaLow")
+    : band.key === "intermediate" ? tc("osaIntermediate") : tc("osaHigh")
+  return { label, level: band.severity }
 }
 
 export function riskColor(level: RiskLevel): string {
@@ -319,7 +245,8 @@ export function formatAirway(intraop: CaseData["intraop"]): string {
 }
 
 export function formatHandoverItem(code: string): string {
-  if (HANDOVER_LABELS[code]) return HANDOVER_LABELS[code]
+  const canonical = handoverLabel(code)
+  if (canonical) return canonical
   return code.replace(/_/g, " ").replace(/^\w/, c => c.toUpperCase())
 }
 

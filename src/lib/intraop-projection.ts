@@ -1,8 +1,12 @@
 import type { TimetableData } from "@/components/IntraopTimetable"
 import type { LogEvent } from "@/lib/intraop-log-event"
 import {
+  INTRAOP_COLUMN_MS,
+  intraopColumnForInstant,
+  intraopInstantForColumn,
   projectIntraopEvents,
   reverseProjectIntraop,
+  roundDownToIntraopColumn,
 } from "@lospor/core/intraop-engine"
 import { parseLegacyKeyEvents } from "@lospor/core/intraop-types"
 
@@ -31,8 +35,7 @@ export function eventsToTimetable(
 }
 
 export function eventCol(ev: LogEvent, startTs: Date): number {
-  const ms = new Date(ev.ts).getTime() - startTs.getTime()
-  return Math.max(0, Math.floor(ms / (5 * 60_000)))
+  return intraopColumnForInstant(ev.ts, startTs)
 }
 
 export function computeVerticalTimetableWindow(
@@ -49,14 +52,14 @@ export function computeVerticalTimetableWindow(
 } {
   const currentCol = Math.max(
     0,
-    Math.floor((now.getTime() - chartStart.getTime()) / (5 * 60_000)),
+    Math.floor((now.getTime() - chartStart.getTime()) / INTRAOP_COLUMN_MS),
   )
   const nowSlotPercent = Math.max(
     3,
     Math.min(
       97,
-      (((now.getTime() - chartStart.getTime()) % (5 * 60_000))
-        / (5 * 60_000)) * 100,
+      (((now.getTime() - chartStart.getTime()) % INTRAOP_COLUMN_MS)
+        / INTRAOP_COLUMN_MS) * 100,
     ),
   )
   const eventRows = log.reduce<Record<number, LogEvent[]>>((acc, ev) => {
@@ -89,13 +92,14 @@ export function computeVerticalTimetableWindow(
 export function loadedTimetableStateFromLog(
   log: LogEvent[],
   now = new Date(),
+  trustedStart: Date | null = null,
 ): {
   startDate: Date | null
   elapsedMs: number
   timetable: TimetableData | null
   columnCount: number
 } {
-  if (log.length === 0) {
+  if (log.length === 0 && !trustedStart) {
     return {
       startDate: null,
       elapsedMs: 0,
@@ -103,24 +107,63 @@ export function loadedTimetableStateFromLog(
       columnCount: 12,
     }
   }
-  const oldestTimestamp = Math.min(
-    ...log.map(event => new Date(event.ts).getTime()),
-  )
-  const startDate = new Date(oldestTimestamp)
+  const oldestTimestamp = log.length > 0
+    ? Math.min(...log.map(event => new Date(event.ts).getTime()))
+    : null
+  const startDate = trustedStart ?? new Date(oldestTimestamp!)
   const roundedStart = roundDown5Min(startDate)
+  const elapsedMs = Math.max(0, now.getTime() - startDate.getTime())
   return {
     startDate,
-    elapsedMs: now.getTime() - startDate.getTime(),
-    timetable: eventsToTimetable(log, roundedStart, now),
+    elapsedMs,
+    timetable: log.length > 0 ? eventsToTimetable(log, roundedStart, now) : null,
     columnCount: Math.max(
       12,
-      Math.ceil((now.getTime() - roundedStart.getTime()) / (5 * 60_000)) + 12,
+      Math.ceil(Math.max(0, now.getTime() - roundedStart.getTime()) / INTRAOP_COLUMN_MS) + 12,
     ),
   }
 }
 
+export function loadedTimetableStateFromLegacySnapshot(value: unknown): {
+  startDate: null
+  elapsedMs: 0
+  timetable: TimetableData
+  columnCount: number
+} | null {
+  const parsed = parseLegacyKeyEvents(value)
+  const timetable: TimetableData = {
+    vitals: parsed.vitals ?? [],
+    drugs: parsed.drugs ?? [],
+    fluids: parsed.fluids ?? [],
+    infusions: parsed.infusions ?? [],
+    agents: parsed.agents ?? [],
+    gasSettings: parsed.gasSettings ?? [],
+    clinicalEvents: parsed.clinicalEvents ?? [],
+    positions: parsed.positions ?? [],
+    phases: parsed.phases ?? [],
+  }
+  const columns = [
+    timetable.vitals.length,
+    ...timetable.drugs.map(item => item.colIdx + 1),
+    ...timetable.fluids.map(item => item.endCol + 1),
+    ...timetable.infusions.map(item => item.endCol + 1),
+    ...timetable.agents.map(item => item.endCol + 1),
+    ...(timetable.gasSettings ?? []).map(item => item.endCol + 1),
+    ...(timetable.clinicalEvents ?? []).map(item => item.colIdx + 1),
+    ...(timetable.positions ?? []).map(item => item.startCol + 1),
+    ...(timetable.phases ?? []).map(item => item.startCol + 1),
+  ]
+  if (Math.max(...columns) === 0) return null
+  return {
+    startDate: null,
+    elapsedMs: 0,
+    timetable,
+    columnCount: Math.max(12, ...columns),
+  }
+}
+
 export function timeAtCol(startTs: Date, col: number): Date {
-  return new Date(startTs.getTime() + col * 5 * 60_000)
+  return intraopInstantForColumn(startTs, col)
 }
 
 export function formatDateHHMM(d: Date): string {
@@ -139,7 +182,7 @@ export function caseDateForHHMM(hhmm: string): Date {
   const [h, m] = hhmm.split(":").map(Number)
   const d = new Date()
   d.setHours(h || 0, m || 0, 0, 0)
-  if (d.getTime() - Date.now() > 5 * 60_000) d.setDate(d.getDate() - 1)
+  if (d.getTime() - Date.now() > INTRAOP_COLUMN_MS) d.setDate(d.getDate() - 1)
   return d
 }
 
@@ -176,10 +219,7 @@ export function webTimetableToLog(
 }
 
 export function roundDown5Min(d: Date): Date {
-  const m = new Date(d)
-  m.setSeconds(0, 0)
-  m.setMinutes(Math.floor(m.getMinutes() / 5) * 5)
-  return m
+  return roundDownToIntraopColumn(d)
 }
 
 export function safeTimetableScrollIndex(
@@ -207,7 +247,7 @@ export function pickVitalsForColumn(
   const startMs = start?.getTime()
   if (startMs == null) return {}
   const colOf = (value: string) =>
-    Math.floor((new Date(value).getTime() - startMs) / (5 * 60_000))
+    Math.floor((new Date(value).getTime() - startMs) / INTRAOP_COLUMN_MS)
   const targetCol = ts ? colOf(ts) : Number.POSITIVE_INFINITY
 
   let existing: LogEvent | undefined

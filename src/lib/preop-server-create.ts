@@ -1,5 +1,6 @@
 import { buildPreopPayload } from "@/lib/preop-payload"
 import type { PreopFormInput } from "@/lib/preop-form-schema"
+import { readBlockedSaveIssue, type BlockedSaveIssue } from "@lospor/core/sync"
 
 type ApiFetch = (path: string, init?: RequestInit) => Promise<Response>
 
@@ -8,6 +9,8 @@ type PostPreopServerCaseSuccess = {
   id: string
   updatedAt: string | null
   revision: number | null
+  acceptedPayload: Record<string, unknown>
+  blocked?: BlockedSaveIssue
 }
 
 type PostPreopServerCaseFailure = {
@@ -28,30 +31,57 @@ export async function postPreopServerCase(
   if (!values || Object.keys(values).length === 0) return null
 
   try {
-    const res = await fetcher("/api/cases", {
-      method: "POST",
-      headers: { "X-Idempotency-Key": draftId },
-      body: JSON.stringify({ preop: buildPreopPayload(values) }),
-    })
+    const fullPayload = buildPreopPayload(values)
+    const acceptedPayload: Record<string, unknown> = { ...fullPayload }
+    let firstBlocked: BlockedSaveIssue | undefined
+    const maxAttempts = Object.keys(fullPayload).length + 1
 
-    if (!res.ok) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const res = await fetcher("/api/cases", {
+        method: "POST",
+        headers: { "X-Idempotency-Key": draftId },
+        body: JSON.stringify({ preop: acceptedPayload }),
+      })
       const body = await res.json().catch(() => ({})) as Record<string, unknown>
+
+      if (!res.ok) {
+        const issue = readBlockedSaveIssue(body)
+        if (issue) {
+          firstBlocked ??= issue
+          const before = Object.keys(acceptedPayload).length
+          for (const key of issue.blockedKeys) delete acceptedPayload[key]
+          if (Object.keys(acceptedPayload).length < before) continue
+        }
+        return {
+          ok: false,
+          status: res.status,
+          body,
+          message: typeof body.error === "string" ? body.error : `Save failed (HTTP ${res.status})`,
+        }
+      }
+
+      const updatedAt = body.preopUpdatedAt
+        ?? (body.preop as { updatedAt?: unknown } | undefined)?.updatedAt
+        ?? body.updatedAt
+        ?? null
+      const revision = typeof body.preopRevision === "number"
+        ? body.preopRevision
+        : typeof (body.preop as { syncRevision?: unknown } | undefined)?.syncRevision === "number"
+          ? (body.preop as { syncRevision: number }).syncRevision
+          : null
+      if (typeof body.id !== "string") {
+        return { ok: false, status: res.status, body, message: "Save failed: server returned no case ID" }
+      }
       return {
-        ok: false,
-        status: res.status,
-        body,
-        message: typeof body.error === "string" ? body.error : `Save failed (HTTP ${res.status})`,
+        ok: true,
+        id: body.id,
+        updatedAt: typeof updatedAt === "string" ? updatedAt : null,
+        revision,
+        acceptedPayload,
+        ...(firstBlocked ? { blocked: firstBlocked } : {}),
       }
     }
-
-    const json = await res.json()
-    const updatedAt = json.preopUpdatedAt ?? json.preop?.updatedAt ?? json.updatedAt ?? null
-    const revision = typeof json.preopRevision === "number"
-      ? json.preopRevision
-      : typeof json.preop?.syncRevision === "number"
-        ? json.preop.syncRevision
-        : null
-    return { ok: true, id: json.id, updatedAt, revision }
+    return { ok: false, message: "Save failed: too many blocked fields" }
   } catch (error) {
     return {
       ok: false,

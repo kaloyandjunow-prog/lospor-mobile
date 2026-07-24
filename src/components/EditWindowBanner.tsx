@@ -3,13 +3,14 @@ import { View, Text, TouchableOpacity } from "react-native"
 import { useRouter } from "expo-router"
 import { colors, withAlpha } from "@/theme/colors"
 import { usePreferences } from "@/lib/preferences-context"
+import { INTRAOP_RESUME_WINDOW_MS } from "@lospor/core/intraop-engine"
 
 function useEditWindowCountdown(finalizedAt: string | null | undefined) {
   const [secsLeft, setSecsLeft] = useState<number | null>(null)
 
   useEffect(() => {
     if (!finalizedAt) { setSecsLeft(null); return }
-    const deadline = new Date(finalizedAt).getTime() + 30 * 60 * 1000
+    const deadline = new Date(finalizedAt).getTime() + INTRAOP_RESUME_WINDOW_MS
     const calc = () => {
       const diff = Math.round((deadline - Date.now()) / 1000)
       setSecsLeft(diff > 0 ? diff : null)

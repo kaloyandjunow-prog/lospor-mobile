@@ -1,4 +1,8 @@
 import type { PreopFormData, PreopFormInput, PreopSection } from "@/lib/preop-form-schema"
+import {
+  evaluatePreopSectionCompletion,
+  type PreopSection as CorePreopSection,
+} from "@lospor/core/clinical-validation"
 
 export type PreopSectionLabel = {
   key: PreopSection
@@ -30,6 +34,21 @@ export function buildPreopSectionItems(
   labels: PreopSectionLabel[],
   text: PreopSectionOverviewText
 ): PreopSectionOverviewItem[] {
+  const completion = evaluatePreopSectionCompletion(values as Record<string, unknown>)
+  const coreSection: Record<PreopSection, CorePreopSection> = {
+    patient: "demographics",
+    case: "case_details",
+    history: "medical_history",
+    meds: "current_medications",
+    anamnesis: "anamnesis",
+    exam: "physical_exam",
+    airway: "airway",
+    labs: "labs",
+    risk: "risk_scores",
+  }
+  const requiredSections = new Set<PreopSection>([
+    "patient", "case", "exam", "airway", "risk",
+  ])
   const hasBP = values.bpSystolic != null || !!values.bpUnobtainable
   const hasHR = values.heartRate != null || !!values.heartRateUnobtainable
   const hasSpO2 = values.spO2 != null || !!values.spO2Unobtainable
@@ -92,6 +111,8 @@ export function buildPreopSectionItems(
         break
     }
 
+    done = completion[coreSection[key]] === "complete"
+    required = requiredSections.has(key)
     return { key, label, done, required, summary }
   })
 }

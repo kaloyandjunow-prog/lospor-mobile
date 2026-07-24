@@ -7,6 +7,7 @@ import {
   formatHandoverItem,
   type CaseData,
 } from "@/lib/case-detail-summary"
+import { aldreteBand, aldreteTotal } from "@lospor/core/postop"
 
 type AldreteCriterion = {
   field: keyof NonNullable<CaseData["postop"]>
@@ -31,15 +32,14 @@ export function PostopCard({ postop, tc, t }: { postop: CaseData["postop"]; tc: 
     )
   }
 
-  const total = postop.aldreteTotal ?? (
-    (postop.aldreteActivity ?? 0)
-    + (postop.aldreteRespiration ?? 0)
-    + (postop.aldreteCirculation ?? 0)
-    + (postop.aldreteConsciousness ?? 0)
-    + (postop.aldreteSpO2 ?? 0)
-  )
-  const totalColor = total >= 9 ? colors.success : total >= 7 ? colors.warning : colors.danger
-  const totalLabel = total >= 9 ? tc("summaryReady") : total >= 7 ? tc("summaryMonitor") : tc("summaryContinueRecovery")
+  const total = postop.aldreteTotal ?? aldreteTotal(postop)
+  const totalStatus = aldreteBand(total)
+  const totalColor = totalStatus === "ready"
+    ? colors.success
+    : totalStatus === "observe" ? colors.warning : colors.danger
+  const totalLabel = totalStatus === "ready"
+    ? tc("summaryReady")
+    : totalStatus === "observe" ? tc("summaryMonitor") : tc("summaryContinueRecovery")
 
   const dispColor = (d?: string): string => {
     if (d === "WARD") return colors.success
