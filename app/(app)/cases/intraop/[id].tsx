@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
  
 import {
   View, ScrollView, FlatList,
@@ -99,7 +99,13 @@ export default function IntraopLiveScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const router  = useRouter()
   const { isWatching, takeover } = useCaseLock(id, true)
-  const { tc, etco2Unit, temperatureUnit } = usePreferences()
+  const {
+    tc,
+    etco2Unit,
+    temperatureUnit,
+    defaultMonitoring,
+    clinicalPreferencesReady,
+  } = usePreferences()
 
   const [caseInfo, setCaseInfo] = useState<{
     caseCode: string; procedure?: string; diagnosis?: string; techniques?: string[]
@@ -332,6 +338,11 @@ export default function IntraopLiveScreen() {
 
   // Monitoring advanced section
   const [advMonOpen, setAdvMonOpen] = useState(false)
+  useEffect(() => {
+    if (clinicalPreferencesReady && defaultMonitoring === "advanced") {
+      setAdvMonOpen(true)
+    }
+  }, [clinicalPreferencesReady, defaultMonitoring])
   const { autoFillVitals, autoFillBP, autoFillBg } = useIntraopAutofillPreferences()
 
   // Carry vitals forward as the timetable advances, when enabled in Settings.

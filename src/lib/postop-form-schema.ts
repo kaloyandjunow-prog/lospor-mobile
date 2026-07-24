@@ -1,17 +1,27 @@
 import { z } from "zod"
+import {
+  CLINICAL_NUMBER_RULES,
+  validatePostopPatch,
+} from "@lospor/core/clinical-validation"
+
+const postopNumber = (field: string) => {
+  const rule = CLINICAL_NUMBER_RULES.postop[field]
+  if (!rule) throw new Error(`Missing Core number rule for postop.${field}`)
+  return z.number().min(rule.min).max(rule.max)
+}
 
 export const postopFormSchema = z.object({
-  aldreteActivity: z.number().min(0).max(2).default(0),
-  aldreteRespiration: z.number().min(0).max(2).default(0),
-  aldreteCirculation: z.number().min(0).max(2).default(0),
-  aldreteConsciousness: z.number().min(0).max(2).default(0),
-  aldreteSpO2: z.number().min(0).max(2).default(0),
-  recoveryBpSystolic: z.number().optional(),
-  recoveryBpDiastolic: z.number().optional(),
-  recoveryHeartRate: z.number().optional(),
-  recoverySpO2: z.number().optional(),
-  temperatureCelsius: z.number().optional(),
-  painScoreNRS: z.number().min(0).max(10).optional(),
+  aldreteActivity: postopNumber("aldreteActivity").default(0),
+  aldreteRespiration: postopNumber("aldreteRespiration").default(0),
+  aldreteCirculation: postopNumber("aldreteCirculation").default(0),
+  aldreteConsciousness: postopNumber("aldreteConsciousness").default(0),
+  aldreteSpO2: postopNumber("aldreteSpO2").default(0),
+  recoveryBpSystolic: postopNumber("recoveryBpSystolic").optional(),
+  recoveryBpDiastolic: postopNumber("recoveryBpDiastolic").optional(),
+  recoveryHeartRate: postopNumber("recoveryHeartRate").optional(),
+  recoverySpO2: postopNumber("recoverySpO2").optional(),
+  temperatureCelsius: postopNumber("temperatureCelsius").optional(),
+  painScoreNRS: postopNumber("painScoreNRS").optional(),
   ponv: z.boolean().default(false),
   recoveryBpUnobtainable: z.boolean().default(false),
   recoveryHeartRateUnobtainable: z.boolean().default(false),
@@ -20,6 +30,14 @@ export const postopFormSchema = z.object({
   disposition: z.enum(["WARD", "PACU", "ICU"]).optional(),
   dispositionNotes: z.string().optional(),
   handoverItems: z.array(z.string()).default([]),
+}).superRefine((data, ctx) => {
+  for (const issue of validatePostopPatch(data).issues) {
+    ctx.addIssue({
+      code: "custom",
+      path: issue.path,
+      message: issue.code,
+    })
+  }
 })
 
 export type PostopFormInput = z.input<typeof postopFormSchema>

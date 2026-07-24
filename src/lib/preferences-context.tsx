@@ -1,8 +1,30 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react"
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import * as SecureStore from "expo-secure-store"
 import { setColorScheme, type ColorScheme } from "@/theme/colors"
 import { CLINICAL_STRINGS, type ClinicalStringKey } from "@/i18n/clinical-strings"
 import { STRINGS } from "@/i18n/strings"
+import { useAuth } from "@/lib/auth-context"
+import {
+  patchMobileClinicalPreferences,
+  readMobileClinicalPreferences,
+  syncMobileClinicalPreferences,
+} from "@/lib/clinical-preferences-mobile"
+import {
+  applyClinicalPreferencesPatch,
+  DEFAULT_CLINICAL_PREFERENCES,
+  type ClinicalPreferences,
+  type ClinicalPreferencesPatch,
+  type DefaultMonitoring,
+} from "@lospor/core/clinical-preferences"
+import type { AutoFillVitalsPreferences } from "@lospor/core/intraop-vitals"
 
 export type AppLanguage = "en" | "bg"
 export type HeightUnit = "cm" | "in"
@@ -13,14 +35,6 @@ export type Etco2Unit = "mmHg" | "kPa"
 const LANGUAGE_KEY = "lospor_language"
 const THEME_KEY = "lospor_theme"
 const PREOP_LAYOUT_KEY = "lospor_preop_layout"
-// Display-unit preferences only — the DB and every save path always use the
-// canonical unit (cm/kg/°C/mmHg); these just control what's shown/typed in
-// the UI. See src/lib/unit-conversion.ts for the conversion functions.
-const HEIGHT_UNIT_KEY = "lospor_height_unit"
-const WEIGHT_UNIT_KEY = "lospor_weight_unit"
-const TEMPERATURE_UNIT_KEY = "lospor_temperature_unit"
-const ETCO2_UNIT_KEY = "lospor_etco2_unit"
-
 
 type TranslationKey = keyof typeof STRINGS.en
 type ClinicalStringsMap = Record<ClinicalStringKey, string>
@@ -33,6 +47,11 @@ type PreferencesContextValue = {
   weightUnit: WeightUnit
   temperatureUnit: TemperatureUnit
   etco2Unit: Etco2Unit
+  defaultMonitoring: DefaultMonitoring
+  autoFillVitalsPreferences: AutoFillVitalsPreferences
+  intraopFavouriteDrugs: string[]
+  intraopFavouriteInfusions: string[]
+  clinicalPreferencesReady: boolean
   setLanguage: (language: AppLanguage) => Promise<void>
   setTheme: (theme: ColorScheme) => Promise<void>
   setPreopLayout: (layout: "sections" | "scroll") => Promise<void>
@@ -40,8 +59,13 @@ type PreferencesContextValue = {
   setWeightUnit: (unit: WeightUnit) => Promise<void>
   setTemperatureUnit: (unit: TemperatureUnit) => Promise<void>
   setEtco2Unit: (unit: Etco2Unit) => Promise<void>
+  setDefaultMonitoring: (value: DefaultMonitoring) => Promise<void>
+  setAutoFillVitalsPreferences: (
+    value: Partial<AutoFillVitalsPreferences>,
+  ) => Promise<void>
+  setIntraopFavouriteDrugs: (values: string[]) => Promise<void>
+  setIntraopFavouriteInfusions: (values: string[]) => Promise<void>
   t: (key: TranslationKey) => string
-  /** Clinical string translator — covers UI labels in preop, intraop, postop, summary etc. */
   tc: (key: ClinicalStringKey) => string
 }
 
@@ -50,101 +74,144 @@ export type { ClinicalStringKey, TranslationKey }
 const PreferencesContext = createContext<PreferencesContextValue | null>(null)
 
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {
+  const { state: authState } = useAuth()
   const [language, setLanguageState] = useState<AppLanguage>("en")
   const [theme, setThemeState] = useState<ColorScheme>("dark")
-  const [preopLayout, setPreopLayoutState] = useState<"sections" | "scroll">("scroll")
-  const [heightUnit, setHeightUnitState] = useState<HeightUnit>("cm")
-  const [weightUnit, setWeightUnitState] = useState<WeightUnit>("kg")
-  const [temperatureUnit, setTemperatureUnitState] = useState<TemperatureUnit>("C")
-  const [etco2Unit, setEtco2UnitState] = useState<Etco2Unit>("mmHg")
+  const [preopLayout, setPreopLayoutState] =
+    useState<"sections" | "scroll">("scroll")
+  const [clinicalPreferences, setClinicalPreferences] =
+    useState<ClinicalPreferences>(DEFAULT_CLINICAL_PREFERENCES)
+  const [clinicalPreferencesReady, setClinicalPreferencesReady] =
+    useState(false)
+  const clinicalRef = useRef(clinicalPreferences)
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve())
 
-  useEffect(() => {
-    SecureStore.getItemAsync(LANGUAGE_KEY).then((stored) => {
-      if (stored === "en" || stored === "bg") setLanguageState(stored)
-    })
-    SecureStore.getItemAsync(THEME_KEY).then((stored) => {
-      if (stored === "dark" || stored === "light") {
-        setThemeState(stored)
-        setColorScheme(stored)
-      }
-    })
-    SecureStore.getItemAsync(PREOP_LAYOUT_KEY).then((stored) => {
-      if (stored === "sections" || stored === "scroll") setPreopLayoutState(stored)
-    })
-    SecureStore.getItemAsync(HEIGHT_UNIT_KEY).then((stored) => {
-      if (stored === "cm" || stored === "in") setHeightUnitState(stored)
-    })
-    SecureStore.getItemAsync(WEIGHT_UNIT_KEY).then((stored) => {
-      if (stored === "kg" || stored === "lb") setWeightUnitState(stored)
-    })
-    SecureStore.getItemAsync(TEMPERATURE_UNIT_KEY).then((stored) => {
-      if (stored === "C" || stored === "F") setTemperatureUnitState(stored)
-    })
-    SecureStore.getItemAsync(ETCO2_UNIT_KEY).then((stored) => {
-      if (stored === "mmHg" || stored === "kPa") setEtco2UnitState(stored)
-    })
+  const applyClinicalPreferences = useCallback((value: ClinicalPreferences) => {
+    clinicalRef.current = value
+    setClinicalPreferences(value)
   }, [])
 
-  async function setLanguage(language: AppLanguage) {
-    setLanguageState(language)
-    await SecureStore.setItemAsync(LANGUAGE_KEY, language)
+  useEffect(() => {
+    void Promise.all([
+      SecureStore.getItemAsync(LANGUAGE_KEY),
+      SecureStore.getItemAsync(THEME_KEY),
+      SecureStore.getItemAsync(PREOP_LAYOUT_KEY),
+    ]).then(([storedLanguage, storedTheme, storedLayout]) => {
+      if (storedLanguage === "en" || storedLanguage === "bg") {
+        setLanguageState(storedLanguage)
+      }
+      if (storedTheme === "dark" || storedTheme === "light") {
+        setThemeState(storedTheme)
+        setColorScheme(storedTheme)
+      }
+      if (storedLayout === "sections" || storedLayout === "scroll") {
+        setPreopLayoutState(storedLayout)
+      }
+    }).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (authState === "loading") return
+    let active = true
+    const load = authState === "authenticated"
+      ? syncMobileClinicalPreferences()
+      : readMobileClinicalPreferences()
+    void load
+      .then(preferences => {
+        if (active) applyClinicalPreferences(preferences)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setClinicalPreferencesReady(true)
+      })
+    return () => {
+      active = false
+    }
+  }, [applyClinicalPreferences, authState])
+
+  const patchClinical = useCallback((
+    patch: ClinicalPreferencesPatch,
+  ): Promise<void> => {
+    const current = clinicalRef.current
+    const next = applyClinicalPreferencesPatch(current, patch)
+    applyClinicalPreferences(next)
+    const save = saveQueueRef.current.then(async () => {
+      await patchMobileClinicalPreferences(current, patch)
+    })
+    saveQueueRef.current = save.catch(() => {})
+    return save
+  }, [applyClinicalPreferences])
+
+  async function setLanguage(value: AppLanguage) {
+    setLanguageState(value)
+    await SecureStore.setItemAsync(LANGUAGE_KEY, value)
   }
 
-  async function setTheme(theme: ColorScheme) {
-    setThemeState(theme)
-    setColorScheme(theme)
-    await SecureStore.setItemAsync(THEME_KEY, theme)
+  async function setTheme(value: ColorScheme) {
+    setThemeState(value)
+    setColorScheme(value)
+    await SecureStore.setItemAsync(THEME_KEY, value)
   }
 
-  async function setPreopLayout(layout: "sections" | "scroll") {
-    setPreopLayoutState(layout)
-    await SecureStore.setItemAsync(PREOP_LAYOUT_KEY, layout)
-  }
-
-  async function setHeightUnit(unit: HeightUnit) {
-    setHeightUnitState(unit)
-    await SecureStore.setItemAsync(HEIGHT_UNIT_KEY, unit)
-  }
-
-  async function setWeightUnit(unit: WeightUnit) {
-    setWeightUnitState(unit)
-    await SecureStore.setItemAsync(WEIGHT_UNIT_KEY, unit)
-  }
-
-  async function setTemperatureUnit(unit: TemperatureUnit) {
-    setTemperatureUnitState(unit)
-    await SecureStore.setItemAsync(TEMPERATURE_UNIT_KEY, unit)
-  }
-
-  async function setEtco2Unit(unit: Etco2Unit) {
-    setEtco2UnitState(unit)
-    await SecureStore.setItemAsync(ETCO2_UNIT_KEY, unit)
+  async function setPreopLayout(value: "sections" | "scroll") {
+    setPreopLayoutState(value)
+    await SecureStore.setItemAsync(PREOP_LAYOUT_KEY, value)
   }
 
   const value = useMemo<PreferencesContextValue>(() => ({
     language,
     theme,
     preopLayout,
-    heightUnit,
-    weightUnit,
-    temperatureUnit,
-    etco2Unit,
+    heightUnit: clinicalPreferences.units.height,
+    weightUnit: clinicalPreferences.units.weight,
+    temperatureUnit: clinicalPreferences.units.temperature,
+    etco2Unit: clinicalPreferences.units.etco2,
+    defaultMonitoring: clinicalPreferences.defaultMonitoring,
+    autoFillVitalsPreferences: clinicalPreferences.autoFillVitals,
+    intraopFavouriteDrugs: clinicalPreferences.intraopFavouriteDrugs,
+    intraopFavouriteInfusions: clinicalPreferences.intraopFavouriteInfusions,
+    clinicalPreferencesReady,
     setLanguage,
     setTheme,
     setPreopLayout,
-    setHeightUnit,
-    setWeightUnit,
-    setTemperatureUnit,
-    setEtco2Unit,
-    t:  (key) => STRINGS[language][key] ?? STRINGS.en[key],
-    tc: (key) => (CLINICAL_STRINGS[language] as ClinicalStringsMap)[key] ?? (CLINICAL_STRINGS.en as ClinicalStringsMap)[key] ?? key,
-  }), [language, theme, preopLayout, heightUnit, weightUnit, temperatureUnit, etco2Unit])
+    setHeightUnit: unit => patchClinical({ units: { height: unit } }),
+    setWeightUnit: unit => patchClinical({ units: { weight: unit } }),
+    setTemperatureUnit: unit =>
+      patchClinical({ units: { temperature: unit } }),
+    setEtco2Unit: unit => patchClinical({ units: { etco2: unit } }),
+    setDefaultMonitoring: defaultMonitoring =>
+      patchClinical({ defaultMonitoring }),
+    setAutoFillVitalsPreferences: autoFillVitals =>
+      patchClinical({ autoFillVitals }),
+    setIntraopFavouriteDrugs: intraopFavouriteDrugs =>
+      patchClinical({ intraopFavouriteDrugs }),
+    setIntraopFavouriteInfusions: intraopFavouriteInfusions =>
+      patchClinical({ intraopFavouriteInfusions }),
+    t: key => STRINGS[language][key] ?? STRINGS.en[key],
+    tc: key =>
+      (CLINICAL_STRINGS[language] as ClinicalStringsMap)[key]
+      ?? (CLINICAL_STRINGS.en as ClinicalStringsMap)[key]
+      ?? key,
+  }), [
+    clinicalPreferences,
+    clinicalPreferencesReady,
+    language,
+    patchClinical,
+    preopLayout,
+    theme,
+  ])
 
-  return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>
+  return (
+    <PreferencesContext.Provider value={value}>
+      {children}
+    </PreferencesContext.Provider>
+  )
 }
 
 export function usePreferences() {
-  const ctx = useContext(PreferencesContext)
-  if (!ctx) throw new Error("usePreferences must be used inside PreferencesProvider")
-  return ctx
+  const context = useContext(PreferencesContext)
+  if (!context) {
+    throw new Error("usePreferences must be used inside PreferencesProvider")
+  }
+  return context
 }

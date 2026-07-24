@@ -1,6 +1,13 @@
 import { colors } from "@/theme/colors"
 import type { ClinicalStringKey } from "@/lib/preferences-context"
 import { getIcd10BodySystem } from "@lospor/core/preop"
+import { deriveCaseStage } from "@lospor/core/case-status"
+import { calcIBW as calculateIdealBodyWeight } from "@lospor/core/scores"
+import { calculateDrugTotals } from "@lospor/core/intraop-summary"
+import {
+  calcInfusionTotals as calculateInfusionTotals,
+  DEFAULT_INFUSION_WEIGHT_BASIS,
+} from "@lospor/core/intraop-totals"
 
 export type LabResult = { test: string; value: string; unit: string }
 export type Comorbidity = { label: string; code?: string; sub?: string }
@@ -206,18 +213,20 @@ export const BODY_SYSTEM_TC: Record<string, ClinicalStringKey> = {
 }
 
 export function calcDrugTotals(log: KeyEvent[]): { name: string; unit: string; total: number }[] {
-  const map: Record<string, { unit: string; total: number }> = {}
-  for (const ev of log) {
-    if (ev.type !== "drug" || !ev.name || ev.dose == null) continue
-    const key = `${ev.name}__${ev.unit ?? "mg"}`
-    const prev = map[key] ?? { unit: ev.unit ?? "mg", total: 0 }
-    map[key] = { ...prev, total: prev.total + (parseFloat(String(ev.dose)) || 0) }
-  }
-  return Object.entries(map).map(([k, v]) => ({
-    name: k.split("__")[0],
-    unit: v.unit,
-    total: Math.round(v.total * 100) / 100,
-  }))
+  return calculateDrugTotals({
+    drugs: log
+      .filter(event =>
+        event.type === "drug"
+        && event.name != null
+        && event.dose != null,
+      )
+      .map((event, index) => ({
+        colIdx: event.col ?? index,
+        name: event.name!,
+        dose: String(event.dose),
+        unit: event.unit ?? "mg",
+      })),
+  })
 }
 
 export function getActiveInfusions(log: KeyEvent[]): { name: string; rate: number | string; unit: string }[] {
@@ -260,56 +269,36 @@ export function formatDuration(minutes: number): string {
 }
 
 export function calcIBW(sex: string | undefined, heightCm: number): number {
-  const heightInches = heightCm / 2.54
-  const base = (sex === "FEMALE" || sex === "F") ? 45.5 : 50
-  return Math.round((base + 2.3 * (heightInches - 60)) * 10) / 10
+  const canonicalSex = sex === "FEMALE" || sex === "F"
+    ? "FEMALE"
+    : sex === "OTHER"
+      ? "OTHER"
+      : "MALE"
+  return calculateIdealBodyWeight(heightCm, canonicalSex)
 }
 
 // Weight basis for per-kg infusion units — mirrors web INFUSION_WEIGHT_BASIS
-export const INFUSION_WEIGHT_BASIS: Record<string, "IBW" | "TBW"> = {
-  "Propofol":"IBW","Remifentanil":"IBW","Ketamine":"IBW","Midazolam":"IBW",
-  "Dexmedetomidine":"TBW","Fentanyl":"IBW","Sufentanil":"IBW","Morphine":"IBW","Alfentanil":"IBW",
-  "Norepinephrine":"IBW","Epinephrine":"IBW","Phenylephrine":"TBW",
-  "Dopamine":"TBW","Dobutamine":"TBW","Rocuronium":"IBW","Cisatracurium":"IBW","Nitroglycerin":"TBW",
-}
+export const INFUSION_WEIGHT_BASIS = DEFAULT_INFUSION_WEIGHT_BASIS
 
 export function calcInfusionTotals(
   infusions: { id?: string; name: string; rate: string; unit: string; startCol: number; endCol: number; rateChanges?: { col: number; rate: string; unit: string }[] }[],
   ibw: number | null,
   tbw: number | null,
 ): { name: string; total: number; unit: string; weightUsed: number | null; weightBasis: "IBW" | "TBW" | null }[] {
-  return infusions.map(inf => {
-    const basis  = INFUSION_WEIGHT_BASIS[inf.name] ?? "IBW"
-    const bodyWt = basis === "TBW" ? (tbw ?? ibw) : (ibw ?? tbw)
-    const sorted = (inf.rateChanges ?? []).slice().sort((a, b) => a.col - b.col)
-
-    function seg(rate: number, unit: string, cols: number): number {
-      const isPerKg = unit.includes("/kg/")
-      const wt = isPerKg && bodyWt ? bodyWt : isPerKg ? 1 : 1
-      const mins = unit.includes("/min") ? cols * 5 : cols * 5 / 60
-      return rate * wt * mins
-    }
-
-    let total = 0; let prevCol = inf.startCol
-    let prevRate = parseFloat(inf.rate) || 0; let prevUnit = inf.unit
-    for (const rc of sorted) {
-      total += seg(prevRate, prevUnit, rc.col - prevCol)
-      prevCol = rc.col; prevRate = parseFloat(rc.rate) || 0; prevUnit = rc.unit
-    }
-    total += seg(prevRate, prevUnit, inf.endCol - prevCol + 1)
-
-    const baseUnit = prevUnit.replace(/\/kg\/min$/, "").replace(/\/kg\/hr$/, "").replace(/\/min$/, "").replace(/\/hr$/, "").trim()
-    const anyPerKg = inf.unit.includes("/kg/") || (inf.rateChanges ?? []).some(rc => rc.unit.includes("/kg/"))
-    const weightUsed = anyPerKg && bodyWt ? Math.round(bodyWt * 10) / 10 : null
-
-    return {
-      name: inf.name,
-      total: Math.round(total * 100) / 100,
-      unit: baseUnit,
-      weightUsed,
-      weightBasis: anyPerKg ? basis : null,
-    }
-  })
+  return calculateInfusionTotals(
+    infusions,
+    ibw,
+    tbw,
+    { ...DEFAULT_INFUSION_WEIGHT_BASIS },
+  ).map(result => ({
+    name: result.name,
+    total: result.total,
+    unit: result.unit,
+    weightUsed: result.weightUsed,
+    weightBasis: result.weightBasis === "none"
+      ? null
+      : result.weightBasis,
+  }))
 }
 
 export function formatAirway(intraop: CaseData["intraop"]): string {
@@ -334,20 +323,12 @@ export function formatHandoverItem(code: string): string {
   return code.replace(/_/g, " ").replace(/^\w/, c => c.toUpperCase())
 }
 
-// Compute the visual display status from the full case record, matching web app logic.
 export function computedDisplayStatus(data: CaseData): string {
-  if (data.status === "COMPLETE") return "COMPLETE"
+  return deriveCaseStage(data)
   // Postop submitted → awaiting review / closure
-  if (data.status === "AWAITING_REVIEW") return "AWAITING_REVIEW"
   // Case ended but no postop yet → awaiting postop documentation
-  if (data.intraop?.endTime != null) return "AWAITING_POSTOP"
-  if (data.status === "IN_PROGRESS") return "IN_PROGRESS"
   // Preop complete (diagnosis + procedure + ASA) → awaiting allocation
-  const preopComplete = !!(data.preop?.diagnosis && data.preop?.plannedProcedure && data.preop?.asaScore)
-  if (preopComplete) return "AWAITING_ALLOCATION"
   // Preop started but not complete
-  if (data.preop?.diagnosis) return "IN_CONSULTATION"
-  return "DRAFT"
 }
 
 export function asaColor(score: string | undefined): string {

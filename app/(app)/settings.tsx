@@ -24,13 +24,11 @@ import { AppHeader } from "@/components/AppHeader"
 import { MedicalDisclaimer } from "@/components/MedicalDisclaimer"
 import { useOptionLibrary, type LibraryOption } from "@/lib/use-option-library"
 import {
-  loadIntraopAutofillPreferences,
-  saveIntraopAutofillPreferences,
-} from "@/lib/intraop-autofill-preferences"
-import {
-  normalizeAutoFillVitalsPreferences,
-  type AutoFillVitalsPreferences,
-} from "@/lib/intraop-vital-log"
+  optionMatchesPreference,
+  optionPreferenceKey,
+  resolveOptionPreferenceLabels,
+  type LibraryCategory,
+} from "@lospor/core/option-contracts"
 
 // --- Types --------------------------------------------------------------------
 
@@ -42,10 +40,6 @@ type ProfileData = {
   title?: string | null
   role?: string | null
   institution?: Institution | null
-  preferences?: {
-    intraopFavouriteDrugs?: string[]
-    intraopFavouriteInfusions?: string[]
-  } | null
 }
 
 // --- Institution picker modal -------------------------------------------------
@@ -148,6 +142,7 @@ function InstitutionPicker({
 function FavouritePicker({
   visible,
   title,
+  category,
   options,
   selected,
   onClose,
@@ -155,6 +150,7 @@ function FavouritePicker({
 }: {
   visible: boolean
   title: string
+  category: LibraryCategory
   options: LibraryOption[]
   selected: string[]
   onClose: () => void
@@ -174,10 +170,20 @@ function FavouritePicker({
     ? options.filter(o => `${o.label} ${o.group ?? ""}`.toLowerCase().includes(query.trim().toLowerCase()))
     : options
 
-  function toggle(label: string) {
-    setDraft(prev => prev.includes(label)
-      ? prev.filter(x => x !== label)
-      : prev.length >= 8 ? prev : [...prev, label])
+  function toggle(option: LibraryOption) {
+    setDraft(previous => {
+      const alreadySelected = previous.some(preference =>
+        optionMatchesPreference(category, option, preference),
+      )
+      const withoutOption = previous.filter(preference =>
+        !optionMatchesPreference(category, option, preference),
+      )
+      return alreadySelected
+        ? withoutOption
+        : previous.length >= 8
+          ? previous
+          : [...withoutOption, optionPreferenceKey(category, option)]
+    })
   }
 
   return (
@@ -213,10 +219,12 @@ function FavouritePicker({
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             renderItem={({ item }) => {
-              const checked = draft.includes(item.label)
+              const checked = draft.some(preference =>
+                optionMatchesPreference(category, item, preference),
+              )
               return (
                 <TouchableOpacity
-                  onPress={() => toggle(item.label)}
+                  onPress={() => toggle(item)}
                   style={{
                     paddingVertical: 11,
                     borderBottomWidth: 1,
@@ -261,6 +269,14 @@ export default function SettingsScreen() {
   const {
     language, setLanguage, theme, setTheme, preopLayout, setPreopLayout, t, tc,
     heightUnit, setHeightUnit, weightUnit, setWeightUnit, temperatureUnit, setTemperatureUnit, etco2Unit, setEtco2Unit,
+    autoFillVitalsPreferences,
+    setAutoFillVitalsPreferences,
+    defaultMonitoring,
+    setDefaultMonitoring,
+    intraopFavouriteDrugs: favouriteDrugs,
+    intraopFavouriteInfusions: favouriteInfusions,
+    setIntraopFavouriteDrugs,
+    setIntraopFavouriteInfusions,
   } = usePreferences()
 
   // Which panel is showing: "main" or the settings sub-screen
@@ -271,14 +287,21 @@ export default function SettingsScreen() {
   const [pickerOpen, setPickerOpen]       = useState(false)
   const [drugFavOpen, setDrugFavOpen]     = useState(false)
   const [infFavOpen, setInfFavOpen]       = useState(false)
-  const [favouriteDrugs, setFavouriteDrugs] = useState<string[]>([])
-  const [favouriteInfusions, setFavouriteInfusions] = useState<string[]>([])
   const [institutionSaving, setInstitutionSaving] = useState(false)
 
-  // -- Automation toggles -------------------------------------------------------
-  const [autoFillVitals, setAutoFillVitalsState] = useState(false)
-  const [autoFillBP,     setAutoFillBPState]     = useState(false)
-  const [autoFillBg,     setAutoFillBgState]     = useState(false)
+  const autoFillVitals = autoFillVitalsPreferences.enabled
+  const autoFillBP = autoFillVitalsPreferences.includeBloodPressure
+  const autoFillBg = autoFillVitalsPreferences.backfillOnReopen
+  const favouriteDrugLabels = resolveOptionPreferenceLabels(
+    "INTRAOP_DRUG",
+    drugOptions,
+    favouriteDrugs,
+  )
+  const favouriteInfusionLabels = resolveOptionPreferenceLabels(
+    "INTRAOP_INFUSION",
+    infusionOptions,
+    favouriteInfusions,
+  )
 
   // -- Notification reminders -------------------------------------------------
   const [remindersOn,   setRemindersOnState]   = useState(false)
@@ -301,8 +324,6 @@ export default function SettingsScreen() {
     try {
       const data = await apiJson<ProfileData>("/api/user")
       setProfile(data)
-      setFavouriteDrugs(data.preferences?.intraopFavouriteDrugs ?? [])
-      setFavouriteInfusions(data.preferences?.intraopFavouriteInfusions ?? [])
     } catch {
       // Fallback: decode from JWT (no round-trip needed for display)
       const token = await getToken()
@@ -322,20 +343,13 @@ export default function SettingsScreen() {
     }
   }
 
-  const applyAutoFillPreferences = useCallback((preferences: AutoFillVitalsPreferences) => {
-    setAutoFillVitalsState(preferences.enabled)
-    setAutoFillBPState(preferences.includeBloodPressure)
-    setAutoFillBgState(preferences.backfillOnReopen)
-  }, [])
-
   const loadAutomation = useCallback(() => {
-    loadIntraopAutofillPreferences().then(applyAutoFillPreferences).catch(() => {})
     SecureStore.getItemAsync(REMINDERS_KEY).then(v => setRemindersOnState(v === "on"))
     SecureStore.getItemAsync(VITALS_INTERVAL_KEY).then(v => {
       const n = Number(v); if (Number.isFinite(n) && n > 0) setVitalsIntervalState(n)
     })
     refreshNotifStatus()
-  }, [applyAutoFillPreferences])
+  }, [])
 
   async function refreshDiagnostics() {
     const token = await getToken()
@@ -384,31 +398,21 @@ export default function SettingsScreen() {
 
   // -- Automation setters -------------------------------------------------------
   function setAutoFillVitals(v: boolean) {
-    const next = normalizeAutoFillVitalsPreferences({
+    void setAutoFillVitalsPreferences({
       enabled: v,
-      includeBloodPressure: autoFillBP,
-      backfillOnReopen: autoFillBg,
+      includeBloodPressure: v ? autoFillBP : false,
+      backfillOnReopen: v ? autoFillBg : false,
     })
-    applyAutoFillPreferences(next)
-    void saveIntraopAutofillPreferences(next).then(applyAutoFillPreferences).catch(() => {})
   }
   function setAutoFillBP(v: boolean) {
-    const next = normalizeAutoFillVitalsPreferences({
-      enabled: autoFillVitals,
+    void setAutoFillVitalsPreferences({
       includeBloodPressure: v,
-      backfillOnReopen: autoFillBg,
     })
-    applyAutoFillPreferences(next)
-    void saveIntraopAutofillPreferences(next).then(applyAutoFillPreferences).catch(() => {})
   }
   function setAutoFillBg(v: boolean) {
-    const next = normalizeAutoFillVitalsPreferences({
-      enabled: autoFillVitals,
-      includeBloodPressure: autoFillBP,
+    void setAutoFillVitalsPreferences({
       backfillOnReopen: v,
     })
-    applyAutoFillPreferences(next)
-    void saveIntraopAutofillPreferences(next).then(applyAutoFillPreferences).catch(() => {})
   }
 
   // -- Notification setters -----------------------------------------------------
@@ -475,13 +479,8 @@ export default function SettingsScreen() {
 
   async function saveFavouriteDrugs(next: string[]) {
     setDrugFavOpen(false)
-    setFavouriteDrugs(next)
     try {
-      const res = await apiFetch("/api/user", {
-        method: "PATCH",
-        body: JSON.stringify({ preferences: { intraopFavouriteDrugs: next } }),
-      })
-      if (!res.ok) throw new Error()
+      await setIntraopFavouriteDrugs(next)
     } catch {
       notify(t("error"), "Could not save favourite drugs.")
     }
@@ -489,13 +488,8 @@ export default function SettingsScreen() {
 
   async function saveFavouriteInfusions(next: string[]) {
     setInfFavOpen(false)
-    setFavouriteInfusions(next)
     try {
-      const res = await apiFetch("/api/user", {
-        method: "PATCH",
-        body: JSON.stringify({ preferences: { intraopFavouriteInfusions: next } }),
-      })
-      if (!res.ok) throw new Error()
+      await setIntraopFavouriteInfusions(next)
     } catch {
       notify(t("error"), "Could not save favourite infusions.")
     }
@@ -724,13 +718,24 @@ export default function SettingsScreen() {
         <SectionHeader title={t("intraoperative")} />
         <Card>
           <SettingsRow
+            label={t("defaultMonitoring")}
+            subtitle={defaultMonitoring === "advanced"
+              ? t("defaultMonitoringAdvanced")
+              : t("defaultMonitoringStandard")}
+            onPress={() => {
+              void setDefaultMonitoring(
+                defaultMonitoring === "advanced" ? "standard" : "advanced",
+              )
+            }}
+          />
+          <SettingsRow
             label={t("favouriteBolusDrugs")}
-            subtitle={favouriteDrugs.length ? favouriteDrugs.join(", ") : "Choose up to 8 drugs for the intraop cockpit"}
+            subtitle={favouriteDrugLabels.length ? favouriteDrugLabels.join(", ") : "Choose up to 8 drugs for the intraop cockpit"}
             onPress={() => setDrugFavOpen(true)}
           />
           <SettingsRow
             label={t("favouriteInfusions")}
-            subtitle={favouriteInfusions.length ? favouriteInfusions.join(", ") : "Choose up to 8 infusions for the intraop cockpit"}
+            subtitle={favouriteInfusionLabels.length ? favouriteInfusionLabels.join(", ") : "Choose up to 8 infusions for the intraop cockpit"}
             onPress={() => setInfFavOpen(true)}
           />
           <SettingsRow
@@ -888,6 +893,7 @@ export default function SettingsScreen() {
       <FavouritePicker
         visible={drugFavOpen}
         title={t("favouriteBolusDrugs")}
+        category="INTRAOP_DRUG"
         options={drugOptions}
         selected={favouriteDrugs}
         onClose={() => setDrugFavOpen(false)}
@@ -896,6 +902,7 @@ export default function SettingsScreen() {
       <FavouritePicker
         visible={infFavOpen}
         title={t("favouriteInfusions")}
+        category="INTRAOP_INFUSION"
         options={infusionOptions}
         selected={favouriteInfusions}
         onClose={() => setInfFavOpen(false)}

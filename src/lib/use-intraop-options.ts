@@ -6,6 +6,7 @@ import {
   doseCalcMap, codesMap, groupDrugCategories, groupClinicalEvents,
 } from "@/lib/intraop-library"
 import { MOBILE_DRUG_CAT_COLOR, MOBILE_FLUID_CAT_COLOR, MOBILE_AGENT_COLOR } from "@/lib/intraop-constants"
+import { metadataString } from "@lospor/core/option-contracts"
 
 // Loads the intraop drug/infusion/fluid/agent/event OptionLibrary categories and
 // derives every lookup map + colour/range helper the screen needs. Extracted
@@ -25,7 +26,13 @@ export function useIntraopOptions() {
     return "#64748b"
   }
   const INF_DRUGS = useMemo(() =>
-    infusionLibOpts.map((o: LibraryOption) => ({ name: o.label, unit: o.metadata?.unit ?? o.metadata?.defaultUnit ?? "mcg/kg/min", color: o.color ?? "#64748b" })),
+    infusionLibOpts.map((o: LibraryOption) => ({
+      name: o.label,
+      unit: metadataString(o.metadata, "unit")
+        ?? metadataString(o.metadata, "defaultUnit")
+        ?? "mcg/kg/min",
+      color: o.color ?? "#64748b",
+    })),
   [infusionLibOpts])
   const FLUID_LIST = useMemo(() =>
     fluidLibOpts.map((o: LibraryOption) => ({ name: o.label, cat: o.group ?? "Other", color: MOBILE_FLUID_CAT_COLOR[o.group ?? "Other"] ?? "#94a3b8" })),

@@ -243,6 +243,9 @@ export const STRINGS = {
     typeAtLeast2: "Type at least 2 characters",
     noResultsFor: "No results for",
     addedLabel: "Added",
+    defaultMonitoring: "Default monitoring panel",
+    defaultMonitoringStandard: "Standard",
+    defaultMonitoringAdvanced: "Advanced open by default",
   },
   bg: {
     settings: "Настройки",
@@ -485,5 +488,8 @@ export const STRINGS = {
     typeAtLeast2: "Въведете поне 2 символа",
     noResultsFor: "Няма резултати за",
     addedLabel: "Добавено",
+    defaultMonitoring: "Панел за мониториране по подразбиране",
+    defaultMonitoringStandard: "Стандартен",
+    defaultMonitoringAdvanced: "Разширеният е отворен по подразбиране",
   },
 } as const

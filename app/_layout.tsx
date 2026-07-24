@@ -81,11 +81,11 @@ export default function RootLayout() {
   }
 
   return (
-    <PreferencesProvider>
-      <AuthProvider>
+    <AuthProvider>
+      <PreferencesProvider>
         <Guard />
         <ActionSheetHost />
-      </AuthProvider>
-    </PreferencesProvider>
+      </PreferencesProvider>
+    </AuthProvider>
   )
 }

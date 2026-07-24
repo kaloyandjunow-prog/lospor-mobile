@@ -24,6 +24,7 @@ import { ASABadge, DispositionBadge, StatusBadge } from "@/components/ui"
 import { ScreenState, WorkflowPill } from "@/components/clinical-ui"
 import { AppHeader } from "@/components/AppHeader"
 import { colors, withAlpha } from "@/theme/colors"
+import { deriveCaseStage } from "@lospor/core/case-status"
 
 type CaseItem = {
   id: string
@@ -95,18 +96,11 @@ function isThisMonth(iso: string): boolean {
 }
 
 function derivedStatus(item: CaseItem): string {
-  if (item.status === "COMPLETE") return "COMPLETE"
+  return deriveCaseStage(item)
   // Postop submitted → awaiting review / closure
-  if (item.status === "AWAITING_REVIEW") return "AWAITING_REVIEW"
   // Case ended but no postop yet → awaiting postop documentation
-  if (item.intraop?.endTime != null) return "AWAITING_POSTOP"
-  if (item.status === "IN_PROGRESS") return "IN_PROGRESS"
   // Preop complete (diagnosis + procedure + ASA) → ready to schedule
-  const preopComplete = !!(item.preop?.diagnosis && item.preop?.plannedProcedure && item.preop?.asaScore)
-  if (preopComplete) return "AWAITING_ALLOCATION"
   // Preop started but incomplete
-  if (item.preop?.diagnosis) return "IN_CONSULTATION"
-  return "DRAFT"
 }
 
 // nextAction returns a translation key rather than a raw string

@@ -5,7 +5,7 @@ import {
 } from "react-native"
 import { useOptionLibrary } from "@/lib/use-option-library"
 import { confirmAction } from "@/lib/notify"
-import { calcSuggestedDose as calcDose, type DoseEntry, type DoseRule } from "@/lib/dose-calc"
+import { calcSuggestedDose as calcDose } from "@/lib/dose-calc"
 import type {
   AgentSegment,
   GasSettingsSegment,
@@ -16,6 +16,7 @@ import type {
   VitalsEntry,
 } from "@lospor/core/intraop-types"
 import { packLaneRows } from "@lospor/core/timetable"
+import { doseCalcMap } from "@lospor/core/option-library"
 
 // ─── Types (API-compatible with web timetable) ────────────────────────────────
 
@@ -335,21 +336,18 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
 
   // Drug dose autofill
   const { options: drugLibOptions } = useOptionLibrary("INTRAOP_DRUG")
+  const drugDoseCalculations = useMemo(
+    () => doseCalcMap(drugLibOptions),
+    [drugLibOptions],
+  )
 
   function calcSuggestedDose(name: string): { dose: string; hint: string } {
-    const opt = drugLibOptions.find(o => o.value === name.toUpperCase())
-    const metadata = opt?.metadata as {
-      hint?: string
-      doseCalc?: DoseRule
-      doseCalcByRoute?: Record<string, DoseRule>
-      routeModes?: Record<string, { doseCalc?: DoseRule }>
-    } | undefined
-    const byRoute: Record<string, DoseRule> = { ...(metadata?.doseCalcByRoute ?? {}) }
-    for (const [route, profile] of Object.entries(metadata?.routeModes ?? {})) {
-      if (profile?.doseCalc) byRoute[route] = profile.doseCalc
-    }
-    const entry: DoseEntry | undefined = metadata?.doseCalc || Object.keys(byRoute).length
-      ? { ...(metadata?.doseCalc ?? {}), hint: metadata?.hint, byRoute: Object.keys(byRoute).length ? byRoute : undefined }
+    const option = drugLibOptions.find(candidate =>
+      candidate.value === name.toUpperCase()
+      || candidate.label === name,
+    )
+    const entry = option
+      ? drugDoseCalculations[option.label]
       : undefined
     return calcDose(entry, undefined, { weightKg: patientWeightKg, heightCm: patientHeightCm, sex: patientSex })
   }

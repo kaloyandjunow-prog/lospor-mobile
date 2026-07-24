@@ -1,10 +1,49 @@
 import { z } from "zod"
+import {
+  CLINICAL_NUMBER_RULES,
+  evaluatePreopReadiness,
+  validatePreopPatch,
+  type ClinicalValidationResult,
+} from "@lospor/core/clinical-validation"
+
+const preopNumber = (field: string) => {
+  const rule = CLINICAL_NUMBER_RULES.preop[field]
+  if (!rule) throw new Error(`Missing Core number rule for preop.${field}`)
+  return z.number().min(rule.min).max(rule.max)
+}
+
+const issueMessages: Record<string, string> = {
+  missing_diagnosis: "At least one diagnosis is required",
+  missing_procedure: "At least one procedure is required",
+  missing_blood_pressure: "Blood pressure is required",
+  missing_heart_rate: "Heart rate is required",
+  missing_respiratory_rate: "Respiratory rate is required",
+  missing_airway: "Mallampati class is required",
+  missing_age: "Age is required",
+  missing_sex: "Sex is required",
+  missing_height: "Height is required",
+  missing_weight: "Weight is required",
+  missing_asa: "ASA score is required",
+}
+
+function addCoreIssues(
+  result: ClinicalValidationResult,
+  ctx: z.RefinementCtx,
+): void {
+  for (const issue of result.issues) {
+    ctx.addIssue({
+      code: "custom",
+      path: issue.path,
+      message: issueMessages[issue.code] ?? issue.code,
+    })
+  }
+}
 
 export const preopFormSchema = z.object({
-  ageYears: z.number({ error: "Required" }).min(0).max(149),
+  ageYears: preopNumber("ageYears"),
   sex: z.enum(["MALE", "FEMALE", "OTHER"]),
-  heightCm: z.number({ error: "Required" }).min(0).max(220),
-  weightKg: z.number({ error: "Required" }).min(0).max(250),
+  heightCm: preopNumber("heightCm"),
+  weightKg: preopNumber("weightKg"),
   bloodType: z.enum(["A", "B", "AB", "O"]).optional(),
   rhFactor: z.enum(["POSITIVE", "NEGATIVE"]).optional(),
 
@@ -27,13 +66,13 @@ export const preopFormSchema = z.object({
   smoking: z.boolean().default(false),
   substanceAbuse: z.boolean().default(false),
 
-  bpSystolic: z.number().min(0).max(260).optional(),
-  bpDiastolic: z.number().min(0).max(160).optional(),
-  heartRate: z.number().min(0).max(250).optional(),
+  bpSystolic: preopNumber("bpSystolic").optional(),
+  bpDiastolic: preopNumber("bpDiastolic").optional(),
+  heartRate: preopNumber("heartRate").optional(),
   heartArrhythmia: z.boolean().default(false),
-  spO2: z.number().min(50).max(100).optional(),
-  temperature: z.number().min(0).max(42).optional(),
-  respiratoryRate: z.number().min(4).max(60).optional(),
+  spO2: preopNumber("spO2").optional(),
+  temperature: preopNumber("temperature").optional(),
+  respiratoryRate: preopNumber("respiratoryRate").optional(),
   bpUnobtainable: z.boolean().default(false),
   heartRateUnobtainable: z.boolean().default(false),
   spO2Unobtainable: z.boolean().default(false),
@@ -42,8 +81,8 @@ export const preopFormSchema = z.object({
   physicalExamReport: z.string().max(500).optional(),
 
   mallampati: z.enum(["I", "II", "III", "IV"]).optional(),
-  mouthOpeningCm: z.number().min(0.5).max(10).optional(),
-  thyromental: z.number().min(3).max(15).optional(),
+  mouthOpeningCm: preopNumber("mouthOpeningCm").optional(),
+  thyromental: preopNumber("thyromental").optional(),
   neckMobility: z.enum(["FULL", "LIMITED", "FIXED"]).optional(),
   upperLipBiteTest: z.enum(["CLASS_I", "CLASS_II", "CLASS_III"]).optional(),
   cormackLehane: z.enum(["I", "IIa", "IIb", "III", "IV"]).optional(),
@@ -73,23 +112,9 @@ export const preopFormSchema = z.object({
   aiOptIn: z.boolean().default(false),
   labResults: z.array(z.object({ test: z.string(), value: z.string(), unit: z.string() })).default([]),
 })
-  // Cross-field required checks mirroring the web app's validate() in
-  // forms/PreopForm.tsx so mobile/PWA enforces the same gate before intraop.
-  // These surface as inline field errors + an onInvalid jump instead of a
-  // silent no-op (Alert is dead on react-native-web - see lib/notify.ts).
   .superRefine((d, ctx) => {
-    if (!d.diagnoses?.length)
-      ctx.addIssue({ code: "custom", path: ["diagnoses"], message: "At least one diagnosis is required" })
-    if (!d.procedures?.length)
-      ctx.addIssue({ code: "custom", path: ["procedures"], message: "At least one procedure is required" })
-    if (!d.bpUnobtainable && (d.bpSystolic == null || d.bpDiastolic == null))
-      ctx.addIssue({ code: "custom", path: ["bpSystolic"], message: "Blood pressure is required" })
-    if (!d.heartRateUnobtainable && d.heartRate == null)
-      ctx.addIssue({ code: "custom", path: ["heartRate"], message: "Heart rate is required" })
-    if (!d.respiratoryRateUnobtainable && d.respiratoryRate == null)
-      ctx.addIssue({ code: "custom", path: ["respiratoryRate"], message: "Respiratory rate is required" })
-    if (!d.airwayUnobtainable && !d.mallampati)
-      ctx.addIssue({ code: "custom", path: ["mallampati"], message: "Mallampati class is required" })
+    addCoreIssues(validatePreopPatch(d), ctx)
+    addCoreIssues(evaluatePreopReadiness(d), ctx)
   })
 
 export type PreopFormInput = z.input<typeof preopFormSchema>

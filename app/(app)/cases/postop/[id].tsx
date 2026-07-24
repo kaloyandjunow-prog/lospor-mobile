@@ -23,6 +23,7 @@ import { usePreferences } from "@/lib/preferences-context"
 import { useRangeSpec } from "@/lib/use-option-library"
 import { normaliseHandoverCodes, postopFormSchema, type PostopFormData as FormData, type PostopFormInput as FormInput } from "@/lib/postop-form-schema"
 import { DispositionPicker, Field, HandoverChecklist, NRSRow, RecoverySummary, ScoreRow, SectionHeader } from "@/components/postop/PostopFormSections"
+import { canonicalizePostopPatch } from "@lospor/core/case-payloads"
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -168,25 +169,9 @@ export default function PostopFormScreen() {
     }
   }, [])
 
-  const totalFrom = useCallback((data: Partial<FormData>) => {
-    return (
-      (data.aldreteActivity ?? 0) +
-      (data.aldreteRespiration ?? 0) +
-      (data.aldreteCirculation ?? 0) +
-      (data.aldreteConsciousness ?? 0) +
-      (data.aldreteSpO2 ?? 0)
-    )
-  }, [])
-
   const payloadFrom = useCallback((data: FormData) => {
-    const handoverAllowed = data.disposition === "WARD" || data.disposition === "PACU"
-    return {
-      ...data,
-      handoverItems: handoverAllowed ? data.handoverItems : [],
-      dispositionNotes: handoverAllowed ? data.dispositionNotes : "",
-      aldreteTotal: totalFrom(data),
-    }
-  }, [totalFrom])
+    return canonicalizePostopPatch(data)
+  }, [])
 
   const markSaveResult = useCallback((result: CasePatchResult, response?: CasePatchResponse) => {
     if (result === "saved") {

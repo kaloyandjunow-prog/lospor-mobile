@@ -7,6 +7,7 @@ import { usePreferences, type ClinicalStringKey } from "@/lib/preferences-contex
 import { LAB_CATEGORIES, getLabOutOfRange, searchLabs, type LabTest } from "@/lib/labs"
 import type { ASASuggestion } from "@/lib/preop-asa-suggestion"
 import { getIcd10BodySystem } from "@lospor/core/preop"
+import { metadataString } from "@lospor/core/option-contracts"
 
 function impact() {
   hapticTick()
@@ -128,14 +129,31 @@ export function BloodGrid({ bloodType, rhFactor, onChange }: {
   return (
     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
       {bloodGroupOptions.map(opt => {
-        const meta = opt.metadata as { bloodType: "A" | "B" | "AB" | "O"; rhFactor: "POSITIVE" | "NEGATIVE" } | undefined
-        const selected = bloodType === meta?.bloodType && rhFactor === meta?.rhFactor
+        const bloodTypeValue = metadataString(opt.metadata, "bloodType")
+        const rhFactorValue = metadataString(opt.metadata, "rhFactor")
+        const optionBloodType =
+          bloodTypeValue === "A"
+          || bloodTypeValue === "B"
+          || bloodTypeValue === "AB"
+          || bloodTypeValue === "O"
+            ? bloodTypeValue
+            : undefined
+        const optionRhFactor =
+          rhFactorValue === "POSITIVE" || rhFactorValue === "NEGATIVE"
+            ? rhFactorValue
+            : undefined
+        const selected =
+          bloodType === optionBloodType
+          && rhFactor === optionRhFactor
         return (
           <Pressable
             key={opt.value}
             onPress={() => {
               impact()
-              onChange(selected ? undefined : meta?.bloodType, selected ? undefined : meta?.rhFactor)
+              onChange(
+                selected ? undefined : optionBloodType,
+                selected ? undefined : optionRhFactor,
+              )
             }}
             style={{
               width: "23%",
