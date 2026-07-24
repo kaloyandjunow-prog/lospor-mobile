@@ -41,8 +41,6 @@ export type KeyEvent = IntraopKeyEventDto
 export type CaseData = CaseDetailDto
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-export const API_BASE = (process.env.EXPO_PUBLIC_API_BASE ?? "https://app.lospor.org").replace(/\/$/, "")
-
 export const BODY_SYSTEM_COLORS: Record<string, string> = {
   "Cardiovascular": "#ef4444",
   "Respiratory": "#38bdf8",

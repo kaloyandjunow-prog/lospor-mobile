@@ -22,7 +22,7 @@ Status legend: ⬜ pending · 🔄 in progress · ✅ done
   - Build command: `npm run export:web`
   - Output directory: `dist`
   - Install command: `npm install --legacy-peer-deps`
-  - Env var: `EXPO_PUBLIC_API_BASE=https://app.lospor.org`
+  - Env var: `EXPO_PUBLIC_API_BASE=https://api.lospor.org`
 - ✅ Add custom domain `pwa.lospor.org` → CNAME to Vercel
 - ✅ Set `MOBILE_PWA_URL=https://pwa.lospor.org` in lospor-app Vercel env vars
 - ✅ Redeploy lospor-app

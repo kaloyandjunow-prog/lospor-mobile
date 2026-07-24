@@ -8,7 +8,7 @@ import { useForm, Controller } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Field, StyledInput, SectionHeader, PrimaryButton, SingleToggle, Chip } from "@/components/ui"
-import { API_BASE, registerAccount } from "@/lib/api"
+import { apiUrl, registerAccount } from "@/lib/api"
 import { AuthBackdrop, AuthBrand } from "@/components/AuthBrand"
 import {
   ACCOUNT_COUNTRIES,
@@ -207,7 +207,7 @@ function InstitutionPicker({
   const [selectedName, setSelectedName] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/institutions`)
+    fetch(apiUrl("/api/institutions"))
       .then(r => r.json())
       .then((data: Institution[]) => setInstitutions(data))
       .catch(() => {})
