@@ -87,7 +87,6 @@ export function useCaseLock(caseId: string, enabled = true): {
   }, [stopHeartbeat])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!enabled) { setLockState("idle"); return }
 
     let disposed = false

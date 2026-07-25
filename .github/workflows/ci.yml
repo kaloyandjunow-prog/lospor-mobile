@@ -20,3 +20,9 @@ jobs:
       - run: npm run check:shared-core
       - run: npm test
       - run: npm run lint:strict
+      - run: npm run export:web
+        env:
+          EXPO_PUBLIC_API_BASE: https://api.lospor.invalid
+      - run: npx expo export --platform android --clear
+        env:
+          EXPO_PUBLIC_API_BASE: https://api.lospor.invalid

@@ -26,7 +26,7 @@ describe("auth API helpers", () => {
     await login("doctor@example.com", "Strong1!")
 
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining("/api/auth/token"),
+      expect.stringContaining("/v1/auth/token"),
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ email: "doctor@example.com", password: "Strong1!" }),
@@ -46,7 +46,7 @@ describe("auth API helpers", () => {
     const result = await requestPasswordReset("doctor@example.com")
 
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining("/api/auth/password-reset/request"),
+      expect.stringContaining("/v1/auth/password-reset/request"),
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ email: "doctor@example.com" }),
@@ -73,7 +73,7 @@ describe("auth API helpers", () => {
     })
 
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining("/api/auth/register"),
+      expect.stringContaining("/v1/auth/register"),
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({
@@ -99,7 +99,7 @@ describe("auth API helpers", () => {
     await confirmPasswordReset("reset-token", "NewStrong1!")
 
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining("/api/auth/password-reset/confirm"),
+      expect.stringContaining("/v1/auth/password-reset/confirm"),
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ token: "reset-token", password: "NewStrong1!" }),

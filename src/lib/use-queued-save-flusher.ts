@@ -14,6 +14,16 @@ async function flushLocalCaseDrafts(): Promise<void> {
     try {
       // Build the normalised payload (includes derived BMI, RCRI, Apfel, STOP-BANG)
       const preop = buildPreopPayload(draft.formValues)
+      if (draft.serverCaseId) {
+        const outcome = await autosaveManager.saveSection(draft.serverCaseId, "preop", preop, {
+          fullPayload: preop,
+          force: true,
+        })
+        if (outcome.result === "saved" || outcome.result === "queued" || outcome.result === "blocked") {
+          await deleteLocalCaseDraft(draft.localId)
+        }
+        continue
+      }
       const res = await apiFetch("/api/cases", {
         method: "POST",
         headers: { "X-Idempotency-Key": draft.localId },

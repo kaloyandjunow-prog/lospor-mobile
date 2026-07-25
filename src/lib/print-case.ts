@@ -1,6 +1,6 @@
 import * as FileSystem from "expo-file-system/legacy"
 import * as Sharing from "expo-sharing"
-import { API_BASE, getToken } from "@/lib/api"
+import { apiUrl, getToken } from "@/lib/api"
 
 // Fully native "Print case": the app downloads the finished-case A4 PDF itself
 // (bearer-authorized — no browser, no web app, no print token) and hands the
@@ -15,7 +15,7 @@ export async function openPrintCase(caseId: string, lang?: string, caseCode?: st
 
     const safeName = (caseCode ?? "case").replace(/[^A-Za-z0-9_-]+/g, "-")
     const target = `${FileSystem.cacheDirectory}${safeName}-record.pdf`
-    const url = `${API_BASE}/api/cases/${caseId}/pdf?lang=${lang === "bg" ? "bg" : "en"}`
+    const url = apiUrl(`/api/cases/${caseId}/pdf?lang=${lang === "bg" ? "bg" : "en"}`)
 
     const res = await FileSystem.downloadAsync(url, target, {
       headers: { Authorization: `Bearer ${token}` },

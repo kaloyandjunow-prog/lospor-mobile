@@ -1,6 +1,16 @@
 import * as SecureStore from "expo-secure-store"
 
-export const API_BASE = (process.env.EXPO_PUBLIC_API_BASE ?? "https://app.lospor.org").replace(/\/$/, "")
+export const API_BASE = (process.env.EXPO_PUBLIC_API_BASE ?? "https://api.lospor.org").replace(/\/$/, "")
+
+export function apiPath(path: string): string {
+  if (path === "/api") return "/v1"
+  if (path.startsWith("/api/")) return `/v1/${path.slice(5)}`
+  return path
+}
+
+export function apiUrl(path: string): string {
+  return `${API_BASE}${apiPath(path)}`
+}
 
 const TOKEN_KEY = "lospor_access_token"
 const LAST_OK_KEY = "lospor_last_ok_request"
@@ -18,6 +28,10 @@ export class ApiError extends Error {
     super(message)
     this.name = "ApiError"
   }
+}
+
+export type ApiRequestInit = RequestInit & {
+  timeoutMs?: number
 }
 
 export async function getToken(): Promise<string | null> {
@@ -77,15 +91,31 @@ async function buildHeaders(extra?: Record<string, string>): Promise<Record<stri
   const token = await getToken()
   return {
     "Content-Type": "application/json",
+    "X-LOSPOR-Client": "mobile",
+    "X-LOSPOR-Client-Version": "7.0.0",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...extra,
   }
 }
 
-export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+export async function apiFetch(path: string, init?: ApiRequestInit): Promise<Response> {
   const headers = await buildHeaders(init?.headers as Record<string, string>)
+  const { timeoutMs, ...requestInit } = init ?? {}
+  const timeoutController = timeoutMs && timeoutMs > 0 ? new AbortController() : null
+  const relayAbort = () => timeoutController?.abort()
+  if (timeoutController && requestInit.signal) {
+    if (requestInit.signal.aborted) relayAbort()
+    else requestInit.signal.addEventListener("abort", relayAbort, { once: true })
+  }
+  const timeout = timeoutController
+    ? setTimeout(() => timeoutController.abort(), timeoutMs)
+    : null
   try {
-    const res = await fetch(`${API_BASE}${path}`, { ...init, headers })
+    const res = await fetch(apiUrl(path), {
+      ...requestInit,
+      headers,
+      signal: timeoutController?.signal ?? requestInit.signal,
+    })
     if (res.ok) {
       await SecureStore.setItemAsync(LAST_OK_KEY, new Date().toISOString())
     } else {
@@ -96,10 +126,13 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   } catch (err) {
     await SecureStore.setItemAsync(LAST_ERROR_KEY, `Network error ${path}`)
     throw err
+  } finally {
+    if (timeout !== null) clearTimeout(timeout)
+    requestInit.signal?.removeEventListener("abort", relayAbort)
   }
 }
 
-export async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
+export async function apiJson<T>(path: string, init?: ApiRequestInit): Promise<T> {
   let res: Response
   try {
     res = await apiFetch(path, init)
@@ -122,7 +155,7 @@ export async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
 
 // Login — stores the token on success, throws on failure
 export async function login(email: string, password: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/auth/token`, {
+  const res = await fetch(apiUrl("/api/auth/token"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -155,7 +188,7 @@ export type RegisterAccountResult = {
 }
 
 export async function registerAccount(input: RegisterAccountInput): Promise<RegisterAccountResult> {
-  const res = await fetch(`${API_BASE}/api/auth/register`, {
+  const res = await fetch(apiUrl("/api/auth/register"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...input, email: input.email.trim().toLowerCase() }),
@@ -173,7 +206,7 @@ export type PasswordResetRequestResult = {
 }
 
 export async function requestPasswordReset(email: string): Promise<PasswordResetRequestResult> {
-  const res = await fetch(`${API_BASE}/api/auth/password-reset/request`, {
+  const res = await fetch(apiUrl("/api/auth/password-reset/request"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email: email.trim().toLowerCase() }),
@@ -186,7 +219,7 @@ export async function requestPasswordReset(email: string): Promise<PasswordReset
 }
 
 export async function confirmPasswordReset(token: string, password: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/auth/password-reset/confirm`, {
+  const res = await fetch(apiUrl("/api/auth/password-reset/confirm"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token, password }),
@@ -203,7 +236,7 @@ export async function logout(): Promise<void> {
   try {
     const token = await getToken()
     if (token) {
-      await fetch(`${API_BASE}/api/auth/logout`, {
+      await fetch(apiUrl("/api/auth/logout"), {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       })

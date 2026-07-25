@@ -32,6 +32,7 @@ import { valuesFromServerPreop, type ServerPreop } from "@/lib/preop-server-valu
 import { PREOP_REQUIRED_FIELD_SECTION, preopInvalidSubmitMessage } from "@/lib/preop-validation-navigation"
 import { postPreopServerCase } from "@/lib/preop-server-create"
 import { suggestASAFromTags } from "@/lib/preop-asa-suggestion"
+import { monthYearForDate } from "@/lib/intraop-timing"
 import {
   ChecklistGroup,
   ChecklistRow,
@@ -422,7 +423,11 @@ export default function NewCaseScreen() {
 
   const persistLocalDraft = useCallback(async (values: FormInput): Promise<boolean> => {
     if (!localIdRef.current) localIdRef.current = makeLocalCaseId()
-    const ok = await saveLocalCaseDraft(localIdRef.current, values)
+    const ok = await saveLocalCaseDraft(
+      localIdRef.current,
+      values,
+      caseIdRef.current ?? undefined,
+    )
     if (!ok) {
       // Storage write failed — tell the user the draft is NOT saved
       setSaveError("Storage error — draft could not be saved locally")
@@ -901,6 +906,20 @@ export default function NewCaseScreen() {
           notify(tc("errorLabel"), message)
           return
         }
+      }
+      const transition = await autosaveManager.saveSection(
+        id,
+        "intraop",
+        { monthYear: monthYearForDate(new Date()) },
+        { partial: true },
+      )
+      if (transition.result !== "saved" && transition.result !== "queued") {
+        await persistLocalDraft(getValues())
+        notify(
+          "Save pending",
+          "Your work is saved on this device. Reconnect and try Continue again.",
+        )
+        return
       }
       await clearLocalDraft()
       router.replace(`/(app)/cases/intraop/${id}`)

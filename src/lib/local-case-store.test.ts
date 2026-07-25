@@ -22,6 +22,15 @@ describe("local case drafts", () => {
     expect(back?.createdAt).toBeTruthy()
   })
 
+  it("keeps the server case identity for a fallback draft", async () => {
+    const id = makeLocalCaseId()
+    expect(await saveLocalCaseDraft(id, { ageYears: 64 }, "case-1")).toBe(true)
+
+    const back = await loadLocalCaseDraft(id)
+    expect(back?.serverCaseId).toBe("case-1")
+    expect(back?.formValues).toEqual({ ageYears: 64 })
+  })
+
   it("stores a draft far larger than SecureStore's ~2 KB ceiling", async () => {
     const id = makeLocalCaseId()
     // A realistic preop payload: long free text plus many coded rows.
