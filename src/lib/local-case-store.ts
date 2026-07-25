@@ -1,30 +1,20 @@
-// Offline-first local case store.
-// When the server cannot be reached during new case creation, the draft is
-// saved here with a temporary local ID. The dashboard shows these drafts and
-// the flusher syncs them once connectivity is restored.
-//
-// Drafts live in the app's private document directory, not SecureStore.
-// SecureStore is backed by Android's keystore and is meant for small secrets —
-// its practical per-item ceiling is around 2 KB, and a filled-in preoperative
-// draft is comfortably larger than that. Writes were failing on Android, and
-// while `saveLocalCaseDraft` correctly returned false, the effect was that
-// offline drafts simply did not work on the platform most clinicians use.
-//
-// A draft is clinical working data, not a credential: it holds no patient
-// identifiers and never leaves the device's sandboxed storage. The auth token
-// stays in SecureStore, which is what that API is for.
 import * as FileSystem from "expo-file-system/legacy"
+import { Platform } from "react-native"
 import { randomHex } from "@/lib/random-id"
 
-const DIR = `${FileSystem.documentDirectory}case-drafts/`
-const draftPath = (id: string) => `${DIR}${id}.json`
+const WEB_DB_NAME = "lospor"
+const WEB_DB_VERSION = 1
+const WEB_STORE = "case-drafts"
 
-function generateLocalId(): string {
-  return `local_${randomHex(12)}`
+function nativeDirectory(): string {
+  if (!FileSystem.documentDirectory) {
+    throw new Error("Private document storage is unavailable")
+  }
+  return `${FileSystem.documentDirectory}case-drafts/`
 }
 
-export function makeLocalCaseId(): string {
-  return generateLocalId()
+function draftPath(id: string): string {
+  return `${nativeDirectory()}${id}.json`
 }
 
 export type LocalCaseDraft = {
@@ -34,16 +24,96 @@ export type LocalCaseDraft = {
   createdAt: string
 }
 
-async function ensureDir(): Promise<void> {
-  const info = await FileSystem.getInfoAsync(DIR)
-  if (!info.exists) await FileSystem.makeDirectoryAsync(DIR, { intermediates: true })
+let webDbPromise: Promise<IDBDatabase> | null = null
+
+function webDatabase(): Promise<IDBDatabase> {
+  if (webDbPromise) return webDbPromise
+  const opening = new Promise<IDBDatabase>((resolve, reject) => {
+    if (!globalThis.indexedDB) {
+      reject(new Error("IndexedDB is unavailable"))
+      return
+    }
+    const request = globalThis.indexedDB.open(WEB_DB_NAME, WEB_DB_VERSION)
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(WEB_STORE)) {
+        request.result.createObjectStore(WEB_STORE, { keyPath: "localId" })
+      }
+    }
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error ?? new Error("Could not open IndexedDB"))
+    request.onblocked = () => reject(new Error("IndexedDB upgrade is blocked"))
+  }).catch(error => {
+    webDbPromise = null
+    throw error
+  })
+  webDbPromise = opening
+  return opening
 }
 
-/**
- * Persist a local draft. Returns true on success, false on failure.
- * Callers should surface the false return to the user — a silent false means
- * "the user thinks it is saved but it is not".
- */
+function requestResult<T>(request: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error ?? new Error("IndexedDB request failed"))
+  })
+}
+
+function transactionDone(transaction: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve()
+    transaction.onerror = () => reject(transaction.error ?? new Error("IndexedDB transaction failed"))
+    transaction.onabort = () => reject(transaction.error ?? new Error("IndexedDB transaction aborted"))
+  })
+}
+
+async function putWebDraft(draft: LocalCaseDraft): Promise<void> {
+  const transaction = (await webDatabase()).transaction(WEB_STORE, "readwrite")
+  transaction.objectStore(WEB_STORE).put(draft)
+  await transactionDone(transaction)
+}
+
+async function loadWebDraft(localId: string): Promise<LocalCaseDraft | null> {
+  const transaction = (await webDatabase()).transaction(WEB_STORE, "readonly")
+  const result = await requestResult(
+    transaction.objectStore(WEB_STORE).get(localId) as IDBRequest<LocalCaseDraft | undefined>,
+  )
+  return result ?? null
+}
+
+async function deleteWebDraft(localId: string): Promise<void> {
+  const transaction = (await webDatabase()).transaction(WEB_STORE, "readwrite")
+  transaction.objectStore(WEB_STORE).delete(localId)
+  await transactionDone(transaction)
+}
+
+async function allWebDrafts(): Promise<LocalCaseDraft[]> {
+  const transaction = (await webDatabase()).transaction(WEB_STORE, "readonly")
+  return requestResult(
+    transaction.objectStore(WEB_STORE).getAll() as IDBRequest<LocalCaseDraft[]>,
+  )
+}
+
+async function clearWebDrafts(): Promise<number> {
+  const database = await webDatabase()
+  const countTransaction = database.transaction(WEB_STORE, "readonly")
+  const count = await requestResult(countTransaction.objectStore(WEB_STORE).count())
+  const clearTransaction = database.transaction(WEB_STORE, "readwrite")
+  clearTransaction.objectStore(WEB_STORE).clear()
+  await transactionDone(clearTransaction)
+  return count
+}
+
+export function makeLocalCaseId(): string {
+  return `local_${randomHex(12)}`
+}
+
+async function ensureNativeDirectory(): Promise<void> {
+  const directory = nativeDirectory()
+  const info = await FileSystem.getInfoAsync(directory)
+  if (!info.exists) {
+    await FileSystem.makeDirectoryAsync(directory, { intermediates: true })
+  }
+}
+
 export async function saveLocalCaseDraft(
   localId: string,
   formValues: Record<string, unknown>,
@@ -56,8 +126,12 @@ export async function saveLocalCaseDraft(
     createdAt: new Date().toISOString(),
   }
   try {
-    await ensureDir()
-    await FileSystem.writeAsStringAsync(draftPath(localId), JSON.stringify(draft))
+    if (Platform.OS === "web") {
+      await putWebDraft(draft)
+    } else {
+      await ensureNativeDirectory()
+      await FileSystem.writeAsStringAsync(draftPath(localId), JSON.stringify(draft))
+    }
     return true
   } catch {
     return false
@@ -66,37 +140,63 @@ export async function saveLocalCaseDraft(
 
 export async function loadLocalCaseDraft(localId: string): Promise<LocalCaseDraft | null> {
   try {
-    const info = await FileSystem.getInfoAsync(draftPath(localId))
+    if (Platform.OS === "web") return loadWebDraft(localId)
+    const path = draftPath(localId)
+    const info = await FileSystem.getInfoAsync(path)
     if (!info.exists) return null
-    const raw = await FileSystem.readAsStringAsync(draftPath(localId))
+    const raw = await FileSystem.readAsStringAsync(path)
     return raw ? (JSON.parse(raw) as LocalCaseDraft) : null
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
 export async function deleteLocalCaseDraft(localId: string): Promise<void> {
   try {
-    await FileSystem.deleteAsync(draftPath(localId), { idempotent: true })
+    if (Platform.OS === "web") {
+      await deleteWebDraft(localId)
+    } else {
+      await FileSystem.deleteAsync(draftPath(localId), { idempotent: true })
+    }
   } catch {}
 }
 
-/** The directory listing is the index — no separate index file to fall out of step. */
-async function listDraftIds(): Promise<string[]> {
+async function listNativeDraftIds(): Promise<string[]> {
   try {
-    const info = await FileSystem.getInfoAsync(DIR)
+    const directory = nativeDirectory()
+    const info = await FileSystem.getInfoAsync(directory)
     if (!info.exists) return []
-    const files = await FileSystem.readDirectoryAsync(DIR)
-    return files.filter(f => f.endsWith(".json")).map(f => f.replace(/\.json$/, ""))
-  } catch { return [] }
+    const files = await FileSystem.readDirectoryAsync(directory)
+    return files.filter(file => file.endsWith(".json")).map(file => file.replace(/\.json$/, ""))
+  } catch {
+    return []
+  }
 }
 
 export async function getAllLocalCaseDrafts(): Promise<LocalCaseDraft[]> {
-  const ids = await listDraftIds()
+  if (Platform.OS === "web") {
+    try {
+      return await allWebDrafts()
+    } catch {
+      return []
+    }
+  }
+  const ids = await listNativeDraftIds()
   const drafts = await Promise.all(ids.map(id => loadLocalCaseDraft(id)))
-  return drafts.filter((d): d is LocalCaseDraft => d !== null)
+  return drafts.filter((draft): draft is LocalCaseDraft => draft !== null)
 }
 
 export async function clearAllLocalCaseDrafts(): Promise<number> {
-  const ids = await listDraftIds()
-  await Promise.all(ids.map(id => FileSystem.deleteAsync(draftPath(id), { idempotent: true }).catch(() => {})))
+  if (Platform.OS === "web") {
+    try {
+      return await clearWebDrafts()
+    } catch {
+      return 0
+    }
+  }
+  const ids = await listNativeDraftIds()
+  await Promise.all(
+    ids.map(id => FileSystem.deleteAsync(draftPath(id), { idempotent: true }).catch(() => {})),
+  )
   return ids.length
 }

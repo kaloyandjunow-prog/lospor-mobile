@@ -1,5 +1,16 @@
 # Changelog - LOSPOR Mobile
 
+## [7.0.1] - 2026-07-25
+
+Reliability release. Android `versionCode` is 26.
+
+- PWA new-case drafts now use IndexedDB and survive offline navigation and
+  reloads; native Android/iOS drafts remain in private filesystem storage.
+- Browser tests cover offline draft creation, persistence, reconnection, and
+  synchronization.
+- The coordinated release gate verifies PWA, web, API, PostgreSQL, Core, and
+  Android export compatibility before tagging.
+
 ## [7.0.0] - 2026-07-25
 
 Dedicated API and offline durability release. Android `versionCode` is 25.

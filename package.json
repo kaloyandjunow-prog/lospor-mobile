@@ -1,6 +1,6 @@
 {
   "name": "lospor-mobile",
-  "version": "7.0.0",
+  "version": "7.0.1",
   "license": "AGPL-3.0-or-later",
   "main": "expo-router/entry",
   "dependencies": {
@@ -40,12 +40,14 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.62.0",
     "@types/react": "~19.2.2",
     "@types/react-test-renderer": "^19.1.0",
     "babel-preset-expo": "^56.0.12",
     "eslint": "^10.5.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-unused-imports": "^4.4.1",
+    "fake-indexeddb": "^6.2.5",
     "patch-package": "^8.0.1",
     "react-test-renderer": "19.2.3",
     "typescript": "~6.0.3",
@@ -57,12 +59,13 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "node --max-old-space-size=4096 ./node_modules/eslint/bin/eslint.js app src scripts App.tsx index.ts babel.config.js metro.config.js tailwind.config.js",
+    "lint": "node --max-old-space-size=4096 ./node_modules/eslint/bin/eslint.js app src scripts e2e App.tsx index.ts babel.config.js metro.config.js tailwind.config.js playwright.pwa.config.ts",
     "lint:strict": "npm run lint -- --max-warnings 0 --no-inline-config",
     "check:shared-core": "node scripts/check-shared-core-boundaries.mjs",
     "typecheck": "tsc --noEmit --pretty false",
     "test": "vitest run",
     "export:web": "expo export --platform web --clear && node scripts/patch-pwa.mjs",
+    "e2e:pwa": "npm run export:web && playwright test --config playwright.pwa.config.ts",
     "postinstall": "patch-package"
   },
   "overrides": {
