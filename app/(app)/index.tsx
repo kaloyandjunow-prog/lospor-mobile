@@ -57,6 +57,8 @@ type PendingTransfer = {
 type FilterTab = "All" | "Today" | "Month" | "Active" | "Drafts" | "Awaiting Postop" | "Complete" | "Handovers"
 
 const FILTER_TABS: FilterTab[] = ["All", "Today", "Month", "Active", "Drafts", "Awaiting Postop", "Complete", "Handovers"]
+const DASHBOARD_REQUEST_TIMEOUT_MS = 8_000
+const DASHBOARD_RETRY_INTERVAL_MS = 3_000
 
 // Static English keys for filter tab identifiers — labels are translated via t() at render time
 const FILTER_TAB_LABEL_KEYS: Record<FilterTab, "filterAll" | "filterToday" | "month" | "filterActive" | "filterDrafts" | "filterAwaitingPostop" | "filterComplete" | "filterHandovers"> = {
@@ -131,6 +133,7 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [networkLoadFailed, setNetworkLoadFailed] = useState(false)
   const [activeTab, setActiveTab] = useState<FilterTab>("All")
   const [query, setQuery] = useState("")
   const [actioningTransfer, setActioningTransfer] = useState<string | null>(null)
@@ -145,6 +148,9 @@ export default function DashboardScreen() {
   const [actionLoading, setActionLoading] = useState(false)
   const cardScales = useRef(new Map<string, Animated.Value>())
   const userRoleRef = useRef<string | null>(null)
+  const loadInFlightRef = useRef<Promise<void> | null>(null)
+  const retryInFlightRef = useRef(false)
+  const networkErrorNotifiedRef = useRef(false)
 
   const loadCases = useCallback(async () => {
     // Always reload local drafts (fast, no network)
@@ -153,23 +159,34 @@ export default function DashboardScreen() {
       .catch(() => {})
     try {
       setLoadError(null)
-      const data = await apiJson<CaseItem[] | { cases: CaseItem[] }>("/api/cases")
+      const data = await apiJson<CaseItem[] | { cases: CaseItem[] }>("/api/cases", {
+        timeoutMs: DASHBOARD_REQUEST_TIMEOUT_MS,
+      })
       setCases(Array.isArray(data) ? data : (Array.isArray(data?.cases) ? data.cases : []))
+      setNetworkLoadFailed(false)
+      networkErrorNotifiedRef.current = false
     } catch (err) {
       const message = err instanceof Error ? err.message : t("couldNotLoadCases")
+      const isNetworkFailure = err instanceof ApiError && err.code === "NETWORK"
       setLoadError(message)
+      setNetworkLoadFailed(isNetworkFailure)
       if (err instanceof ApiError && err.status === 401) {
         await logout()
         notify(t("sessionExpired"), t("signInAgainPrompt"))
         return
       }
-      notify(t("error"), message)
+      if (!isNetworkFailure || !networkErrorNotifiedRef.current) {
+        notify(t("error"), message)
+      }
+      networkErrorNotifiedRef.current = isNetworkFailure
     }
   }, [logout, t])
 
   const loadTransfers = useCallback(async () => {
     try {
-      const data = await apiJson<PendingTransfer[]>("/api/cases/transfers/pending")
+      const data = await apiJson<PendingTransfer[]>("/api/cases/transfers/pending", {
+        timeoutMs: DASHBOARD_REQUEST_TIMEOUT_MS,
+      })
       setTransfers(Array.isArray(data) ? data : [])
     } catch {
       setTransfers([])
@@ -197,14 +214,20 @@ export default function DashboardScreen() {
   const load = useCallback(
     async (isRefresh = false) => {
       if (isRefresh) setRefreshing(true)
-      try {
-        await Promise.all([loadCases(), loadTransfers(), loadQueuedSaves()])
-      } catch {
-        // individual loaders handle their own errors; this catches unexpected throws
-      } finally {
-        setLoading(false)
-        setRefreshing(false)
-      }
+      if (loadInFlightRef.current) return loadInFlightRef.current
+      const request = (async () => {
+        try {
+          await Promise.all([loadCases(), loadTransfers(), loadQueuedSaves()])
+        } catch {
+          // individual loaders handle their own errors; this catches unexpected throws
+        } finally {
+          setLoading(false)
+          setRefreshing(false)
+          loadInFlightRef.current = null
+        }
+      })()
+      loadInFlightRef.current = request
+      return request
     },
     [loadCases, loadTransfers, loadQueuedSaves]
   )
@@ -216,6 +239,20 @@ export default function DashboardScreen() {
       userRoleRef.current = typeof payload?.role === "string" ? payload.role : null
     })
   }, [load])
+
+  useEffect(() => {
+    if (!networkLoadFailed) return
+    const retry = () => {
+      if (retryInFlightRef.current) return
+      retryInFlightRef.current = true
+      void load().finally(() => {
+        retryInFlightRef.current = false
+      })
+    }
+    retry()
+    const interval = setInterval(retry, DASHBOARD_RETRY_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [load, networkLoadFailed])
 
   // Evict Animated.Value entries for cases that no longer exist
   useEffect(() => {

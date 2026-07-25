@@ -30,6 +30,10 @@ export class ApiError extends Error {
   }
 }
 
+export type ApiRequestInit = RequestInit & {
+  timeoutMs?: number
+}
+
 export async function getToken(): Promise<string | null> {
   return SecureStore.getItemAsync(TOKEN_KEY)
 }
@@ -94,10 +98,24 @@ async function buildHeaders(extra?: Record<string, string>): Promise<Record<stri
   }
 }
 
-export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+export async function apiFetch(path: string, init?: ApiRequestInit): Promise<Response> {
   const headers = await buildHeaders(init?.headers as Record<string, string>)
+  const { timeoutMs, ...requestInit } = init ?? {}
+  const timeoutController = timeoutMs && timeoutMs > 0 ? new AbortController() : null
+  const relayAbort = () => timeoutController?.abort()
+  if (timeoutController && requestInit.signal) {
+    if (requestInit.signal.aborted) relayAbort()
+    else requestInit.signal.addEventListener("abort", relayAbort, { once: true })
+  }
+  const timeout = timeoutController
+    ? setTimeout(() => timeoutController.abort(), timeoutMs)
+    : null
   try {
-    const res = await fetch(apiUrl(path), { ...init, headers })
+    const res = await fetch(apiUrl(path), {
+      ...requestInit,
+      headers,
+      signal: timeoutController?.signal ?? requestInit.signal,
+    })
     if (res.ok) {
       await SecureStore.setItemAsync(LAST_OK_KEY, new Date().toISOString())
     } else {
@@ -108,10 +126,13 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   } catch (err) {
     await SecureStore.setItemAsync(LAST_ERROR_KEY, `Network error ${path}`)
     throw err
+  } finally {
+    if (timeout !== null) clearTimeout(timeout)
+    requestInit.signal?.removeEventListener("abort", relayAbort)
   }
 }
 
-export async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
+export async function apiJson<T>(path: string, init?: ApiRequestInit): Promise<T> {
   let res: Response
   try {
     res = await apiFetch(path, init)
