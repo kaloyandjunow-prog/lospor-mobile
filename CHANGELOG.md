@@ -1,6 +1,33 @@
 # Changelog - LOSPOR Mobile
 
-## [6.0.0] - Unreleased
+## [7.0.0] - 2026-07-25
+
+Dedicated API and offline durability release. Android `versionCode` is 25.
+
+### Changed
+
+- Mobile and PWA call the dedicated versioned API at
+  `https://api.lospor.org` instead of depending on the web deployment.
+- The V6 web `/api/*` compatibility address remains available for already
+  installed older clients during the transition period.
+
+### Fixed
+
+- Clinical autosave queues now use durable app-private files on native and
+  local storage on PWA instead of Android's size-limited secret store.
+- Existing queued patches, event appends, edits, and deletions migrate from
+  the old storage on first access.
+- Every intraoperative tap is stored before network debouncing, so leaving the
+  form or losing connectivity cannot erase a technique or position change.
+- Starting intraoperative documentation writes a durable transition marker.
+  Queued intraoperative work routes back to intraoperative even while the
+  server still has an older case snapshot.
+- Dashboard requests time out instead of remaining on "Loading cases"
+  indefinitely and retry automatically after connectivity returns.
+- Server-backed preoperative recovery drafts update their original case rather
+  than creating a duplicate after reconnecting.
+
+## [6.0.0] - 2026-07-24
 
 ### Changed
 

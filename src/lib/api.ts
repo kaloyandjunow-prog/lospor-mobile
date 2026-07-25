@@ -92,7 +92,7 @@ async function buildHeaders(extra?: Record<string, string>): Promise<Record<stri
   return {
     "Content-Type": "application/json",
     "X-LOSPOR-Client": "mobile",
-    "X-LOSPOR-Client-Version": "7.0.0-dev.0",
+    "X-LOSPOR-Client-Version": "7.0.0",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...extra,
   }
