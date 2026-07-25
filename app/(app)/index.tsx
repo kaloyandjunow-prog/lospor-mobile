@@ -25,6 +25,7 @@ import { ScreenState, WorkflowPill } from "@/components/clinical-ui"
 import { AppHeader } from "@/components/AppHeader"
 import { colors, withAlpha } from "@/theme/colors"
 import { deriveCaseStage } from "@lospor/core/case-status"
+import { dashboardCaseTarget } from "@/lib/dashboard-case-routing"
 
 type CaseItem = {
   id: string
@@ -104,21 +105,18 @@ function derivedStatus(item: CaseItem): string {
 }
 
 // nextAction returns a translation key rather than a raw string
-function nextActionKey(item: CaseItem): "reviewCase" | "openIntraop" | "awaitingAllocation" | "continuePreop" {
-  if (item.postop || item.status === "COMPLETE" || item.status === "AWAITING_REVIEW") return "reviewCase"
-  if (item.intraop) return "openIntraop"
+function nextActionKey(item: CaseItem, hasQueuedIntraop: boolean): "reviewCase" | "openIntraop" | "awaitingAllocation" | "continuePreop" {
+  const target = dashboardCaseTarget(item, hasQueuedIntraop)
+  if (target === "case") return "reviewCase"
+  if (target === "intraop") return "openIntraop"
   const preopComplete = !!(item.preop?.plannedProcedure && item.preop?.asaScore && item.preop?.ageYears != null && item.preop?.sex)
   return preopComplete ? "awaitingAllocation" : "continuePreop"
 }
 
-function routeFor(item: CaseItem): Href {
-  // Postop filled → full case summary hub
-  if (item.postop || item.status === "COMPLETE" || item.status === "AWAITING_REVIEW") {
-    return `/(app)/cases/${item.id}`
-  }
-  // Intraop in progress, no postop → resume intraop
-  if (item.intraop) return `/(app)/cases/intraop/${item.id}`
-  // Preop only → resume preop form
+function routeFor(item: CaseItem, hasQueuedIntraop: boolean): Href {
+  const target = dashboardCaseTarget(item, hasQueuedIntraop)
+  if (target === "case") return `/(app)/cases/${item.id}`
+  if (target === "intraop") return `/(app)/cases/intraop/${item.id}`
   return `/(app)/cases/new?continue=${item.id}`
 }
 
@@ -138,6 +136,7 @@ export default function DashboardScreen() {
   const [actioningTransfer, setActioningTransfer] = useState<string | null>(null)
   const [queuedSaveCount, setQueuedSaveCount] = useState(0)
   const [queuedCaseIds, setQueuedCaseIds] = useState<Set<string>>(new Set())
+  const [queuedIntraopCaseIds, setQueuedIntraopCaseIds] = useState<Set<string>>(new Set())
   const [searchOpen, setSearchOpen] = useState(false)
   const [menuCase, setMenuCase] = useState<CaseItem | null>(null)
   const [menuMode, setMenuMode] = useState<"menu" | "assign" | "confirmDelete">("menu")
@@ -149,7 +148,9 @@ export default function DashboardScreen() {
 
   const loadCases = useCallback(async () => {
     // Always reload local drafts (fast, no network)
-    getAllLocalCaseDrafts().then(drafts => setLocalDrafts(drafts)).catch(() => {})
+    getAllLocalCaseDrafts()
+      .then(drafts => setLocalDrafts(drafts.filter(draft => !draft.serverCaseId)))
+      .catch(() => {})
     try {
       setLoadError(null)
       const data = await apiJson<CaseItem[] | { cases: CaseItem[] }>("/api/cases")
@@ -183,8 +184,13 @@ export default function DashboardScreen() {
       ])
       setQueuedSaveCount(summary.count)
       setQueuedCaseIds(new Set(caseIds))
+      setQueuedIntraopCaseIds(new Set(
+        summary.entries
+          .filter(entry => entry.section === "intraop")
+          .map(entry => entry.caseId),
+      ))
     } catch {
-      // SecureStore unavailable; leave counts at 0
+      // Local sync storage unavailable; leave counts at 0
     }
   }, [])
 
@@ -356,6 +362,7 @@ const tabCounts: Record<FilterTab, number> = {
   const renderCase = useCallback(({ item }: { item: CaseItem }) => {
     const isComplete = item.status === "COMPLETE"
     const hasPendingSync = queuedCaseIds.has(item.id)
+    const hasQueuedIntraop = queuedIntraopCaseIds.has(item.id)
     const scale = getCardScale(item.id)
     return (
       <Animated.View style={{ transform: [{ scale }] }}>
@@ -370,7 +377,7 @@ const tabCounts: Record<FilterTab, number> = {
           borderWidth: 1,
           borderColor: colors.border,
         }}
-        onPress={() => router.push(routeFor(item))}
+        onPress={() => router.push(routeFor(item, hasQueuedIntraop))}
         onLongPress={() => handleLongPress(item)}
         delayLongPress={400}
         activeOpacity={0.75}
@@ -387,7 +394,7 @@ const tabCounts: Record<FilterTab, number> = {
           <StatusBadge status={derivedStatus(item)} />
         </View>
         <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "800", marginBottom: 8 }}>
-          {t(nextActionKey(item))}
+          {t(nextActionKey(item, hasQueuedIntraop))}
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <ASABadge asa={item.preop?.asaScore} />
@@ -398,7 +405,7 @@ const tabCounts: Record<FilterTab, number> = {
       </TouchableOpacity>
       </Animated.View>
     )
-  }, [queuedCaseIds, router, handleLongPress, t])
+  }, [queuedCaseIds, queuedIntraopCaseIds, router, handleLongPress, t])
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -719,7 +726,10 @@ const tabCounts: Record<FilterTab, number> = {
               <ScrollView style={{ maxHeight: 380 }} keyboardShouldPersistTaps="handled">
                 {filteredCases.slice(0, 20).map(c => (
                   <TouchableOpacity key={c.id}
-                    onPress={() => { setSearchOpen(false); router.push(routeFor(c)) }}
+                    onPress={() => {
+                      setSearchOpen(false)
+                      router.push(routeFor(c, queuedIntraopCaseIds.has(c.id)))
+                    }}
                     style={{ paddingVertical: 12, borderTopWidth: 1, borderTopColor: colors.border }}>
                     <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: "700" }} numberOfLines={1}>
                       {getCaseLabel(c)}

@@ -29,6 +29,7 @@ export function makeLocalCaseId(): string {
 
 export type LocalCaseDraft = {
   localId: string
+  serverCaseId?: string
   formValues: Record<string, unknown>
   createdAt: string
 }
@@ -46,8 +47,14 @@ async function ensureDir(): Promise<void> {
 export async function saveLocalCaseDraft(
   localId: string,
   formValues: Record<string, unknown>,
+  serverCaseId?: string,
 ): Promise<boolean> {
-  const draft: LocalCaseDraft = { localId, formValues, createdAt: new Date().toISOString() }
+  const draft: LocalCaseDraft = {
+    localId,
+    ...(serverCaseId ? { serverCaseId } : {}),
+    formValues,
+    createdAt: new Date().toISOString(),
+  }
   try {
     await ensureDir()
     await FileSystem.writeAsStringAsync(draftPath(localId), JSON.stringify(draft))

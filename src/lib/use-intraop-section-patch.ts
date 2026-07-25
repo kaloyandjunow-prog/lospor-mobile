@@ -58,13 +58,33 @@ export function useIntraopSectionPatch({
     batcherRef.current = createCoalescingBatcher<PatchOutcome>((merged) => runSaveRef.current(merged), 500)
   }
 
+  useEffect(() => () => {
+    void batcherRef.current?.flush()?.catch(() => {})
+  }, [])
+
   return useCallback((payload: Record<string, unknown>): Promise<PatchOutcome> => {
     // The badge shows "saving" and live-refresh clobber protection engages
     // from the FIRST tap, even though the request goes out after the settle.
     pendingSaveCountRef.current += 1
     setSyncState("saving")
-    return batcherRef.current!.submit(payload).finally(() => {
-      pendingSaveCountRef.current -= 1
-    })
-  }, [pendingSaveCountRef, setSyncState])
+    // Persist every tap before the 500 ms network coalescing window. Leaving
+    // the screen, losing power, or losing connectivity during that window can
+    // no longer erase a technique/position selection.
+    return autosaveManager.outbox
+      .queue(
+        caseId,
+        "intraop",
+        payload,
+        autosaveManager.getRevision(caseId, "intraop") ?? undefined,
+      )
+      .then(() => batcherRef.current!.submit(payload))
+      .catch((error) => {
+        setSyncErrorMessage(error instanceof Error ? error.message : "Local save failed")
+        setSyncState("failed")
+        throw error
+      })
+      .finally(() => {
+        pendingSaveCountRef.current -= 1
+      })
+  }, [caseId, pendingSaveCountRef, setSyncErrorMessage, setSyncState])
 }

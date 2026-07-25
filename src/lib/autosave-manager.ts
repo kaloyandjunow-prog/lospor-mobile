@@ -1,4 +1,3 @@
-import * as SecureStore from "expo-secure-store"
 import {
   createAutosaveManager,
   eventIdempotencyKey,
@@ -15,11 +14,28 @@ import {
 } from "@lospor/core/sync"
 
 import { ApiError, apiFetch } from "./api"
+import { clinicalSyncKv } from "./clinical-sync-kv"
 
-const kv: KVAdapter = {
-  get: (key) => SecureStore.getItemAsync(key),
-  set: (key, value) => SecureStore.setItemAsync(key, value),
-  delete: (key) => SecureStore.deleteItemAsync(key),
+const kv: KVAdapter = clinicalSyncKv
+const AUTOSAVE_NETWORK_TIMEOUT_MS = 8_000
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError"
+}
+
+async function autosaveFetch(path: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), AUTOSAVE_NETWORK_TIMEOUT_MS)
+  try {
+    return await apiFetch(path, { ...init, signal: controller.signal })
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw new ApiError("Network request timed out", 0, "NETWORK")
+    }
+    throw error
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 function classifyPatchError(error: unknown): PatchFailure {
@@ -40,7 +56,9 @@ function classifyPatchError(error: unknown): PatchFailure {
 }
 
 function isNetworkError(error: unknown): boolean {
-  return error instanceof TypeError || (error instanceof ApiError && error.code === "NETWORK")
+  return error instanceof TypeError
+    || isAbortError(error)
+    || (error instanceof ApiError && error.code === "NETWORK")
 }
 
 async function mutationRequest(operation: EventMutation, revision: SectionRevision) {
@@ -49,7 +67,7 @@ async function mutationRequest(operation: EventMutation, revision: SectionRevisi
     [OPERATION_ID_HEADER]: operation.operationId,
     ...buildSectionRevisionHeaders("intraop", revision),
   }
-  const response = await apiFetch(
+  const response = await autosaveFetch(
     `/api/cases/${operation.caseId}/events/${encodeURIComponent(operation.eventId)}`,
     {
       method: operation.kind === "event.delete" ? "DELETE" : "PUT",
@@ -74,7 +92,7 @@ export const autosaveManager = createAutosaveManager({
   outbox: {
     kv,
     sendPatch: async (caseId, section, payload, revision) => {
-      const response = await apiFetch(`/api/cases/${caseId}`, {
+      const response = await autosaveFetch(`/api/cases/${caseId}`, {
         method: "PATCH",
         headers: buildSectionRevisionHeaders(section, revision),
         body: JSON.stringify({ [section]: payload }),
@@ -97,7 +115,7 @@ export const autosaveManager = createAutosaveManager({
   pendingEvents: {
     kv,
     postEvent: async (caseId, event, revision) => {
-      const response = await apiFetch(`/api/cases/${caseId}/events`, {
+      const response = await autosaveFetch(`/api/cases/${caseId}/events`, {
         method: "POST",
         headers: {
           [IDEMPOTENCY_HEADER]: eventIdempotencyKey(caseId, String(event.id)),
