@@ -9,6 +9,16 @@ vi.mock("expo-haptics", () => ({}))
 import { pressByText, render } from "@/test/render"
 import { FluidSheet } from "./FluidSheet"
 import { AgentSheet } from "./AgentSheet"
+import { PreferencesProvider } from "@/lib/preferences-context"
+import { AuthProvider } from "@/lib/auth-context"
+
+function renderWithPreferences(element: React.ReactElement) {
+  return render(
+    <AuthProvider>
+      <PreferencesProvider>{element}</PreferencesProvider>
+    </AuthProvider>,
+  )
+}
 
 // Pins the library-driven autofill behavior: selecting a fluid/agent must
 // prefill the entry with the option library's first quick value (and the
@@ -26,7 +36,7 @@ describe("FluidSheet autofill on select", () => {
     const setFlFluid = vi.fn()
     const setFlVol = vi.fn()
     const setFlConcentration = vi.fn()
-    const tree = render(
+    const tree = renderWithPreferences(
       <FluidSheet
         visible
         onClose={() => {}}
@@ -53,7 +63,7 @@ describe("FluidSheet autofill on select", () => {
 
   it("falls back to sensible defaults when the library has no quick values", () => {
     const setFlVol = vi.fn()
-    const tree = render(
+    const tree = renderWithPreferences(
       <FluidSheet
         visible
         onClose={() => {}}
@@ -77,7 +87,7 @@ describe("AgentSheet autofill on select", () => {
   it("prefills the agent percent with the library's first quick value", () => {
     const setAgPick = vi.fn()
     const setAgPercent = vi.fn()
-    const tree = render(
+    const tree = renderWithPreferences(
       <AgentSheet
         visible
         onClose={() => {}}

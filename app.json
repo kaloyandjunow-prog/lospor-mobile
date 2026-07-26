@@ -2,7 +2,7 @@
   "expo": {
     "name": "LOSPOR",
     "slug": "lospor-mobile",
-    "version": "7.0.1",
+    "version": "7.1.0",
     "scheme": "lospor",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "org.lospor.mobile",
-      "versionCode": 26,
+      "versionCode": 27,
       "adaptiveIcon": {
         "backgroundColor": "#090b0c",
         "foregroundImage": "./assets/android-icon-foreground.png",

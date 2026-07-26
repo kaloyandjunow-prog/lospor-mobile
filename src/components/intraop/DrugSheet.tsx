@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native"
 import { Sheet } from "@/components/intraop/Sheet"
 import { usePreferences } from "@/lib/preferences-context"
+import { displayClinicalCode } from "@/lib/clinical-display"
 import { DoseSelector } from "@/components/intraop/DoseSelector"
 import type { ScenarioGroup } from "@lospor/core"
 import { calcSuggestedDose as calcDose } from "@/lib/dose-calc"
@@ -100,7 +101,10 @@ export function DrugSheet({
   patientHeightCm?: number
   patientSex?: string
 }) {
-  const { tc } = usePreferences()
+  const { tc, language } = usePreferences()
+  const drugLabel = (name: string) => displayClinicalCode("option:INTRAOP_DRUG", name, language, { label: name })
+  const groupLabel = (name: string) => displayClinicalCode("optionGroup", name, language, { label: name })
+  const scenarioLabel = (group: ScenarioGroup) => displayClinicalCode("scenarioGroup", group.key, language, { label: group.label })
   const [mode, setMode] = useState<"home" | "favourites" | "scenario" | "browse">("home")
 
   function calcSuggestedDose(name: string, route?: string): { dose: string; hint: string } {
@@ -170,7 +174,7 @@ export function DrugSheet({
   }
 
   const filtered = query.trim()
-    ? allDrugs.filter(drug => drug.name.toLowerCase().includes(query.trim().toLowerCase()))
+    ? allDrugs.filter(drug => [drug.name, drugLabel(drug.name)].some(value => value.toLowerCase().includes(query.trim().toLowerCase())))
     : []
   const scenarioItems = scenario?.items
     .map(entry => ({ entry, drug: byName.get(entry.canonical) }))
@@ -181,7 +185,7 @@ export function DrugSheet({
 
   return (
     <Sheet visible={visible} onClose={onClose}
-      title={drugPick ? drugPick.name : drugCat ? drugCat.cat : mode === "browse" ? tc("dsBrowseDrugs") : mode === "favourites" ? tc("dsFavouriteDrugs") : scenario?.label ?? tc("dsAddDrug")} full>
+      title={drugPick ? drugLabel(drugPick.name) : drugCat ? groupLabel(drugCat.cat) : mode === "browse" ? tc("dsBrowseDrugs") : mode === "favourites" ? tc("dsFavouriteDrugs") : scenario ? scenarioLabel(scenario) : tc("dsAddDrug")} full>
       {drugPick ? (
         <View>
           <TouchableOpacity onPress={() => { setDrugPick(null); if (pickedViaShortcut) { setDrugCat(null); setPickedViaShortcut(false) } }} style={{ marginBottom:14 }}>
@@ -198,7 +202,7 @@ export function DrugSheet({
               routes={routes[drugPick.name]} route={activeRoute} onRouteChange={changeRoute}
               concentrationOptions={activeConcentrations}
               concentration={drugConcentration} onConcentrationChange={setDrugConcentration}
-              confirmLabel={`${tc("dsAdd")} ${drugPick.name} ${drugDose} ${activeUnit}`}
+              confirmLabel={`${tc("dsAdd")} ${drugLabel(drugPick.name)} ${drugDose} ${activeUnit}`}
               onConfirm={onConfirm} confirmDisabled={!drugDose}
             />
             {doseCalcs?.[drugPick.name]?.hint ? (
@@ -212,7 +216,7 @@ export function DrugSheet({
               style={{ backgroundColor:"#111820", borderRadius:14, padding:16, alignItems:"center",
                 borderWidth:1, borderColor: (drugCat?.color ?? "#3b82f6") + "66" }}>
               <Text style={{ color: drugCat?.color ?? "#93c5fd", fontSize:14, fontWeight:"700" }}>
-                {tc("dsStartAsInfusion").replace("{name}", drugPick.name)}
+                {tc("dsStartAsInfusion").replace("{name}", drugLabel(drugPick.name))}
               </Text>
             </TouchableOpacity>
           )}
@@ -224,7 +228,7 @@ export function DrugSheet({
           </TouchableOpacity>
           <View style={{ flexDirection:"row", flexWrap:"wrap", gap:10 }}>
             {drugCat.drugs.map(drug => (
-              <Pill key={drug.name} label={drug.name} sublabel={drug.unit} color={drugCat.color} onPress={() => { setPickedViaShortcut(false); selectDrug(drug) }} />
+              <Pill key={drug.name} label={drugLabel(drug.name)} sublabel={drug.unit} color={drugCat.color} onPress={() => { setPickedViaShortcut(false); selectDrug(drug) }} />
             ))}
           </View>
         </ScrollView>
@@ -235,7 +239,7 @@ export function DrugSheet({
           </TouchableOpacity>
           <View style={{ flexDirection:"row", flexWrap:"wrap", gap:10 }}>
             {scenarioItems.map(({ entry, drug }) => (
-              <Pill key={entry.canonical} label={entry.label} sublabel={drug.unit} color={scenario.color} onPress={() => selectCanonical(entry.canonical)} />
+              <Pill key={entry.canonical} label={drugLabel(entry.canonical)} sublabel={drug.unit} color={scenario.color} onPress={() => selectCanonical(entry.canonical)} />
             ))}
           </View>
         </ScrollView>
@@ -249,7 +253,7 @@ export function DrugSheet({
           ) : (
             <View style={{ flexDirection:"row", flexWrap:"wrap", gap:10 }}>
               {favouriteItems.map(drug => (
-                <Pill key={drug.name} label={drug.name} sublabel={drug.unit} color={drug.color} onPress={() => selectCanonical(drug.name)} />
+                <Pill key={drug.name} label={drugLabel(drug.name)} sublabel={drug.unit} color={drug.color} onPress={() => selectCanonical(drug.name)} />
               ))}
             </View>
           )}
@@ -269,9 +273,9 @@ export function DrugSheet({
           />
           <View style={{ flexDirection:"row", flexWrap:"wrap", gap:10 }}>
             {(query.trim() ? filtered : drugCats).map(item => "cat" in item && "drugs" in item ? (
-              <Pill key={item.cat} label={item.cat} sublabel={`${item.drugs.length} drugs`} color={item.color} onPress={() => setDrugCat(item)} />
+              <Pill key={item.cat} label={groupLabel(item.cat)} sublabel={`${item.drugs.length} drugs`} color={item.color} onPress={() => setDrugCat(item)} />
             ) : (
-              <Pill key={item.name} label={item.name} sublabel={item.unit} color={item.color} onPress={() => selectCanonical(item.name)} />
+              <Pill key={item.name} label={drugLabel(item.name)} sublabel={item.unit} color={item.color} onPress={() => selectCanonical(item.name)} />
             ))}
           </View>
         </ScrollView>
@@ -282,7 +286,7 @@ export function DrugSheet({
           </View>
           <View style={{ flexDirection:"row", flexWrap:"wrap", gap:10 }}>
             {scenarios.map(group => (
-              <Pill key={group.key} label={group.label} sublabel={group.items.slice(0, 2).map(i => i.label).join(", ")} color={group.color}
+              <Pill key={group.key} label={scenarioLabel(group)} sublabel={group.items.slice(0, 2).map(i => drugLabel(i.canonical)).join(", ")} color={group.color}
                 onPress={() => { setScenario(group); setMode("scenario") }} />
             ))}
           </View>

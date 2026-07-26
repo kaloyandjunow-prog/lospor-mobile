@@ -1,7 +1,7 @@
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Switch, type TextInputProps } from "react-native"
 import { colors, withAlpha } from "@/theme/colors"
 import { usePreferences, type AppLanguage } from "@/lib/preferences-context"
-import { CASE_STATUS_LABELS, type CaseStatus } from "@lospor/core/case-status"
+import { displayClinicalCode } from "@/lib/clinical-display"
 
 // ─── Colors (match web dark mode exactly) ────────────────────────────────────
 // Screen bg:    #111111   →  bg-[#111111]
@@ -173,19 +173,18 @@ export function SingleToggle({
 // Colors only — labels come from @lospor/core/case-status (shared with
 // lospor-app) so they follow the active app language instead of being
 // hardcoded English here.
-export const STATUS_META: Record<string, { label: string; color: string }> = {
-  DRAFT:                { label: "Draft",               color: colors.textMuted },
-  IN_CONSULTATION:      { label: "In consultation",     color: "#f59e0b" },
-  AWAITING_ALLOCATION:  { label: "Awaiting allocation", color: "#14b8a6" },
-  IN_PROGRESS:          { label: "In theatre",          color: colors.primary },
-  AWAITING_POSTOP:      { label: "Awaiting postop",     color: "#f97316" },
-  AWAITING_REVIEW:      { label: "Awaiting review",     color: "#f59e0b" },
-  COMPLETE:             { label: "Case finished",       color: colors.success },
+export const STATUS_META: Record<string, { color: string }> = {
+  DRAFT:                { color: colors.textMuted },
+  IN_CONSULTATION:      { color: "#f59e0b" },
+  AWAITING_ALLOCATION:  { color: "#14b8a6" },
+  IN_PROGRESS:          { color: colors.primary },
+  AWAITING_POSTOP:      { color: "#f97316" },
+  AWAITING_REVIEW:      { color: "#f59e0b" },
+  COMPLETE:             { color: colors.success },
 }
 
 export function statusLabel(status: string, language: AppLanguage): string {
-  const entry = CASE_STATUS_LABELS[status as CaseStatus]
-  return entry ? (language === "bg" ? entry.bg : entry.en) : status
+  return displayClinicalCode("caseStatus", status, language)
 }
 
 export function StatusBadge({ status }: { status: string }) {
@@ -227,11 +226,12 @@ const DISP_COLOR: Record<string, string> = {
 }
 
 export function DispositionBadge({ disposition }: { disposition?: string | null }) {
+  const { language } = usePreferences()
   if (!disposition) return null
   const color = DISP_COLOR[disposition] ?? colors.textMuted
   return (
     <View style={{ borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: withAlpha(color, "20"), borderWidth: 1, borderColor: withAlpha(color, "66") }}>
-      <Text style={{ color, fontSize: 12, fontWeight: "800" }}>{disposition}</Text>
+      <Text style={{ color, fontSize: 12, fontWeight: "800" }}>{displayClinicalCode("option:DISPOSITION", disposition, language)}</Text>
     </View>
   )
 }

@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Animated,
@@ -53,6 +53,7 @@ import { EditWindowBanner } from "@/components/EditWindowBanner"
 import { colors, withAlpha } from "@/theme/colors"
 import { usePreferences } from "@/lib/preferences-context"
 import { useOptionLibrary, useRangeSpec } from "@/lib/use-option-library"
+import { displayOption } from "@/lib/clinical-display"
 import type { BlockedSaveIssue } from "@lospor/core/sync"
 import { suggestRcriIschemicHeart, suggestRcriCHF, suggestRcriCVD, suggestRcriInsulinDM, suggestRcriCreatinine, suggestStopBangBP } from "@/lib/risk-derivation"
 import {
@@ -128,7 +129,6 @@ export default function NewCaseScreen() {
   const { options: neckMobilityOptions }  = useOptionLibrary("NECK_MOBILITY")
   const { options: upperLipBiteOptions }  = useOptionLibrary("UPPER_LIP_BITE")
   const { options: cormackLehaneOptions } = useOptionLibrary("CORMACK_LEHANE")
-  const lbl = (opt: { label: string; labelBg: string | null }) => (language === "bg" && opt.labelBg) ? opt.labelBg : opt.label
 
   // Build translated section labels from tc() — must be inside component
   // Pill rail labels (shorter) vs full section card titles
@@ -1271,13 +1271,13 @@ export default function NewCaseScreen() {
                     <Controller control={control} name="thyromental" render={({ field }) => <ClinicalNumberInput value={field.value} onChange={field.onChange} min={thyromentalRange?.min ?? 0} max={thyromentalRange?.max ?? 15} step={thyromentalRange?.step ?? 1} precision={0} unit="cm" placeholder={tc("thyromentalPlaceholder")} quickValues={[5, 6, 7, 8, 9]} showSteppers={false} />} />
                   </Field>
                   <Field label={tc("neckMobility")}>
-                    <Controller control={control} name="neckMobility" render={({ field }) => <SegmentedSelect value={field.value} onChange={field.onChange} options={neckMobilityOptions.map(o => ({ value: o.value, label: lbl(o) }))} />} />
+                    <Controller control={control} name="neckMobility" render={({ field }) => <SegmentedSelect value={field.value} onChange={field.onChange} options={neckMobilityOptions.map(option => ({ value: option.value, label: displayOption("NECK_MOBILITY", option, language) }))} />} />
                   </Field>
                   <Field label={tc("ulbtLabel")}>
-                    <Controller control={control} name="upperLipBiteTest" render={({ field }) => <SegmentedSelect value={field.value} onChange={field.onChange} options={upperLipBiteOptions.map(o => ({ value: o.value, label: lbl(o) }))} />} />
+                    <Controller control={control} name="upperLipBiteTest" render={({ field }) => <SegmentedSelect value={field.value} onChange={field.onChange} options={upperLipBiteOptions.map(option => ({ value: option.value, label: displayOption("UPPER_LIP_BITE", option, language) }))} />} />
                   </Field>
                   <Field label={tc("cormackLehane")}>
-                    <Controller control={control} name="cormackLehane" render={({ field }) => <SegmentedSelect value={field.value} onChange={field.onChange} options={cormackLehaneOptions.map(o => ({ value: o.value, label: o.value }))} />} />
+                    <Controller control={control} name="cormackLehane" render={({ field }) => <SegmentedSelect value={field.value} onChange={field.onChange} options={cormackLehaneOptions.map(option => ({ value: option.value, label: displayOption("CORMACK_LEHANE", option, language) }))} />} />
                   </Field>
                   <Controller control={control} name="retrognathia" render={({ field }) => <ClinicalSwitchRow label={tc("retrognathia")} value={!!field.value} onValueChange={field.onChange} />} />
                   <Controller control={control} name="prominentIncisors" render={({ field }) => <ClinicalSwitchRow label={tc("prominentIncisors")} value={!!field.value} onValueChange={field.onChange} />} />

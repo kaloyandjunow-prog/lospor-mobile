@@ -1,6 +1,8 @@
 import { View, Text, TouchableOpacity } from "react-native"
 import { Sheet } from "@/components/intraop/Sheet"
 import { DoseSelector } from "@/components/intraop/DoseSelector"
+import { displayClinicalCode } from "@/lib/clinical-display"
+import { usePreferences } from "@/lib/preferences-context"
 
 type FluidOption = { name: string; cat: string; color: string }
 
@@ -26,6 +28,10 @@ export function FluidSheet({
   flConcentration?: string
   setFlConcentration?: (c: string | undefined) => void
 }) {
+  const { tc, language } = usePreferences()
+  const fluidLabel = (name: string) => displayClinicalCode("option:INTRAOP_FLUID", name, language, { label: name })
+  const groupLabel = (name: string) => displayClinicalCode("optionGroup", name, language, { label: name })
+
   const selectFluid = (fluid: FluidOption) => {
     setFlFluid(fluid)
     const preset = (quickVolumes[fluid.name] ?? [250, 500, 1000])[0]
@@ -35,7 +41,7 @@ export function FluidSheet({
   }
 
   return (
-    <Sheet visible={visible} onClose={onClose} title="Add fluid">
+    <Sheet visible={visible} onClose={onClose} title={`${tc("dsAdd")} ${tc("trRowFluid")}`}>
       {flFluid && (
         <View style={{ marginBottom:16 }}>
           <DoseSelector
@@ -47,7 +53,7 @@ export function FluidSheet({
             routes={routes[flFluid.name]} route={flRoute} onRouteChange={setFlRoute}
             concentrationOptions={concentrations[flFluid.name]}
             concentration={flConcentration} onConcentrationChange={setFlConcentration}
-            confirmLabel={`Add ${flFluid.name} ${flVol} mL`}
+            confirmLabel={`${tc("dsAdd")} ${fluidLabel(flFluid.name)} ${flVol} mL`}
             onConfirm={onConfirm} confirmDisabled={!flVol}
           />
         </View>
@@ -55,7 +61,7 @@ export function FluidSheet({
       {(["Crystalloids","Colloids","Blood products","Other"] as const).map(cat => (
         <View key={cat} style={{ marginBottom:14 }}>
           <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase",
-            letterSpacing:1, marginBottom:8 }}>{cat}</Text>
+            letterSpacing:1, marginBottom:8 }}>{groupLabel(cat)}</Text>
           <View style={{ flexDirection:"row", flexWrap:"wrap", gap:8 }}>
             {fluidList.filter(f => f.cat === cat).map(f => (
               <TouchableOpacity key={f.name} onPress={() => selectFluid(f)}
@@ -63,7 +69,7 @@ export function FluidSheet({
                   backgroundColor: flFluid?.name===f.name ? f.color : f.color+"1a",
                   borderWidth:1, borderColor:f.color+"55" }}>
                 <Text style={{ color: flFluid?.name===f.name ? "#fff" : f.color, fontSize:12, fontWeight:"600" }}>
-                  {f.name}
+                  {fluidLabel(f.name)}
                 </Text>
               </TouchableOpacity>
             ))}

@@ -24,8 +24,8 @@ describe("buildSummaryTimetableModel", () => {
     expect(labels).toEqual(["Agent", "Inf", "Gas", "Fluid", "Pos"])
     const pos = m.lanes.find(l => l.label === "Pos")!
     expect(pos.segments).toEqual([
-      { startCol: 0, endCol: 3, text: "Supine" },
-      { startCol: 3, endCol: 20, text: "Prone" },
+      { startCol: 0, endCol: 3, text: "Supine", code: "Supine" },
+      { startCol: 3, endCol: 20, text: "Prone", code: "Prone" },
     ])
     const gas = m.lanes.find(l => l.label === "Gas")!
     expect(gas.segments[0].text).toContain("FGF 1")

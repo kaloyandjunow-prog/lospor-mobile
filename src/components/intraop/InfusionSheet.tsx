@@ -4,6 +4,7 @@ import { Sheet } from "@/components/intraop/Sheet"
 import { DoseSelector } from "@/components/intraop/DoseSelector"
 import type { ScenarioGroup } from "@lospor/core"
 import { usePreferences } from "@/lib/preferences-context"
+import { displayClinicalCode } from "@/lib/clinical-display"
 
 type InfusionOption = { name: string; unit: string; color: string }
 type Range = { min: number; max: number; step: number }
@@ -80,7 +81,9 @@ export function InfusionSheet({
   baseProfiles?: Record<string, InfProfile>
   routeProfiles?: Record<string, Record<string, InfProfile>>
 }) {
-  const { tc } = usePreferences()
+  const { tc, language } = usePreferences()
+  const infusionLabel = (name: string) => displayClinicalCode("option:INTRAOP_INFUSION", name, language, { label: name })
+  const scenarioLabel = (group: ScenarioGroup) => displayClinicalCode("scenarioGroup", group.key, language, { label: group.label })
   const [mode, setMode] = useState<"home" | "favourites" | "scenario" | "browse">("home")
   const [scenario, setScenario] = useState<ScenarioGroup | null>(null)
   const [query, setQuery] = useState("")
@@ -146,7 +149,7 @@ export function InfusionSheet({
   }
 
   const filtered = query.trim()
-    ? infDrugs.filter(drug => drug.name.toLowerCase().includes(query.trim().toLowerCase()))
+    ? infDrugs.filter(drug => [drug.name, infusionLabel(drug.name)].some(value => value.toLowerCase().includes(query.trim().toLowerCase())))
     : infDrugs
   const scenarioItems = scenario?.items
     .map(entry => ({ entry, drug: byName.get(entry.canonical) }))
@@ -156,7 +159,7 @@ export function InfusionSheet({
     .filter((drug): drug is InfusionOption => !!drug)
 
   return (
-    <Sheet visible={visible} onClose={onClose} title={infDrug ? infDrug.name : mode === "browse" ? tc("dsBrowseInfusions") : mode === "favourites" ? tc("dsFavouriteInfusions") : scenario?.label ?? tc("dsStartInfusion")} full>
+    <Sheet visible={visible} onClose={onClose} title={infDrug ? infusionLabel(infDrug.name) : mode === "browse" ? tc("dsBrowseInfusions") : mode === "favourites" ? tc("dsFavouriteInfusions") : scenario ? scenarioLabel(scenario) : tc("dsStartInfusion")} full>
       {infDrug ? (
         <ScrollView showsVerticalScrollIndicator={false}>
           <TouchableOpacity onPress={() => setInfDrug(null)} style={{ marginBottom:14 }}>
@@ -172,7 +175,7 @@ export function InfusionSheet({
             routes={routes[infDrug.name]} route={activeRoute} onRouteChange={changeRoute}
             concentrationOptions={activeConcentrations}
             concentration={infConcentration} onConcentrationChange={setInfConcentration}
-            confirmLabel={`${tc("dsStart")} ${infDrug.name} ${infRate} ${activeUnit}`}
+            confirmLabel={`${tc("dsStart")} ${infusionLabel(infDrug.name)} ${infRate} ${activeUnit}`}
             onConfirm={onConfirm} confirmDisabled={!infRate}
           />
         </ScrollView>
@@ -183,7 +186,7 @@ export function InfusionSheet({
           </TouchableOpacity>
           <View style={{ flexDirection:"row", flexWrap:"wrap", gap:10 }}>
             {scenarioItems.map(({ entry, drug }) => (
-              <Pill key={entry.canonical} label={entry.label} sublabel={drug.unit} color={scenario.color} onPress={() => selectCanonical(entry.canonical)} />
+              <Pill key={entry.canonical} label={infusionLabel(entry.canonical)} sublabel={drug.unit} color={scenario.color} onPress={() => selectCanonical(entry.canonical)} />
             ))}
           </View>
         </ScrollView>
@@ -197,7 +200,7 @@ export function InfusionSheet({
           ) : (
             <View style={{ flexDirection:"row", flexWrap:"wrap", gap:10 }}>
               {favouriteItems.map(drug => (
-                <Pill key={drug.name} label={drug.name} sublabel={drug.unit} color={drug.color} onPress={() => selectInfusion(drug)} />
+                <Pill key={drug.name} label={infusionLabel(drug.name)} sublabel={drug.unit} color={drug.color} onPress={() => selectInfusion(drug)} />
               ))}
             </View>
           )}
@@ -217,7 +220,7 @@ export function InfusionSheet({
           />
           <View style={{ flexDirection:"row", flexWrap:"wrap", gap:10 }}>
             {filtered.map(drug => (
-              <Pill key={drug.name} label={drug.name} sublabel={drug.unit} color={drug.color} onPress={() => selectInfusion(drug)} />
+              <Pill key={drug.name} label={infusionLabel(drug.name)} sublabel={drug.unit} color={drug.color} onPress={() => selectInfusion(drug)} />
             ))}
           </View>
         </ScrollView>
@@ -228,7 +231,7 @@ export function InfusionSheet({
           </View>
           <View style={{ flexDirection:"row", flexWrap:"wrap", gap:10 }}>
             {scenarios.map(group => (
-              <Pill key={group.key} label={group.label} sublabel={group.items.slice(0, 2).map(i => i.label).join(", ")} color={group.color}
+              <Pill key={group.key} label={scenarioLabel(group)} sublabel={group.items.slice(0, 2).map(i => infusionLabel(i.canonical)).join(", ")} color={group.color}
                 onPress={() => { setScenario(group); setMode("scenario") }} />
             ))}
           </View>

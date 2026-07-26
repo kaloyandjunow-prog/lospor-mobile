@@ -20,6 +20,8 @@ import { baseProfilesMap, doseCalcMap } from "@lospor/core/option-library"
 import { metadataString } from "@lospor/core/option-contracts"
 import { gasSettingsAtColumn } from "@lospor/core/intraop-summary"
 import { INTRAOP_COLUMN_MINUTES } from "@lospor/core/intraop-engine"
+import { displayClinicalCode, displayGasMix } from "@/lib/clinical-display"
+import { usePreferences } from "@/lib/preferences-context"
 
 // ─── Types (API-compatible with web timetable) ────────────────────────────────
 
@@ -245,6 +247,18 @@ interface TimetableProps {
 type AddTab = "drug" | "infusion" | "fluid" | "agent"
 
 export function IntraopTimetable({ startTime, colCount, onColCountChange, data, onChange, showAgents, colOffset = 0, showActions = true, onInfusionBarTap, onGasCellTap, onGasStop, endTime, onResumeCase: _onResumeCase, patientWeightKg, patientHeightCm, patientSex }: TimetableProps) {
+  const { tc, language } = usePreferences()
+  const drugLabel = (name: string) => displayClinicalCode("option:INTRAOP_DRUG", name, language, { label: name })
+  const infusionLabel = (name: string) => displayClinicalCode("option:INTRAOP_INFUSION", name, language, { label: name })
+  const fluidLabel = (name: string) => displayClinicalCode("option:INTRAOP_FLUID", name, language, { label: name })
+  const agentLabel = (name: string) => displayClinicalCode("option:INHALATIONAL_AGENT", name, language, { label: name })
+  const groupLabel = (name: string) => displayClinicalCode("optionGroup", name, language, { label: name })
+  const fluidLaneLabel = (name: string) => {
+    const suffix = name.match(/ \d+$/)?.[0] ?? ""
+    const category = suffix ? name.slice(0, -suffix.length) : name
+    return `${groupLabel(category)}${suffix}`
+  }
+
   const cols = useMemo(() => Array.from({ length: colCount }, (_, i) => i + colOffset), [colCount, colOffset])
 
   const endCol = useMemo(() => {
@@ -392,7 +406,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
   }
 
   function deleteDrug(colIdx: number, name: string, dose: string) {
-    void confirmAction("Delete drug", `Remove ${dose} ${name}?`, { destructive: true, confirmLabel: "Delete", cancelLabel: "Cancel" })
+    void confirmAction("Delete drug", `Remove ${dose} ${drugLabel(name)}?`, { destructive: true, confirmLabel: "Delete", cancelLabel: "Cancel" })
       .then(ok => {
         if (ok) onChange({ ...data, drugs: data.drugs.filter(d => !(d.colIdx === colIdx && d.name === name && d.dose === dose)) })
       })
@@ -662,9 +676,9 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
 
           {/* ── Agent bars ───────────────────────────────────────── */}
           {(showAgents || data.agents.length > 0) && data.agents.map(a => (
-            <BarRow key={a.name} label="Agent" labelColor="#a78bfa"
+            <BarRow key={a.name} label={tc("trRowAgent")} labelColor="#a78bfa"
               id={a.name} type="agent" startCol={a.startCol} endCol={a.endCol}
-              barColor={a.color ?? "#a78bfa"} name={a.name}
+              barColor={a.color ?? "#a78bfa"} name={agentLabel(a.name)}
             />
           ))}
 
@@ -699,7 +713,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
                   >
                     {seg && isLabel ? (
                       <Text style={{ color:"#c4b5fd", fontSize:8, fontWeight:"700" }} numberOfLines={1}>
-                        FGF {settings.fgf} · FiO2 {settings.fio2}%{settings.carrierGas ? ` · ${settings.carrierGas.toUpperCase()}` : ""}
+                        FGF {settings.fgf} · {displayGasMix(settings, language)}
                       </Text>
                     ) : !seg ? (
                       <Text style={{ color:"#1e2d40", fontSize:12 }}>+</Text>
@@ -721,7 +735,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
 
 
           {data.infusions.map(inf => (
-            <BarRow key={inf.id} label={inf.name} labelColor={inf.color}
+            <BarRow key={inf.id} label={infusionLabel(inf.name)} labelColor={inf.color}
               id={inf.id} type="infusion" startCol={inf.startCol} endCol={inf.endCol}
               barColor={inf.color ?? "#3b82f6"} rate={`${inf.rate} ${inf.unit}`}
               rateChanges={inf.rateChanges?.map(change => ({ ...change, rate: String(change.rate) }))}
@@ -731,7 +745,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
           {/* ── Fluid bars - lane-packed by category for parallel display ── */}
           {computeFluidRows(data.fluids).map(row => (
             row.segs.map(fl => (
-              <BarRow key={fl.id} label={row.label} labelColor={row.color}
+              <BarRow key={fl.id} label={fluidLaneLabel(row.label)} labelColor={row.color}
                 id={fl.id} type="fluid" startCol={fl.startCol} endCol={fl.endCol}
                 barColor={fl.color} rate={`${fl.volume}mL`}
               />
@@ -798,7 +812,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
                   style={{ flex:1, minWidth:"45%", paddingVertical:14, borderRadius:12, alignItems:"center",
                     backgroundColor: cat.color + "22", borderWidth:1, borderColor: cat.color + "55" }}
                 >
-                  <Text style={{ color: cat.color, fontSize:13, fontWeight:"700" }}>{cat.cat}</Text>
+                  <Text style={{ color: cat.color, fontSize:13, fontWeight:"700" }}>{groupLabel(cat.cat)}</Text>
                   <Text style={{ color:"#475569", fontSize:10, marginTop:2 }}>{cat.drugs.length} drugs</Text>
                 </TouchableOpacity>
               ))}
@@ -820,7 +834,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
                         onPress={() => { setPickedDrug(d); setDrugDose(suggested.dose); setDrugHint(suggested.hint); setDrugStep("dose") }}
                         style={{ backgroundColor: catColor + "22", borderRadius:8, paddingHorizontal:10, paddingVertical:8, borderWidth:1, borderColor: catColor + "55" }}
                       >
-                        <Text style={{ color: catColor, fontSize:12, fontWeight:"600" }}>{d.name}</Text>
+                        <Text style={{ color: catColor, fontSize:12, fontWeight:"600" }}>{drugLabel(d.name)}</Text>
                         <Text style={{ color:"#64748b", fontSize:10 }}>{suggested.dose ? `~${suggested.dose} ${d.unit}` : d.unit}</Text>
                       </TouchableOpacity>
                     )
@@ -835,7 +849,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
                 <TouchableOpacity onPress={() => setDrugStep("pick")}>
                   <Text style={{ color:"#64748b", fontSize:14 }}>← Back</Text>
                 </TouchableOpacity>
-                <Text style={{ color: drugColor(pickedDrug?.name ?? ""), fontSize:16, fontWeight:"700" }}>{pickedDrug?.name}</Text>
+                <Text style={{ color: drugColor(pickedDrug?.name ?? ""), fontSize:16, fontWeight:"700" }}>{pickedDrug ? drugLabel(pickedDrug.name) : ""}</Text>
               </View>
               <Text style={{ color:"#94a3b8", fontSize:13, marginBottom:6 }}>Dose ({pickedDrug?.unit})</Text>
               <TextInput
@@ -855,7 +869,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
                 disabled={!drugDose}
                 style={{ backgroundColor: drugDose ? "#2563eb" : "#1e2d40", borderRadius:10, padding:14, alignItems:"center" }}
               >
-                <Text style={{ color:"#fff", fontWeight:"700" }}>Add {pickedDrug?.name} {drugDose}{pickedDrug?.unit}</Text>
+                <Text style={{ color:"#fff", fontWeight:"700" }}>Add {pickedDrug ? drugLabel(pickedDrug.name) : ""} {drugDose}{pickedDrug?.unit}</Text>
               </TouchableOpacity>
             </View>
           )
@@ -873,7 +887,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
                     onPress={() => { setSelInfDrug(d); setInfUnit(d.unit) }}
                     style={{ paddingHorizontal:12, paddingVertical:8, borderRadius:10, backgroundColor: selInfDrug?.name === d.name ? d.color : d.color + "22", borderWidth:1, borderColor: d.color + "66" }}
                   >
-                    <Text style={{ color: selInfDrug?.name === d.name ? "#fff" : d.color, fontSize:12, fontWeight:"600" }}>{d.name}</Text>
+                    <Text style={{ color: selInfDrug?.name === d.name ? "#fff" : d.color, fontSize:12, fontWeight:"600" }}>{infusionLabel(d.name)}</Text>
                     <Text style={{ color:"#94a3b8", fontSize:9 }}>{d.unit}</Text>
                   </TouchableOpacity>
                 ))}
@@ -896,7 +910,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
                   disabled={!infRate}
                   style={{ backgroundColor: infRate ? selInfDrug.color : "#1e2d40", borderRadius:10, padding:14, alignItems:"center" }}
                 >
-                  <Text style={{ color:"#fff", fontWeight:"700" }}>Start {selInfDrug.name} {infRate} {selInfDrug.unit}</Text>
+                  <Text style={{ color:"#fff", fontWeight:"700" }}>Start {infusionLabel(selInfDrug.name)} {infRate} {selInfDrug.unit}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -909,7 +923,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
             <ScrollView style={{ maxHeight:200 }} showsVerticalScrollIndicator={false}>
               {fluidCategories.map(cat => (
                 <View key={cat} style={{ marginBottom:10 }}>
-                  <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{cat}</Text>
+                  <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{groupLabel(cat)}</Text>
                   <View style={{ flexDirection:"row", flexWrap:"wrap", gap:6 }}>
                     {fluidChoices.filter(f => f.cat === cat).map(f => (
                       <TouchableOpacity
@@ -917,7 +931,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
                         onPress={() => setSelFluid(f)}
                         style={{ paddingHorizontal:10, paddingVertical:6, borderRadius:8, backgroundColor: selFluid?.name === f.name ? f.color : f.color + "22", borderWidth:1, borderColor: f.color + "55" }}
                       >
-                        <Text style={{ color: selFluid?.name === f.name ? "#fff" : f.color, fontSize:12, fontWeight:"600" }}>{f.name}</Text>
+                        <Text style={{ color: selFluid?.name === f.name ? "#fff" : f.color, fontSize:12, fontWeight:"600" }}>{fluidLabel(f.name)}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -947,7 +961,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
                   onPress={confirmFluid}
                   style={{ backgroundColor: selFluid.color, borderRadius:10, padding:14, alignItems:"center" }}
                 >
-                  <Text style={{ color:"#fff", fontWeight:"700" }}>Add {selFluid.name} {fluidVol} mL</Text>
+                  <Text style={{ color:"#fff", fontWeight:"700" }}>Add {fluidLabel(selFluid.name)} {fluidVol} mL</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -968,7 +982,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
                     borderWidth:2, borderColor: a.color,
                   }}
                 >
-                  <Text style={{ color: selAgent?.name === a.name ? "#fff" : a.color, fontSize:13, fontWeight:"700" }}>{a.name}</Text>
+                  <Text style={{ color: selAgent?.name === a.name ? "#fff" : a.color, fontSize:13, fontWeight:"700" }}>{agentLabel(a.name)}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -977,7 +991,7 @@ export function IntraopTimetable({ startTime, colCount, onColCountChange, data, 
                 onPress={confirmAgent}
                 style={{ backgroundColor: selAgent.color, borderRadius:10, padding:14, alignItems:"center" }}
               >
-                <Text style={{ color:"#fff", fontWeight:"700" }}>Add {selAgent.name} from {colToTime(startTime, selCol)}</Text>
+                <Text style={{ color:"#fff", fontWeight:"700" }}>Add {agentLabel(selAgent.name)} from {colToTime(startTime, selCol)}</Text>
               </TouchableOpacity>
             )}
           </View>

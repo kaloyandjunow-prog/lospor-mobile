@@ -4,6 +4,7 @@ import type { ActiveGasSettings } from "@/lib/intraop-log-event"
 import { FeedbackPressable } from "./FeedbackPressable"
 import { Sheet } from "./Sheet"
 import { usePreferences } from "@/lib/preferences-context"
+import { displayClinicalCode } from "@/lib/clinical-display"
 
 type ClinicalEventCategory = {
   cat: string
@@ -55,7 +56,12 @@ export function SlotActionSheet({
   onStopGas,
   onOpenGas,
 }: Props) {
-  const { tc } = usePreferences()
+  const { tc, language } = usePreferences()
+  const categoryLabel = (name: string) => displayClinicalCode("optionGroup", name, language, { label: name })
+  const clinicalEventLabel = (event: ClinicalEventDef) => event.code
+    ? displayClinicalCode("option:INTRAOP_EVENT", event.code, language, { label: event.label, labelBg: event.labelBg })
+    : displayClinicalCode("complication", event.label, language, { label: event.label })
+  const agentLabel = (name: string) => displayClinicalCode("option:INHALATIONAL_AGENT", name, language, { label: name })
   return (
     <Sheet visible={visible} onClose={onClose} title={title} full>
       <TextInput
@@ -78,13 +84,13 @@ export function SlotActionSheet({
                 .map(label => ({ label, color: "#ef4444" })),
             ]
           : cat.events
-        const visibleEvents = events.filter(ev => !eventSearch || ev.label.toLowerCase().includes(eventSearch.toLowerCase()))
+        const visibleEvents = events.filter(ev => !eventSearch || [ev.label, clinicalEventLabel(ev)].some(label => label.toLowerCase().includes(eventSearch.toLowerCase())))
         if (visibleEvents.length === 0 && eventSearch) return null
         return (
           <View key={cat.cat} style={{ marginBottom:14 }}>
             <View style={{ flexDirection:"row", alignItems:"center", marginBottom:6 }}>
               <Text style={{ color: cat.color, fontSize:9, fontWeight:"800", letterSpacing:1.2,
-                textTransform:"uppercase", flex:1 }}>{cat.cat}</Text>
+                textTransform:"uppercase", flex:1 }}>{categoryLabel(cat.cat)}</Text>
               {cat.isComplication && (
                 <TouchableOpacity onPress={onToggleComplications}>
                   <Text style={{ color:"#64748b", fontSize:9, fontWeight:"700" }}>
@@ -98,7 +104,7 @@ export function SlotActionSheet({
                 <TouchableOpacity key={ev.label} onPress={() => onSelectEvent(ev, cat.isComplication ?? false)}
                   style={{ paddingHorizontal:11, paddingVertical:8, borderRadius:10,
                     backgroundColor:ev.color+"18", borderWidth:1, borderColor:ev.color+"55" }}>
-                  <Text style={{ color:ev.color, fontSize:11, fontWeight:"700" }}>{ev.label}</Text>
+                  <Text style={{ color:ev.color, fontSize:11, fontWeight:"700" }}>{clinicalEventLabel(ev)}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -120,7 +126,7 @@ export function SlotActionSheet({
             <View style={{ flexDirection:"row", gap:8, marginBottom:8 }}>
               <View style={{ flex:1, borderRadius:10, paddingVertical:10, paddingHorizontal:12,
                 backgroundColor:activeAgent.color+"18", borderWidth:1, borderColor:activeAgent.color+"55" }}>
-                <Text style={{ color:activeAgent.color, fontWeight:"700" }}>{activeAgent.name} running</Text>
+                <Text style={{ color:activeAgent.color, fontWeight:"700" }}>{agentLabel(activeAgent.name)} running</Text>
               </View>
               <TouchableOpacity onPress={onStopAgent}
                 style={{ borderRadius:10, paddingHorizontal:14, paddingVertical:10,
@@ -144,7 +150,7 @@ export function SlotActionSheet({
               <View style={{ flex:1, borderRadius:10, paddingVertical:10, paddingHorizontal:12,
                 backgroundColor:"#6366f118", borderWidth:1, borderColor:"#6366f155" }}>
                 <Text style={{ color:"#a5b4fc", fontWeight:"700", fontSize:12 }}>
-                  FGF {activeGas.fgf}L/min{activeGas.carrierGas ? ` - ${activeGas.carrierGas.toUpperCase()}` : ""} - FiO2 {activeGas.fio2}%
+                  FGF {activeGas.fgf}L/min{activeGas.carrierGas ? ` - ${displayClinicalCode("carrierGas", activeGas.carrierGas, language, { label: activeGas.carrierGas })}` : ""} - FiO2 {activeGas.fio2}%
                 </Text>
               </View>
               <TouchableOpacity onPress={onStopGas}

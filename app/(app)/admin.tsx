@@ -4,6 +4,7 @@ import { Stack } from "expo-router"
 import { ApiError, apiFetch, apiJson } from "@/lib/api"
 import { notify, confirmAction } from "@/lib/notify"
 import { usePreferences } from "@/lib/preferences-context"
+import { displayClinicalCode } from "@/lib/clinical-display"
 import { ScreenState, WorkflowPill } from "@/components/clinical-ui"
 import { colors, withAlpha } from "@/theme/colors"
 
@@ -41,7 +42,7 @@ function instLabel(inst?: Institution) {
 }
 
 export default function AdminScreen() {
-  const { t } = usePreferences()
+  const { t, language } = usePreferences()
   const [tab, setTab] = useState<Tab>("Registrations")
   const [users, setUsers] = useState<UserRow[]>([])
   const [pendingUsers, setPendingUsers] = useState<UserRow[]>([])
@@ -195,7 +196,7 @@ export default function AdminScreen() {
               <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "900" }}>{displayName(user)}</Text>
               <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 3 }}>{user.email}</Text>
               <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 3 }}>{instLabel(user.institution) || t("noInstitution")}</Text>
-              {item.kind === "user" ? <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "800", marginTop: 6 }}>{user.role}</Text> : null}
+              {item.kind === "user" ? <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "800", marginTop: 6 }}>{displayClinicalCode("userRole", user.role, language)}</Text> : null}
               {item.kind === "request" ? <Text style={{ color: colors.warning, fontSize: 12, fontWeight: "800", marginTop: 6 }}>{t("requested")} {new Date(item.request.requestedAt).toLocaleDateString()}</Text> : null}
 
               <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>

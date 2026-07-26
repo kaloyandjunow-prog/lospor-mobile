@@ -1,4 +1,3 @@
-import { MONITORING } from "@lospor/core/catalog"
 import {
   isGeneralAnesthesiaCase,
   isGeneralAnesthesiaTechnique,
@@ -17,10 +16,6 @@ export {
 
 type MonitoringOption = { label: string; field: string; section?: string }
 
-const canonicalLabelByField = new Map(
-  MONITORING.map(option => [option.field, option.label]),
-)
-
 export function activeTechniquesForCase(
   localTechniques: string[],
   caseTechniques?: string[],
@@ -28,11 +23,8 @@ export function activeTechniquesForCase(
   return localTechniques.length > 0 ? localTechniques : (caseTechniques ?? [])
 }
 
-export function monitoringDefaultLabelsForTechniques(techniques: string[]): string[] {
-  return requiredMonitoringFieldsForTechniques(techniques).flatMap(field => {
-    const label = canonicalLabelByField.get(field)
-    return label ? [label] : []
-  })
+export function monitoringDefaultFieldsForTechniques(techniques: string[]): string[] {
+  return [...requiredMonitoringFieldsForTechniques(techniques)]
 }
 
 export function addMonitoringDefaultsForTechniques(
@@ -40,29 +32,29 @@ export function addMonitoringDefaultsForTechniques(
   currentMonitoring: string[],
 ): string[] | null {
   const next = [...currentMonitoring]
-  for (const label of monitoringDefaultLabelsForTechniques(techniques)) {
-    if (!next.includes(label)) next.push(label)
+  for (const field of monitoringDefaultFieldsForTechniques(techniques)) {
+    if (!next.includes(field)) next.push(field)
   }
   return next.length > currentMonitoring.length ? next : null
 }
 
 export function buildMonitoringSelectionPatch(
   options: MonitoringOption[],
-  selectedLabels: string[],
+  selectedFields: string[],
 ): Record<string, boolean> {
   return Object.fromEntries(
-    options.map(option => [option.field, selectedLabels.includes(option.label)]),
+    options.map(option => [option.field, selectedFields.includes(option.field)]),
   )
 }
 
-export function selectedMonitoringLabelsFromRecord(
+export function selectedMonitoringFieldsFromRecord(
   options: MonitoringOption[],
   record: Record<string, unknown> | null | undefined,
 ): string[] {
   if (!record) return []
   return options
     .filter(option => Boolean(record[option.field]))
-    .map(option => option.label)
+    .map(option => option.field)
 }
 
 export function hasAdvancedMonitoringSelected(
@@ -84,12 +76,10 @@ export function buildTechniqueMonitoringUpdate(
   const requiredFields = requiredMonitoringFieldsForTechniques(nextTechniques)
   if (!requiredFields.length) return { patch, monitoring: null }
 
-  const labelsByField = new Map(options.map(option => [option.field, option.label]))
   const monitoring = [...currentMonitoring]
   for (const field of requiredFields) {
     patch[field] = true
-    const label = labelsByField.get(field)
-    if (label && !monitoring.includes(label)) monitoring.push(label)
+    if (!monitoring.includes(field)) monitoring.push(field)
   }
   return {
     patch,

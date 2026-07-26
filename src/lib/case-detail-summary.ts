@@ -23,14 +23,8 @@ import {
   calcInfusionTotals as calculateInfusionTotals,
   DEFAULT_INFUSION_WEIGHT_BASIS,
 } from "@lospor/core/intraop-totals"
-import {
-  AIRWAY_TOOLS,
-  MONITORING,
-  POSITIONS,
-  TECHNIQUE_TREE,
-  findLabeledValuePath,
-  formatTechniquePath,
-} from "@lospor/core/catalog"
+import { MONITORING } from "@lospor/core/catalog"
+import { displayClinicalCode, displayOptionPath } from "@/lib/clinical-display"
 
 export type LabResult = LabResultDto
 export type Comorbidity = ClinicalTagDto
@@ -61,32 +55,22 @@ export const BODY_SYSTEM_COLORS: Record<string, string> = {
 export const SYSTEM_ORDER = ICD10_BODY_SYSTEM_ORDER
 
 export type MonitorKey = keyof NonNullable<CaseData["intraop"]>
-export const MONITOR_MAP: { key: MonitorKey; label: string }[] = MONITORING.map(option => ({
+export const MONITOR_MAP: { key: MonitorKey }[] = MONITORING.map(option => ({
   key: option.field as MonitorKey,
-  label: option.label,
 }))
 
 // ─── Utility functions ────────────────────────────────────────────────────────
 
-export function techniqueLabel(code: string): string {
-  const normalized = normalizeOptionCode("TECHNIQUE", code)
-  return formatTechniquePath(
-    normalized,
-    findLabeledValuePath(normalized, TECHNIQUE_TREE),
-  )
+export function techniqueLabel(code: string, locale: string): string {
+  return displayOptionPath("TECHNIQUE", normalizeOptionCode("TECHNIQUE", code), locale)
 }
 
-const POSITION_LABEL_BY_CODE = Object.fromEntries(
-  POSITIONS.map(option => [option.v, option.label]),
-)
-const AIRWAY_TOOL_LABEL_BY_CODE = Object.fromEntries(AIRWAY_TOOLS)
-
-export function positionLabel(code: string): string {
-  return POSITION_LABEL_BY_CODE[code] ?? code
+export function positionLabel(code: string, locale: string): string {
+  return displayClinicalCode("option:POSITION", code, locale)
 }
 
-export function airwayToolLabel(code: string): string {
-  return AIRWAY_TOOL_LABEL_BY_CODE[code] ?? code
+export function airwayToolLabel(code: string, locale: string): string {
+  return displayClinicalCode("option:AIRWAY_MANAGEMENT", code, locale)
 }
 
 export const getBodySystem = getIcd10BodySystem
@@ -225,27 +209,31 @@ export function calcInfusionTotals(
   }))
 }
 
-export function formatAirway(intraop: CaseData["intraop"]): string {
+export function formatAirway(intraop: CaseData["intraop"], locale: string): string {
   if (!intraop) return ""
   const devices = intraop.airwayDevices ?? []
-  if (devices.includes("ORAL_ETT")) {
-    return `Oral ETT ${intraop.tubeSize ?? "?"}mm${intraop.cuffed ? " cuffed" : ""}`
+  const firstDevice = devices[0]
+  if (!firstDevice) return ""
+  const label = displayClinicalCode("option:AIRWAY_MANAGEMENT", firstDevice, locale)
+  if (firstDevice === "ORAL_ETT" || firstDevice === "NASAL_ETT") {
+    const cuffed = intraop.cuffed
+      ? ` ${displayClinicalCode("clinicalAttribute", "cuffed", locale)}`
+      : ""
+    return `${label} ${intraop.tubeSize ?? "?"}mm${cuffed}`
   }
-  if (devices.includes("NASAL_ETT")) {
-    return `Nasal ETT ${intraop.tubeSize ?? "?"}mm${intraop.cuffed ? " cuffed" : ""}`
+  if (firstDevice === "LMA") return `${label} ${intraop.tubeSize ?? ""}`.trim()
+  if (firstDevice === "DOUBLE_LUMEN_TUBE") {
+    const side = typeof intraop.dltSide === "string"
+      ? displayClinicalCode("clinicalAttribute", intraop.dltSide.toLowerCase(), locale, { label: intraop.dltSide })
+      : ""
+    return `${label} ${side} ${intraop.dltType ?? ""} ${intraop.dltSize ?? ""}Fr`.replace(/\s+/g, " ").trim()
   }
-  if (devices.includes("LMA")) return `LMA ${intraop.tubeSize ?? ""}`.trim()
-  if (devices.includes("DOUBLE_LUMEN_TUBE")) {
-    return `DLT ${intraop.dltSide ?? ""} ${intraop.dltType ?? ""} ${intraop.dltSize ?? ""}Fr`.replace(/\s+/g, " ").trim()
-  }
-  if (devices.includes("FACE_MASK")) return "Face mask"
-  return devices[0] ?? ""
+  return label
 }
 
-export function formatHandoverItem(code: string): string {
+export function formatHandoverItem(code: string, locale: string): string {
   const canonical = handoverLabel(code)
-  if (canonical) return canonical
-  return code.replace(/_/g, " ").replace(/^\w/, c => c.toUpperCase())
+  return displayClinicalCode("option:HANDOVER_ITEM", code, locale, { label: canonical })
 }
 
 export function computedDisplayStatus(data: CaseData): string {

@@ -1,5 +1,18 @@
 # Changelog - LOSPOR Mobile
 
+## [7.1.0] - 2026-07-27
+
+Clinical display and research-platform release. Android `versionCode` is 27.
+No APK or AAB was started for this web-ecosystem release.
+
+- Mobile and PWA clinical forms, timetable sheets, summaries, handover,
+  scenarios, complications, laboratories, fluids, drugs, and gas settings now
+  use the canonical Core English/Bulgarian display registry.
+- Stable clinical codes remain unchanged for persistence, synchronization,
+  offline recovery, and compatibility with existing v7 clients.
+- Timetable summary segments and gas descriptions use shared semantic metadata
+  instead of client-specific raw labels.
+
 ## [7.0.1] - 2026-07-25
 
 Reliability release. Android `versionCode` is 26.

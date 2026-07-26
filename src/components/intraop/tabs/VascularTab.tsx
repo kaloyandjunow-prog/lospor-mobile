@@ -1,10 +1,25 @@
 import { useState } from "react"
 import { View, Text, ScrollView, TouchableOpacity, type ViewStyle } from "react-native"
 import { uid } from "@/lib/intraop-log-event"
-import type { ClinicalStringKey } from "@/lib/preferences-context"
+import { usePreferences, type ClinicalStringKey } from "@/lib/preferences-context"
+import { displayClinicalCode } from "@/lib/clinical-display"
 import type { VascTreeNode } from "@/lib/vascular-access-tree"
 
 type VascularEntry = { id: string; site: string; siteLabel: string; size: string; sizeUnit: string; depthCm: string; lumens?: string; preexisting?: boolean }
+
+function findVascPath(value: string, nodes: VascTreeNode[], path: VascTreeNode[] = []): VascTreeNode[] | null {
+  for (const node of nodes) {
+    const nextPath = [...path, node]
+    if (node.v === value) return nextPath
+    const childPath = node.children ? findVascPath(value, node.children, nextPath) : null
+    if (childPath) return childPath
+  }
+  return null
+}
+
+function pathLabel(path: VascTreeNode[], canonical = false): string {
+  return path.map(node => canonical ? node.canonicalLabel : node.label).join(" › ")
+}
 
 export function VascularTab({
   vascularAccesses, setVascularAccesses, saveVascularAccesses, vascularSaving,
@@ -20,9 +35,10 @@ export function VascularTab({
   vascPreexistingQuick: { v: string; label: string; crumb: string }[]
   tc: (key: ClinicalStringKey) => string
 }) {
+  const { language } = usePreferences()
   const [vascMode, setVascMode]           = useState<null | "add" | "preexisting">(null)
   const [vascTreePath, setVascTreePath]   = useState<VascTreeNode[]>([])
-  const [vascPending, setVascPending]     = useState<{ v: string; label: string; crumb: string } | null>(null)
+  const [vascPending, setVascPending]     = useState<{ v: string; label: string; displayCrumb: string; canonicalCrumb: string } | null>(null)
   const [vascDetailUnit, setVascDetailUnit]     = useState("G")
   const [vascDetailSize, setVascDetailSize]     = useState("")
   const [vascDetailDepth, setVascDetailDepth]   = useState("")
@@ -34,6 +50,10 @@ export function VascularTab({
       <View style={{ flexDirection:"row", flexWrap:"wrap", gap:8, marginBottom:12 }}>
         {vascularAccesses.map((acc, idx) => {
           const clr = vascSiteColor(acc.site)
+          const storedPath = findVascPath(acc.site, vascTree)
+          const siteLabel = storedPath
+            ? pathLabel(storedPath)
+            : displayClinicalCode("option:VASCULAR_ACCESS", acc.site, language, { label: acc.siteLabel })
           const detail = [
             acc.size && acc.sizeUnit ? `${acc.size}${acc.sizeUnit}` : "",
             acc.depthCm ? `${acc.depthCm} cm` : "",
@@ -48,7 +68,7 @@ export function VascularTab({
                 <Text style={{ color:"#f59e0b", fontSize:8, fontWeight:"800", letterSpacing:0.8 }}>{tc("vtPreBadge")}</Text>
               )}
               <Text style={{ color: acc.preexisting ? "#fbbf24" : clr, fontWeight:"700", fontSize:12 }}>
-                {acc.siteLabel}{detail ? `  (${detail})` : ""}
+                {siteLabel}{detail ? `  (${detail})` : ""}
               </Text>
               <TouchableOpacity onPress={() => {
                 const next = vascularAccesses.filter((_, i) => i !== idx)
@@ -109,8 +129,13 @@ export function VascularTab({
               {nodes.map(node => (
                 <TouchableOpacity key={node.v} onPress={() => {
                   if (node.children?.length) { setVascTreePath(p => [...p, node]); return }
-                  const crumb = [...vascTreePath, node].map(n => n.label).join(" › ")
-                  setVascPending({ v: node.v, label: node.label, crumb })
+                  const selectedPath = [...vascTreePath, node]
+                  setVascPending({
+                    v: node.v,
+                    label: node.label,
+                    displayCrumb: pathLabel(selectedPath),
+                    canonicalCrumb: pathLabel(selectedPath, true),
+                  })
                   setVascDetailUnit(vascDefaultUnit(node.v))
                   setVascDetailSize("")
                   setVascDetailDepth("")
@@ -138,14 +163,20 @@ export function VascularTab({
           <View style={{ flexDirection:"row", flexWrap:"wrap", gap:8 }}>
             {vascPreexistingQuick.map(q => (
               <TouchableOpacity key={q.v} onPress={() => {
-                setVascPending(q)
+                const quickPath = findVascPath(q.v, vascTree)
+                setVascPending({
+                  v: q.v,
+                  label: quickPath?.at(-1)?.label ?? displayClinicalCode("option:VASCULAR_ACCESS", q.v, language, { label: q.label }),
+                  displayCrumb: quickPath ? pathLabel(quickPath) : displayClinicalCode("option:VASCULAR_ACCESS", q.v, language, { label: q.label }),
+                  canonicalCrumb: q.crumb,
+                })
                 setVascDetailUnit(vascDefaultUnit(q.v))
                 setVascDetailSize("")
                 setVascDetailDepth("")
                 setVascDetailLumens("")
               }} style={{ paddingHorizontal:12, paddingVertical:8, borderRadius:10,
                 borderWidth:1, borderColor:"#78350f", backgroundColor:"#111827" }}>
-                <Text style={{ color:"#f59e0b", fontSize:12, fontWeight:"600" }}>{q.label}</Text>
+                <Text style={{ color:"#f59e0b", fontSize:12, fontWeight:"600" }}>{displayClinicalCode("option:VASCULAR_ACCESS", q.v, language, { label: q.label })}</Text>
               </TouchableOpacity>
             ))}
             <TouchableOpacity onPress={() => { setVascMode("add"); setVascTreePath([]); setVascPending(null) }}
@@ -168,7 +199,7 @@ export function VascularTab({
         const bgClr = isPreexisting ? "#1c0e00" : "#0d1520"
         return (
           <View style={{ backgroundColor:bgClr, borderRadius:12, borderWidth:1, borderColor:borderClr, padding:12 }}>
-            <Text style={{ color:"#94a3b8", fontSize:11, marginBottom:10 }}>{vascPending.crumb}</Text>
+            <Text style={{ color:"#94a3b8", fontSize:11, marginBottom:10 }}>{vascPending.displayCrumb}</Text>
             <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{tc("vtUnit")}</Text>
             <View style={{ flexDirection:"row", gap:8, marginBottom:12 }}>
               {["G","Fr"].map(u => (
@@ -227,7 +258,7 @@ export function VascularTab({
                 const entry: VascularEntry = {
                   id:          uid(),
                   site:        vascPending.v,
-                  siteLabel:   vascPending.crumb,
+                  siteLabel:   vascPending.canonicalCrumb,
                   size:        vascDetailSize,
                   sizeUnit:    vascDetailUnit,
                   depthCm:     vascDetailDepth,

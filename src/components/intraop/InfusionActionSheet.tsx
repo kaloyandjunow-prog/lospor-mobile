@@ -2,6 +2,8 @@ import { View, Text, TouchableOpacity } from "react-native"
 import { Sheet } from "@/components/intraop/Sheet"
 import type { ActiveInfusion } from "@/lib/intraop-log-event"
 import { DoseSelector } from "@/components/intraop/DoseSelector"
+import { displayClinicalCode } from "@/lib/clinical-display"
+import { usePreferences } from "@/lib/preferences-context"
 
 type Range = { min: number; max: number; step: number }
 type RouteProfileLite = {
@@ -30,6 +32,9 @@ export function InfusionActionSheet({
   // concentration), the rate-change controls use it instead of the flat range.
   routeProfiles?: Record<string, Record<string, RouteProfileLite>>
 }) {
+  const { tc, language } = usePreferences()
+  const infusionLabel = (name: string) => displayClinicalCode("option:INTRAOP_INFUSION", name, language, { label: name })
+
   // Resolve the per-route dose surface for the running infusion, falling back to
   // the flat per-name range/quick/concentration when there's no route profile.
   const prof = target?.route ? routeProfiles[target.name]?.[target.route] : undefined
@@ -40,7 +45,7 @@ export function InfusionActionSheet({
   const concentrationOptions = prof?.concentrationOptions ?? (target ? laConcentrations[target.name] : undefined)
 
   return (
-    <Sheet visible={visible} onClose={onClose} title={target?.name ?? "Infusion"}>
+    <Sheet visible={visible} onClose={onClose} title={target ? infusionLabel(target.name) : tc("trRowInfusion")}>
       {target && (
         <View style={{ gap:12 }}>
           <Text style={{ color:"#94a3b8", fontSize:13 }}>
@@ -64,7 +69,7 @@ export function InfusionActionSheet({
             onPress={() => onStop(target)}
             style={{ backgroundColor:"#1e1414", borderRadius:10, padding:14, alignItems:"center",
               borderWidth:1, borderColor:"#ef444444" }}>
-            <Text style={{ color:"#ef4444", fontWeight:"700" }}>Stop infusion</Text>
+            <Text style={{ color:"#ef4444", fontWeight:"700" }}>{tc("trStop")} {tc("trRowInfusion").toLowerCase()}</Text>
           </TouchableOpacity>
         </View>
       )}

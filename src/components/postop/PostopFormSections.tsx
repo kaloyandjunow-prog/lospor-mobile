@@ -1,8 +1,9 @@
-﻿import React, { useState } from "react"
+import React, { useState } from "react"
 import { View, Text, TouchableOpacity } from "react-native"
 import { useMemo } from "react"
 import { colors, withAlpha } from "@/theme/colors"
 import { usePreferences } from "@/lib/preferences-context"
+import { displayClinicalCode } from "@/lib/clinical-display"
 import { aldreteBand, handoverGroups } from "@lospor/core/postop"
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -120,6 +121,7 @@ export function DispositionPicker({
   pacuLabel: string
   icuLabel: string
 }) {
+  const { language } = usePreferences()
   const OPTIONS: { v: "WARD" | "PACU" | "ICU"; label: string; color: string }[] = [
     { v: "WARD", label: wardLabel, color: colors.success },
     { v: "PACU", label: pacuLabel, color: colors.warning },
@@ -146,7 +148,7 @@ export function DispositionPicker({
             }}
           >
             <Text style={{ color: selected ? opt.color : colors.textPrimary, fontSize: 16, fontWeight: "900" }}>
-              {opt.label}
+              {displayClinicalCode("option:DISPOSITION", opt.v, language, { label: opt.label })}
             </Text>
           </TouchableOpacity>
         )
@@ -195,7 +197,7 @@ export function HandoverChecklist({
               style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 12, gap: 10 }}
             >
               <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 13, fontWeight: "800" }}>
-                {group.group}
+                {displayClinicalCode("option:HANDOVER_ITEM", group.id, language, { label: group.group })}
               </Text>
               <Text style={{ color: checkedCount > 0 ? colors.success : colors.textMuted, fontSize: 12, fontWeight: "800" }}>
                 {checkedCount}/{group.items.length}
@@ -214,7 +216,7 @@ export function HandoverChecklist({
                     {checked && <Text style={{ color: colors.background, fontSize: 13, fontWeight: "900", lineHeight: 15 }}>✓</Text>}
                   </View>
                   <Text style={{ color: checked ? colors.textPrimary : colors.textSecondary, fontSize: 13, flex: 1, lineHeight: 18 }}>
-                    {opt.label}
+                    {displayClinicalCode("option:HANDOVER_ITEM", opt.code, language, { label: opt.label })}
                   </Text>
                 </TouchableOpacity>
               )
@@ -241,7 +243,7 @@ export function RecoverySummary({
   pain?: number
   ponv?: boolean
 }) {
-  const { t } = usePreferences()
+  const { t, language } = usePreferences()
   const status = aldreteBand(total)
   const statusColor = status === "ready"
     ? colors.success
@@ -259,7 +261,7 @@ export function RecoverySummary({
         </View>
         <View style={{ alignItems: "flex-end", gap: 6 }}>
           <Text style={{ color: disposition ? dispoColor : colors.textMuted, fontSize: 18, fontWeight: "900" }}>
-            {disposition ?? t("noDisposition")}
+            {disposition ? displayClinicalCode("option:DISPOSITION", disposition, language) : t("noDisposition")}
           </Text>
           <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{t("painLabel")} {pain ?? "-"}/10</Text>
           <Text style={{ color: ponv ? colors.warning : colors.textMuted, fontSize: 12 }}>{ponv ? t("ponvPresent") : t("noPONV")}</Text>

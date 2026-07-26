@@ -3,26 +3,23 @@ import {
   buildOptionTree,
 } from "@lospor/core/catalog"
 import { vascularAccessDefaultUnit } from "@lospor/core/intraop"
+import { displayOption } from "@/lib/clinical-display"
+import type { LibraryOption } from "@/lib/use-option-library"
 
 export type VascTreeNode = {
   v: string
   label: string
+  canonicalLabel: string
   children?: VascTreeNode[]
 }
 
-type VascularRow = {
-  id: string
-  value: string
-  label: string
-  parentId: string | null
-}
-
-export function buildVascTree(rows: VascularRow[]): VascTreeNode[] {
+export function buildVascTree(rows: LibraryOption[], locale: string): VascTreeNode[] {
   const mapNodes = (
-    nodes: ReturnType<typeof buildOptionTree<VascularRow>>,
+    nodes: ReturnType<typeof buildOptionTree<LibraryOption>>,
   ): VascTreeNode[] => nodes.map(node => ({
     v: node.value,
-    label: node.label,
+    label: displayOption("VASCULAR_ACCESS", node.option, locale),
+    canonicalLabel: node.option.label,
     children: node.children?.length ? mapNodes(node.children) : undefined,
   }))
   return mapNodes(buildOptionTree(rows))

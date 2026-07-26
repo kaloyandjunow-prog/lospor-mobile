@@ -778,7 +778,7 @@ export const CLINICAL_STRINGS = {
     stopbangMale:        "Мъжки пол (автом.)",
 
     // ── Physical exam — vitals ────────────────────────────────────────────
-    vitalsSectionTitle:  "Физикален преглед — Витални показатели",
+    vitalsSectionTitle:  "Физикален преглед — Жизнени показатели",
     sbpLabel:            "АН систолно",
     dbpLabel:            "АН диастолно",
     heartRateLabel:      "Сърдечна честота",
@@ -847,7 +847,7 @@ export const CLINICAL_STRINGS = {
     overviewComorbidities:"Придружаващи заболявания",
     overviewMeds:        "Текущи медикаменти",
     overviewFlags:       "Флагове и анамнеза",
-    overviewVitalsReq:   "Изискват се витални показатели",
+    overviewVitalsReq:   "Изискват се жизнени показатели",
     overviewMallampatiReq:"Изисква се Малампати",
     overviewLabsHint:    "Сканиране или ръчно въвеждане",
     overviewASAReq:      "Изисква се АСА клас",
@@ -1047,7 +1047,7 @@ export const CLINICAL_STRINGS = {
     // ── Postop ────────────────────────────────────────────────────────────
     postopTitle:         "Следоперативно",
     aldreteScore:        "Модифицирана Алдрете скала",
-    recoveryVitals:      "Витални показатели при събуждане",
+    recoveryVitals:      "Жизнени показатели при събуждане",
     dispositionLabel:    "Насочване",
     handoverChecklist:   "Контролен лист за предаване",
     continueToSummary:   "Продължи към резюме",
@@ -1120,7 +1120,7 @@ export const CLINICAL_STRINGS = {
     summaryDiagnosis:    "Диагноза",
     summaryProcedure:    "Операция",
     summaryASA:          "АСА",
-    summaryPreopVitals:  "Предоп. витални показатели",
+    summaryPreopVitals:  "Предоп. жизнени показатели",
     summaryArrhythmia:   "Сърдечна аритмия",
     summaryAllergy:      "Алергия",
     summaryLatex:        "Латексова алергия",
@@ -1299,7 +1299,7 @@ export const CLINICAL_STRINGS = {
     compCatSurgical:       "Хирургични",
 
     // ── Postop handover group titles ──────────────────────────────────────────
-    hvgVitalSigns:        "Витални показатели и мониториране",
+    hvgVitalSigns:        "Жизнени показатели и мониторинг",
     hvgAirway:            "Дихателен път и кислород",
     hvgCardiovascular:    "Сърдечно-съдова система",
     hvgPain:              "Лечение на болката",

@@ -1,7 +1,8 @@
-﻿import React from "react"
+import React from "react"
 import { View, Text } from "react-native"
 import { colors, withAlpha } from "@/theme/colors"
-import type { ClinicalStringKey, TranslationKey } from "@/lib/preferences-context"
+import { usePreferences, type ClinicalStringKey, type TranslationKey } from "@/lib/preferences-context"
+import { displayClinicalCode } from "@/lib/clinical-display"
 import { SummaryCard, Divider, AldreteRow } from "./CaseDetailPrimitives"
 import {
   formatHandoverItem,
@@ -16,6 +17,8 @@ type AldreteCriterion = {
 }
 
 export function PostopCard({ postop, tc, t }: { postop: CaseData["postop"]; tc: (key: ClinicalStringKey) => string; t: (key: TranslationKey) => string }) {
+  const { language } = usePreferences()
+
   const ALDRETE_CRITERIA: AldreteCriterion[] = [
     { field: "aldreteActivity", label: tc("aldreteActivity"), descriptions: [tc("aldreteNoMovement"), tc("aldrete2Extremities"), tc("aldreteAllExtremities")] },
     { field: "aldreteRespiration", label: tc("aldreteRespiration"), descriptions: [tc("aldreteApnoeic"), tc("aldreteShallow"), tc("aldreteDeepBreath")] },
@@ -171,7 +174,7 @@ export function PostopCard({ postop, tc, t }: { postop: CaseData["postop"]; tc: 
           <Text style={{
             color: dispColor(postop.disposition), fontSize: 13, fontWeight: "800",
           }}>
-            {tc("summaryDischarge")}: {postop.disposition}
+            {tc("summaryDischarge")}: {displayClinicalCode("option:DISPOSITION", postop.disposition, language)}
           </Text>
         </View>
       )}
@@ -191,7 +194,7 @@ export function PostopCard({ postop, tc, t }: { postop: CaseData["postop"]; tc: 
             }}>
               <View style={{ width: 7, height: 7, borderRadius: 999, backgroundColor: colors.success }} />
               <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                {formatHandoverItem(item)}
+                {formatHandoverItem(item, language)}
               </Text>
             </View>
           ))}

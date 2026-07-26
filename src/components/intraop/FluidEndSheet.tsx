@@ -1,6 +1,8 @@
 import { View, Text, TouchableOpacity, TextInput } from "react-native"
 import { Sheet } from "@/components/intraop/Sheet"
 import type { ActiveFluid } from "@/lib/intraop-log-event"
+import { displayClinicalCode } from "@/lib/clinical-display"
+import { usePreferences } from "@/lib/preferences-context"
 
 export function FluidEndSheet({
   visible, onClose, target, customAmount, setCustomAmount, onConfirm,
@@ -12,8 +14,11 @@ export function FluidEndSheet({
   setCustomAmount: (v: string) => void
   onConfirm: (label?: string) => void
 }) {
+  const { tc, language } = usePreferences()
+  const fluidLabel = (name: string) => displayClinicalCode("option:INTRAOP_FLUID", name, language, { label: name })
+
   return (
-    <Sheet visible={visible} onClose={onClose} title={`End ${target?.name ?? "fluid"}`}>
+    <Sheet visible={visible} onClose={onClose} title={target ? `${tc("trEndFluid")}: ${fluidLabel(target.name)}` : tc("trEndFluid")}>
       {target && (
         <View style={{ gap:10 }}>
           <TouchableOpacity onPress={() => onConfirm()}

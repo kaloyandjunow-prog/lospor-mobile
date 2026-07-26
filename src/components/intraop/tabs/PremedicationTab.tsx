@@ -1,5 +1,7 @@
 import { View, Text, ScrollView, TouchableOpacity } from "react-native"
 import type { ClinicalStringKey } from "@/lib/preferences-context"
+import { usePreferences } from "@/lib/preferences-context"
+import { displayOptionEntry } from "@/lib/clinical-display"
 
 export function PremedicationTab({
   premedEveningText, setPremedEveningText, premedMorningText, setPremedMorningText, savePremedication,
@@ -13,6 +15,7 @@ export function PremedicationTab({
   tc: (key: ClinicalStringKey) => string
   openPremedPicker: (phase: "evening" | "morning") => void
 }) {
+  const { language } = usePreferences()
   return (
     <ScrollView style={{ flex:1 }} contentContainerStyle={{ padding:16, paddingBottom:40 }}>
       {/* ── Evening ─────────────────────────────────────────── */}
@@ -39,7 +42,7 @@ export function PremedicationTab({
               <View style={{ flexDirection:"row", flexWrap:"wrap", gap:8 }}>
                 {items.map(item => (
                   <View key={item} style={{ flexDirection:"row", alignItems:"center", gap:6, paddingHorizontal:10, paddingVertical:6, borderRadius:999, backgroundColor:"#1e3a5f22", borderWidth:1, borderColor:"#3b82f655" }}>
-                    <Text style={{ color:"#93c5fd", fontSize:12, fontWeight:"600" }}>{item}</Text>
+                    <Text style={{ color:"#93c5fd", fontSize:12, fontWeight:"600" }}>{displayOptionEntry("PREMED_DRUG", item, language)}</Text>
                     <TouchableOpacity onPress={() => {
                       const next = items.filter(i => i !== item).join("; ")
                       setPremedEveningText(next)
@@ -81,7 +84,7 @@ export function PremedicationTab({
               <View style={{ flexDirection:"row", flexWrap:"wrap", gap:8 }}>
                 {items.map(item => (
                   <View key={item} style={{ flexDirection:"row", alignItems:"center", gap:6, paddingHorizontal:10, paddingVertical:6, borderRadius:999, backgroundColor:"#1e3a5f22", borderWidth:1, borderColor:"#3b82f655" }}>
-                    <Text style={{ color:"#93c5fd", fontSize:12, fontWeight:"600" }}>{item}</Text>
+                    <Text style={{ color:"#93c5fd", fontSize:12, fontWeight:"600" }}>{displayOptionEntry("PREMED_DRUG", item, language)}</Text>
                     <TouchableOpacity onPress={() => {
                       const next = items.filter(i => i !== item).join("; ")
                       setPremedMorningText(next)

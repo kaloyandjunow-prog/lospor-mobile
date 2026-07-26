@@ -1,5 +1,7 @@
 import { Text, TouchableOpacity, View } from "react-native"
 import { Sheet } from "./Sheet"
+import { displayClinicalCode } from "@/lib/clinical-display"
+import { usePreferences } from "@/lib/preferences-context"
 
 export type ComplicationGroup = {
   id: string
@@ -34,6 +36,7 @@ export function ComplicationsSheet({
   onClear,
   onSave,
 }: Props) {
+  const { language } = usePreferences()
   return (
     <Sheet visible={visible} onClose={onClose} title="Complications" full>
       <View style={{ gap:4 }}>
@@ -52,7 +55,7 @@ export function ComplicationsSheet({
                 <View style={{ flexDirection:"row", alignItems:"center", gap:8 }}>
                   <Text style={{ color: groupSelected.length > 0 ? "#f87171" : "#cbd5e1",
                     fontSize:13, fontWeight:"700" }}>
-                    {titleForGroup(group)}
+                    {displayClinicalCode("complication", group.id, language, { label: titleForGroup(group) })}
                   </Text>
                   {groupSelected.length > 0 && (
                     <View style={{ paddingHorizontal:6, paddingVertical:2, borderRadius:6,
@@ -84,7 +87,7 @@ export function ComplicationsSheet({
                           {checked && <Text style={{ color:"#fff", fontSize:9, fontWeight:"900" }}>x</Text>}
                         </View>
                         <Text style={{ color: checked ? "#fca5a5" : "#94a3b8",
-                          fontSize:12, fontWeight: checked ? "700" : "500" }}>{item}</Text>
+                          fontSize:12, fontWeight: checked ? "700" : "500" }}>{displayClinicalCode("complication", item, language, { label: item })}</Text>
                       </TouchableOpacity>
                     )
                   })}

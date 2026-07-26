@@ -23,6 +23,7 @@ import { colors, withAlpha } from "@/theme/colors"
 import { AppHeader } from "@/components/AppHeader"
 import { MedicalDisclaimer } from "@/components/MedicalDisclaimer"
 import { useOptionLibrary, type LibraryOption } from "@/lib/use-option-library"
+import { displayClinicalCode, displayOption } from "@/lib/clinical-display"
 import {
   optionMatchesPreference,
   optionPreferenceKey,
@@ -156,7 +157,7 @@ function FavouritePicker({
   onClose: () => void
   onSave: (next: string[]) => void
 }) {
-  const { t } = usePreferences()
+  const { t, language } = usePreferences()
   const [query, setQuery] = useState("")
   const [draft, setDraft] = useState<string[]>(selected)
 
@@ -167,7 +168,7 @@ function FavouritePicker({
   }, [selected, visible])
 
   const filtered = query.trim()
-    ? options.filter(o => `${o.label} ${o.group ?? ""}`.toLowerCase().includes(query.trim().toLowerCase()))
+    ? options.filter(o => `${o.label} ${displayOption(category, o, language)} ${o.group ?? ""} ${o.group ? displayClinicalCode("optionGroup", o.group, language, { label: o.group }) : ""}`.toLowerCase().includes(query.trim().toLowerCase()))
     : options
 
   function toggle(option: LibraryOption) {
@@ -236,9 +237,9 @@ function FavouritePicker({
                 >
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: checked ? colors.primary : colors.textPrimary, fontSize: 14, fontWeight: checked ? "800" : "500" }}>
-                      {item.label}
+                      {displayOption(category, item, language)}
                     </Text>
-                    {item.group ? <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 1 }}>{item.group}</Text> : null}
+                    {item.group ? <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 1 }}>{displayClinicalCode("optionGroup", item.group, language, { label: item.group })}</Text> : null}
                   </View>
                   <Text style={{ color: checked ? colors.primary : colors.textMuted, fontSize: 16, fontWeight: "900" }}>
                     {checked ? "Selected" : "+"}

@@ -1,6 +1,8 @@
 import { Platform, Text, TextInput, TouchableOpacity, View } from "react-native"
 import type { PremDrug } from "@/lib/intraop-types"
 import { Sheet } from "./Sheet"
+import { displayClinicalCode } from "@/lib/clinical-display"
+import { usePreferences } from "@/lib/preferences-context"
 
 type PremedCategory = {
   category: string
@@ -49,6 +51,10 @@ export function PremedicationLibrarySheet({
   onRouteChange,
   onAdd,
 }: Props) {
+  const { language } = usePreferences()
+  const drugLabel = (name: string) => displayClinicalCode("option:PREMED_DRUG", name, language, { label: name })
+  const groupLabel = (name: string) => displayClinicalCode("optionGroup", name, language, { label: name })
+
   return (
     <Sheet visible={visible} onClose={onClose} title={`Premedication library - ${phase}`} full>
       {!drug ? (
@@ -62,7 +68,7 @@ export function PremedicationLibrarySheet({
                   onPress={() => onToggleCategory(cat.category)}
                   style={{ flexDirection:"row", justifyContent:"space-between", alignItems:"center",
                     paddingHorizontal:14, paddingVertical:12, backgroundColor:"#111820" }}>
-                  <Text style={{ color:"#cbd5e1", fontSize:13, fontWeight:"700" }}>{cat.category}</Text>
+                  <Text style={{ color:"#cbd5e1", fontSize:13, fontWeight:"700" }}>{groupLabel(cat.category)}</Text>
                   <Text style={{ color:"#64748b" }}>{open ? "^" : "v"}</Text>
                 </TouchableOpacity>
                 {open && (
@@ -73,7 +79,7 @@ export function PremedicationLibrarySheet({
                         onPress={() => onSelectDrug(item)}
                         style={{ paddingHorizontal:12, paddingVertical:8, borderRadius:9,
                           backgroundColor:"#1e2d40", borderWidth:1, borderColor:"#2a3a50" }}>
-                        <Text style={{ color:"#93c5fd", fontSize:12, fontWeight:"700" }}>{item.name}</Text>
+                        <Text style={{ color:"#93c5fd", fontSize:12, fontWeight:"700" }}>{drugLabel(item.name)}</Text>
                         <Text style={{ color:"#64748b", fontSize:10, marginTop:2 }}>{item.dose} {item.unit}</Text>
                       </TouchableOpacity>
                     ))}
@@ -88,7 +94,7 @@ export function PremedicationLibrarySheet({
           <TouchableOpacity onPress={onBackToLibrary}>
             <Text style={{ color:"#94a3b8", fontSize:13 }}>{backLabel}</Text>
           </TouchableOpacity>
-          <Text style={{ color:"#f8fafc", fontSize:16, fontWeight:"700" }}>{drug.name}</Text>
+          <Text style={{ color:"#f8fafc", fontSize:16, fontWeight:"700" }}>{drugLabel(drug.name)}</Text>
 
           <View>
             <Text style={{ color:"#64748b", fontSize:11, fontWeight:"700", textTransform:"uppercase",

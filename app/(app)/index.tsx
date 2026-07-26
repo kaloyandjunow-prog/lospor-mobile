@@ -20,7 +20,8 @@ import { useLiveRefresh } from "@/lib/use-live-refresh"
 import { getQueuedCasePatchSummary, getQueuedCaseIds, clearAllQueuedPatchesForCase } from "@/lib/offline-case-patches"
 import { getAllLocalCaseDrafts, type LocalCaseDraft } from "@/lib/local-case-store"
 import { usePreferences } from "@/lib/preferences-context"
-import { ASABadge, DispositionBadge, StatusBadge } from "@/components/ui"
+import { displayClinicalCode } from "@/lib/clinical-display"
+import { ASABadge, DispositionBadge, StatusBadge, statusLabel } from "@/components/ui"
 import { ScreenState, WorkflowPill } from "@/components/clinical-ui"
 import { AppHeader } from "@/components/AppHeader"
 import { colors, withAlpha } from "@/theme/colors"
@@ -697,7 +698,7 @@ const tabCounts: Record<FilterTab, number> = {
                       >
                         <View>
                           <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "600" }}>{c.name}</Text>
-                          <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>{c.role}</Text>
+                          <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>{displayClinicalCode("userRole", c.role, language)}</Text>
                         </View>
                         {actionLoading ? <ActivityIndicator size="small" color={colors.primary} /> : null}
                       </TouchableOpacity>
@@ -772,7 +773,7 @@ const tabCounts: Record<FilterTab, number> = {
                       {getCaseLabel(c)}
                     </Text>
                     <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
-                      {c.caseCode} · {c.status}
+                      {c.caseCode} · {statusLabel(c.status, language)}
                     </Text>
                   </TouchableOpacity>
                 ))}

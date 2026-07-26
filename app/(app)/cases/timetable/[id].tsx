@@ -15,6 +15,7 @@ import {
 } from "@/lib/summary-timetable-model"
 import { PALETTES } from "@/components/case-detail/SummaryTimetable"
 import { TimetablePanelSvg } from "@/components/case-detail/TimetablePanelSvg"
+import { displayClinicalCode, localizeSummaryTimetableModel } from "@/lib/clinical-display"
 
 // Read-only timetable viewer for FINISHED cases — the in-app twin of the
 // printed record's intraop page: stacked time panels (same planPanels split),
@@ -52,8 +53,14 @@ export default function TimetableViewerScreen() {
 
   const kev = caseData?.intraop?.keyEvents
   const startISO = caseData?.intraop?.startTime
-  const model = useMemo(() => buildSummaryTimetableModel(kev, language === "bg" ? "bg" : "en"), [kev, language])
-  const drugLog = useMemo(() => buildDrugLogEntries(kev, startISO), [kev, startISO])
+  const model = useMemo(() => localizeSummaryTimetableModel(
+    buildSummaryTimetableModel(kev, language === "bg" ? "bg" : "en"),
+    language,
+  ), [kev, language])
+  const drugLog = useMemo(() => buildDrugLogEntries(kev, startISO).map(drug => ({
+    ...drug,
+    name: displayClinicalCode("option:INTRAOP_DRUG", drug.name, language, { label: drug.name }),
+  })), [kev, language, startISO])
   const panels = useMemo(
     () => (model.hasData ? planPanels({ totalCols: model.nCols }) : []),
     [model],
@@ -95,7 +102,7 @@ export default function TimetableViewerScreen() {
 
   const contWord = language === "bg" ? "ПРОДЪЛЖЕНИЕ" : "CONTINUED"
   const sampledNote = (m: number) => language === "bg"
-    ? `Виталните в таблицата са през ${m} мин · графиката, лекарствата и събитията са в точно записаното време`
+    ? `Жизнените показатели в таблицата са през ${m} мин · графиката, лекарствата и събитията са в точно записаното време`
     : `Vitals table sampled q${m}min · graph, drugs and events at exact recorded times`
 
   const zoomBtn = (label: string, onPress: () => void, disabled: boolean) => (

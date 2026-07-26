@@ -6,6 +6,7 @@ import {
   colToHHMM,
 } from "@/lib/summary-timetable-model"
 import { usePreferences } from "@/lib/preferences-context"
+import { localizeSummaryTimetableModel } from "@/lib/clinical-display"
 
 // Read-only timetable card for the case summary — the mobile twin of the
 // printed record's intraop timetable (same projected keyEvents blob the web
@@ -42,7 +43,10 @@ export function SummaryTimetable({ keyEvents, startISO, onPress, actionLabel }: 
   const { theme, tc, language } = usePreferences()
   const P = theme === "dark" ? PALETTES.dark : PALETTES.light
   const model = useMemo(
-    () => buildSummaryTimetableModel(keyEvents, language === "bg" ? "bg" : "en"),
+    () => localizeSummaryTimetableModel(
+      buildSummaryTimetableModel(keyEvents, language === "bg" ? "bg" : "en"),
+      language,
+    ),
     [keyEvents, language],
   )
   if (!model.hasData) return null

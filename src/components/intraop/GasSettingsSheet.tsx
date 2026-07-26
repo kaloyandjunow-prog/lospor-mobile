@@ -1,6 +1,8 @@
 import { Text, TouchableOpacity, View } from "react-native"
 import { VitalStepper } from "@/components/VitalStepper"
 import { Sheet } from "./Sheet"
+import { displayClinicalCode } from "@/lib/clinical-display"
+import { usePreferences } from "@/lib/preferences-context"
 
 type CarrierGas = string | null
 
@@ -35,6 +37,8 @@ export function GasSettingsSheet({
   onFio2Change,
   onConfirm,
 }: Props) {
+  const { language } = usePreferences()
+
   return (
     <Sheet visible={visible} onClose={onClose} title={isEditing ? "Edit gas settings" : "Start gas settings"}>
       <View style={{ gap: 16 }}>
@@ -49,11 +53,11 @@ export function GasSettingsSheet({
           <Text style={{ color:"#94a3b8", fontSize:12, fontWeight:"700", marginBottom:8 }}>Carrier gas</Text>
           <View style={{ flexDirection:"row", gap:8 }}>
             {CARRIER_GAS_OPTIONS.map(g => (
-              <TouchableOpacity key={g.label} onPress={() => onCarrierGasChange(g.key)}
+              <TouchableOpacity key={g.key ?? "o2"} onPress={() => onCarrierGasChange(g.key)}
                 style={{ flex:1, paddingVertical:11, borderRadius:10, alignItems:"center", borderWidth:1.5,
                   borderColor: carrierGas === g.key ? "#6366f1" : "#1e2d40",
                   backgroundColor: carrierGas === g.key ? "#4338ca" : "#111111" }}>
-                <Text style={{ color: carrierGas === g.key ? "#fff" : "#64748b", fontSize:13, fontWeight:"800" }}>{g.label}</Text>
+                <Text style={{ color: carrierGas === g.key ? "#fff" : "#64748b", fontSize:13, fontWeight:"800" }}>{displayClinicalCode("carrierGas", g.key ?? "o2", language, { label: g.label })}</Text>
               </TouchableOpacity>
             ))}
           </View>

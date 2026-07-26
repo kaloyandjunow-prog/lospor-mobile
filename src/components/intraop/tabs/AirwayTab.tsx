@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, TextInput } from "react-nativ
 import * as Haptics from "expo-haptics"
 import { CL_GRADES, AIRWAY_HAS_SUBOPTIONS, VENT_ASSISTED, VENT_CONTROLLED } from "@/lib/airway-ventilation"
 import { usePreferences } from "@/lib/preferences-context"
+import { displayClinicalCode } from "@/lib/clinical-display"
 import {
   DLT_SIDES,
   DLT_SIZES,
@@ -65,13 +66,14 @@ export function AirwayTab({
   awVentExpanded: "assisted" | "controlled" | null
   setAwVentExpanded: (v: "assisted" | "controlled" | null) => void
 }) {
-  const { tc } = usePreferences()
+  const { tc, language } = usePreferences()
+  const deviceName = (code: string) => airwayDevices.find(device => device.code === code)?.label ?? code
   const deviceSummary: Record<string, string | null> = {
-    LMA:               awLmaSize ? `LMA ${awLmaSize}` : null,
-    ORAL_ETT:          awOralTubeSize && awOralCuffed != null ? `Oral ETT ${awOralTubeSize} ${awOralCuffed ? tc("awCuffed") : tc("awUncuffed")}` : null,
-    NASAL_ETT:         awNasalTubeSize && awNasalCuffed != null ? `Nasal ETT ${awNasalTubeSize} ${awNasalCuffed ? tc("awCuffed") : tc("awUncuffed")}` : null,
-    DOUBLE_LUMEN_TUBE: (awDltType || awDltSide || awDltSize) ? `DLT${awDltType ? " "+awDltType : ""}${awDltSide ? " "+awDltSide : ""}${awDltSize ? " "+awDltSize+"Fr" : ""}` : null,
-    ENDOBRONCHIAL_TUBE:awEbSize ? `EB ${awEbSize}mm` : null,
+    LMA:               awLmaSize ? `${deviceName("LMA")} ${awLmaSize}` : null,
+    ORAL_ETT:          awOralTubeSize && awOralCuffed != null ? `${deviceName("ORAL_ETT")} ${awOralTubeSize} ${awOralCuffed ? tc("awCuffed") : tc("awUncuffed")}` : null,
+    NASAL_ETT:         awNasalTubeSize && awNasalCuffed != null ? `${deviceName("NASAL_ETT")} ${awNasalTubeSize} ${awNasalCuffed ? tc("awCuffed") : tc("awUncuffed")}` : null,
+    DOUBLE_LUMEN_TUBE: (awDltType || awDltSide || awDltSize) ? `${deviceName("DOUBLE_LUMEN_TUBE")}${awDltType ? " "+awDltType : ""}${awDltSide ? " "+displayClinicalCode("clinicalAttribute", awDltSide.toLowerCase(), language) : ""}${awDltSize ? " "+awDltSize+"Fr" : ""}` : null,
+    ENDOBRONCHIAL_TUBE:awEbSize ? `${deviceName("ENDOBRONCHIAL_TUBE")} ${awEbSize}mm` : null,
   }
   function clearDeviceFields(code: string) {
     switch (code) {
@@ -188,7 +190,7 @@ export function AirwayTab({
             {awExpandedDevice === "LMA" && (
               <View style={{ backgroundColor:"#0d1a2d", borderRadius:12, borderWidth:1,
                 borderColor:"#1e3a5f", padding:12, marginBottom:12 }}>
-                <Text style={{ color:"#93c5fd", fontSize:12, fontWeight:"700", marginBottom:10 }}>LMA</Text>
+                <Text style={{ color:"#93c5fd", fontSize:12, fontWeight:"700", marginBottom:10 }}>{deviceName("LMA")}</Text>
                 <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase",
                   letterSpacing:1, marginBottom:6 }}>{tc("awSize")}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -210,7 +212,7 @@ export function AirwayTab({
             {awExpandedDevice === "ORAL_ETT" && (
               <View style={{ backgroundColor:"#0d1a2d", borderRadius:12, borderWidth:1,
                 borderColor:"#1e3a5f", padding:12, marginBottom:12 }}>
-                <Text style={{ color:"#93c5fd", fontSize:12, fontWeight:"700", marginBottom:10 }}>Oral ETT</Text>
+                <Text style={{ color:"#93c5fd", fontSize:12, fontWeight:"700", marginBottom:10 }}>{deviceName("ORAL_ETT")}</Text>
                 <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase",
                   letterSpacing:1, marginBottom:6 }}>{tc("awTubeSizeMmId")}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom:10 }}>
@@ -245,7 +247,7 @@ export function AirwayTab({
             {awExpandedDevice === "NASAL_ETT" && (
               <View style={{ backgroundColor:"#0d1a2d", borderRadius:12, borderWidth:1,
                 borderColor:"#1e3a5f", padding:12, marginBottom:12 }}>
-                <Text style={{ color:"#93c5fd", fontSize:12, fontWeight:"700", marginBottom:10 }}>Nasal ETT</Text>
+                <Text style={{ color:"#93c5fd", fontSize:12, fontWeight:"700", marginBottom:10 }}>{deviceName("NASAL_ETT")}</Text>
                 <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase",
                   letterSpacing:1, marginBottom:6 }}>{tc("awTubeSizeMmId")}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom:10 }}>
@@ -280,7 +282,7 @@ export function AirwayTab({
             {awExpandedDevice === "DOUBLE_LUMEN_TUBE" && (
               <View style={{ backgroundColor:"#0d1a2d", borderRadius:12, borderWidth:1,
                 borderColor:"#1e3a5f", padding:12, marginBottom:12 }}>
-                <Text style={{ color:"#93c5fd", fontSize:12, fontWeight:"700", marginBottom:10 }}>Double Lumen Tube</Text>
+                <Text style={{ color:"#93c5fd", fontSize:12, fontWeight:"700", marginBottom:10 }}>{deviceName("DOUBLE_LUMEN_TUBE")}</Text>
                 <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{tc("awDltType")}</Text>
                 <View style={{ flexDirection:"row", gap:8, marginBottom:10 }}>
                   {DLT_TYPES.map(t => (
@@ -299,7 +301,7 @@ export function AirwayTab({
                       style={{ flex:1, paddingVertical:9, borderRadius:8, alignItems:"center",
                         backgroundColor: awDltSide === s ? "#1e3a5f" : "#0a0f1a",
                         borderWidth:1, borderColor:"#2a3a4a" }}>
-                      <Text style={{ color: awDltSide === s ? "#93c5fd" : "#64748b", fontWeight:"700", fontSize:13 }}>{s}</Text>
+                      <Text style={{ color: awDltSide === s ? "#93c5fd" : "#64748b", fontWeight:"700", fontSize:13 }}>{displayClinicalCode("clinicalAttribute", s.toLowerCase(), language, { label: s })}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -323,7 +325,7 @@ export function AirwayTab({
             {awExpandedDevice === "ENDOBRONCHIAL_TUBE" && (
               <View style={{ backgroundColor:"#0d1a2d", borderRadius:12, borderWidth:1,
                 borderColor:"#1e3a5f", padding:12, marginBottom:12 }}>
-                <Text style={{ color:"#93c5fd", fontSize:12, fontWeight:"700", marginBottom:10 }}>Endobronchial Tube</Text>
+                <Text style={{ color:"#93c5fd", fontSize:12, fontWeight:"700", marginBottom:10 }}>{deviceName("ENDOBRONCHIAL_TUBE")}</Text>
                 <Text style={{ color:"#64748b", fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{tc("awSizeMmId")}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View style={{ flexDirection:"row", gap:6 }}>
@@ -417,7 +419,7 @@ export function AirwayTab({
                 style={{ paddingHorizontal:12, paddingVertical:7, borderRadius:10,
                   backgroundColor: on ? "#0f2a1a" : "#111111",
                   borderWidth:1, borderColor: on ? "#22c55e" : "#1e2d40" }}>
-                <Text style={{ color: on ? "#86efac" : "#64748b", fontSize:11, fontWeight:"700" }}>{label}</Text>
+                <Text style={{ color: on ? "#86efac" : "#64748b", fontSize:11, fontWeight:"700" }}>{displayClinicalCode("ventilationMode", v, language, { label })}</Text>
               </TouchableOpacity>
             )
           })}
@@ -438,7 +440,7 @@ export function AirwayTab({
                 style={{ paddingHorizontal:12, paddingVertical:7, borderRadius:10,
                   backgroundColor: on ? "#0f2a1a" : "#111111",
                   borderWidth:1, borderColor: on ? "#22c55e" : "#1e2d40" }}>
-                <Text style={{ color: on ? "#86efac" : "#64748b", fontSize:11, fontWeight:"700" }}>{label}</Text>
+                <Text style={{ color: on ? "#86efac" : "#64748b", fontSize:11, fontWeight:"700" }}>{displayClinicalCode("ventilationMode", v, language, { label })}</Text>
               </TouchableOpacity>
             )
           })}

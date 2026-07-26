@@ -1,6 +1,6 @@
 // Shared value types for the intraop screen and its extracted pieces.
 
-export type ClinicalEventDef = { label: string; color: string }
+export type ClinicalEventDef = { code?: string; label: string; labelBg?: string | null; color: string }
 
 export type VascularEntry = {
   id: string

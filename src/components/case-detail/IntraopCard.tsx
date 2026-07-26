@@ -1,7 +1,8 @@
-﻿import React from "react"
+import React from "react"
 import { View, Text } from "react-native"
 import { colors, withAlpha } from "@/theme/colors"
-import type { ClinicalStringKey, TranslationKey } from "@/lib/preferences-context"
+import { usePreferences, type ClinicalStringKey, type TranslationKey } from "@/lib/preferences-context"
+import { displayClinicalCode, displayOptionEntry, displayOptionPath } from "@/lib/clinical-display"
 import { SummaryCard, InfoRow, Chip, ChipRow, Divider } from "./CaseDetailPrimitives"
 import {
   MONITOR_MAP,
@@ -48,6 +49,8 @@ function legacyKeyEventsToSummaryLog(keyEvents: unknown): KeyEvent[] {
 }
 
 export function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intraop"]; preop?: CaseData["preop"]; tc: (key: ClinicalStringKey) => string; t: (key: TranslationKey) => string }) {
+  const { language } = usePreferences()
+
   if (!intraop) {
     return (
       <SummaryCard title={tc("cardIntraop")}>
@@ -98,16 +101,18 @@ export function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intr
     return parts.length ? `≈ ${parts.join(" / ")}` : null
   })()
 
-  const airwayStr = formatAirway(intraop)
-  const airwayTools = (intraop.airwayTools ?? []).map(airwayToolLabel)
+  const airwayStr = formatAirway(intraop, language)
+  const airwayTools = (intraop.airwayTools ?? []).map(code => airwayToolLabel(code, language))
 
   const monitors = MONITOR_MAP.filter(m => {
     const val = (intraop as Record<string, unknown>)[m.key as string]
     return !!val
   })
 
-  const positions = (intraop.positions ?? []).map(positionLabel)
-  const ventText = (intraop.ventilationModes ?? []).join(" + ")
+  const positions = (intraop.positions ?? []).map(code => positionLabel(code, language))
+  const ventText = (intraop.ventilationModes ?? [])
+    .map(mode => displayClinicalCode("ventilationMode", mode, language))
+    .join(" + ")
 
   let timingStr = ""
   if (intraop.startTime && intraop.endTime) {
@@ -117,7 +122,9 @@ export function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intr
     timingStr = formatDuration(intraop.durationMinutes)
   }
 
-  const volatileStr = intraop.volatileAgent ?? null
+  const volatileStr = intraop.volatileAgent
+    ? displayClinicalCode("option:INHALATIONAL_AGENT", intraop.volatileAgent, language, { label: intraop.volatileAgent })
+    : null
 
   return (
     <SummaryCard title={tc("cardIntraop")}>
@@ -132,7 +139,7 @@ export function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intr
           </Text>
           <ChipRow>
             {intraop.techniques!.map((t, i) => (
-              <Chip key={`tech-${i}`} label={techniqueLabel(t)} color={colors.primary} />
+              <Chip key={`tech-${i}`} label={techniqueLabel(t, language)} color={colors.primary} />
             ))}
           </ChipRow>
         </View>
@@ -175,7 +182,13 @@ export function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intr
             {tc("summaryMonitoring")}
           </Text>
           <ChipRow>
-            {monitors.map(m => <Chip key={String(m.key)} label={m.label} color={colors.primary} />)}
+            {monitors.map(m => (
+              <Chip
+                key={String(m.key)}
+                label={displayClinicalCode("option:MONITORING", String(m.key), language)}
+                color={colors.primary}
+              />
+            ))}
           </ChipRow>
         </View>
       )}
@@ -191,7 +204,16 @@ export function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intr
           </Text>
           <ChipRow>
             {intraop.vascularAccesses!.map((va, i) => {
-              const lbl = `${va.siteLabel} ${va.size}${va.sizeUnit}${va.lumens ? ` ${va.lumens}L` : ""}${va.preexisting ? " (pre-existing)" : ""}`
+              const siteCode = typeof va.site === "string" ? va.site : null
+              const site = siteCode
+                ? displayOptionPath("VASCULAR_ACCESS", siteCode, language)
+                : displayClinicalCode("option:VASCULAR_ACCESS", va.siteLabel, language, {
+                    label: va.siteLabel,
+                  })
+              const preexisting = va.preexisting
+                ? ` (${displayClinicalCode("clinicalAttribute", "preexisting", language)})`
+                : ""
+              const lbl = `${site} ${va.size}${va.sizeUnit}${va.lumens ? ` ${va.lumens}L` : ""}${preexisting}`
               return <Chip key={`va-${i}`} label={lbl} color={colors.textSecondary} />
             })}
           </ChipRow>
@@ -200,8 +222,8 @@ export function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intr
 
       <Divider />
 
-      {intraop.premedicationEvening ? <InfoRow label={tc("summaryPremedEve")} value={intraop.premedicationEvening} /> : null}
-      {intraop.premedicationMorning ? <InfoRow label={tc("summaryPremedAM")} value={intraop.premedicationMorning} /> : null}
+      {intraop.premedicationEvening ? <InfoRow label={tc("summaryPremedEve")} value={displayOptionEntry("PREMED_DRUG", intraop.premedicationEvening, language)} /> : null}
+      {intraop.premedicationMorning ? <InfoRow label={tc("summaryPremedAM")} value={displayOptionEntry("PREMED_DRUG", intraop.premedicationMorning, language)} /> : null}
 
       {/* Drug totals — bolus */}
       {drugTotals.length > 0 && (
@@ -211,7 +233,7 @@ export function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intr
           </Text>
           {drugTotals.map((d, i) => (
             <View key={`dt-${i}`} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: withAlpha(colors.border, "66") }}>
-              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{d.name}</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{displayClinicalCode("option:INTRAOP_DRUG", d.name, language, { label: d.name })}</Text>
               <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: "700" }}>{d.total} {d.unit}</Text>
             </View>
           ))}
@@ -226,7 +248,7 @@ export function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intr
           </Text>
           {infusionTotals.map((d, i) => (
             <View key={`it-${i}`} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: withAlpha(colors.border, "66") }}>
-              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{d.name}</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{displayClinicalCode("option:INTRAOP_INFUSION", d.name, language, { label: d.name })}</Text>
               <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: "700" }}>
                 {d.total} {d.unit}
                 {d.weightUsed != null ? <Text style={{ color: colors.warning, fontSize: 10 }}> ≈</Text> : null}
@@ -254,7 +276,7 @@ export function IntraopCard({ intraop, preop, tc, t }: { intraop: CaseData["intr
               paddingVertical: 5, borderBottomWidth: 1,
               borderBottomColor: withAlpha(colors.border, "66"),
             }}>
-              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{inf.name}</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{displayClinicalCode("option:INTRAOP_INFUSION", inf.name, language, { label: inf.name })}</Text>
               <Text style={{ color: colors.agent, fontSize: 12, fontWeight: "700" }}>
                 {inf.rate} {inf.unit}
               </Text>

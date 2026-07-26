@@ -8,7 +8,7 @@ import {
   webTimetableToLog,
 } from "@/lib/intraop-projection"
 import { mergeLogWithPendingIntraopEvents } from "@/lib/pending-intraop-events"
-import { hasAdvancedMonitoringSelected, selectedMonitoringLabelsFromRecord } from "@/lib/intraop-monitoring-defaults"
+import { hasAdvancedMonitoringSelected, selectedMonitoringFieldsFromRecord } from "@/lib/intraop-monitoring-defaults"
 import { buildIntraopPreopSummary } from "@/lib/intraop-preop-summary"
 import { expandedVentilationPanelForModes } from "@/lib/airway-ventilation"
 import type { LogEvent } from "@/lib/intraop-log-event"
@@ -99,7 +99,7 @@ export function buildLoadedIntraopCaseState(
       finalizedAt: data.finalizedAt ?? null,
     },
     positions: Array.isArray(data.intraop?.positions) ? data.intraop.positions as string[] : undefined,
-    monitoring: selectedMonitoringLabelsFromRecord(monitoringOptions, data.intraop),
+    monitoring: selectedMonitoringFieldsFromRecord(monitoringOptions, data.intraop),
     preop: buildIntraopPreopSummary(data.preop),
     timing: {
       monthYear: data.intraop?.monthYear ?? defaultMonthYear(),

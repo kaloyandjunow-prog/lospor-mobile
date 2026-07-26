@@ -9,9 +9,9 @@ import {
   isGeneralAnesthesiaCase,
   isNeuraxialTechnique,
   isTivaTechnique,
-  monitoringDefaultLabelsForTechniques,
+  monitoringDefaultFieldsForTechniques,
   requiredMonitoringFieldsForTechniques,
-  selectedMonitoringLabelsFromRecord,
+  selectedMonitoringFieldsFromRecord,
 } from "./intraop-monitoring-defaults"
 
 describe("intraop monitoring defaults", () => {
@@ -70,47 +70,47 @@ describe("intraop monitoring defaults", () => {
     expect(isGeneralAnesthesiaCase(["SPINAL_SINGLE_SHOT"])).toBe(false)
   })
 
-  it("maps techniques to additive monitoring labels", () => {
-    expect(monitoringDefaultLabelsForTechniques(["GENERAL_TIVA"])).toEqual([
-      "ECG",
-      "SpO₂",
-      "NBP",
-      "Capnography (EtCO₂)",
-      "Temperature",
-      "BIS",
+  it("maps techniques to additive monitoring field IDs", () => {
+    expect(monitoringDefaultFieldsForTechniques(["GENERAL_TIVA"])).toEqual([
+      "ecg",
+      "spO2Monitor",
+      "nbpMonitor",
+      "etco2Monitor",
+      "tempMonitor",
+      "bis",
     ])
-    expect(monitoringDefaultLabelsForTechniques(["SPINAL_SINGLE_SHOT"])).toEqual([
-      "ECG",
-      "SpO₂",
-      "NBP",
-      "Capnography (EtCO₂)",
+    expect(monitoringDefaultFieldsForTechniques(["SPINAL_SINGLE_SHOT"])).toEqual([
+      "ecg",
+      "spO2Monitor",
+      "nbpMonitor",
+      "etco2Monitor",
     ])
   })
 
-  it("adds monitoring labels without removing current selections", () => {
-    expect(addMonitoringDefaultsForTechniques(["GENERAL_INHALATION"], ["Custom monitor", "ECG"])).toEqual([
-      "Custom monitor",
-      "ECG",
-      "SpO₂",
-      "NBP",
-      "Capnography (EtCO₂)",
-      "Temperature",
+  it("adds monitoring fields without removing current selections", () => {
+    expect(addMonitoringDefaultsForTechniques(["GENERAL_INHALATION"], ["customMonitor", "ecg"])).toEqual([
+      "customMonitor",
+      "ecg",
+      "spO2Monitor",
+      "nbpMonitor",
+      "etco2Monitor",
+      "tempMonitor",
     ])
-    expect(addMonitoringDefaultsForTechniques(["LOCAL"], ["Custom monitor"])).toBeNull()
+    expect(addMonitoringDefaultsForTechniques(["LOCAL"], ["customMonitor"])).toBeNull()
   })
 
-  it("maps selected monitoring labels to field booleans", () => {
+  it("maps selected monitoring fields to field booleans", () => {
     expect(buildMonitoringSelectionPatch([
       { field: "ecg", label: "ECG" },
       { field: "bis", label: "BIS" },
-    ], ["BIS"])).toEqual({
+    ], ["bis"])).toEqual({
       ecg: false,
       bis: true,
     })
   })
 
-  it("maps stored monitoring booleans back to selected labels", () => {
-    expect(selectedMonitoringLabelsFromRecord([
+  it("maps stored monitoring booleans back to field IDs", () => {
+    expect(selectedMonitoringFieldsFromRecord([
       { field: "ecg", label: "ECG" },
       { field: "bis", label: "BIS" },
       { field: "tempMonitor", label: "Temperature" },
@@ -118,8 +118,8 @@ describe("intraop monitoring defaults", () => {
       ecg: true,
       bis: false,
       tempMonitor: 1,
-    })).toEqual(["ECG", "Temperature"])
-    expect(selectedMonitoringLabelsFromRecord([{ field: "ecg", label: "ECG" }], null)).toEqual([])
+    })).toEqual(["ecg", "tempMonitor"])
+    expect(selectedMonitoringFieldsFromRecord([{ field: "ecg", label: "ECG" }], null)).toEqual([])
   })
 
   it("detects selected advanced monitoring fields", () => {
@@ -135,21 +135,21 @@ describe("intraop monitoring defaults", () => {
   it("builds technique patches without monitoring changes when no defaults are required", () => {
     expect(buildTechniqueMonitoringUpdate([
       { field: "ecg", label: "ECG" },
-    ], ["Custom"], ["LOCAL"])).toEqual({
+    ], ["customMonitor"], ["LOCAL"])).toEqual({
       patch: { techniques: ["LOCAL"] },
       monitoring: null,
     })
   })
 
-  it("builds technique monitoring patches and preserves current labels", () => {
+  it("builds technique monitoring patches and preserves current field IDs", () => {
     expect(buildTechniqueMonitoringUpdate([
       { field: "ecg", label: "ECG" },
-      { field: "spO2Monitor", label: "SpO₂" },
+      { field: "spO2Monitor", label: "SpO2" },
       { field: "nbpMonitor", label: "NIBP" },
-      { field: "etco2Monitor", label: "Capnography (EtCO₂)" },
+      { field: "etco2Monitor", label: "Capnography (EtCO2)" },
       { field: "tempMonitor", label: "Temperature" },
       { field: "bis", label: "BIS" },
-    ], ["Custom monitor"], ["GENERAL_TIVA"])).toEqual({
+    ], ["customMonitor"], ["GENERAL_TIVA"])).toEqual({
       patch: {
         techniques: ["GENERAL_TIVA"],
         ecg: true,
@@ -160,13 +160,13 @@ describe("intraop monitoring defaults", () => {
         bis: true,
       },
       monitoring: [
-        "Custom monitor",
-        "ECG",
-        "SpO₂",
-        "NIBP",
-        "Capnography (EtCO₂)",
-        "Temperature",
-        "BIS",
+        "customMonitor",
+        "ecg",
+        "spO2Monitor",
+        "nbpMonitor",
+        "etco2Monitor",
+        "tempMonitor",
+        "bis",
       ],
     })
   })
