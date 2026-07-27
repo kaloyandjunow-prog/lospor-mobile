@@ -1,5 +1,12 @@
 # Changelog - LOSPOR Mobile
 
+## [7.2.1] - 2026-07-27
+
+Security and CI maintenance release. Android `versionCode` is 29.
+
+- Patched transitive Expo, Metro, React Native, and CSS build dependencies
+  reported by `npm audit`.
+- Moved GitHub Actions and CI verification to the Node.js 24 toolchain.
 
 ## [7.2.0] - 2026-07-27
 
