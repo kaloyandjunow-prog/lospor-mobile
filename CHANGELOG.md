@@ -1,5 +1,15 @@
 # Changelog - LOSPOR Mobile
 
+
+## [7.2.0] - 2026-07-27
+
+Research-governance coordination release. Android `versionCode` is 28.
+No APK, AAB, deployment, or production configuration change was made locally.
+
+- Mobile and PWA remain compatible with the action-scoped research contracts
+  and immutable export metadata introduced in Core and the dedicated API.
+- Clinical application behavior is unchanged; this version coordinates the
+  ecosystem contract and release metadata for the research hardening release.
 ## [7.1.0] - 2026-07-27
 
 Clinical display and research-platform release. Android `versionCode` is 27.
