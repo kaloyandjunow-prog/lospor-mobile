@@ -1,5 +1,15 @@
 # Changelog - LOSPOR Mobile
 
+## [7.3.0] - 2026-07-28
+
+Clinical serialization compatibility release. Android `versionCode` is 30.
+
+- Identifies native and PWA requests as v7.3.0 for the API release that
+  serializes clinical writes with finalization and tracks parent revisions.
+- Aligns Expo SDK 56 packages with Expo's supported patch versions; Expo Doctor
+  now passes all checks.
+- No clinical form or offline workflow behavior changed in this client release.
+
 ## [7.2.1] - 2026-07-27
 
 Security and CI maintenance release. Android `versionCode` is 29.
