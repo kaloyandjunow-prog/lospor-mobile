@@ -1,5 +1,30 @@
 # Changelog - LOSPOR Mobile
 
+## [8.0.0] - 2026-08-04
+
+First stable release. Adds pediatric clinical mode and clinical rulesets.
+Android `versionCode` is 31.
+
+Requires `@lospor/core` v8.0.0 and LOSPOR API v8.0.0.
+
+### Added
+
+- Pediatric preop sections and pediatric-aware intraop dosing.
+- Clinical rules are cached on the device, so dosing still resolves offline.
+- Component tests for the dose selector, drug sheet and end-case sheet, plus an
+  encoding guard covering `app/` and `src/`.
+
+### Changed
+
+- Fluid entry now runs through the shared core logic rather than its own copy.
+- Drug profile editing stays web-only by design: mobile consumes rulesets and
+  does not author them.
+
+### Fixed
+
+- Ruleset-hidden fluids are hidden from the picker but kept in the lookup maps,
+  so a fluid recorded earlier in the case still resolves.
+
 ## [7.3.0] - 2026-07-28
 
 Clinical serialization compatibility release. Android `versionCode` is 30.
