@@ -92,10 +92,18 @@ export const autosaveManager = createAutosaveManager({
   outbox: {
     kv,
     sendPatch: async (caseId, section, payload, revision) => {
+      const sectionPayload = payload as Record<string, unknown>
+      const clinicalMode = section === "preop"
+        && (sectionPayload.clinicalMode === "ADULT" || sectionPayload.clinicalMode === "PEDIATRIC")
+        ? sectionPayload.clinicalMode
+        : undefined
       const response = await autosaveFetch(`/api/cases/${caseId}`, {
         method: "PATCH",
         headers: buildSectionRevisionHeaders(section, revision),
-        body: JSON.stringify({ [section]: payload }),
+        body: JSON.stringify({
+          ...(clinicalMode ? { clinicalMode } : {}),
+          [section]: sectionPayload,
+        }),
       })
       const body = await response.json().catch(() => ({}))
       if (!response.ok) {

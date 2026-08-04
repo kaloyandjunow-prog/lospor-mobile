@@ -76,10 +76,14 @@ export function ScoreRow({
 }
 
 // Row of 11 numbered buttons for NRS 0–10
-export function NRSRow({ value, onChange }: { value: number | undefined; onChange: (v: number) => void }) {
+export function NRSRow({ value, onChange, max = 10 }: {
+  value: number | undefined
+  onChange: (v: number) => void
+  max?: number
+}) {
   return (
     <View className="flex-row flex-wrap gap-1.5">
-      {Array.from({ length: 11 }, (_, i) => i).map((n) => {
+      {Array.from({ length: max + 1 }, (_, i) => i).map((n) => {
         const selected = value === n
         return (
           <TouchableOpacity

@@ -1,18 +1,36 @@
 import { View, Text, ScrollView } from "react-native"
 import { calcEquipment } from "@/lib/equipment-calculator"
 import { getMedicationWarnings } from "@/lib/risk-derivation"
+import {
+  pediatricAgeFromPreop,
+  type IntraopPreopSummary,
+} from "@/lib/intraop-preop-summary"
 
-export function EquipmentTab({ preop }: {
-  preop: {
-    age?: number; weight?: number; height?: number; sex?: string
-    mallampati?: string; neckMobility?: string; mouthOpeningCm?: number; cormackLehane?: string
-    currentMedications?: { label: string; atcCode?: string }[]
-  } | null
+export function EquipmentTab({
+  preop,
+}: {
+  preop: IntraopPreopSummary | null
 }) {
-  const hasPreop = preop && (preop.age != null || preop.weight != null || preop.height != null)
-  const cats = hasPreop ? calcEquipment(preop?.age, preop?.weight, preop?.height, preop?.sex, {
-    mallampati: preop?.mallampati, neckMobility: preop?.neckMobility,
-    mouthOpeningCm: preop?.mouthOpeningCm, cormackLehane: preop?.cormackLehane,
+  const pediatricMode = preop?.clinicalMode === "PEDIATRIC"
+  const pediatricAge = pediatricAgeFromPreop(preop)
+  const hasPreop = !!preop && (
+    pediatricMode
+      ? pediatricAge != null || preop.weight != null || preop.height != null
+      : preop.age != null || preop.weight != null || preop.height != null
+  )
+  const cats = hasPreop && preop ? calcEquipment({
+    clinicalMode: preop.clinicalMode,
+    age: pediatricAge,
+    ageYears: pediatricMode ? null : preop.age,
+    weightKg: preop.weight,
+    heightCm: preop.height,
+    sex: preop.sex,
+    airway: {
+      mallampati: preop.mallampati,
+      neckMobility: preop.neckMobility,
+      mouthOpeningCm: preop.mouthOpeningCm,
+      cormackLehane: preop.cormackLehane,
+    },
   }) : []
   const medicationWarnings = getMedicationWarnings(preop?.currentMedications ?? [])
   return (

@@ -18,11 +18,13 @@ function formatClinicalValue(value: number | undefined, precision: number) {
   return precision > 0 ? value.toFixed(precision).replace(/\.0+$/, "") : String(Math.round(value))
 }
 
-export function VitalStepper({ value, onChange, min, max, step = 1, precision = 0, unit, placeholder = "-", disabled = false }: {
+export function VitalStepper({ value, onChange, min, max, manualMax = max, step = 1, precision = 0, unit, placeholder = "-", disabled = false }: {
   value?: number
   onChange: (value: number | undefined) => void
   min: number
   max: number
+  /** Slider/stepper ceiling stays at `max`; direct keypad entry may use a wider envelope. */
+  manualMax?: number
   step?: number
   precision?: number
   unit?: string
@@ -88,7 +90,10 @@ export function VitalStepper({ value, onChange, min, max, step = 1, precision = 
 
   function closeKeypad() {
     const parsed = Number(keypadText.replace(",", "."))
-    if (keypadText.trim() && Number.isFinite(parsed)) commit(parsed)
+    if (keypadText.trim() && Number.isFinite(parsed)) {
+      hapticTick()
+      onChange(clampNumber(roundToStep(parsed, step, precision), min, manualMax))
+    }
     setKeypadOpen(false)
   }
 

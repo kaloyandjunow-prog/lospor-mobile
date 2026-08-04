@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store"
+import { LOSPOR_MOBILE_CLIENT_VERSION } from "./client-version"
 
 export const API_BASE = (process.env.EXPO_PUBLIC_API_BASE ?? "https://api.lospor.org").replace(/\/$/, "")
 
@@ -92,7 +93,7 @@ async function buildHeaders(extra?: Record<string, string>): Promise<Record<stri
   return {
     "Content-Type": "application/json",
     "X-LOSPOR-Client": "mobile",
-    "X-LOSPOR-Client-Version": "7.3.0",
+    "X-LOSPOR-Client-Version": LOSPOR_MOBILE_CLIENT_VERSION,
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...extra,
   }

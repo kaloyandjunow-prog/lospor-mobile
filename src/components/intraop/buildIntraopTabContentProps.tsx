@@ -163,7 +163,8 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
     timetable, eventRows, activeInfusions, activeFluids, activeAgent, activeGas, startRef,
     isWatching, verticalTimetableRef, undoLastEvent, setUndoEv, setExpandedRow, eventLabel,
     setInfActTgt, setInfActRate, setInfActOpen, setInfActTs, openFluidEnd, openGasSettings, tc, stopAgent,
-    openRowQuickAdd, jumpVerticalTimetableToNow, openEndCase, preop, techPath, setTechPath,
+    openRowQuickAdd, jumpVerticalTimetableToNow, openEndCase, preop,
+    techPath, setTechPath,
     TECHNIQUE_TREE, techniques, setTechniques, saveTechniques, techniqueLabel, otherTechText,
     setOtherTechText, caseMonthYear, setCaseMonthYear, caseStartTime, setCaseStartTime,
     caseEndTime, setCaseEndTime, caseEndNextDay, setCaseEndNextDay, timingSaving, saveTiming,
@@ -221,7 +222,9 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
       onJumpToNow: jumpVerticalTimetableToNow,
       onEndCase: openEndCase,
     },
-    equipment: { preop },
+    equipment: {
+      preop,
+    },
     technique: {
       techPath,
       setTechPath,
@@ -304,6 +307,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
       patientWeightKg: preop?.weight ?? undefined,
       patientHeightCm: preop?.height ?? undefined,
       patientSex: preop?.sex ?? undefined,
+      pediatricMode: preop?.clinicalMode === "PEDIATRIC",
       resumeCase: resumeSecsLeft > 0 ? resumeCase : undefined,
       activeInfusions,
       onPageChange: setChartPage,
