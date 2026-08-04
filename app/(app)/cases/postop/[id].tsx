@@ -29,6 +29,7 @@ import {
   aldreteBand,
   aldreteTotal as calculateAldreteTotal,
 } from "@lospor/core/postop"
+import { recommendPediatricPainScale } from "@lospor/core/pediatric"
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -39,7 +40,7 @@ type AutosaveState = "idle" | "saving" | "saved" | "queued" | "blocked" | "error
 export default function PostopFormScreen() {
   const { id, continuedItems } = useLocalSearchParams<{ id: string; continuedItems?: string }>()
   const router    = useRouter()
-  const { tc, t, heightUnit, weightUnit, temperatureUnit, etco2Unit } = usePreferences()
+  const { tc, t, language, heightUnit, weightUnit, temperatureUnit, etco2Unit } = usePreferences()
   const unitPrefs = { heightUnit, weightUnit, temperatureUnit, etco2Unit }
   const recoveryBpSystolicRange  = useRangeSpec("BP_SYSTOLIC_RANGE")
   const recoveryBpDiastolicRange = useRangeSpec("BP_DIASTOLIC_RANGE")
@@ -57,6 +58,10 @@ export default function PostopFormScreen() {
   const [blockedIssue, setBlockedIssue] = useState<BlockedSaveIssue | null>(null)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const lastSavedJsonRef = useRef("")
+  const [clinicalMode, setClinicalMode] = useState<"ADULT" | "PEDIATRIC">("ADULT")
+  const [patientAgeYears, setPatientAgeYears] = useState(0)
+  const [canSelfReportPain, setCanSelfReportPain] = useState(false)
+  const [canUseNumbers, setCanUseNumbers] = useState(false)
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ─── ALDRETE_CRITERIA defined inside component so it can use tc() ──────────
@@ -115,8 +120,20 @@ export default function PostopFormScreen() {
   const handoverItems      = useWatch({ control, name: "handoverItems" }) ?? []
   const dispositionNotes   = useWatch({ control, name: "dispositionNotes" })
   const painScoreNRS       = useWatch({ control, name: "painScoreNRS" })
+  const pediatricPainScore = useWatch({ control, name: "pediatricPainScore" })
   const ponv               = useWatch({ control, name: "ponv" })
   const formValues         = useWatch({ control })
+  const pediatricMode = clinicalMode === "PEDIATRIC"
+  const pediatricPain = recommendPediatricPainScale({
+    ageYears: patientAgeYears,
+    canSelfReport: canSelfReportPain,
+    canUseNumbers,
+  })
+
+  useEffect(() => {
+    if (!pediatricMode) return
+    setValue("pediatricPainScale", pediatricPain.scale, { shouldDirty: true })
+  }, [pediatricMode, pediatricPain.scale, setValue])
 
   useEffect(() => {
     if (disposition === "WARD" || disposition === "PACU") return
@@ -150,21 +167,21 @@ export default function PostopFormScreen() {
     updatedAt?: string
     syncRevision?: number
   }
-  type CaseResponse = { postop?: PostopRecord; finalizedAt?: string | null; status?: string }
+  type CaseResponse = { clinicalMode?: "ADULT" | "PEDIATRIC"; preop?: { ageYears?: number | null }; postop?: PostopRecord; finalizedAt?: string | null; status?: string }
 
-  const valuesFromPostop = useCallback((p: PostopRecord): FormData => {
+  const valuesFromPostop = useCallback((p: PostopRecord, mode: "ADULT" | "PEDIATRIC"): FormData => {
+    const adult = mode !== "PEDIATRIC"
     return {
       aldreteActivity:      p.aldreteActivity      ?? p.activityScore      ?? 0,
       aldreteRespiration:   p.aldreteRespiration   ?? p.respirationScore   ?? 0,
       aldreteCirculation:   p.aldreteCirculation   ?? p.circulationScore   ?? 0,
       aldreteConsciousness: p.aldreteConsciousness ?? p.consciousnessScore ?? 0,
       aldreteSpO2:          p.aldreteSpO2          ?? p.spO2Score          ?? 0,
-      // Recovery vitals — same ranges + random pre-fill as the preop exam form
-      recoveryBpSystolic:   p.recoveryBpSystolic  ?? (Math.floor(Math.random() * 11) + 120),
-      recoveryBpDiastolic:  p.recoveryBpDiastolic ?? (Math.floor(Math.random() * 16) + 70),
-      recoveryHeartRate:    p.recoveryHeartRate   ?? (Math.floor(Math.random() * 31) + 60),
-      recoverySpO2:         p.recoverySpO2        ?? (Math.floor(Math.random() * 5)  + 95),
-      temperatureCelsius:   p.temperatureCelsius  ?? p.temperaturePostop ?? parseFloat((36 + Math.random()).toFixed(1)),
+      recoveryBpSystolic:   p.recoveryBpSystolic  ?? (adult ? Math.floor(Math.random() * 11) + 120 : undefined),
+      recoveryBpDiastolic:  p.recoveryBpDiastolic ?? (adult ? Math.floor(Math.random() * 16) + 70 : undefined),
+      recoveryHeartRate:    p.recoveryHeartRate   ?? (adult ? Math.floor(Math.random() * 31) + 60 : undefined),
+      recoverySpO2:         p.recoverySpO2        ?? (adult ? Math.floor(Math.random() * 5) + 95 : undefined),
+      temperatureCelsius:   p.temperatureCelsius  ?? p.temperaturePostop ?? (adult ? parseFloat((36 + Math.random()).toFixed(1)) : undefined),
       recoveryBpUnobtainable:          p.recoveryBpUnobtainable          ?? false,
       recoveryHeartRateUnobtainable:   p.recoveryHeartRateUnobtainable   ?? false,
       recoverySpO2Unobtainable:        p.recoverySpO2Unobtainable        ?? false,
@@ -173,6 +190,9 @@ export default function PostopFormScreen() {
       ponv:               p.ponv               ?? false,
       disposition:        p.disposition,
       dispositionNotes:   p.dispositionNotes   ?? "",
+      pediatricPainScale: p.pediatricPainScale,
+      pediatricPainScore: p.pediatricPainScore,
+      paedScore:          p.paedScore,
       handoverItems:      normaliseHandoverCodes(Array.isArray(p.handoverItems) ? p.handoverItems : []),
     }
   }, [])
@@ -254,9 +274,15 @@ export default function PostopFormScreen() {
     )
       .then(async (c) => {
         const p = c.postop ?? {}
-        const serverValues = valuesFromPostop(p)
+        const mode = c.clinicalMode ?? "ADULT"
+        setClinicalMode(mode)
+        setPatientAgeYears(c.preop?.ageYears ?? 0)
+        const serverValues = valuesFromPostop(p, mode)
         const queuedPostop = await autosaveManager.outbox.load<Record<string, unknown>>(id, "postop")
-        const nextValues = valuesFromPostop({ ...p, ...(queuedPostop ?? {}) })
+        const nextValues = valuesFromPostop({ ...p, ...(queuedPostop ?? {}) }, mode)
+        const storedPainScale = nextValues.pediatricPainScale
+        setCanSelfReportPain(storedPainScale === "FPS_R" || storedPainScale === "NRS")
+        setCanUseNumbers(storedPainScale === "NRS")
         lastSavedJsonRef.current = JSON.stringify(payloadFrom(nextValues))
         // Pre-populate dispositionNotes with continued-postop items if field is empty
         if (continuedItems && !nextValues.dispositionNotes) {
@@ -367,7 +393,7 @@ export default function PostopFormScreen() {
             total={aldreteTotal}
             label={aldreteLabel}
             disposition={disposition}
-            pain={painScoreNRS}
+            pain={pediatricMode ? pediatricPainScore : painScoreNRS}
             ponv={ponv}
           />
           <Text style={{ color: autosaveState === "error" || autosaveState === "blocked" ? colors.danger : autosaveState === "queued" ? colors.warning : colors.textMuted, fontSize: 12, fontWeight: "800", marginTop: 2, marginBottom: 4, textAlign: "right" }}>
@@ -411,14 +437,14 @@ export default function PostopFormScreen() {
             <View style={{ flex: 1 }}>
               <Controller control={control} name="recoveryBpSystolic" render={({ field }) => (
                 <Controller control={control} name="recoveryBpUnobtainable" render={({ field: uto }) => (
-                  <VitalNumber label={tc("sbpLabel")} unit="mmHg" value={field.value} onChange={field.onChange} min={recoveryBpSystolicRange?.min ?? 1} max={recoveryBpSystolicRange?.max ?? 300} step={recoveryBpSystolicRange?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} />
+                  <VitalNumber label={tc("sbpLabel")} unit="mmHg" value={field.value} onChange={field.onChange} min={pediatricMode ? 10 : recoveryBpSystolicRange?.min ?? 1} max={recoveryBpSystolicRange?.max ?? 300} step={recoveryBpSystolicRange?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} />
                 )} />
               )} />
             </View>
             <View style={{ flex: 1 }}>
               <Controller control={control} name="recoveryBpDiastolic" render={({ field }) => (
                 <Controller control={control} name="recoveryBpUnobtainable" render={({ field: uto }) => (
-                  <VitalNumber label={tc("dbpLabel")} unit="mmHg" value={field.value} onChange={field.onChange} min={recoveryBpDiastolicRange?.min ?? 1} max={recoveryBpDiastolicRange?.max ?? 200} step={recoveryBpDiastolicRange?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} />
+                  <VitalNumber label={tc("dbpLabel")} unit="mmHg" value={field.value} onChange={field.onChange} min={pediatricMode ? 5 : recoveryBpDiastolicRange?.min ?? 1} max={recoveryBpDiastolicRange?.max ?? 200} step={recoveryBpDiastolicRange?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} />
                 )} />
               )} />
             </View>
@@ -426,7 +452,7 @@ export default function PostopFormScreen() {
 
           <Controller control={control} name="recoveryHeartRate" render={({ field }) => (
             <Controller control={control} name="recoveryHeartRateUnobtainable" render={({ field: uto }) => (
-              <VitalNumber label={tc("heartRateLabel")} unit="bpm" value={field.value} onChange={field.onChange} min={recoveryHeartRateRange?.min ?? 1} max={recoveryHeartRateRange?.max ?? 300} step={recoveryHeartRateRange?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} />
+              <VitalNumber label={tc("heartRateLabel")} unit="bpm" value={field.value} onChange={field.onChange} min={pediatricMode ? 10 : recoveryHeartRateRange?.min ?? 1} max={pediatricMode ? 350 : recoveryHeartRateRange?.max ?? 300} step={recoveryHeartRateRange?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} />
             )} />
           )} />
 
@@ -438,20 +464,74 @@ export default function PostopFormScreen() {
 
           <Controller control={control} name="temperatureCelsius" render={({ field }) => (
             <Controller control={control} name="recoveryTemperatureUnobtainable" render={({ field: uto }) => {
-              const cv = convertedMeasurement("temperature", unitPrefs, field.value, field.onChange, recoveryTemperatureRange?.min ?? 0, recoveryTemperatureRange?.max ?? 45, recoveryTemperatureRange?.step ?? 0.1)
+              const cv = convertedMeasurement("temperature", unitPrefs, field.value, field.onChange, pediatricMode ? 25 : recoveryTemperatureRange?.min ?? 0, recoveryTemperatureRange?.max ?? 45, recoveryTemperatureRange?.step ?? 0.1)
               return <VitalNumber label={tc("temperatureLabel")} unit={cv.unit} value={cv.value} onChange={cv.onChange} min={cv.min} max={cv.max} step={cv.step} precision={cv.precision || 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(undefined) }} labelUnableToObtain={tc("unableToObtain")} />
             }} />
           )} />
 
-          <Field label={tc("painNRS")}>
-            <Controller
-              control={control}
-              name="painScoreNRS"
-              render={({ field: { onChange, value } }) => (
-                <NRSRow value={value} onChange={onChange} />
-              )}
-            />
-          </Field>
+          {pediatricMode ? (
+            <View>
+              <SectionHeader title={language === "bg" ? "Оценка на болката при деца" : "Pediatric pain assessment"} />
+              <Field label={language === "bg" ? "Може ли детето надеждно да съобщи болката си?" : "Can the child reliably self-report pain?"}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: canSelfReportPain ? colors.primary : colors.border, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10 }}>
+                  <Switch
+                    value={canSelfReportPain}
+                    onValueChange={(value) => {
+                      setCanSelfReportPain(value)
+                      if (!value) setCanUseNumbers(false)
+                    }}
+                    trackColor={{ false: colors.borderStrong, true: withAlpha(colors.primary, "66") }}
+                    thumbColor="#fff"
+                  />
+                  <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: "800" }}>
+                    {canSelfReportPain ? (language === "bg" ? "Да" : "Yes") : (language === "bg" ? "Не" : "No")}
+                  </Text>
+                </View>
+              </Field>
+              {canSelfReportPain ? (
+                <Field label={language === "bg" ? "Може ли да използва числова скала?" : "Can the child use a numeric scale?"}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: canUseNumbers ? colors.primary : colors.border, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10 }}>
+                    <Switch
+                      value={canUseNumbers}
+                      onValueChange={setCanUseNumbers}
+                      trackColor={{ false: colors.borderStrong, true: withAlpha(colors.primary, "66") }}
+                      thumbColor="#fff"
+                    />
+                    <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: "800" }}>
+                      {canUseNumbers ? (language === "bg" ? "Да" : "Yes") : (language === "bg" ? "Не" : "No")}
+                    </Text>
+                  </View>
+                </Field>
+              ) : null}
+              <View style={{ borderWidth: 1, borderColor: withAlpha(colors.primary, "55"), backgroundColor: withAlpha(colors.primary, "12"), borderRadius: 10, padding: 10, marginBottom: 12 }}>
+                <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "900" }}>
+                  {language === "bg" ? "Препоръчана скала" : "Recommended scale"}: {pediatricPain.scale.replace("_", "-")}
+                </Text>
+              </View>
+              <Field label={`${pediatricPain.scale.replace("_", "-")} (0-10)`}>
+                <Controller
+                  control={control}
+                  name="pediatricPainScore"
+                  render={({ field: { onChange, value } }) => <NRSRow value={value} onChange={onChange} />}
+                />
+              </Field>
+              <Field label={language === "bg" ? "PAED (по избор, 0-20)" : "PAED (optional, 0-20)"}>
+                <Controller
+                  control={control}
+                  name="paedScore"
+                  render={({ field: { onChange, value } }) => <NRSRow value={value} onChange={onChange} max={20} />}
+                />
+              </Field>
+            </View>
+          ) : (
+            <Field label={tc("painNRS")}>
+              <Controller
+                control={control}
+                name="painScoreNRS"
+                render={({ field: { onChange, value } }) => <NRSRow value={value} onChange={onChange} />}
+              />
+            </Field>
+          )}
 
           <Field label={tc("ponvLabel")}>
             <Controller

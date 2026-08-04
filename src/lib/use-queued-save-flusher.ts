@@ -27,7 +27,10 @@ async function flushLocalCaseDrafts(): Promise<void> {
       const res = await apiFetch("/api/cases", {
         method: "POST",
         headers: { "X-Idempotency-Key": draft.localId },
-        body: JSON.stringify({ preop }),
+        body: JSON.stringify({
+          clinicalMode: draft.formValues.clinicalMode === "PEDIATRIC" ? "PEDIATRIC" : "ADULT",
+          preop,
+        }),
       })
       if (res.ok) {
         await deleteLocalCaseDraft(draft.localId)

@@ -40,7 +40,10 @@ export async function postPreopServerCase(
       const res = await fetcher("/api/cases", {
         method: "POST",
         headers: { "X-Idempotency-Key": draftId },
-        body: JSON.stringify({ preop: acceptedPayload }),
+        body: JSON.stringify({
+          clinicalMode: values.clinicalMode ?? "ADULT",
+          preop: acceptedPayload,
+        }),
       })
       const body = await res.json().catch(() => ({})) as Record<string, unknown>
 

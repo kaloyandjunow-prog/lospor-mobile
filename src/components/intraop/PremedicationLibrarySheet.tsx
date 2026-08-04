@@ -25,6 +25,7 @@ type Props = {
   onDoseChange: (value: string) => void
   onRouteChange: (value: string) => void
   onAdd: () => void
+  pediatricMode?: boolean
 }
 
 function adjustDose(drug: PremDrug, dose: string, direction: -1 | 1): string {
@@ -50,6 +51,7 @@ export function PremedicationLibrarySheet({
   onDoseChange,
   onRouteChange,
   onAdd,
+  pediatricMode = false,
 }: Props) {
   const { language } = usePreferences()
   const drugLabel = (name: string) => displayClinicalCode("option:PREMED_DRUG", name, language, { label: name })
@@ -57,6 +59,13 @@ export function PremedicationLibrarySheet({
 
   return (
     <Sheet visible={visible} onClose={onClose} title={`Premedication library - ${phase}`} full>
+      {pediatricMode ? (
+        <Text style={{ color:"#fbbf24", fontSize:12, lineHeight:17, marginBottom:12 }}>
+          {language === "bg"
+            ? "\u041f\u0435\u0434\u0438\u0430\u0442\u0440\u0438\u0447\u043d\u0438\u0442\u0435 \u043f\u0440\u043e\u0444\u0438\u043b\u0438 \u0437\u0430 \u043f\u0440\u0435\u043c\u0435\u0434\u0438\u043a\u0430\u0446\u0438\u044f \u0432\u0441\u0435 \u043e\u0449\u0435 \u043d\u0435 \u0441\u0430 \u043a\u043b\u0438\u043d\u0438\u0447\u043d\u043e \u043e\u0434\u043e\u0431\u0440\u0435\u043d\u0438. \u0418\u0437\u043f\u043e\u043b\u0437\u0432\u0430\u0439\u0442\u0435 \u0441\u0432\u043e\u0431\u043e\u0434\u043d\u043e\u0442\u043e \u043f\u043e\u043b\u0435 \u0437\u0430 \u0440\u044a\u0447\u043d\u043e \u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043e \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435."
+            : "Pediatric premedication profiles are not clinically approved yet. Use the free-text field for a manually verified prescription."}
+        </Text>
+      ) : null}
       {!drug ? (
         <View>
           {categories.map(cat => {

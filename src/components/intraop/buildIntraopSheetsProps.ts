@@ -103,6 +103,7 @@ export function buildIntraopSheetsProps(props: IntraopSheetsBuilderProps): Intra
     setPremedPickDrug, setPremedPickDose, setPremedPickRoute, addSelectedPremedication,
     caseEnded, continuedPostopItems, tc, router, id,
   } = props
+  const pediatricMode = props.preop?.clinicalMode === "PEDIATRIC"
 
   return {
     slot: {
@@ -168,7 +169,7 @@ export function buildIntraopSheetsProps(props: IntraopSheetsBuilderProps): Intra
     premedicationLibrary: {
       visible: premedPickOpen,
       phase: premedPickPhase,
-      categories: PREMED_LIBRARY,
+      categories: pediatricMode ? [] : PREMED_LIBRARY,
       openCategory: premedPickCat,
       drug: premedPickDrug,
       dose: premedPickDose,
@@ -176,11 +177,12 @@ export function buildIntraopSheetsProps(props: IntraopSheetsBuilderProps): Intra
       backLabel: tc("back"),
       onClose: () => { setPremedPickOpen(false); setPremedPickCat(null); setPremedPickDrug(null) },
       onToggleCategory: category => setPremedPickCat((previous) => previous === category ? null : category),
-      onSelectDrug: drug => { setPremedPickDrug(drug); setPremedPickDose(String(drug.dose)); setPremedPickRoute(drug.defaultRoute) },
+      onSelectDrug: drug => { setPremedPickDrug(drug); setPremedPickDose(pediatricMode ? "" : String(drug.dose)); setPremedPickRoute(drug.defaultRoute) },
       onBackToLibrary: () => setPremedPickDrug(null),
       onDoseChange: setPremedPickDose,
       onRouteChange: setPremedPickRoute,
       onAdd: addSelectedPremedication,
+      pediatricMode,
     },
     postopContinue: caseEnded ? {
       continuedItems: continuedPostopItems,
