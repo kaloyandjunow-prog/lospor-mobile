@@ -136,8 +136,9 @@ export function useIntraopOptions(
       color: o.color ?? "#64748b",
     })),
   [infusionLibOpts])
+  // Picker only; the FLUID_* maps below deliberately keep hidden entries.
   const FLUID_LIST = useMemo(() =>
-    fluidLibOpts.map((o: LibraryOption) => ({
+    visibleClinicalOptions(fluidLibOpts).map((o: LibraryOption) => ({
       name: o.label,
       cat: o.group ?? "Other",
       color: MOBILE_FLUID_CAT_COLOR[o.group ?? "Other"] ?? "#94a3b8",
