@@ -1,5 +1,23 @@
 # Changelog - LOSPOR Mobile
 
+## [8.2.0] - 2026-08-05
+
+Keeps clinical data off Android backups and out of forms that never measured it.
+Android `versionCode` is 32.
+
+Requires `@lospor/core` v8.2.0 and LOSPOR API v8.2.0.
+
+### Fixed
+
+- Clinical data is excluded from Android backups (`allowBackup: false`), so a
+  case cannot be carried off the device into a cloud backup. This is a native
+  manifest change and takes effect only in a newly built binary.
+- Storage failures surface instead of being swallowed, so a save that did not
+  persist is not reported as saved.
+- New-case and postop screens no longer assume demographics or fabricate
+  observations that were not taken.
+- Lab rows whose unit was not recognised are no longer pre-ticked.
+
 ## [8.0.0] - 2026-08-04
 
 First stable release. Adds pediatric clinical mode and clinical rulesets.
