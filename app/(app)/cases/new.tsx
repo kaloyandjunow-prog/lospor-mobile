@@ -264,9 +264,11 @@ export default function NewCaseScreen() {
     resolver: zodResolver(preopFormSchema),
     defaultValues: {
       clinicalMode: "ADULT",
-      sex: "MALE",
-      asaScore: "I",
-      elective: true,
+      // Sex, ASA and elective/emergency start unset, and the vital signs start
+      // empty. They used to be pre-answered as MALE / ASA I / elective with
+      // random observations inside normal adult ranges, so a case saved before
+      // the clinician reached those fields recorded assumptions as findings --
+      // and biased the register toward healthy elective adult males.
       emergencySurgery: false,
       highRiskSurgery: false,
       diagnoses: [],
@@ -275,11 +277,6 @@ export default function NewCaseScreen() {
       currentMedications: [],
       allergyDetails: [],
       labResults: [],
-      bpSystolic:  Math.floor(Math.random() * 11) + 120,
-      bpDiastolic: Math.floor(Math.random() * 16) + 70,
-      heartRate:   Math.floor(Math.random() * 31) + 60,
-      spO2:        Math.floor(Math.random() * 5)  + 95,
-      temperature: parseFloat((36 + Math.random()).toFixed(1)),
     },
   })
 

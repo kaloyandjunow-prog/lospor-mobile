@@ -177,11 +177,15 @@ export default function PostopFormScreen() {
       aldreteCirculation:   p.aldreteCirculation   ?? p.circulationScore   ?? 0,
       aldreteConsciousness: p.aldreteConsciousness ?? p.consciousnessScore ?? 0,
       aldreteSpO2:          p.aldreteSpO2          ?? p.spO2Score          ?? 0,
-      recoveryBpSystolic:   p.recoveryBpSystolic  ?? (adult ? Math.floor(Math.random() * 11) + 120 : undefined),
-      recoveryBpDiastolic:  p.recoveryBpDiastolic ?? (adult ? Math.floor(Math.random() * 16) + 70 : undefined),
-      recoveryHeartRate:    p.recoveryHeartRate   ?? (adult ? Math.floor(Math.random() * 31) + 60 : undefined),
-      recoverySpO2:         p.recoverySpO2        ?? (adult ? Math.floor(Math.random() * 5) + 95 : undefined),
-      temperatureCelsius:   p.temperatureCelsius  ?? p.temperaturePostop ?? (adult ? parseFloat((36 + Math.random()).toFixed(1)) : undefined),
+      // A recovery observation that was not recorded stays unrecorded. These
+      // previously fell back to a random value in the normal adult range, which
+      // was then pre-filled into the form and could be submitted unchanged --
+      // the record then showed a reading nobody had taken.
+      recoveryBpSystolic:   p.recoveryBpSystolic,
+      recoveryBpDiastolic:  p.recoveryBpDiastolic,
+      recoveryHeartRate:    p.recoveryHeartRate,
+      recoverySpO2:         p.recoverySpO2,
+      temperatureCelsius:   p.temperatureCelsius ?? p.temperaturePostop,
       recoveryBpUnobtainable:          p.recoveryBpUnobtainable          ?? false,
       recoveryHeartRateUnobtainable:   p.recoveryHeartRateUnobtainable   ?? false,
       recoverySpO2Unobtainable:        p.recoverySpO2Unobtainable        ?? false,
