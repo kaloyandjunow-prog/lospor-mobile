@@ -169,9 +169,7 @@ export default function PostopFormScreen() {
   }
   type CaseResponse = { clinicalMode?: "ADULT" | "PEDIATRIC"; preop?: { ageYears?: number | null }; postop?: PostopRecord; finalizedAt?: string | null; status?: string }
 
-  const valuesFromPostop = useCallback((p: PostopRecord, mode: "ADULT" | "PEDIATRIC"): FormData => {
-    const adult = mode !== "PEDIATRIC"
-    return {
+  const valuesFromPostop = useCallback((p: PostopRecord, _mode: "ADULT" | "PEDIATRIC"): FormData => {    return {
       aldreteActivity:      p.aldreteActivity      ?? p.activityScore      ?? 0,
       aldreteRespiration:   p.aldreteRespiration   ?? p.respirationScore   ?? 0,
       aldreteCirculation:   p.aldreteCirculation   ?? p.circulationScore   ?? 0,
