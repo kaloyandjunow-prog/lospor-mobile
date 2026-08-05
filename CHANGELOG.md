@@ -1,5 +1,25 @@
 # Changelog - LOSPOR Mobile
 
+## [8.2.1] - 2026-08-05
+
+Android `versionCode` is 33.
+
+### Fixed
+
+- The paediatric weight wheel opens without lag. It renders every value eagerly
+  into a scroll view, and paediatric weight asked for 0.1 kg steps across a
+  range that ran to 700 kg — about seven thousand rows built before the field
+  could paint. The weight ladder is deliberately non-uniform, because the
+  granularity a clinician needs tracks the size of the patient; that rule now
+  follows the caller's step rather than one hard-coded value, so a paediatric
+  wheel gets tenths below 10 kg where a neonate needs them, half-kilos to 20,
+  and whole kilograms above. Roughly 7000 rows become 350. The adult ladder is
+  unchanged.
+- The paediatric weight ceiling was 700 kg, which no child approaches and which
+  the web form does not use — it takes the API's maximum. Mobile now matches.
+- Weight values no longer collapse to repeated whole numbers on the wheel; see
+  `@lospor/core` v8.2.1.
+
 ## [8.2.0] - 2026-08-05
 
 Keeps clinical data off Android backups and out of forms that never measured it.
