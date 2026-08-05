@@ -1,5 +1,17 @@
 # Changelog - LOSPOR Mobile
 
+## [8.3.1] - 2026-08-05
+
+Android `versionCode` is 35. Requires `@lospor/core` v8.3.0 and LOSPOR API
+v8.3.1.
+
+### Fixed
+
+- Registration no longer tells you to check your email when no email was sent.
+  The account exists either way, but without a verification link there is no way
+  to sign in — so the screen says so and points at the administrator, instead of
+  leaving somebody waiting on a message that is never coming.
+
 ## [8.3.0] - 2026-08-05
 
 Android `versionCode` is 34. Requires `@lospor/core` v8.3.0 and LOSPOR API
