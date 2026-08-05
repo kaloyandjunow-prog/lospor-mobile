@@ -1,5 +1,36 @@
 # Changelog - LOSPOR Mobile
 
+## [8.3.0] - 2026-08-05
+
+Android `versionCode` is 34. Requires `@lospor/core` v8.3.0 and LOSPOR API
+v8.3.0.
+
+### Added
+
+- **Ask to join a department, and decide one.** Settings files a request rather
+  than relabelling itself as though the move had already happened; the admin
+  screen gains the departmental queue, which a head of department gets on its
+  own.
+- **Leave**, beside the institution row. Confirms first — this still changes who
+  can see the cases you record from here on — and reports where you landed,
+  because the server applies a leave immediately. Hidden when there is nothing
+  to leave.
+
+### Fixed
+
+- **A postoperative assessment is never pre-filled.** The form defaulted all
+  five Aldrete components to 0 and PONV to false, so opening the recovery screen
+  and saving anything else recorded a complete 0/10 for a patient nobody had
+  looked at. Zero is not "not yet scored" — it is the worst score on the scale.
+
+### Testing
+
+- A PWA end-to-end suite covering the institution loop end to end, including the
+  head of department approving from their queue, and the administration screen's
+  scope. Plus the login screen, a wrong password leaving no token behind on a
+  shared device, and the sign-in rate limiter — which had never been tested.
+- The suite now runs on every pull request, not only in the release gate.
+
 ## [8.2.1] - 2026-08-05
 
 Android `versionCode` is 33.
