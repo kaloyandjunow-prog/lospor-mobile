@@ -289,6 +289,8 @@ export default function SettingsScreen() {
   const [drugFavOpen, setDrugFavOpen]     = useState(false)
   const [infFavOpen, setInfFavOpen]       = useState(false)
   const [institutionSaving, setInstitutionSaving] = useState(false)
+  // A move is pending approval, not applied — shown instead of relabelling.
+  const [institutionRequest, setInstitutionRequest] = useState<Institution | null>(null)
 
   const autoFillVitals = autoFillVitalsPreferences.enabled
   const autoFillBP = autoFillVitalsPreferences.includeBloodPressure
@@ -460,19 +462,30 @@ export default function SettingsScreen() {
     setNotifMsg("Sent. If you didn't see it, check your device/browser notification settings for this site.")
   }
 
-  // -- Institution update -------------------------------------------------------
+  // -- Institution change request -----------------------------------------------
+  //
+  // This used to PATCH /api/user with institutionId and then relabel the row as
+  // though it had worked. That endpoint refuses the field on purpose:
+  // institutional membership is what lets a head of department see your cases,
+  // so moving needs their agreement. It now files a request and says so, rather
+  // than reporting a change that never happened.
   async function handleSelectInstitution(inst: Institution | null) {
     setPickerOpen(false)
+    if (!inst?.id) return
     setInstitutionSaving(true)
     try {
-      const res = await apiFetch("/api/user", {
-        method: "PATCH",
-        body: JSON.stringify({ institutionId: inst?.id ?? "" }),
+      const res = await apiFetch("/api/user/institution-request", {
+        method: "POST",
+        body: JSON.stringify({ institutionId: inst.id }),
       })
-      if (!res.ok) throw new Error()
-      setProfile(prev => prev ? { ...prev, institution: inst } : prev)
-    } catch {
-      notify(t("error"), "Could not update institution.")
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error ?? "")
+      }
+      setInstitutionRequest(inst)
+      notify(t("institutionRequestSent"), t("institutionRequestPendingBody"))
+    } catch (err) {
+      notify(t("error"), err instanceof Error && err.message ? err.message : t("institutionRequestFailed"))
     } finally {
       setInstitutionSaving(false)
     }
@@ -565,10 +578,17 @@ export default function SettingsScreen() {
                 {institutionSaving ? (
                   <ActivityIndicator size="small" color={colors.primary} />
                 ) : (
-                  <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: "500" }}>
-                    {profile?.institution?.name ?? t("noInstitution")}
-                    {profile?.institution?.city ? ` · ${profile.institution.city}` : ""}
-                  </Text>
+                  <>
+                    <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: "500" }}>
+                      {profile?.institution?.name ?? t("noInstitution")}
+                      {profile?.institution?.city ? ` · ${profile.institution.city}` : ""}
+                    </Text>
+                    {institutionRequest ? (
+                      <Text style={{ color: colors.warning, fontSize: 11, fontWeight: "700", marginTop: 3 }}>
+                        {t("institutionRequestPendingShort")} {institutionRequest.name}
+                      </Text>
+                    ) : null}
+                  </>
                 )}
               </View>
               <TouchableOpacity
