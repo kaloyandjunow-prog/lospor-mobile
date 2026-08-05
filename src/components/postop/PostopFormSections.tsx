@@ -241,15 +241,20 @@ export function RecoverySummary({
   pain,
   ponv,
 }: {
-  total: number
+  /** Null until every component is assessed — a partial score has no total. */
+  total: number | null
   label: string
   disposition?: "WARD" | "PACU" | "ICU"
   pain?: number
   ponv?: boolean
 }) {
   const { t, language } = usePreferences()
-  const status = aldreteBand(total)
-  const statusColor = status === "ready"
+  const status = total == null ? null : aldreteBand(total)
+  // Neutral while unassessed. Colouring an incomplete score red reads as a sick
+  // patient rather than an unfinished form.
+  const statusColor = status === null
+    ? colors.textMuted
+    : status === "ready"
     ? colors.success
     : status === "observe" ? colors.warning : colors.danger
   const dispoColor = disposition === "ICU" ? colors.danger : disposition === "PACU" ? colors.warning : colors.success
@@ -259,7 +264,7 @@ export function RecoverySummary({
         <View>
           <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "900", letterSpacing: 1, textTransform: "uppercase" }}>{t("aldreteLabel")}</Text>
           <Text style={{ color: statusColor, fontSize: 40, fontWeight: "900", fontVariant: ["tabular-nums"], marginTop: 2 }}>
-            {total}<Text style={{ color: colors.textMuted, fontSize: 18 }}> / 10</Text>
+            {total ?? "—"}<Text style={{ color: colors.textMuted, fontSize: 18 }}> / 10</Text>
           </Text>
           <Text style={{ color: statusColor, fontSize: 13, fontWeight: "800" }}>{label}</Text>
         </View>

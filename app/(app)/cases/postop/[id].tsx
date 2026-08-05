@@ -99,14 +99,13 @@ export default function PostopFormScreen() {
 
   const { control, handleSubmit, reset, getValues, setValue } = useForm<FormInput, unknown, FormData>({
     resolver: zodResolver(postopFormSchema),
+    // Nothing clinical is pre-filled. These defaulted to 0 and false, and
+    // autosave on any other postop field persisted them, so a patient nobody
+    // had assessed was documented with an Aldrete of 0 — no movement, apnoeic,
+    // circulatory collapse — and PONV explicitly ruled out. Undefined means
+    // "not assessed", which is what it was.
     defaultValues: {
-      aldreteActivity:      0,
-      aldreteRespiration:   0,
-      aldreteCirculation:   0,
-      aldreteConsciousness: 0,
-      aldreteSpO2:          0,
-      ponv:               false,
-      handoverItems:      [],
+      handoverItems: [],
     },
   })
 
@@ -148,10 +147,15 @@ export default function PostopFormScreen() {
     aldreteConsciousness,
     aldreteSpO2,
   })
-  const aldreteStatus = aldreteBand(aldreteTotal)
+  // Null until all five components are recorded. Without this an unassessed
+  // patient scored 0 and was labelled "continue recovery" as though someone had
+  // looked and found them unresponsive.
+  const aldreteStatus = aldreteTotal == null ? null : aldreteBand(aldreteTotal)
 
   const aldreteLabel =
-    aldreteStatus === "ready"
+    aldreteStatus === null
+      ? tc("aldreteNotAssessed")
+      : aldreteStatus === "ready"
       ? tc("summaryReadyDischarge")
       : aldreteStatus === "observe"
       ? tc("summaryMonitor")
@@ -189,7 +193,8 @@ export default function PostopFormScreen() {
       recoverySpO2Unobtainable:        p.recoverySpO2Unobtainable        ?? false,
       recoveryTemperatureUnobtainable: p.recoveryTemperatureUnobtainable ?? false,
       painScoreNRS:       p.painScoreNRS,
-      ponv:               p.ponv               ?? false,
+      // Left undefined when the record has no value: "not asked" is not "absent".
+      ponv:               p.ponv,
       disposition:        p.disposition,
       dispositionNotes:   p.dispositionNotes   ?? "",
       pediatricPainScale: p.pediatricPainScale,
