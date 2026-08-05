@@ -1134,7 +1134,11 @@ export default function NewCaseScreen() {
               </Field>
               <Field label={tc("weightKg")} required error={errors.weightKg?.message}>
                 <Controller control={control} name="weightKg" render={({ field }) => {
-                  const cv = convertedMeasurement("weight", unitPrefs, field.value, field.onChange, pediatricMode ? 0.1 : weightRange?.min ?? 0.5, pediatricMode ? 700 : weightRange?.max ?? 250, pediatricMode ? 0.1 : weightRange?.step ?? 1)
+                  // Paediatric weight starts at 0.1 kg and moves in tenths; the
+                  // ceiling stays the API's, as the web form does. It was 700 kg
+                  // here, which no child approaches and which made the wheel
+                  // seven times longer than it needed to be.
+                  const cv = convertedMeasurement("weight", unitPrefs, field.value, field.onChange, pediatricMode ? 0.1 : weightRange?.min ?? 0.5, weightRange?.max ?? 250, pediatricMode ? 0.1 : weightRange?.step ?? 1)
                   return <ClinicalNumberInput value={cv.value} onChange={cv.onChange} min={cv.min} max={cv.max} step={cv.step} precision={cv.precision} unit={cv.unit} placeholder={tc("weightPlaceholder")} showSteppers={false} />
                 }} />
               </Field>
