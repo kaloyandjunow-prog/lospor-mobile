@@ -65,3 +65,4 @@ CODEX_HANDOFF*.md
 # Playwright PWA run artefacts
 /test-results/
 /playwright-report/
+/e2e/.auth/

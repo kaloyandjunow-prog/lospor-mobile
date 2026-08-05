@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test"
 import {
-  ACCOUNTS, acceptDialogs, signIn,
+  ACCOUNTS, declineNextDialog, expectDialogs, signInAs,
   INSTITUTION_B_NAME, NO_INSTITUTION_NAME,
 } from "./session"
 
@@ -16,9 +16,37 @@ import {
 // member-b does the moving. A failed run can leave them unaffiliated; the
 // seeder in lospor-api puts the cast back.
 
-test("leaving applies at once; joining waits for the receiving head", async ({ page, browser }) => {
-  acceptDialogs(page)
-  await signIn(page, ACCOUNTS.memberB)
+const LEAVE_CONFIRMATION = /Leave this institution\?/
+
+test("declining the confirmation leaves you where you were", async ({ page, request }) => {
+  // The branch worth being sure about. A confirmation that does the thing
+  // anyway is worse than no confirmation, and it is invisible from the happy
+  // path — which is the only path a test that accepts every dialog can take.
+  await signInAs(page, request, ACCOUNTS.memberB)
+  await page.goto("/settings")
+  await expect(page.getByText(INSTITUTION_B_NAME, { exact: false })).toBeVisible()
+
+  const declined = declineNextDialog(page)
+  await page.getByText("Leave", { exact: true }).click()
+
+  expect(declined.seen(), "no confirmation was shown before leaving").toHaveLength(1)
+  expect(declined.seen()[0]).toMatch(LEAVE_CONFIRMATION)
+
+  // Nothing moved, and the control is still there to be used properly.
+  await expect(page.getByText(INSTITUTION_B_NAME, { exact: false })).toBeVisible()
+  await expect(page.getByText(NO_INSTITUTION_NAME, { exact: false })).toHaveCount(0)
+  await expect(page.getByText("Leave", { exact: true })).toBeVisible()
+})
+
+test("leaving applies at once; joining waits for the receiving head", async ({ page, request, browser }) => {
+  // Everything this flow is expected to say, in order: confirm the departure,
+  // report where they landed, and acknowledge the request to join.
+  const dialogs = expectDialogs(page, [
+    LEAVE_CONFIRMATION,
+    /You have left/,
+    /Request sent/,
+  ])
+  await signInAs(page, request, ACCOUNTS.memberB)
 
   await page.goto("/settings")
   await expect(page.getByText("Institution", { exact: true })).toBeVisible()
@@ -53,9 +81,9 @@ test("leaving applies at once; joining waits for the receiving head", async ({ p
   // token store, and the second sign-in would simply replace the first.
   const headContext = await browser.newContext()
   const head = await headContext.newPage()
-  acceptDialogs(head)
+  const headDialogs = expectDialogs(head, [])
   try {
-    await signIn(head, ACCOUNTS.hodB)
+    await signInAs(head, request, ACCOUNTS.hodB)
     await head.goto("/admin")
     await expect(head.getByText("Administration", { exact: true })).toBeVisible()
 
@@ -83,7 +111,10 @@ test("leaving applies at once; joining waits for the receiving head", async ({ p
     await page.reload()
     await expect(page.getByText(INSTITUTION_B_NAME, { exact: false })).toBeVisible({ timeout: 20_000 })
     await expect(page.getByText(/Requested:/)).toHaveCount(0)
+    headDialogs.assertNoSurprises()
   } finally {
     await headContext.close()
   }
+
+  dialogs.assertNoSurprises()
 })
