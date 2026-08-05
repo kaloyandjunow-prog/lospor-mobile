@@ -30,6 +30,7 @@ import {
   resolveOptionPreferenceLabels,
   type LibraryCategory,
 } from "@lospor/core/option-contracts"
+import { NO_INSTITUTION_ID } from "@lospor/core/account"
 
 // --- Types --------------------------------------------------------------------
 
@@ -491,6 +492,36 @@ export default function SettingsScreen() {
     }
   }
 
+  // Leaving is not a request in the same sense: joining a department needs that
+  // department's agreement, because approving is what lets its head see the
+  // newcomer's cases. Leaving grants nobody anything, so the server applies it
+  // at once. Confirmed first, because it still changes who can see the cases
+  // recorded from here on.
+  async function handleLeaveInstitution() {
+    const ok = await confirmAction(t("leaveInstitutionTitle"), t("leaveInstitutionBody"), {
+      destructive: true,
+      confirmLabel: t("leaveInstitution"),
+    })
+    if (!ok) return
+    setInstitutionSaving(true)
+    try {
+      const res = await apiFetch("/api/user/institution-request", {
+        method: "POST",
+        body: JSON.stringify({ institutionId: NO_INSTITUTION_ID }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error ?? "")
+      const landed: Institution = body?.requestedInstitution ?? { id: NO_INSTITUTION_ID, name: t("noInstitution"), city: "" }
+      setProfile(prev => (prev ? { ...prev, institution: landed } : prev))
+      setInstitutionRequest(null)
+      notify(t("institutionLeft"), landed.name)
+    } catch (err) {
+      notify(t("error"), err instanceof Error && err.message ? err.message : t("institutionRequestFailed"))
+    } finally {
+      setInstitutionSaving(false)
+    }
+  }
+
   async function saveFavouriteDrugs(next: string[]) {
     setDrugFavOpen(false)
     try {
@@ -591,20 +622,38 @@ export default function SettingsScreen() {
                   </>
                 )}
               </View>
-              <TouchableOpacity
-                onPress={() => setPickerOpen(true)}
-                disabled={institutionSaving}
-                style={{
-                  paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8,
-                  backgroundColor: withAlpha(colors.primary, "20"),
-                  borderWidth: 1, borderColor: withAlpha(colors.primary, "55"),
-                  opacity: institutionSaving ? 0.4 : 1,
-                }}
-              >
-                <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>
-                  {t("editInstitution")}
-                </Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                {/* Nothing to leave if you are already in Без институция. */}
+                {profile?.institution?.id && profile.institution.id !== NO_INSTITUTION_ID ? (
+                  <TouchableOpacity
+                    onPress={handleLeaveInstitution}
+                    disabled={institutionSaving}
+                    style={{
+                      paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8,
+                      borderWidth: 1, borderColor: withAlpha(colors.danger, "55"),
+                      opacity: institutionSaving ? 0.4 : 1,
+                    }}
+                  >
+                    <Text style={{ color: colors.danger, fontSize: 12, fontWeight: "700" }}>
+                      {t("leaveInstitution")}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+                <TouchableOpacity
+                  onPress={() => setPickerOpen(true)}
+                  disabled={institutionSaving}
+                  style={{
+                    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8,
+                    backgroundColor: withAlpha(colors.primary, "20"),
+                    borderWidth: 1, borderColor: withAlpha(colors.primary, "55"),
+                    opacity: institutionSaving ? 0.4 : 1,
+                  }}
+                >
+                  <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>
+                    {t("editInstitution")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* View profile — not yet implemented */}
