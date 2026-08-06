@@ -132,7 +132,7 @@ export function VitalStepper({ value, onChange, min, max, manualMax = max, step 
 
         <View ref={fieldRef} collapsable={false} style={{ flex: 1 }}>
           <Pressable disabled={disabled} onPress={openKeypad} style={{ minHeight: 44, alignItems: "center", justifyContent: "center", borderBottomWidth: 2, borderBottomColor: colors.borderStrong, opacity: disabled ? 0.65 : 1 }}>
-            <Text style={{ color: value == null ? colors.textMuted : colors.textPrimary, fontSize: 22, fontWeight: "900", fontVariant: ["tabular-nums"] }}>
+            <Text numberOfLines={1} style={{ color: value == null ? colors.textMuted : colors.textPrimary, fontSize: 22, fontWeight: "900", fontVariant: ["tabular-nums"] }}>
               {value == null ? placeholder : formatClinicalValue(value, precision)}{unit ? <Text style={{ color: colors.textMuted, fontSize: 13 }}> {unit}</Text> : null}
             </Text>
           </Pressable>
@@ -190,7 +190,7 @@ export function VitalStepper({ value, onChange, min, max, manualMax = max, step 
   )
 }
 
-export function VitalNumber({ label, unit, value, onChange, unobtainable, onToggleUnobtainable, min, max, step = 1, precision = 0, labelUnableToObtain = "Unable to obtain" }: {
+export function VitalNumber({ label, unit, value, onChange, unobtainable, onToggleUnobtainable, min, max, step = 1, precision = 0, labelUnableToObtain = "Unable to obtain", labelNotAvailable = "Not available" }: {
   label: string
   unit: string
   value?: number
@@ -202,6 +202,7 @@ export function VitalNumber({ label, unit, value, onChange, unobtainable, onTogg
   step?: number
   precision?: number
   labelUnableToObtain?: string
+  labelNotAvailable?: string
 }) {
   return (
     <View style={{ marginBottom: 14 }}>
@@ -225,10 +226,13 @@ export function VitalNumber({ label, unit, value, onChange, unobtainable, onTogg
       </View>
       {unobtainable ? (
         <View style={{ minHeight: 48, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, justifyContent: "center", paddingHorizontal: 12 }}>
-          <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: "800" }}>Not available</Text>
+          <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: "800" }}>{labelNotAvailable}</Text>
         </View>
       ) : (
-        <VitalStepper value={value} onChange={(next) => { hapticTick(); onChange(next) }} min={min} max={max} step={step} precision={precision} unit={unit} placeholder={label} />
+        // No placeholder: the label is already above this row. Passing it here
+        // rendered the field's own name a second time at value size, which on a
+        // narrow phone overflowed into the +/- buttons.
+        <VitalStepper value={value} onChange={(next) => { hapticTick(); onChange(next) }} min={min} max={max} step={step} precision={precision} unit={unit} />
       )}
     </View>
   )

@@ -1,6 +1,8 @@
 import { View, Text, ScrollView } from "react-native"
 import { calcEquipment } from "@/lib/equipment-calculator"
 import { getMedicationWarnings } from "@/lib/risk-derivation"
+import { translateEquipment } from "@/i18n/equipment-strings"
+import { usePreferences } from "@/lib/preferences-context"
 import {
   pediatricAgeFromPreop,
   type IntraopPreopSummary,
@@ -11,6 +13,7 @@ export function EquipmentTab({
 }: {
   preop: IntraopPreopSummary | null
 }) {
+  const { tc, language } = usePreferences()
   const pediatricMode = preop?.clinicalMode === "PEDIATRIC"
   const pediatricAge = pediatricAgeFromPreop(preop)
   const hasPreop = !!preop && (
@@ -18,7 +21,7 @@ export function EquipmentTab({
       ? pediatricAge != null || preop.weight != null || preop.height != null
       : preop.age != null || preop.weight != null || preop.height != null
   )
-  const cats = hasPreop && preop ? calcEquipment({
+  const cats = translateEquipment(hasPreop && preop ? calcEquipment({
     clinicalMode: preop.clinicalMode,
     age: pediatricAge,
     ageYears: pediatricMode ? null : preop.age,
@@ -31,7 +34,7 @@ export function EquipmentTab({
       mouthOpeningCm: preop.mouthOpeningCm,
       cormackLehane: preop.cormackLehane,
     },
-  }) : []
+  }) : [], language)
   const medicationWarnings = getMedicationWarnings(preop?.currentMedications ?? [])
   return (
     <ScrollView style={{ flex:1 }} contentContainerStyle={{ padding:16, paddingBottom:40 }}>
@@ -47,7 +50,7 @@ export function EquipmentTab({
         <View style={{ backgroundColor:"#111111", borderRadius:14, borderWidth:1, borderColor:"#1e2d40",
           padding:20, alignItems:"center" }}>
           <Text style={{ color:"#64748b", fontSize:13, textAlign:"center", lineHeight:20 }}>
-            — Add patient details in preop to see suggestions —
+            — {tc("equipmentNeedsPreop")} —
           </Text>
         </View>
       ) : (
@@ -55,10 +58,10 @@ export function EquipmentTab({
           {/* Patient summary */}
           <View style={{ backgroundColor:"#111111", borderRadius:14, borderWidth:1, borderColor:"#1e2d40",
             padding:14, marginBottom:16, flexDirection:"row", gap:16, flexWrap:"wrap" }}>
-            {preop?.age    != null && <Text style={{ color:"#94a3b8", fontSize:13 }}>Age <Text style={{ color:"#f8fafc", fontWeight:"700" }}>{preop.age < 1 ? `${Math.round(preop.age * 12)}mo` : `${preop.age}y`}</Text></Text>}
-            {preop?.weight != null && <Text style={{ color:"#94a3b8", fontSize:13 }}>Weight <Text style={{ color:"#f8fafc", fontWeight:"700" }}>{preop.weight} kg</Text></Text>}
-            {preop?.height != null && <Text style={{ color:"#94a3b8", fontSize:13 }}>Height <Text style={{ color:"#f8fafc", fontWeight:"700" }}>{preop.height} cm</Text></Text>}
-            {preop?.sex    != null && <Text style={{ color:"#94a3b8", fontSize:13 }}>Sex <Text style={{ color:"#f8fafc", fontWeight:"700" }}>{preop.sex}</Text></Text>}
+            {preop?.age    != null && <Text style={{ color:"#94a3b8", fontSize:13 }}>{tc("agePlaceholder")} <Text style={{ color:"#f8fafc", fontWeight:"700" }}>{preop.age < 1 ? `${Math.round(preop.age * 12)}${tc("monthsShort")}` : `${preop.age}${tc("yearsShort")}`}</Text></Text>}
+            {preop?.weight != null && <Text style={{ color:"#94a3b8", fontSize:13 }}>{tc("weightPlaceholder")} <Text style={{ color:"#f8fafc", fontWeight:"700" }}>{preop.weight} kg</Text></Text>}
+            {preop?.height != null && <Text style={{ color:"#94a3b8", fontSize:13 }}>{tc("heightPlaceholder")} <Text style={{ color:"#f8fafc", fontWeight:"700" }}>{preop.height} cm</Text></Text>}
+            {preop?.sex    != null && <Text style={{ color:"#94a3b8", fontSize:13 }}>{tc("sexLabel")} <Text style={{ color:"#f8fafc", fontWeight:"700" }}>{preop.sex === "MALE" ? tc("sexMale") : preop.sex === "FEMALE" ? tc("sexFemale") : preop.sex}</Text></Text>}
           </View>
 
           {cats.map((cat, ci) => (
@@ -70,18 +73,25 @@ export function EquipmentTab({
                 </Text>
               </View>
               <View style={{ backgroundColor:"#111111", borderRadius:14, borderWidth:1, borderColor:"#1e2d40", padding:14 }}>
+                {/* Label and value share one flexible row; the note gets its own
+                    full-width line. Previously the value column had no flex bound,
+                    so sentence-length values ran off the right edge of the card and
+                    squeezed the label until it wrapped into them. */}
                 {cat.items.map((item, ii) => (
                   <View key={item.label} style={{
-                    flexDirection:"row", justifyContent:"space-between", alignItems:"flex-start",
-                    paddingVertical:8,
+                    paddingVertical:8, gap:3,
                     borderBottomWidth: ii < cat.items.length - 1 ? 1 : 0,
                     borderBottomColor:"#1e2d40",
                   }}>
-                    <Text style={{ color:"#64748b", fontSize:13, flex:1 }}>{item.label}</Text>
-                    <View style={{ alignItems:"flex-end" }}>
-                      <Text style={{ color:"#f8fafc", fontSize:13, fontWeight:"700" }}>{item.value}</Text>
-                      {!!item.note && <Text style={{ color:"#475569", fontSize:11, marginTop:1 }}>{item.note}</Text>}
+                    <View style={{ flexDirection:"row", alignItems:"flex-start", gap:12 }}>
+                      <Text style={{ color:"#64748b", fontSize:13, flexShrink:1 }}>{item.label}</Text>
+                      <Text style={{ color:"#f8fafc", fontSize:13, fontWeight:"700", flex:1, minWidth:0, textAlign:"right" }}>
+                        {item.value}
+                      </Text>
                     </View>
+                    {!!item.note && (
+                      <Text style={{ color:"#475569", fontSize:11, lineHeight:15 }}>{item.note}</Text>
+                    )}
                   </View>
                 ))}
               </View>

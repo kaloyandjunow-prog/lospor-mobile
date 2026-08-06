@@ -430,7 +430,7 @@ export function VitalStepper({ value, onChange, min, max, step = 1, precision = 
 
         <View ref={fieldRef} collapsable={false} style={{ flex: 1 }}>
           <Pressable onPress={openKeypad} style={{ minHeight: 44, alignItems: "center", justifyContent: "center", borderBottomWidth: 2, borderBottomColor: colors.borderStrong }}>
-            <Text style={{ color: value == null ? colors.textMuted : colors.textPrimary, fontSize: 22, fontWeight: "900", fontVariant: ["tabular-nums"] }}>
+            <Text numberOfLines={1} style={{ color: value == null ? colors.textMuted : colors.textPrimary, fontSize: 22, fontWeight: "900", fontVariant: ["tabular-nums"] }}>
               {value == null ? placeholder : formatClinicalValue(value, precision)}{unit ? <Text style={{ color: colors.textMuted, fontSize: 13 }}> {unit}</Text> : null}
             </Text>
           </Pressable>
@@ -526,7 +526,10 @@ export function VitalNumber({ label, unit, value, onChange, unobtainable, onTogg
           <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: "800" }}>{tc("vitalNotAvailable")}</Text>
         </View>
       ) : (
-        <VitalStepper value={value} onChange={(next) => { impact(); onChange(next) }} min={min} max={max} step={step} precision={precision} unit={unit} placeholder={label} />
+        // No placeholder: the label is already above this row. Passing it here
+        // rendered the field's own name a second time at value size, which on a
+        // narrow phone overflowed into the +/- buttons.
+        <VitalStepper value={value} onChange={(next) => { impact(); onChange(next) }} min={min} max={max} step={step} precision={precision} unit={unit} />
       )}
       {error ? <Text style={{ color: colors.danger, fontSize: 12, marginTop: 4 }}>{error}</Text> : null}
     </View>

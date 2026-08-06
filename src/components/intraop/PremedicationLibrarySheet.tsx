@@ -1,5 +1,6 @@
 import { Platform, Text, TextInput, TouchableOpacity, View } from "react-native"
 import type { PremDrug } from "@/lib/intraop-types"
+import type { PediatricPremedDrug } from "@/lib/pediatric-premedication-library"
 import { Sheet } from "./Sheet"
 import { displayClinicalCode } from "@/lib/clinical-display"
 import { usePreferences } from "@/lib/preferences-context"
@@ -53,17 +54,16 @@ export function PremedicationLibrarySheet({
   onAdd,
   pediatricMode = false,
 }: Props) {
-  const { language } = usePreferences()
+  const { language, tc } = usePreferences()
   const drugLabel = (name: string) => displayClinicalCode("option:PREMED_DRUG", name, language, { label: name })
   const groupLabel = (name: string) => displayClinicalCode("optionGroup", name, language, { label: name })
+  const pediatricAnnotation = drug ? (drug as PediatricPremedDrug).pediatric : undefined
 
   return (
     <Sheet visible={visible} onClose={onClose} title={`Premedication library - ${phase}`} full>
       {pediatricMode ? (
-        <Text style={{ color:"#fbbf24", fontSize:12, lineHeight:17, marginBottom:12 }}>
-          {language === "bg"
-            ? "\u041f\u0435\u0434\u0438\u0430\u0442\u0440\u0438\u0447\u043d\u0438\u0442\u0435 \u043f\u0440\u043e\u0444\u0438\u043b\u0438 \u0437\u0430 \u043f\u0440\u0435\u043c\u0435\u0434\u0438\u043a\u0430\u0446\u0438\u044f \u0432\u0441\u0435 \u043e\u0449\u0435 \u043d\u0435 \u0441\u0430 \u043a\u043b\u0438\u043d\u0438\u0447\u043d\u043e \u043e\u0434\u043e\u0431\u0440\u0435\u043d\u0438. \u0418\u0437\u043f\u043e\u043b\u0437\u0432\u0430\u0439\u0442\u0435 \u0441\u0432\u043e\u0431\u043e\u0434\u043d\u043e\u0442\u043e \u043f\u043e\u043b\u0435 \u0437\u0430 \u0440\u044a\u0447\u043d\u043e \u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043e \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435."
-            : "Pediatric premedication profiles are not clinically approved yet. Use the free-text field for a manually verified prescription."}
+        <Text style={{ color:"#64748b", fontSize:11, lineHeight:16, marginBottom:12 }}>
+          {tc("premedPediatricBasis")}
         </Text>
       ) : null}
       {!drug ? (
@@ -83,15 +83,31 @@ export function PremedicationLibrarySheet({
                 {open && (
                   <View style={{ paddingHorizontal:12, paddingBottom:10, paddingTop:4,
                     backgroundColor:"#0d1520", flexDirection:"row", flexWrap:"wrap", gap:8 }}>
-                    {cat.drugs.map(item => (
-                      <TouchableOpacity key={item.name}
-                        onPress={() => onSelectDrug(item)}
-                        style={{ paddingHorizontal:12, paddingVertical:8, borderRadius:9,
-                          backgroundColor:"#1e2d40", borderWidth:1, borderColor:"#2a3a50" }}>
-                        <Text style={{ color:"#93c5fd", fontSize:12, fontWeight:"700" }}>{drugLabel(item.name)}</Text>
-                        <Text style={{ color:"#64748b", fontSize:10, marginTop:2 }}>{item.dose} {item.unit}</Text>
-                      </TouchableOpacity>
-                    ))}
+                    {cat.drugs.map(item => {
+                      const annotation = (item as PediatricPremedDrug).pediatric
+                      const withheld = annotation?.kind === "withheld"
+                      return (
+                        <TouchableOpacity key={item.name}
+                          disabled={withheld}
+                          onPress={() => onSelectDrug(item)}
+                          style={{ paddingHorizontal:12, paddingVertical:8, borderRadius:9,
+                            opacity: withheld ? 0.55 : 1,
+                            backgroundColor: withheld ? "#241a1a" : "#1e2d40",
+                            borderWidth:1, borderColor: withheld ? "#7c2d12" : "#2a3a50" }}>
+                          <Text style={{ color: withheld ? "#fca5a5" : "#93c5fd", fontSize:12, fontWeight:"700" }}>
+                            {drugLabel(item.name)}
+                          </Text>
+                          {/* A withheld drug shows why instead of a dose, and a
+                              drug with no calculable dose says so rather than
+                              displaying a bare 0. */}
+                          <Text style={{ color: withheld ? "#f87171" : "#64748b", fontSize:10, marginTop:2 }}>
+                            {annotation && annotation.kind !== "calculated"
+                              ? annotation.reason
+                              : `${item.dose} ${item.unit}`}
+                          </Text>
+                        </TouchableOpacity>
+                      )
+                    })}
                   </View>
                 )}
               </View>
@@ -130,6 +146,18 @@ export function PremedicationLibrarySheet({
               </TouchableOpacity>
             </View>
             {!!drug.hint && <Text style={{ color:"#475569", fontSize:11, marginTop:6 }}>{drug.hint}</Text>}
+            {/* The arithmetic behind the number, so it can be checked at a
+                glance instead of taken on trust. */}
+            {pediatricAnnotation?.kind === "calculated" && (
+              <Text style={{ color:"#38bdf8", fontSize:11, marginTop:4 }}>
+                {pediatricAnnotation.perKg} {pediatricAnnotation.unit}/kg × {pediatricAnnotation.weightUsedKg} kg
+                {pediatricAnnotation.basis === "IBW" ? ` (${tc("premedIdealWeight")})` : ""}
+                {pediatricAnnotation.capped ? ` — ${tc("premedCappedAt")} ${pediatricAnnotation.cap} ${pediatricAnnotation.unit}` : ""}
+              </Text>
+            )}
+            {pediatricAnnotation && pediatricAnnotation.kind !== "calculated" && (
+              <Text style={{ color:"#fbbf24", fontSize:11, marginTop:4 }}>{pediatricAnnotation.reason}</Text>
+            )}
           </View>
 
           <View>

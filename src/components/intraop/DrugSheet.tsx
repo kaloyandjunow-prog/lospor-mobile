@@ -651,7 +651,7 @@ export function DrugSheet({
             <Text style={{ color:"#94a3b8", fontSize:13 }}>{tc("back")}</Text>
           </TouchableOpacity>
           {favouriteItems.length === 0 ? (
-            <Text style={{ color:"#64748b", fontSize:13, lineHeight:18 }}>Choose favourite bolus drugs in Settings.</Text>
+            <Text style={{ color:"#64748b", fontSize:13, lineHeight:18 }}>{tc("dsNoFavourites")}</Text>
           ) : (
             <View style={{ flexDirection:"row", flexWrap:"wrap", gap:10 }}>
               {favouriteItems.map(drug => (

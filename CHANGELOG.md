@@ -1,5 +1,41 @@
 # Changelog - LOSPOR Mobile
 
+## [8.3.2] - 2026-08-06
+
+### Added
+
+- Premedication in paediatric mode. The library used to be handed over empty, so
+  the screen offered nothing and explained itself with a banner. Every entry is
+  now rebuilt from the child's weight and age, drugs without a paediatric rule
+  are dropped rather than shown at their adult dose, and withheld drugs appear
+  disabled with the reason. The dose carries its own arithmetic —
+  `0.5 mg/kg × 14 kg` — and changing route recalculates it.
+- Equipment suggestions are translated into Bulgarian. A coverage test walks the
+  full input space and fails if `@lospor/core` rewords anything without a
+  matching translation, so the two cannot drift apart silently.
+
+### Fixed
+
+- **Preferences no longer follow one clinician into another's account.** The
+  device copy lived under a single key that survived sign-out, and any field the
+  server did not have fell back to it and was then pushed up — so on a shared
+  phone, the previous user's favourite drugs and infusions became the next
+  user's, permanently. Snapshots are stamped with the account that wrote them
+  and discarded on mismatch, which holds even when the app is killed without a
+  clean sign-out. They are also cleared on sign-out and on session expiry;
+  unsynced drafts and queued patches are deliberately left alone, because a
+  session timing out is not a reason to destroy clinical work.
+- Equipment suggestions no longer run off the edge of the card. The value column
+  had no flex bound, so it sized to its content and squeezed the label until it
+  wrapped into it.
+- Preoperative and recovery vitals no longer print their own name twice. The
+  field label was being passed as the stepper's placeholder, which renders at
+  the same size and weight as a real value and overflowed into the +/− buttons.
+- Paediatric drug and infusion menus have their scenario categories back —
+  induction, relaxants and the rest. They were being emptied in paediatric mode,
+  leaving favourites and browse-all with nothing between them. The adult dose
+  presets stay suppressed; the categories are navigation only.
+
 ## [8.3.1] - 2026-08-05
 
 Android `versionCode` is 35. Requires `@lospor/core` v8.3.0 and LOSPOR API

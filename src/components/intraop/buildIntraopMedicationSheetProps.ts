@@ -245,7 +245,13 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
       onClose: () => setDrugOpen(false),
       drugCats: DRUG_CATS,
       favouriteNames: favouriteDrugs,
-      scenarios: pediatricMode ? [] : BOLUS_SCENARIOS,
+      // Scenario groups are navigation, not dosing: the pills carry a drug name
+      // and its unit, and selecting one goes through the same paediatric profile
+      // path as any other route into the sheet. Emptying them in paediatric mode
+      // left that menu with only Favourites and Browse all, so a paediatric case
+      // had no way to reach drugs by scenario. The adult dose presets stay
+      // suppressed below, which is what actually had to be kept apart.
+      scenarios: BOLUS_SCENARIOS,
       drugCat,
       setDrugCat,
       drugPick,
@@ -328,7 +334,9 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
       },
       infDrugs: INF_DRUGS,
       favouriteNames: favouriteInfusions,
-      scenarios: pediatricMode ? [] : INFUSION_SCENARIOS,
+      // Navigation only, exactly as for boluses above: the pills carry a name
+      // and a unit. The adult rate presets and ranges stay suppressed below.
+      scenarios: INFUSION_SCENARIOS,
       ratePresets: pediatricMode ? {} : INFUSION_QUICK_RATES,
       infDrug,
       setInfDrug,
