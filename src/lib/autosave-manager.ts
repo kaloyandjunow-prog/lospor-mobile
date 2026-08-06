@@ -17,7 +17,21 @@ import { ApiError, apiFetch } from "./api"
 import { clinicalSyncKv } from "./clinical-sync-kv"
 
 const kv: KVAdapter = clinicalSyncKv
-const AUTOSAVE_NETWORK_TIMEOUT_MS = 3_000
+
+/**
+ * How long a save waits for the server before giving up and queueing.
+ *
+ * Briefly lowered to 3 s on the theory that falling back to the durable queue
+ * faster was strictly better. It is not: a healthy save over mobile data
+ * regularly takes longer than 3 s, so the abort was classified as a network
+ * failure, tripped the offline circuit breaker, and the app announced "Offline"
+ * while it was online and saving fine. Telling a clinician their work is not
+ * reaching the server, when it is, is worse than waiting a few more seconds.
+ *
+ * The circuit breaker below is what stops this being paid repeatedly: the full
+ * wait happens once, then saves queue immediately until the cooldown expires.
+ */
+const AUTOSAVE_NETWORK_TIMEOUT_MS = 8_000
 
 /**
  * How long autosave stops attempting the network after a failure.

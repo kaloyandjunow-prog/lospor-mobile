@@ -19,13 +19,19 @@ export type TimingSample = {
   ms: number
   /** Milliseconds since the app started, so samples can be ordered. */
   at: number
+  /**
+   * What else was happening. A duration alone cannot distinguish "this render
+   * is expensive" from "this interaction waited on something", and that
+   * distinction is the whole question.
+   */
+  note?: string
 }
 
 const started = Date.now()
 const samples: TimingSample[] = []
 
-export function recordTiming(label: string, ms: number): void {
-  samples.unshift({ label, ms, at: Date.now() - started })
+export function recordTiming(label: string, ms: number, note?: string): void {
+  samples.unshift({ label, ms, at: Date.now() - started, ...(note ? { note } : {}) })
   if (samples.length > MAX_SAMPLES) samples.length = MAX_SAMPLES
 }
 
@@ -35,6 +41,47 @@ export function recentTimings(): readonly TimingSample[] {
 
 export function clearTimings(): void {
   samples.length = 0
+}
+
+/**
+ * Where the time inside one intraop render went.
+ *
+ * Measuring the switch end-to-end proved it was the render phase, not waiting —
+ * but "the render is slow" is not yet a defect anyone can fix. These split that
+ * 1.5 s into the parts that can each be attacked separately.
+ */
+export type RenderPhases = {
+  /** Constructing the active tab's props. */
+  buildTab: number
+  /** `useStableRenderModel` walking those props. */
+  walkTab: number
+  /** Constructing props for all fourteen sheets. */
+  buildSheets: number
+  /** `useStableRenderModel` walking the sheet props. */
+  walkSheets: number
+  /** React's own measure of rendering the tab subtree. */
+  tabTree: number
+  /** React's own measure of rendering the fourteen sheets. */
+  sheetTree: number
+}
+
+let phases: Partial<RenderPhases> = {}
+
+export function recordRenderPhases(next: Partial<RenderPhases>): void {
+  phases = { ...phases, ...next }
+}
+
+/** Reads and clears — each tab switch reports its own render, not a running total. */
+export function takeRenderPhases(): Partial<RenderPhases> {
+  const out = phases
+  phases = {}
+  return out
+}
+
+export function formatRenderPhases(p: Partial<RenderPhases>): string {
+  const ms = (n: number | undefined) => (n === undefined ? "?" : Math.round(n))
+  return `build ${ms(p.buildTab)}+${ms(p.buildSheets)} · walk ${ms(p.walkTab)}+${ms(p.walkSheets)}`
+    + ` · tree tab ${ms(p.tabTree)} sheets ${ms(p.sheetTree)}`
 }
 
 export function timingSummary(): { count: number; worst: number; median: number } {

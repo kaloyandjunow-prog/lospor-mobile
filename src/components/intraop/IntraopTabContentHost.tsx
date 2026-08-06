@@ -35,7 +35,7 @@ export type IntraopTabContentHostProps =
   | { tab: "events"; content: ComponentProps<typeof IntraopEventsTab> }
   | { tab: "chart"; content: ComponentProps<typeof IntraopChartTab> }
 
-export function IntraopTabContentHost(props: IntraopTabContentHostProps) {
+function renderTab(props: IntraopTabContentHostProps): ReactNode {
   switch (props.tab) {
     case "log": return <IntraopTimetableTab {...props.content} />
     case "equipment": return <EquipmentTab {...props.content} />
@@ -50,4 +50,18 @@ export function IntraopTabContentHost(props: IntraopTabContentHostProps) {
     case "chart": return <IntraopChartTab {...props.content} />
     default: return null
   }
+}
+
+/**
+ * Renders the active tab, and only the active tab.
+ *
+ * Keeping every visited tab mounted and merely hidden was tried, on the theory
+ * that native view construction was the cost. On-device measurement said
+ * otherwise: render time climbed monotonically as tabs accumulated — the same
+ * tab took 1531 ms early in a session and 2332 ms once the others were resident
+ * — so residency made it worse, not better. Mounting one tab at a time is both
+ * simpler and faster.
+ */
+export function IntraopTabContentHost(props: IntraopTabContentHostProps) {
+  return <>{renderTab(props)}</>
 }

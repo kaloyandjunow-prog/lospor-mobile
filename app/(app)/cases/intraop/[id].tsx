@@ -46,7 +46,7 @@ import { useIntraopAutofillPreferences } from "@/lib/use-intraop-autofill-prefer
 import { useIntraopClinicalViewState } from "@/lib/use-intraop-clinical-view-state"
 import { useClinicalRules } from "@/lib/pediatric-clinical-rules"
 import { enqueueIntraopCaseWrite } from "@/lib/intraop-write-queue"
-import { recordTiming } from "@/lib/diagnostics"
+import { formatRenderPhases, recordTiming, takeRenderPhases } from "@/lib/diagnostics"
 import { IntraopScreenChrome } from "@/components/intraop/IntraopScreenChrome"
 import { IntraopRenderSurface } from "@/components/intraop/IntraopRenderSurface"
 import type { LogEvent, ActiveInfusion, ActiveFluid, ActiveGasSettings } from "@/lib/intraop-log-event"
@@ -149,15 +149,31 @@ export default function IntraopLiveScreen() {
   // Time from the tap to the committed render of the new tab — the number the
   // clinician actually experiences, readable later on the diagnostics screen.
   const tabSwitchStartedAt = useRef<number | null>(null)
+  const tabRenderStartedAt = useRef<number | null>(null)
   const selectTab = useCallback((next: React.SetStateAction<IntraopTab>) => {
     tabSwitchStartedAt.current = Date.now()
+    tabRenderStartedAt.current = null
     setTab(next)
   }, [])
+  // Marks the start of the render that shows the new tab. The gap between the
+  // tap and this point is time React never got — the JS thread was busy with
+  // something else, which is a different problem from a slow render.
+  if (tabSwitchStartedAt.current !== null && tabRenderStartedAt.current === null) {
+    tabRenderStartedAt.current = Date.now()
+  }
   useEffect(() => {
     const startedAt = tabSwitchStartedAt.current
     if (startedAt == null) return
+    const renderStartedAt = tabRenderStartedAt.current ?? startedAt
     tabSwitchStartedAt.current = null
-    recordTiming(`tab:${tab}`, Date.now() - startedAt)
+    tabRenderStartedAt.current = null
+    const now = Date.now()
+    recordTiming(
+      `tab:${tab}`,
+      now - startedAt,
+      `blocked ${renderStartedAt - startedAt} · render ${now - renderStartedAt} · `
+      + `saves ${pendingSaveCountRef.current}\n${formatRenderPhases(takeRenderPhases())}`,
+    )
   }, [tab])
   const [elapsedMs, setElapsedMs] = useState(0)
   const [caseLoaded, setCaseLoaded] = useState(false)

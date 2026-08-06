@@ -1,5 +1,59 @@
 # Changelog - LOSPOR Mobile
 
+## [8.5.0] - 2026-08-07
+
+### Fixed
+
+- **Switching intraop tabs took over a second; it now takes tens of
+  milliseconds.** Every switch re-rendered all fourteen bottom sheets — drugs,
+  infusions, fluids, agents, vitals and the rest — even though every one of them
+  was closed. `Modal` draws nothing while hidden, so nothing appeared on screen
+  and nothing looked wrong, but each component body still ran: filtering the drug
+  catalogue, building scenario lists, computing doses. On-device measurement put
+  the closed sheets at **1335–1652 ms per switch** against **5–41 ms** for the
+  tab actually being opened. Only the open sheet renders now.
+
+- **The preoperative form got slower the more of it you filled in.** Every
+  keystroke re-rendered the form and then `JSON.stringify`-compared all 106
+  fields against their previous values — over 200 serialisations per character,
+  across an object graph that grew with each diagnosis, medication and lab added.
+  All of it existed to choose between two debounce delays, a question that only
+  concerns boolean fields. It now compares those with `!==` and serialises
+  nothing. A second render per keystroke, from marking the draft "saving" two
+  seconds before any save began, is also gone.
+
+- **Autosave no longer announces "Offline" while online.** The network timeout
+  had been shortened to 3 s, which a healthy save over mobile data can exceed;
+  the abort was read as a network failure and the app reported itself offline
+  while saving perfectly well. Back to 8 s, with the circuit breaker below
+  ensuring that wait is paid once rather than per save.
+
+- Autosave gives up on an unreachable server quickly instead of retrying at full
+  cost: after a failure, saves go straight to the durable queue until a short
+  cooldown passes. Nothing is lost — a save is queued before any network attempt.
+
+- Nothing waits on the network indefinitely: `apiFetch` now carries a 20 s
+  default timeout. One request without a bound, inside the sync poll, was enough
+  to stop background syncing for the rest of a session.
+
+- **Three Android Keystore operations per API call, removed.** Every request read
+  the bearer token back out of SecureStore and wrote two diagnostic timestamps
+  into it. Those are encrypted operations, on the path of every poll, every
+  autosave and every event recorded during a case. The token is cached in memory
+  and the timestamps no longer persist. On web these were free `localStorage`
+  calls, which is why the PWA never showed the cost.
+
+- The intraop screen no longer re-renders every 10 seconds regardless of change.
+
+### Added
+
+- **Settings → Diagnostics** now breaks a tab switch into named phases — time
+  blocked before the render, the render itself, props construction, and each
+  subtree measured by React's own profiler — alongside queued edits, server
+  reachability and the offline vocabulary version. This is what located the sheet
+  rendering after a day of wrong theories, and it stays so the next question
+  starts with a measurement.
+
 ## [8.4.0] - 2026-08-06
 
 ### Added

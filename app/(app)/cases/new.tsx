@@ -520,23 +520,50 @@ export default function NewCaseScreen() {
   // server-first, local fallback
   useEffect(() => {
     if (submittingRef.current) return
-    setDraftState("saving")
+    // Marking "saving" here fired a second render on every keystroke, for a
+    // save that had not started and would not start for another 2 seconds. The
+    // state is set inside `runAutosave`, when a save actually begins.
     if (autosaveDraftRef.current) clearTimeout(autosaveDraftRef.current)
 
-    // Shallow-diff against the previous snapshot to classify this change.
+    // Classify this change: a toggle/pill tap saves quickly, typing waits.
+    //
+    // This used to `JSON.stringify` both sides of all 106 fields on every
+    // keystroke — over 200 serialisations per character, across an object graph
+    // that grows as diagnoses, procedures, medications and labs are added. The
+    // form therefore got measurably slower the more of it you filled in, which
+    // is the opposite of what a form should do.
+    //
+    // Only booleans can make a change "discrete", so only booleans need
+    // comparing, and they compare with `!==`. Everything else is irrelevant to
+    // the question being asked.
     const current = (_allFormValues ?? {}) as Record<string, unknown>
     const prev = prevFormValuesRef.current
     prevFormValuesRef.current = current
     let discreteTap = false
     if (prev) {
-      const changedKeys = Object.keys(current).filter(
-        (k) => JSON.stringify(current[k]) !== JSON.stringify(prev[k]),
-      )
-      discreteTap = changedKeys.length > 0 &&
-        changedKeys.every((k) => typeof current[k] === "boolean" || typeof prev[k] === "boolean")
+      let changed = 0
+      let allBoolean = true
+      for (const key of Object.keys(current)) {
+        const now = current[key]
+        const before = prev[key]
+        const isBoolean = typeof now === "boolean" || typeof before === "boolean"
+        if (isBoolean) {
+          if (now !== before) changed += 1
+          continue
+        }
+        // Non-boolean fields: a reference change is enough to count as changed.
+        // react-hook-form hands back new references for edited values, and a
+        // false negative here only costs the slower debounce.
+        if (now !== before) {
+          changed += 1
+          allBoolean = false
+        }
+      }
+      discreteTap = changed > 0 && allBoolean
     }
 
     function runAutosave() {
+      setDraftState("saving")
       const previousAutosave = autosaveInFlightRef.current
       const task = (async () => {
         let values = getValues()

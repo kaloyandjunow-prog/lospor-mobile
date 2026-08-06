@@ -71,12 +71,21 @@ export default function DiagnosticsScreen() {
               />
               <View style={{ height: 8 }} />
               {timings.map((sample, index) => (
-                <Row
-                  key={`${sample.at}-${index}`}
-                  label={sample.label}
-                  value={`${sample.ms} ms`}
-                  tone={sample.ms > 1000 ? "warn" : undefined}
-                />
+                <View key={`${sample.at}-${index}`}>
+                  <Row
+                    label={sample.label}
+                    value={`${sample.ms} ms`}
+                    tone={sample.ms > 1000 ? "warn" : undefined}
+                  />
+                  {sample.note ? (
+                    <Text style={{
+                      color: colors.textMuted, fontSize: 10, marginTop: -2, marginBottom: 4,
+                      fontVariant: ["tabular-nums"],
+                    }}>
+                      {sample.note}
+                    </Text>
+                  ) : null}
+                </View>
               ))}
             </>
           )}
