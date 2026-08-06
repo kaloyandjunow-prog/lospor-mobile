@@ -1,5 +1,43 @@
 # Changelog - LOSPOR Mobile
 
+## [8.3.3] - 2026-08-06
+
+### Fixed
+
+- **Dragging a vital slider no longer changes tab.** The intraop tab swipe claims
+  any horizontal movement, and React Native grants a termination request by
+  default, so a slider handed the gesture over mid-drag — the tab changed while a
+  clinician was still setting a value. Both steppers now refuse to hand it over
+  once the finger is down.
+- **A three-digit blood pressure no longer truncates to `13…`.** Between the two
+  44 px buttons a half-width field is about 61 px, and `130 mmHg` needed 88 px.
+  Measured at smaller sizes it still did not fit — 69 px at 17 pt, 62 px at 15 pt,
+  by which point the number is too small to read at arm's length. The unit is what
+  did not fit, so it now sits below the field and the value has room at 19 pt.
+  Applies to every vital field, in preoperative assessment and in recovery, so the
+  form keeps one rhythm rather than making blood pressure a special case.
+- The label row no longer collides with its neighbour at half width: the label
+  yields and truncates, and the *unable to obtain* control keeps its size instead
+  of being pushed out of its column.
+
+### Changed
+
+- The intraoperative screen builds props for the tab it is showing, not for all
+  eleven. Housekeeping rather than a measured speed-up — see below.
+
+### Note on the reported intraoperative lag
+
+Tab switching was profiled against the real API through the PWA. Wall-clock
+timing showed 65–341 ms per switch, but a control that re-clicked the *already
+active* tab measured 52–96 ms of pure harness overhead, and a V8 CPU profile over
+twenty switches found 2,466 ms of 3,434 ms idle with no application function
+above 18 ms of self time. The lag is not reproducible in the PWA, and those
+numbers described the test harness rather than the app.
+
+The PWA and the native app share JavaScript but not the renderer, so a cost in
+native layout or view mounting cannot appear there. This release therefore makes
+no claim to have fixed it; that needs measuring on a device.
+
 ## [8.3.2] - 2026-08-06
 
 ### Added

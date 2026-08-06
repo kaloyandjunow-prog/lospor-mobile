@@ -75,6 +75,10 @@ export function VitalStepper({ value, onChange, min, max, manualMax = max, step 
   const panResponder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
+    // See PreopFormWidgets: without this the intraop tab swipe one level up
+    // takes the gesture mid-drag and changes tab while a value is being set.
+    onPanResponderTerminationRequest: () => false,
+    onShouldBlockNativeResponder: () => true,
     onPanResponderGrant: (event) => { setFromPageX(event.nativeEvent.pageX) },
     onPanResponderMove: (_, gesture) => { setFromPageX(gesture.moveX) },
   }), [setFromPageX])
@@ -130,12 +134,19 @@ export function VitalStepper({ value, onChange, min, max, manualMax = max, step 
           <Text style={{ color: colors.textPrimary, fontSize: 24, fontWeight: "900" }}>-</Text>
         </Pressable>
 
+        {/* See PreopFormWidgets: the unit lives below the field because a
+            half-width field is only ~61px and "130 mmHg" needed 88. */}
         <View ref={fieldRef} collapsable={false} style={{ flex: 1 }}>
           <Pressable disabled={disabled} onPress={openKeypad} style={{ minHeight: 44, alignItems: "center", justifyContent: "center", borderBottomWidth: 2, borderBottomColor: colors.borderStrong, opacity: disabled ? 0.65 : 1 }}>
-            <Text numberOfLines={1} style={{ color: value == null ? colors.textMuted : colors.textPrimary, fontSize: 22, fontWeight: "900", fontVariant: ["tabular-nums"] }}>
-              {value == null ? placeholder : formatClinicalValue(value, precision)}{unit ? <Text style={{ color: colors.textMuted, fontSize: 13 }}> {unit}</Text> : null}
+            <Text numberOfLines={1} style={{ color: value == null ? colors.textMuted : colors.textPrimary, fontSize: 19, fontWeight: "900", fontVariant: ["tabular-nums"] }}>
+              {value == null ? placeholder : formatClinicalValue(value, precision)}
             </Text>
           </Pressable>
+          {unit ? (
+            <Text numberOfLines={1} style={{ marginTop: 4, textAlign: "center", color: colors.textMuted, fontSize: 11, fontWeight: "700" }}>
+              {unit}
+            </Text>
+          ) : null}
         </View>
 
         <Pressable
@@ -207,7 +218,8 @@ export function VitalNumber({ label, unit, value, onChange, unobtainable, onTogg
   return (
     <View style={{ marginBottom: 14 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: "900" }}>{label}</Text>
+        {/* Yields to the pill rather than pushing it out of the column. */}
+        <Text numberOfLines={1} style={{ flexShrink: 1, minWidth: 0, color: colors.textSecondary, fontSize: 13, fontWeight: "900" }}>{label}</Text>
         {onToggleUnobtainable && (
           <Pressable
             onPress={() => { hapticTick(); onToggleUnobtainable() }}
