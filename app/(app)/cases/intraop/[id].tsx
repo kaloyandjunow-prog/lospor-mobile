@@ -46,6 +46,7 @@ import { useIntraopAutofillPreferences } from "@/lib/use-intraop-autofill-prefer
 import { useIntraopClinicalViewState } from "@/lib/use-intraop-clinical-view-state"
 import { useClinicalRules } from "@/lib/pediatric-clinical-rules"
 import { enqueueIntraopCaseWrite } from "@/lib/intraop-write-queue"
+import { recordTiming } from "@/lib/diagnostics"
 import { IntraopScreenChrome } from "@/components/intraop/IntraopScreenChrome"
 import { IntraopRenderSurface } from "@/components/intraop/IntraopRenderSurface"
 import type { LogEvent, ActiveInfusion, ActiveFluid, ActiveGasSettings } from "@/lib/intraop-log-event"
@@ -145,6 +146,19 @@ export default function IntraopLiveScreen() {
   const tabLayouts  = useRef<Partial<Record<string, { x: number; width: number }>>>({})
 
   const [tab,       setTab]       = useState<IntraopTab>("equipment")
+  // Time from the tap to the committed render of the new tab — the number the
+  // clinician actually experiences, readable later on the diagnostics screen.
+  const tabSwitchStartedAt = useRef<number | null>(null)
+  const selectTab = useCallback((next: React.SetStateAction<IntraopTab>) => {
+    tabSwitchStartedAt.current = Date.now()
+    setTab(next)
+  }, [])
+  useEffect(() => {
+    const startedAt = tabSwitchStartedAt.current
+    if (startedAt == null) return
+    tabSwitchStartedAt.current = null
+    recordTiming(`tab:${tab}`, Date.now() - startedAt)
+  }, [tab])
   const [elapsedMs, setElapsedMs] = useState(0)
   const [caseLoaded, setCaseLoaded] = useState(false)
   const [expandedRow, setExpandedRow] = useState<number | null>(null)
@@ -544,7 +558,7 @@ export default function IntraopLiveScreen() {
     startRef,
     verticalTimetableRef,
     tab,
-    setTab,
+    setTab: selectTab,
     expandedRow,
     tabLayouts,
     tabRailRef,
@@ -649,7 +663,7 @@ export default function IntraopLiveScreen() {
           }}
 
           ended={caseEnded ? { tc, resumeSecsLeft, onResume: resumeCase } : undefined}
-          tabBar={{ tab, onSelect: setTab, tc, screenWidth, railRef: tabRailRef, layouts: tabLayouts }}
+          tabBar={{ tab, onSelect: selectTab, tc, screenWidth, railRef: tabRailRef, layouts: tabLayouts }}
         >
 
         <IntraopRenderSurface {...{

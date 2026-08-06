@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from "react"
 import { AppState } from "react-native"
 import { createBackoffPolicy } from "@lospor/core/sync"
 import { getQueuedCasePatchSummary } from "./offline-case-patches"
-import { autosaveManager } from "./autosave-manager"
+import { autosaveManager, resetAutosaveNetworkBreaker } from "./autosave-manager"
 import { getAllLocalCaseDrafts, deleteLocalCaseDraft } from "./local-case-store"
 import { buildPreopPayload } from "./preop-payload"
 import { apiFetch } from "./api"
@@ -55,6 +55,9 @@ export function useQueuedSaveFlusher(enabled: boolean, onChange?: (count: number
       if (state === "active") {
         policyRef.current.reset()
         nextAllowedAtRef.current = 0
+        // The network may well have changed while the app was backgrounded, so
+        // the offline cooldown should not outlive the background period.
+        resetAutosaveNetworkBreaker()
       }
     })
     return () => sub.remove()

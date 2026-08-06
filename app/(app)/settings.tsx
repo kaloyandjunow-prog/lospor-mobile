@@ -684,6 +684,11 @@ export default function SettingsScreen() {
               label={t("auditLogs")}
               subtitle={t("auditLogsSub")}
               onPress={() => router.push("/(app)/audit-logs" as Href)}
+            />
+            <SettingsRow
+              label={t("diagnosticsTitle")}
+              subtitle={t("diagnosticsSub")}
+              onPress={() => router.push("/(app)/diagnostics" as Href)}
               last
             />
           </Card>

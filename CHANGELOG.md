@@ -1,5 +1,43 @@
 # Changelog - LOSPOR Mobile
 
+## [8.4.0] - 2026-08-06
+
+### Added
+
+- **Diagnosis and procedure search work with no connection.** Both pickers were
+  network-only and, on failure, returned an empty list — which reads as "there is
+  no such diagnosis" rather than "there is no network". Since a case cannot be
+  finalised without a diagnosis, a case could be documented in full offline and
+  only then found to be unfinishable. The whole ICD-10 vocabulary and procedure
+  list now ship with the app (~390 KB compressed) and are loaded lazily on the
+  first search that needs them.
+- Results that came from the device are labelled as such, and fields with no
+  offline copy say so, so an empty list is never mistaken for an answer. Applies
+  to diagnoses, procedures and medications, which share one component and all
+  failed the same silent way.
+- Diagnoses and procedures chosen offline record which vocabulary version
+  produced them, so a case coded from a stale copy can be found later.
+- **Settings → Diagnostics**: queued edits, whether the server is reachable, the
+  vocabulary version on the device, and how long recent intraop tab switches
+  took. A performance problem on a phone in another building cannot be profiled
+  remotely; this turns an impression into a number.
+
+### Fixed
+
+- Autosave no longer spends the full network timeout discovering it is offline.
+  The timeout drops from 8 s to 3 s, and after a failure saves go straight to the
+  durable queue until a short cooldown passes — intraop writes are serialised per
+  case, so one unreachable save used to hold up everything behind it, and the
+  next save paid the cost again. Nothing is lost: a save is queued before any
+  network attempt.
+- The clinical storage adapter no longer consults SecureStore on every cache miss
+  and delete a key on every write, long after the one-time migration drained it.
+  Each was an Android Keystore round trip that could only return nothing: 25
+  native calls on the first save of a case, 12 of them Keystore.
+- The intraop screen no longer re-renders every 10 seconds regardless of change.
+  It rebuilt the whole timetable and redrew the screen to display an elapsed time
+  that reads in whole minutes — five ticks in six changed nothing visible.
+
 ## [8.3.3] - 2026-08-06
 
 ### Fixed
