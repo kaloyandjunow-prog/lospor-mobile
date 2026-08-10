@@ -6,7 +6,8 @@ import type { ScenarioGroup } from "@lospor/core"
 import { usePreferences } from "@/lib/preferences-context"
 import { displayClinicalCode } from "@/lib/clinical-display"
 import {
-  applicablePediatricInfusionProfiles,
+  selectApplicablePediatricInfusionProfile,
+  visiblePediatricInfusionRoutes,
   resolvePediatricInfusionProfileSurface,
   type PediatricInfusionProfileRule,
   type PediatricInfusionSelectionResolution,
@@ -126,16 +127,27 @@ export function InfusionSheet({
     if (visible) { setMode("home"); setScenario(null); setQuery("") }
   }, [visible])
 
+  /** The single applicable rule for this infusion, or none. */
+  function pediatricRuleFor(name: string) {
+    if (!pediatricMode) return null
+    return selectApplicablePediatricInfusionProfile({
+      itemKey: name,
+      age: patientAge,
+      weightKg: patientWeightKg,
+      profiles: pediatricInfusionProfiles,
+    }).profile
+  }
+
   function pediatricSurfaceFor(name: string, route?: string): PediatricInfusionSelectionResolution | undefined {
     if (!pediatricMode) return undefined
-    const matches = applicablePediatricInfusionProfiles({
+    const { profile } = selectApplicablePediatricInfusionProfile({
       itemKey: name,
       age: patientAge,
       weightKg: patientWeightKg,
       profiles: pediatricInfusionProfiles,
     })
-    if (matches.length !== 1) return undefined
-    return resolvePediatricInfusionProfileSurface({ rule: matches[0], route })
+    if (!profile) return undefined
+    return resolvePediatricInfusionProfileSurface({ rule: profile, route })
   }
 
   const visibleInfDrugs = pediatricMode
@@ -161,7 +173,9 @@ export function InfusionSheet({
         formulationOptions: surface.formulationOptions,
         formulation: surface.formulation,
         route: surface.route,
-        routes: surface.routes,
+        routes: pediatricRuleFor(name)
+          ? visiblePediatricInfusionRoutes(pediatricRuleFor(name)!)
+          : surface.routes,
         manualEntryOnly: surface.manualEntryOnly,
         advisory: surface.advisory,
         disposition: surface.disposition,
