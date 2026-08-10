@@ -1,13 +1,25 @@
-import React from "react"
+import React, { useState } from "react"
 import { describe, expect, it, vi } from "vitest"
 
 vi.mock("@/lib/haptic", () => ({ hapticTick: vi.fn() }))
 vi.mock("expo-haptics", () => ({}))
+vi.mock("@/lib/preferences-context", () => ({
+  usePreferences: () => ({
+    language: "en",
+    tc: (key: string) => key,
+  }),
+}))
+vi.mock("@/lib/clinical-display", () => ({
+  displayClinicalCode: (
+    _category: string,
+    value: string,
+    _language: string,
+    fallback?: { label?: string },
+  ) => fallback?.label ?? value,
+}))
 
-import { render } from "@/test/render"
+import { pressByText, queryByText, render } from "@/test/render"
 import { InfusionSheet } from "./InfusionSheet"
-import { PreferencesProvider } from "@/lib/preferences-context"
-import { AuthProvider } from "@/lib/auth-context"
 import type { PediatricInfusionProfileRule } from "@lospor/core/clinical-rules"
 
 /**
@@ -18,15 +30,12 @@ import type { PediatricInfusionProfileRule } from "@lospor/core/clinical-rules"
  */
 
 function renderSheet(element: React.ReactElement) {
-  return render(
-    <AuthProvider>
-      <PreferencesProvider>{element}</PreferencesProvider>
-    </AuthProvider>,
-  )
+  return render(element)
 }
 
 const rule = (
   routeDispositions: Record<string, "AUTO" | "MANUAL" | "HIDDEN">,
+  over: Partial<PediatricInfusionProfileRule> = {},
 ): PediatricInfusionProfileRule => ({
   ruleKey: "ped.inf.test",
   ruleVersion: "1",
@@ -65,12 +74,15 @@ const rule = (
   sourceIds: [],
   origin: "PLATFORM",
   presetId: "preset",
+  ...over,
 })
+
+const TESTAMINE = { name: "Testamine", unit: "mcg/kg/min", color: "#3b82f6" }
 
 const common = {
   visible: true,
   onClose: () => {},
-  infDrugs: [{ name: "Testamine", unit: "mcg/kg/min", color: "#3b82f6" }],
+  infDrugs: [TESTAMINE],
   favouriteNames: [],
   scenarios: [],
   ratePresets: {},
@@ -88,7 +100,7 @@ describe("InfusionSheet route visibility", () => {
     const tree = renderSheet(
       <InfusionSheet
         {...common}
-        infDrug={{ name: "Testamine", unit: "mcg/kg/min", color: "#3b82f6" }}
+        infDrug={TESTAMINE}
         pediatricInfusionProfiles={[rule({ IV: "AUTO", IM: "AUTO", INTRAOSSEOUS: "HIDDEN" })]}
       />,
     )
@@ -104,12 +116,106 @@ describe("InfusionSheet route visibility", () => {
     const tree = renderSheet(
       <InfusionSheet
         {...common}
-        infDrug={{ name: "Testamine", unit: "mcg/kg/min", color: "#3b82f6" }}
+        infDrug={TESTAMINE}
         pediatricInfusionProfiles={[rule({ IV: "AUTO", INTRAOSSEOUS: "MANUAL" })]}
       />,
     )
     const rendered = JSON.stringify(tree.toJSON())
 
     expect(rendered).toContain("INTRAOSSEOUS")
+  })
+})
+
+/**
+ * Whether the drug is offered at all was decided by asking for its default
+ * route and nothing else. A withdrawn default therefore withdrew the whole
+ * infusion, even where another route was fully available — the phone simply had
+ * no row for a drug the ruleset permits.
+ */
+describe("InfusionSheet drug availability", () => {
+  function openFavourite(profiles: PediatricInfusionProfileRule[], props: Record<string, unknown> = {}) {
+    const tree = renderSheet(
+      <InfusionSheet
+        {...common}
+        {...props}
+        infDrug={null}
+        favouriteNames={["Testamine"]}
+        pediatricInfusionProfiles={profiles}
+      />,
+    )
+    pressByText(tree, "dsFavourites")
+    return tree
+  }
+
+  it("offers an infusion whose default route was withdrawn, on the route that survived", () => {
+    const setInfDrug = vi.fn()
+    const setInfRoute = vi.fn()
+    const tree = openFavourite([rule({ IV: "HIDDEN", IM: "AUTO" })], { setInfDrug, setInfRoute })
+
+    expect(queryByText(tree, "Testamine"), "a usable infusion had no row at all").not.toBeNull()
+
+    pressByText(tree, "Testamine")
+
+    expect(setInfDrug).toHaveBeenCalled()
+    expect(setInfRoute, "opened on the withdrawn default route").toHaveBeenCalledWith("IM")
+  })
+
+  it("opens on a merely manual route when the automatic default was withdrawn", () => {
+    const setInfRoute = vi.fn()
+    const tree = openFavourite([rule({ IV: "HIDDEN", INTRAOSSEOUS: "MANUAL" })], { setInfRoute })
+
+    expect(queryByText(tree, "Testamine")).not.toBeNull()
+
+    pressByText(tree, "Testamine")
+
+    expect(setInfRoute).toHaveBeenCalledWith("INTRAOSSEOUS")
+  })
+
+  it("drops an infusion whose every route was withdrawn", () => {
+    const tree = openFavourite([rule({ IV: "HIDDEN", IM: "HIDDEN" })])
+
+    expect(queryByText(tree, "Testamine"), "an unusable infusion was still offered").toBeNull()
+  })
+})
+
+/**
+ * Two rules claiming the same child is an authoring mistake, and core returns
+ * no profile plus a conflict flag. Reading only the profile turned that into a
+ * visible row that did nothing at all when tapped.
+ */
+describe("InfusionSheet with overlapping pediatric rules", () => {
+  const OVERLAPPING = [
+    rule({ IV: "AUTO" }, { ruleKey: "ped.inf.a", minimumAgeDays: 0 }),
+    rule({ IV: "AUTO" }, { ruleKey: "ped.inf.b", minimumAgeDays: 365 }),
+  ]
+
+  function Harness() {
+    const [drug, setDrug] = useState<typeof TESTAMINE | null>(null)
+    return (
+      <InfusionSheet
+        {...common}
+        infDrug={drug}
+        setInfDrug={setDrug}
+        favouriteNames={["Testamine"]}
+        pediatricInfusionProfiles={OVERLAPPING}
+      />
+    )
+  }
+
+  it("keeps the row live and says why nothing can be started", () => {
+    const tree = renderSheet(<Harness />)
+    pressByText(tree, "dsFavourites")
+
+    expect(queryByText(tree, "Testamine"), "the conflicted infusion was hidden instead of explained").not.toBeNull()
+
+    pressByText(tree, "Testamine")
+
+    const alerts = tree.root.findAllByProps({ testID: "infusion-profile-conflict" })
+    expect(alerts.length, "tapping the row did nothing and said nothing").toBeGreaterThan(0)
+    expect(alerts[0].props.accessibilityRole).toBe("alert")
+    expect(
+      tree.root.findAllByProps({ testID: "dose-selector-dose-pills" }),
+      "a rate could be entered against rules that conflict",
+    ).toHaveLength(0)
   })
 })
