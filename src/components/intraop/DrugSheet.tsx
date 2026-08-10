@@ -24,10 +24,9 @@ import type {
   DrugEntryDraft,
   DrugRuleSelection,
 } from "@/lib/use-drug-entry"
-import {
-  applicablePediatricDoseProfiles,
-  resolvePediatricProfileDose,
-} from "@/lib/pediatric-dose-ui"
+import { applicablePediatricDoseProfiles, resolvePediatricProfileDose } from "@/lib/pediatric-dose-ui"
+import { resolveDrugSheetPediatric } from "@/lib/drug-sheet-pediatric"
+import { PediatricDoseNotice } from "@/components/intraop/PediatricDoseNotice"
 
 type DrugOption = { name: string; unit: string }
 type DrugCat = { cat: string; color: string; drugs: DrugOption[] }
@@ -186,67 +185,26 @@ export function DrugSheet({
     }), [drugCats, patientAge, patientWeightKg, pediatricDrugProfiles, pediatricMode])
   const byName = useMemo(() => new Map(allDrugs.map(drug => [drug.name, drug])), [allDrugs])
 
-  const structuredPediatricProfilesForDrug = drugPick
-    ? applicablePediatricDrugProfiles({
-        medicationKey: drugPick.name,
-        age: patientAge ?? null,
-        weightKg: patientWeightKg,
-        profiles: pediatricDrugProfiles,
-      })
-    : []
-  // Overlapping age or weight bands are an authoring mistake, and core decides
-  // what to do about it: exactly one applicable profile is used, several are a
-  // conflict and none may be used. Taking the first after sorting would offer a
-  // dose from a band nobody chose — and the web app would refuse the same case,
-  // so the two would disagree about a child.
-  const structuredPediatricSelection = drugPick
-    ? selectApplicablePediatricDrugProfile({
-        medicationKey: drugPick.name,
-        age: patientAge ?? null,
-        weightKg: patientWeightKg,
-        profiles: pediatricDrugProfiles,
-      })
-    : { profile: null, applicableCount: 0, conflict: false }
-  // An explicitly chosen rule still wins: the conflict is only unresolved while
-  // nobody has said which band they meant.
-  const selectedStructuredPediatricProfile = structuredPediatricProfilesForDrug.find(
-    profile => profile.ruleKey === drugRule?.key,
-  ) ?? structuredPediatricSelection.profile
-  const structuredPediatricSurface = selectedStructuredPediatricProfile && patientAge
-    ? resolvePediatricDrugProfileSurface({
-        rule: selectedStructuredPediatricProfile,
-        age: patientAge,
-        route: drugRoute,
-        weightKg: patientWeightKg,
-        heightCm: patientHeightCm,
-        sex: patientSex,
-      })
-    : null
-  // Legacy dose profiles remain a read-only fallback for cached snapshots
-  // created before PEDIATRIC_DRUG_PROFILE was added to the runtime contract.
-  const pediatricProfilesForDrug = pediatricDrugProfiles.length === 0 && drugPick
-    ? applicablePediatricDoseProfiles({
-        medicationKey: drugPick.name,
-        age: patientAge ?? null,
-        profiles: pediatricDoseProfiles,
-      })
-    : []
-  const selectedPediatricProfile = pediatricProfilesForDrug.find(
-    profile => profile.key === drugRule?.key,
-  ) ?? (pediatricProfilesForDrug.length === 1 ? pediatricProfilesForDrug[0] : null)
-  const pediatricResolution = selectedPediatricProfile && patientAge
-    ? resolvePediatricProfileDose({
-        profile: selectedPediatricProfile,
-        age: patientAge,
-        weightKg: patientWeightKg,
-        heightCm: patientHeightCm,
-      })
-    : null
-  const pediatricAmount = pediatricResolution?.status === "AVAILABLE"
-    ? pediatricResolution.amount
-    : structuredPediatricSurface?.dose && Number.isFinite(Number(structuredPediatricSurface.dose))
-      ? Number(structuredPediatricSurface.dose)
-      : null
+  const {
+    structuredProfiles: structuredPediatricProfilesForDrug,
+    selectedProfile: selectedStructuredPediatricProfile,
+    surface: structuredPediatricSurface,
+    unresolvedConflict: pediatricConflict,
+    legacyProfiles: pediatricProfilesForDrug,
+    legacyProfile: selectedPediatricProfile,
+    legacyResolution: pediatricResolution,
+    amount: pediatricAmount,
+  } = resolveDrugSheetPediatric({
+    medicationKey: drugPick?.name,
+    age: patientAge ?? null,
+    weightKg: patientWeightKg,
+    heightCm: patientHeightCm,
+    sex: patientSex,
+    route: drugRoute,
+    ruleKey: drugRule?.key,
+    drugProfiles: pediatricDrugProfiles,
+    doseProfiles: pediatricDoseProfiles,
+  })
   function canonicalRoute(route: string | undefined): string | undefined {
     return route ? normalizeAdministrationRoute(route) ?? route : undefined
   }
@@ -509,11 +467,13 @@ export function DrugSheet({
   const favouriteItems = favouriteNames
     .map(name => byName.get(name))
     .filter((drug): drug is NonNullable<typeof drug> => !!drug)
+  // A conflict is stated, not enforced: no dose is autofilled and no rule is
+  // credited, but a hand-entered dose can still be confirmed. Disabling confirm
+  // instead left a live dose field above a button that could never enable.
   const confirmDisabled = !drugDose
     || (!!activeConcentrations?.length && !drugConcentration)
     || (!!activeFormulations?.length && !drugFormulation)
     || (pediatricMode && !structuredPediatricSurface && pediatricProfilesForDrug.length > 1 && !selectedPediatricProfile)
-    || (pediatricMode && structuredPediatricSelection.conflict && !selectedStructuredPediatricProfile)
   const footer = drugPick ? (
     <FeedbackPressable
       testID="drug-sheet-confirm"
@@ -543,47 +503,18 @@ export function DrugSheet({
           </TouchableOpacity>
           <View style={{ marginBottom: canStartAsInfusion ? 10 : 0 }}>
             {pediatricMode ? (
-              <View style={{ marginBottom: 10, gap: 8 }}>
-                {pediatricRulesLoading ? (
-                  <Text style={{ color: "#94a3b8", fontSize: 12, lineHeight: 17 }}>
-                    {language === "bg" ? "Зареждане на одобрения институционален набор..." : "Loading the approved institution preset..."}
-                  </Text>
-                ) : null}
-                {pediatricRulesSource === "cache" ? (
-                  <Text style={{ color: "#fbbf24", fontSize: 12, lineHeight: 17 }}>
-                    {language === "bg"
-                      ? `Използва се последният запазен институционален набор${pediatricRulesCachedAt ? ` от ${new Date(pediatricRulesCachedAt).toLocaleString()}` : ""}.`
-                      : `Using the last cached institution preset${pediatricRulesCachedAt ? ` from ${new Date(pediatricRulesCachedAt).toLocaleString()}` : ""}.`}
-                  </Text>
-                ) : null}
-                {!pediatricRulesLoading
-                  && structuredPediatricProfilesForDrug.length === 0
-                  && pediatricProfilesForDrug.length === 0 ? (
-                  <Text style={{ color: "#fbbf24", fontSize: 12, lineHeight: 17 }}>
-                    {language === "bg"
-                      ? "Няма приложим одобрен дозов профил. Въведете ръчно проверена доза."
-                      : "No applicable approved dose profile is available. Enter a manually verified dose."}
-                    {pediatricRulesError ? ` ${pediatricRulesError}` : ""}
-                  </Text>
-                ) : null}
-                {structuredPediatricSurface?.dose && selectedStructuredPediatricProfile ? (
-                  <Text style={{ color: "#4ade80", fontSize: 12, lineHeight: 17 }}>
-                    {language === "bg" ? "Одобрена институционална доза" : "Approved institution dose"}: {structuredPediatricSurface.dose} {structuredPediatricSurface.unit} · {selectedStructuredPediatricProfile.ruleVersion}
-                  </Text>
-                ) : structuredPediatricSurface && selectedStructuredPediatricProfile ? (
-                  <Text style={{ color: "#fbbf24", fontSize: 12, lineHeight: 17 }}>
-                    {language === "bg" ? "Дозата не може да бъде изчислена автоматично" : "The dose cannot be calculated automatically"}: {structuredPediatricSurface.calculationUnavailableReason ?? "NO_AUTOFILL"}
-                  </Text>
-                ) : selectedPediatricProfile && pediatricResolution?.status === "AVAILABLE" ? (
-                  <Text style={{ color: "#4ade80", fontSize: 12, lineHeight: 17 }}>
-                    {language === "bg" ? "Одобрена институционална доза" : "Approved institution dose"}: {pediatricResolution.amount} {pediatricResolution.doseUnit} · {selectedPediatricProfile.version}
-                  </Text>
-                ) : selectedPediatricProfile && pediatricResolution ? (
-                  <Text style={{ color: "#fbbf24", fontSize: 12, lineHeight: 17 }}>
-                    {language === "bg" ? "Дозата не може да бъде изчислена автоматично" : "The dose cannot be calculated automatically"}: {pediatricResolution.status}
-                  </Text>
-                ) : null}
-              </View>
+              <PediatricDoseNotice
+                loading={pediatricRulesLoading}
+                source={pediatricRulesSource}
+                cachedAt={pediatricRulesCachedAt}
+                error={pediatricRulesError}
+                conflict={pediatricConflict}
+                hasProfiles={structuredPediatricProfilesForDrug.length > 0 || pediatricProfilesForDrug.length > 0}
+                surface={structuredPediatricSurface}
+                structuredRule={selectedStructuredPediatricProfile}
+                legacyProfile={selectedPediatricProfile}
+                legacyResolution={pediatricResolution}
+              />
             ) : null}
             <DoseSelector
               color={drugCat?.color ?? "#3b82f6"}
