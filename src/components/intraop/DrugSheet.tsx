@@ -15,6 +15,7 @@ import type { PediatricAgeInput } from "@lospor/core/pediatric"
 import type { PediatricDoseProfile } from "@lospor/core/pediatric-dose"
 import {
   applicablePediatricDrugProfiles,
+  selectApplicablePediatricDrugProfile,
   resolvePediatricDrugProfileSurface,
   type PediatricDrugProfileRule,
 } from "@lospor/core/clinical-rules"
@@ -193,9 +194,24 @@ export function DrugSheet({
         profiles: pediatricDrugProfiles,
       })
     : []
+  // Overlapping age or weight bands are an authoring mistake, and core decides
+  // what to do about it: exactly one applicable profile is used, several are a
+  // conflict and none may be used. Taking the first after sorting would offer a
+  // dose from a band nobody chose — and the web app would refuse the same case,
+  // so the two would disagree about a child.
+  const structuredPediatricSelection = drugPick
+    ? selectApplicablePediatricDrugProfile({
+        medicationKey: drugPick.name,
+        age: patientAge ?? null,
+        weightKg: patientWeightKg,
+        profiles: pediatricDrugProfiles,
+      })
+    : { profile: null, applicableCount: 0, conflict: false }
+  // An explicitly chosen rule still wins: the conflict is only unresolved while
+  // nobody has said which band they meant.
   const selectedStructuredPediatricProfile = structuredPediatricProfilesForDrug.find(
     profile => profile.ruleKey === drugRule?.key,
-  ) ?? structuredPediatricProfilesForDrug[0] ?? null
+  ) ?? structuredPediatricSelection.profile
   const structuredPediatricSurface = selectedStructuredPediatricProfile && patientAge
     ? resolvePediatricDrugProfileSurface({
         rule: selectedStructuredPediatricProfile,
@@ -435,14 +451,22 @@ export function DrugSheet({
   function selectDrug(drug: DrugOption) {
     const firstRoute = canonicalRoutes(drug.name)[0]
     if (pediatricMode) {
-      const structuredCandidates = applicablePediatricDrugProfiles({
+      const structured = selectApplicablePediatricDrugProfile({
         medicationKey: drug.name,
         age: patientAge ?? null,
         weightKg: patientWeightKg,
         profiles: pediatricDrugProfiles,
       })
-      if (structuredCandidates.length) {
-        replaceSelection(structuredPediatricDraft(drug, firstRoute, structuredCandidates[0]))
+      if (structured.profile) {
+        replaceSelection(structuredPediatricDraft(drug, firstRoute, structured.profile))
+        return
+      }
+      if (structured.conflict) {
+        // Several bands claim this child. The drug can still be recorded, but
+        // by hand: no dose is autofilled and no rule is credited, because
+        // neither band was chosen. pediatricDraft with no candidates is that
+        // empty draft.
+        replaceSelection(pediatricDraft(drug, firstRoute, []))
         return
       }
       const candidates = applicablePediatricDoseProfiles({
@@ -489,6 +513,7 @@ export function DrugSheet({
     || (!!activeConcentrations?.length && !drugConcentration)
     || (!!activeFormulations?.length && !drugFormulation)
     || (pediatricMode && !structuredPediatricSurface && pediatricProfilesForDrug.length > 1 && !selectedPediatricProfile)
+    || (pediatricMode && structuredPediatricSelection.conflict && !selectedStructuredPediatricProfile)
   const footer = drugPick ? (
     <FeedbackPressable
       testID="drug-sheet-confirm"

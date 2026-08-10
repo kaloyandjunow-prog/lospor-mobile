@@ -245,3 +245,96 @@ describe("DrugSheet atomic selector defaults", () => {
     }))
   })
 })
+
+/**
+ * Overlapping paediatric bands are an authoring mistake, and the phone used to
+ * resolve one by taking the first profile after sorting — offering a dose from
+ * a band nobody chose. The web app refused the same case, so the two disagreed
+ * about a child depending on which was in the anaesthetist's hand.
+ *
+ * Both now apply the rule from @lospor/core/clinical-rules: exactly one, or
+ * nothing.
+ */
+describe("DrugSheet with overlapping pediatric bands", () => {
+  const band = (over: Partial<PediatricDrugProfileRule>): PediatricDrugProfileRule => ({
+    ruleKey: "PED_A",
+    ruleVersion: "1",
+    medicationKey: "Testacaine",
+    labelEn: "Testacaine",
+    labelBg: null,
+    inn: "testacaine",
+    category: "Test drugs",
+    minimumAgeDays: 0,
+    maximumAgeDaysExclusive: 18 * 366,
+    profile: {
+      kind: "bolus",
+      mode: "dose",
+      min: 0,
+      max: 20,
+      step: 0.1,
+      rounding: "nearest_step",
+      quickValues: [0.1],
+      unit: "mg",
+      routes: ["IV"],
+      defaultRoute: "IV",
+      weightBasis: "TBW",
+      doseCalc: { perKg: 0.01, basis: "TBW", roundTo: 0.1 },
+    },
+    unit: null,
+    routeUnits: {},
+    sourceIds: [],
+    origin: "PRESET",
+    presetId: "preset-a",
+    ...over,
+  })
+
+  it("offers no dose when two bands both contain the child", () => {
+    const applyDrugSelection = vi.fn<(selection: DrugEntryDraft) => void>()
+    const tree = render(
+      <DrugSheet
+        {...commonProps}
+        pediatricMode
+        pediatricDrugProfiles={[
+          band({ ruleKey: "PED_A", minimumAgeDays: 0, maximumAgeDaysExclusive: 18 * 366 }),
+          band({ ruleKey: "PED_B", minimumAgeDays: 365, maximumAgeDaysExclusive: 18 * 366 }),
+        ]}
+        patientAge={{ value: 5, unit: "YEARS" }}
+        patientWeightKg={12}
+        routes={{ Testacaine: ["IV"] }}
+        applyDrugSelection={applyDrugSelection}
+      />,
+    )
+
+    pressByText(tree, "Testacaine")
+
+    // Selecting the drug is still allowed — it is the autofilled dose and the
+    // rule provenance that must not be invented.
+    const selection = applyDrugSelection.mock.calls.at(-1)?.[0]
+    expect(selection?.dose, "a dose was invented from an ambiguous band").toBeFalsy()
+    expect(selection?.rule, "a rule was credited that nobody chose").toBeUndefined()
+  })
+
+  it("still autofills when only one band contains the child", () => {
+    const applyDrugSelection = vi.fn<(selection: DrugEntryDraft) => void>()
+    const tree = render(
+      <DrugSheet
+        {...commonProps}
+        pediatricMode
+        pediatricDrugProfiles={[
+          band({ ruleKey: "PED_A", minimumAgeDays: 0, maximumAgeDaysExclusive: 365 }),
+          band({ ruleKey: "PED_B", minimumAgeDays: 365, maximumAgeDaysExclusive: 18 * 366 }),
+        ]}
+        patientAge={{ value: 5, unit: "YEARS" }}
+        patientWeightKg={12}
+        routes={{ Testacaine: ["IV"] }}
+        applyDrugSelection={applyDrugSelection}
+      />,
+    )
+
+    pressByText(tree, "Testacaine")
+
+    const selection = applyDrugSelection.mock.calls.at(-1)?.[0]
+    expect(selection?.dose).toBe("0.1")
+    expect(selection?.rule?.key).toBe("PED_B")
+  })
+})
