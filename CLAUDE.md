@@ -5,7 +5,7 @@
 ## Shared core package
 
 - `@lospor/core` (shared pure-TS clinical logic) lives at github.com/kaloyandjunow-prog/lospor-core and is consumed as a git dependency pinned to a tag (see package.json).
-- To change core logic: edit `C:\LOSAR\lospor-core` → commit → push → tag a new version → bump the tag in this repo's package.json AND lospor-app's → `npm install` in both → run both test suites.
+- To change core logic: edit `E:\perioplabs\LOSPOR\lospor-core` → commit → push → tag a new version → bump the tag in this repo's package.json AND lospor-app's → `npm install` in both → run both test suites.
 - Metro resolves the package from node_modules; no watchFolders entry is needed.
 
 ## Role
