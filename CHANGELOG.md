@@ -1,5 +1,23 @@
 # Changelog - LOSPOR Mobile
 
+## [9.0.1] - 2026-08-11
+
+### Fixed
+
+- **The Android build was stamped with the wrong version.** `package.json` moved
+  to 9.0.0 in the release but `app.json` did not, and `eas.json` sets
+  `appVersionSource` to `local` — so EAS reads `app.json`, and an APK built from
+  the 9.0.0 tag would have installed as 8.5.0.
+
+  This is released as 9.0.1 rather than by moving the 9.0.0 tag. The tag was
+  already published, and a tag that changes what it points at is worse than one
+  that is merely superseded. 9.0.0 remains what it always was; 9.0.1 is the
+  first Android build whose stated version matches its contents.
+
+  An APK carries no provenance beyond what is stamped into it. "Which version
+  are you running?" has to be answerable from the phone, by a clinician, without
+  reference to anything else.
+
 ## [9.0.0] - 2026-08-11
 
 ### Fixed
