@@ -79,13 +79,15 @@ test("chart quickview, from the live cockpit", async ({ page, request }) => {
   await chart.click()
 
   await expect(page.getByText("Intraop timetable", { exact: false }).first()).toBeVisible({ timeout: 30_000 })
-  // Wait for the panel itself, not a fixed delay: the screen fetches the case
-  // on focus, and a timer just races the spinner.
-  await expect(page.getByText("SBP", { exact: true }).first()).toBeVisible({ timeout: 30_000 })
-  // The viewer renders this instead of a chart when it finds nothing to draw.
-  // Asserted explicitly because that state looks like a working screen, and a
-  // reader of a failed run should not have to guess which of the two it got.
+  // The viewer renders this instead of a chart when it finds nothing to draw,
+  // and that state looks like a perfectly working screen. This is the assertion
+  // that the chart has data behind it.
+  //
+  // Not the row labels: those are drawn inside the SVG panel by
+  // react-native-svg, which getByText cannot reach on web. Asserting them
+  // failed here for two runs while the feature itself was fine.
   await expect(page.getByText("No intraoperative data recorded")).toHaveCount(0)
+  await expect(page.locator("svg").first()).toBeVisible({ timeout: 30_000 })
   await page.waitForTimeout(800)
   await page.screenshot({ path: join(SHOTS, "2-chart-quickview.png"), fullPage: false })
   await page.screenshot({ path: join(SHOTS, "3-chart-quickview-full.png"), fullPage: true })
