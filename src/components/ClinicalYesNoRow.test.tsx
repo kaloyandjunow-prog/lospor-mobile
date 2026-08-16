@@ -8,7 +8,7 @@ vi.mock("@/lib/preferences-context", () => ({
 }))
 
 import { render } from "@/test/render"
-import { ClinicalYesNoRow } from "./ui"
+import { ClinicalYesNoRow } from "./ClinicalYesNoRow"
 
 /**
  * The control exists because a switch could not say "nobody asked". These tests

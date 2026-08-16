@@ -33,15 +33,8 @@ import { PREOP_REQUIRED_FIELD_SECTION, preopInvalidSubmitMessage } from "@/lib/p
 import { postPreopServerCase } from "@/lib/preop-server-create"
 import { suggestASAFromTags } from "@/lib/preop-asa-suggestion"
 import { monthYearForDate } from "@/lib/intraop-timing"
-import {
-  ChecklistGroup,
-  ChecklistRow,
-  ClinicalSwitchRow, ClinicalYesNoRow,
-  Field,
-  PrimaryButton,
-  SectionHeader,
-  StyledInput,
-} from "@/components/ui"
+import { ChecklistGroup, ChecklistRow, ClinicalSwitchRow, Field, PrimaryButton, SectionHeader, StyledInput } from "@/components/ui"
+import { ClinicalYesNoRow } from "@/components/ClinicalYesNoRow"
 import { SearchTagInput } from "@/components/SearchTagInput"
 import { notify } from "@/lib/notify"
 import { ClinicalNumberInput } from "@/components/ClinicalNumberInput"
