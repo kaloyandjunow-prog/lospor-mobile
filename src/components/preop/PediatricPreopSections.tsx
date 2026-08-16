@@ -21,7 +21,7 @@ import {
   calculateRcukPediatricResuscitation,
 } from "@lospor/core/pediatric-calculators"
 import { ClinicalNumberInput } from "@/components/ClinicalNumberInput"
-import { ClinicalSwitchRow, Field } from "@/components/ui"
+import { ClinicalSwitchRow, ClinicalYesNoRow, Field } from "@/components/ui"
 import { SegmentedSelect } from "@/components/preop/PreopFormWidgets"
 import { apiFetch } from "@/lib/api"
 import type { PreopFormInput } from "@/lib/preop-form-schema"
@@ -614,9 +614,9 @@ export function PediatricRiskAndCalculators({ control, setValue, language, caseI
           <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: "900" }}>{labels.povoc}</Text>
           <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "900" }}>{povoc ? `${povoc.score}/4 - ${povoc.riskPercent}%` : "-"}</Text>
         </View>
-        <Controller control={control} name="povocSurgeryAtLeast30Minutes" render={({ field }) => <ClinicalSwitchRow label={labels.povocSurgery} value={!!field.value} onValueChange={field.onChange} />} />
-        <Controller control={control} name="povocStrabismusSurgery" render={({ field }) => <ClinicalSwitchRow label={labels.povocStrabismus} value={!!field.value} onValueChange={field.onChange} />} />
-        <Controller control={control} name="povocHistory" render={({ field }) => <ClinicalSwitchRow label={labels.povocHistory} value={!!field.value} onValueChange={field.onChange} />} />
+        <Controller control={control} name="povocSurgeryAtLeast30Minutes" render={({ field }) => <ClinicalYesNoRow label={labels.povocSurgery} value={field.value ?? null} onValueChange={field.onChange} />} />
+        <Controller control={control} name="povocStrabismusSurgery" render={({ field }) => <ClinicalYesNoRow label={labels.povocStrabismus} value={field.value ?? null} onValueChange={field.onChange} />} />
+        <Controller control={control} name="povocHistory" render={({ field }) => <ClinicalYesNoRow label={labels.povocHistory} value={field.value ?? null} onValueChange={field.onChange} />} />
         <Text style={{ color: colors.textMuted, fontSize: 11 }}>
           {labels.povocAgeFactor}: {povoc?.factors.ageAtLeast3Years ? labels.yes : labels.no}
         </Text>

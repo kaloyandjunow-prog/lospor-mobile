@@ -301,6 +301,93 @@ export function ChecklistRow({
   return content
 }
 
+/**
+ * A clinical question with three answers: yes, no, and nobody asked.
+ *
+ * ClinicalSwitchRow cannot express this — a native Switch has two positions, so
+ * an untouched question looked exactly like an answered "no". That ambiguity
+ * ran all the way from the form into the database column and out into the OMOP
+ * export, where a researcher counting patients without a difficult airway
+ * history was counting everyone nobody had asked.
+ *
+ * Two buttons, not three. "Not asked" is the absence of an answer rather than a
+ * third claim: adding a button for it invites a tap that asserts something
+ * weaker and different, and it raises a distinction (not asked vs unknown) that
+ * nobody should be adjudicating mid-list at 2am. Tapping the selected side again
+ * clears it, which is how a mis-tap is undone.
+ *
+ * `value` is deliberately `boolean | null` with no boolean overload, so every
+ * call site that still coerces with `!!` fails to compile rather than silently
+ * rendering an unasked question as a confident No.
+ */
+export function ClinicalYesNoRow({
+  value,
+  onValueChange,
+  label,
+  activeColor = colors.primary,
+}: {
+  value: boolean | null
+  onValueChange: (value: boolean | null) => void
+  label: string
+  activeColor?: string
+}) {
+  const { tc } = usePreferences()
+  const answered = value != null
+  // Colour marks a positive finding only. A "no" is reassuring and an unanswered
+  // question is not a finding at all, so neither should draw the eye the way a
+  // recorded allergy does.
+  const accent = value === true ? activeColor : colors.textSecondary
+
+  const option = (optionValue: boolean, text: string) => {
+    const selected = value === optionValue
+    return (
+      <TouchableOpacity
+        accessibilityRole="radio"
+        accessibilityState={{ selected }}
+        accessibilityLabel={`${label}: ${text}`}
+        onPress={() => onValueChange(selected ? null : optionValue)}
+        style={{
+          minWidth: 54, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10,
+          alignItems: "center",
+          backgroundColor: selected ? withAlpha(accent, "22") : "transparent",
+          borderWidth: 1,
+          borderColor: selected ? accent : colors.border,
+        }}
+      >
+        <Text style={{ color: selected ? accent : colors.textMuted, fontSize: 13, fontWeight: "800" }}>
+          {text}
+        </Text>
+      </TouchableOpacity>
+    )
+  }
+
+  return (
+    <View style={{
+      flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12,
+      backgroundColor: colors.surfaceRaised,
+      borderWidth: 1,
+      borderColor: value === true ? activeColor : colors.border,
+      borderRadius: 14, borderCurve: "continuous",
+      paddingHorizontal: 14, paddingVertical: 10,
+    }}>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={{ color: value === true ? activeColor : colors.textSecondary, fontSize: 14, fontWeight: "800" }}>
+          {label}
+        </Text>
+        {/* Says out loud that nothing has been recorded, so a blank row cannot
+            be mistaken for a completed one on a form of forty questions. */}
+        {!answered && (
+          <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>{tc("notAsked")}</Text>
+        )}
+      </View>
+      <View style={{ flexDirection: "row", gap: 6 }}>
+        {option(true, tc("answerYes"))}
+        {option(false, tc("answerNo"))}
+      </View>
+    </View>
+  )
+}
+
 export function ClinicalSwitchRow({
   value,
   onValueChange,
