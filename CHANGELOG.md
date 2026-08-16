@@ -1,5 +1,13 @@
 # Changelog - LOSPOR Mobile
 
+## [9.1.1] - 2026-08-17
+
+### Changed
+
+- Version alignment with the API fix for clinical questions answered "not
+  asked" being rejected at the API boundary and dropped. No mobile change was
+  needed: the app was sending the right thing, and the API was refusing it.
+
 ## [9.1.0] - 2026-08-16
 
 ### Added
