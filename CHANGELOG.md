@@ -1,5 +1,39 @@
 # Changelog - LOSPOR Mobile
 
+## [9.1.0] - 2026-08-16
+
+### Added
+
+- A Chart action in the intraop timetable footer opens the web-shaped vitals
+  chart and table as a read-only quickview. Mobile renders the timetable in
+  columns and web renders it in rows, and there was no way to see the row view
+  from a phone during a case without leaving the cockpit. Nothing in the viewer
+  can write to the case.
+
+  It carries its own close control. The first version relied on the system back
+  gesture, which is neither discoverable nor where a thumb already is.
+
+  The button sits first and compact, so End case stays rightmost where muscle
+  memory expects it.
+
+### Changed
+
+- Clinical yes/no questions are asked with three answers instead of a switch:
+  yes, no, and not asked.
+
+  A switch cannot say "nobody asked". Off meant either a recorded "no" or an
+  untouched field, and both were saved as a documented negative. Fifteen call
+  sites across the preop form and the paediatric sections were converted; six
+  correctly stay switches.
+
+  Tapping the chosen side again clears it, so a mis-tap is undoable. Only a
+  positive finding is coloured, so a recorded "no allergy" does not paint the
+  row like an alarm.
+
+- `preop-form-schema` and `valuesFromServerPreop` stop coercing null to false.
+  Without that, reopening a saved case and letting it autosave converted every
+  unasked question into a documented no.
+
 ## [9.0.1] - 2026-08-11
 
 ### Fixed
