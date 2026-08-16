@@ -42,7 +42,7 @@ test("chart quickview, from the live cockpit", async ({ page, request }) => {
   // lines — a flat chart would hide whether the graph band renders at all.
   for (let step = 0; step < 12; step += 1) {
     const at = new Date(startedAt.getTime() + step * 5 * 60_000).toISOString()
-    await request.post(`${API_BASE}/v1/cases/${caseId}/events`, {
+    const written = await request.post(`${API_BASE}/v1/cases/${caseId}/events`, {
       headers: authed,
       // Vital fields sit flat on the event and the timestamp field is `ts`;
       // there is no nested payload.
@@ -55,6 +55,13 @@ test("chart quickview, from the live cockpit", async ({ page, request }) => {
         spO2: 97 + (step % 3),
       },
     })
+    // Checked, because an unchecked write is how this spec first failed: every
+    // POST was silently rejected, the chart drew an empty case, and the only
+    // symptom was a missing row label thirty lines further down.
+    expect(
+      written.ok(),
+      `vital ${step} rejected: ${written.status()} ${(await written.text()).slice(0, 300)}`,
+    ).toBe(true)
   }
 
   await signInAs(page, request, ACCOUNTS.admin)
@@ -75,12 +82,18 @@ test("chart quickview, from the live cockpit", async ({ page, request }) => {
   // Wait for the panel itself, not a fixed delay: the screen fetches the case
   // on focus, and a timer just races the spinner.
   await expect(page.getByText("SBP", { exact: true }).first()).toBeVisible({ timeout: 30_000 })
+  // The viewer renders this instead of a chart when it finds nothing to draw.
+  // Asserted explicitly because that state looks like a working screen, and a
+  // reader of a failed run should not have to guess which of the two it got.
+  await expect(page.getByText("No intraoperative data recorded")).toHaveCount(0)
   await page.waitForTimeout(800)
   await page.screenshot({ path: join(SHOTS, "2-chart-quickview.png"), fullPage: false })
   await page.screenshot({ path: join(SHOTS, "3-chart-quickview-full.png"), fullPage: true })
 
-  // Back to the cockpit: the point of pushing a route rather than replacing one.
-  await page.goBack()
+  // The close control, which is the reason this screen has a header at all: the
+  // first version relied on the system back gesture, invisible to anyone
+  // holding the phone one-handed and looking for a way out.
+  await page.getByLabel("Back", { exact: false }).first().click()
   await expect(page.getByText("End case", { exact: true })).toBeVisible({ timeout: 30_000 })
   await page.screenshot({ path: join(SHOTS, "4-back-in-cockpit.png"), fullPage: false })
 })
