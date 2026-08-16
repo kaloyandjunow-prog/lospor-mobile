@@ -269,6 +269,7 @@ export const CLINICAL_STRINGS = {
     // Intraop — screen chrome
     tfJumpToNow:         "↓ Now",
     tfEndCase:           "End case",
+    tfViewChart:         "📊 Chart",
     ubItemAdded:         "{text} added",
     ubUndo:              "Undo",
     ubDismiss:           "Dismiss",
@@ -952,6 +953,7 @@ export const CLINICAL_STRINGS = {
     // Intraop — screen chrome
     tfJumpToNow:         "↓ Сега",
     tfEndCase:           "Приключи случая",
+    tfViewChart:         "📊 График",
     ubItemAdded:         "{text} добавено",
     ubUndo:              "Отмени",
     ubDismiss:           "Скрий",

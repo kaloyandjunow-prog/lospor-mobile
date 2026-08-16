@@ -118,6 +118,13 @@ export default function IntraopLiveScreen() {
 
   const { id } = useLocalSearchParams<{ id: string }>()
   const router  = useRouter()
+  // Read-only chart view of the case so far: the same panel the finished-case
+  // viewer draws, reachable mid-case. Pushed rather than shown as a modal so
+  // the back gesture returns to the cockpit with its state untouched — this
+  // opens nothing, edits nothing, and saves nothing.
+  const openChartView = useCallback(() => {
+    router.push(`/(app)/cases/timetable/${id}`)
+  }, [router, id])
   const { isWatching, takeover } = useCaseLock(id, true)
   const {
     tc,
@@ -688,7 +695,7 @@ export default function IntraopLiveScreen() {
           activeAgent, activeGas, startRef, isWatching, verticalTimetableRef, undoLastEvent,
           setUndoEv, setExpandedRow, eventLabel, setInfActTgt, setInfActRate, setInfActTs,
           openFluidEnd, openGasSettings, tc, stopAgent, openRowQuickAdd, jumpVerticalTimetableToNow,
-          openEndCase, preop,
+          openEndCase, openChartView, preop,
           pediatricDrugProfiles: PEDIATRIC_DRUG_PROFILES,
           pediatricDoseProfiles: clinicalRulesSnapshot?.doseProfiles ?? [],
           pediatricRulesSource: clinicalRulesSnapshot?.source ?? null,

@@ -53,6 +53,7 @@ yarn-error.*
 *.log
 logs/
 screenshots/
+.shots/
 /android-*.png
 /ios-*.png
 /emulator-*.png
