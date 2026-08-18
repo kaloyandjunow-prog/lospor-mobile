@@ -1,5 +1,26 @@
 # Changelog - LOSPOR Mobile
 
+## [9.2.0] - 2026-08-18
+
+### Changed
+
+- **A risk score says how much of it was actually asked.** The preoperative
+  summary showed each score as a number, a maximum and a colour band. The
+  calculators count an unasked criterion as absent — deliberately, and
+  documented — so "RCRI 1/6, low" read identically whether five criteria had
+  been answered "no" or never put to the patient at all.
+
+  Each card now says how many of its criteria were answered, and only when some
+  were not. The score and the band are unchanged: a partial score is still the
+  best available estimate as long as it says what it rests on.
+
+  Only criteria that can be "not asked" are counted. BMI, age and sex are
+  derived, and `highRiskSurgery` is binary by design.
+
+- Pins `@lospor/core` 9.2.0, whose case contract can now express that a risk
+  criterion was never asked. Twelve fields that were typed `boolean` are
+  `boolean | null`, matching what the database has recorded since 9.1.0.
+
 ## [9.1.1] - 2026-08-17
 
 ### Changed
