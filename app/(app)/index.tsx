@@ -14,6 +14,8 @@ import {
 import { Stack, useRouter, type Href } from "expo-router"
 import { ApiError, apiFetch, apiJson } from "@/lib/api"
 import { notify } from "@/lib/notify"
+import { useCaseHandover } from "@/lib/use-case-handover"
+import { PendingHandovers, type PendingTransfer } from "@/components/PendingHandovers"
 import { openPrintCase } from "@/lib/print-case"
 import { useAuth } from "@/lib/auth-context"
 import { useLiveRefresh } from "@/lib/use-live-refresh"
@@ -50,14 +52,6 @@ type CaseItem = {
   transfers?: { id: string }[]
 }
 
-type PendingTransfer = {
-  id: string
-  caseId: string
-  procedureName?: string
-  case?: { preop?: { plannedProcedure?: string; diagnosis?: string } }
-  fromUser?: { name?: string }
-}
-
 type FilterTab = "All" | "Today" | "Month" | "Active" | "Drafts" | "Awaiting Postop" | "Complete" | "Handovers"
 
 const FILTER_TABS: FilterTab[] = ["All", "Today", "Month", "Active", "Drafts", "Awaiting Postop", "Complete", "Handovers"]
@@ -84,10 +78,6 @@ function getCaseLabel(item: CaseItem): string {
     item.preop?.diagnosis ??
     "Unnamed case"
   )
-}
-
-function getTransferLabel(item: PendingTransfer): string {
-  return item.procedureName ?? item.case?.preop?.plannedProcedure ?? item.case?.preop?.diagnosis ?? "Unknown procedure"
 }
 
 function isToday(iso: string): boolean {
@@ -147,8 +137,8 @@ export default function DashboardScreen() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [menuCase, setMenuCase] = useState<CaseItem | null>(null)
   const [menuMode, setMenuMode] = useState<"menu" | "assign" | "confirmDelete">("menu")
-  const [colleagues, setColleagues] = useState<{ id: string; name: string; role: string }[]>([])
-  const [loadingColleagues, setLoadingColleagues] = useState(false)
+  const { colleagues, loadingColleagues, busy: handoverBusy, loadColleagues, handOver, resolveHandover } =
+    useCaseHandover(t)
   const [actionLoading, setActionLoading] = useState(false)
   const cardScales = useRef(new Map<string, Animated.Value>())
   const loadInFlightRef = useRef<Promise<void> | null>(null)
@@ -282,7 +272,6 @@ export default function DashboardScreen() {
     }
     setMenuCase(null)
     setMenuMode("menu")
-    setColleagues([])
   }
 
   function handleDeleteCase() {
@@ -308,40 +297,18 @@ export default function DashboardScreen() {
 
   async function handleShowAssign() {
     setMenuMode("assign")
-    setLoadingColleagues(true)
-    try {
-      const data = await apiJson<{ id: string; name: string; role: string }[]>("/api/users/colleagues")
-      setColleagues(Array.isArray(data) ? data : [])
-    } catch {
-      notify(t("error"), t("actionFailed"))
-      setMenuMode("menu")
-    } finally {
-      setLoadingColleagues(false)
-    }
+    if (!await loadColleagues()) setMenuMode("menu")
   }
 
   async function handleAssignTo(userId: string) {
     if (!menuCase) return
-    setActionLoading(true)
-    try {
-      const res = await apiFetch(`/api/cases/${menuCase.id}/transfer`, {
-        method: "POST",
-        body: JSON.stringify({ toUserId: userId }),
-      })
-      if (!res.ok) throw new Error()
-      // Say which of the two just happened. A head of department's assignment
-      // moves the case now; anyone else's is a request, and the case stays
-      // theirs until it is accepted. Staying silent would let a clinician walk
-      // away believing they had handed over when they had only offered to.
-      const body = await res.json().catch(() => ({ instant: true }))
-      closeMenu()
-      await Promise.all([loadCases(), loadTransfers()])
-      if (!body?.instant) notify(t("handOver"), t("handoverRequested"))
-    } catch {
-      notify(t("error"), t("actionFailed"))
-    } finally {
-      setActionLoading(false)
-    }
+    const outcome = await handOver(menuCase.id, userId)
+    if (outcome === "failed") return
+    closeMenu()
+    await Promise.all([loadCases(), loadTransfers()])
+    // A request is not an assignment: the case stays this clinician's until
+    // somebody accepts it, and silence here would read as "done".
+    if (outcome === "requested") notify(t("handOver"), t("handoverRequested"))
   }
 
   useLiveRefresh(() => load(true), { intervalMs: 20_000 })
@@ -352,36 +319,23 @@ export default function DashboardScreen() {
 
   async function handleWithdrawHandover() {
     if (!menuCase) return
-    setActionLoading(true)
-    try {
-      const res = await apiFetch(`/api/cases/${menuCase.id}/transfer`, {
-        method: "PATCH",
-        body: JSON.stringify({ action: "cancel" }),
-      })
-      if (!res.ok) throw new Error()
-      closeMenu()
-      await Promise.all([loadCases(), loadTransfers()])
-    } catch {
+    if (!await resolveHandover(menuCase.id, "cancel")) {
       notify(t("error"), t("actionFailed"))
-    } finally {
-      setActionLoading(false)
+      return
     }
+    closeMenu()
+    await Promise.all([loadCases(), loadTransfers()])
   }
 
   async function handleTransferAction(item: PendingTransfer, action: "accept" | "decline") {
     setActioningTransfer(item.id)
-    try {
-      const res = await apiFetch(`/api/cases/${item.caseId}/transfer`, {
-        method: "PATCH",
-        body: JSON.stringify({ action }),
-      })
-      if (!res.ok) throw new Error()
-      await Promise.all([loadCases(), loadTransfers()])
-    } catch {
+    const ok = await resolveHandover(item.caseId, action)
+    setActioningTransfer(null)
+    if (!ok) {
       notify(t("error"), t("couldNotActionHandover").replace("{action}", action))
-    } finally {
-      setActioningTransfer(null)
+      return
     }
+    await Promise.all([loadCases(), loadTransfers()])
   }
 
   const totalCount = cases.length
@@ -575,29 +529,12 @@ const tabCounts: Record<FilterTab, number> = {
                 ))}
               </View>
 
-              {transfers.length > 0 ? (
-                <View style={{ backgroundColor: withAlpha(colors.warning, "18"), borderColor: withAlpha(colors.warning, "66"), borderWidth: 1, borderRadius: 14, borderCurve: "continuous", padding: 14, marginBottom: 14 }}>
-                  <Text style={{ color: colors.warning, fontWeight: "800", fontSize: 14, marginBottom: 10 }}>{t("pendingHandovers")}</Text>
-                  {transfers.map((transfer) => (
-                    <View key={transfer.id} style={{ marginBottom: 12 }}>
-                      <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: "700" }} numberOfLines={1}>
-                        {getTransferLabel(transfer)}
-                      </Text>
-                      <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2, marginBottom: 8 }}>
-                        {t("from")} {transfer.fromUser?.name ?? "Unknown user"}
-                      </Text>
-                      <View style={{ flexDirection: "row", gap: 8 }}>
-                        <TouchableOpacity style={{ flex: 1, backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 10, alignItems: "center" }} onPress={() => handleTransferAction(transfer, "accept")} disabled={actioningTransfer === transfer.id}>
-                          {actioningTransfer === transfer.id ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ color: "#fff", fontSize: 12, fontWeight: "800" }}>{t("accept")}</Text>}
-                        </TouchableOpacity>
-                        <TouchableOpacity style={{ flex: 1, backgroundColor: colors.surfacePressed, borderRadius: 10, paddingVertical: 10, alignItems: "center" }} onPress={() => handleTransferAction(transfer, "decline")} disabled={actioningTransfer === transfer.id}>
-                          <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: "800" }}>{t("decline")}</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
+              <PendingHandovers
+                transfers={transfers}
+                actioning={actioningTransfer}
+                onAction={handleTransferAction}
+                t={t}
+              />
 
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 20 }} style={{ marginBottom: 14 }}>
                 {FILTER_TABS.map((tab) => (
@@ -672,7 +609,7 @@ const tabCounts: Record<FilterTab, number> = {
                         })
                       }
                     }}
-                    disabled={actionLoading}
+                    disabled={actionLoading || handoverBusy}
                   >
                     <Text style={{ color: colors.primary, fontSize: 16, fontWeight: "700" }}>🖨 {tc("actionPrintCase")}</Text>
                   </TouchableOpacity>
@@ -682,7 +619,7 @@ const tabCounts: Record<FilterTab, number> = {
                   <TouchableOpacity
                     style={{ paddingVertical: 16, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: "row", alignItems: "center" }}
                     onPress={handleDeleteCase}
-                    disabled={actionLoading}
+                    disabled={actionLoading || handoverBusy}
                   >
                     <Text style={{ color: colors.danger, fontSize: 16, fontWeight: "700" }}>{t("deleteCase")}</Text>
                   </TouchableOpacity>
@@ -706,7 +643,7 @@ const tabCounts: Record<FilterTab, number> = {
                   <TouchableOpacity
                     style={{ paddingVertical: 16, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
                     onPress={handleShowAssign}
-                    disabled={actionLoading}
+                    disabled={actionLoading || handoverBusy}
                   >
                     <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "700" }}>{t("handOver")}…</Text>
                     <Text style={{ color: colors.textMuted, fontSize: 18 }}>›</Text>
@@ -723,7 +660,7 @@ const tabCounts: Record<FilterTab, number> = {
                   <TouchableOpacity
                     style={{ paddingVertical: 16, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: "row", alignItems: "center" }}
                     onPress={handleWithdrawHandover}
-                    disabled={actionLoading}
+                    disabled={actionLoading || handoverBusy}
                   >
                     <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "700" }}>{t("withdrawHandover")}</Text>
                   </TouchableOpacity>
@@ -750,7 +687,7 @@ const tabCounts: Record<FilterTab, number> = {
                         key={c.id}
                         style={{ paddingVertical: 14, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}
                         onPress={() => handleAssignTo(c.id)}
-                        disabled={actionLoading}
+                        disabled={actionLoading || handoverBusy}
                       >
                         <View>
                           <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "600" }}>{c.name}</Text>
@@ -779,7 +716,7 @@ const tabCounts: Record<FilterTab, number> = {
                 <TouchableOpacity
                   style={{ paddingVertical: 16, borderTopWidth: 1, borderTopColor: colors.border, alignItems: "center", backgroundColor: "rgba(220,38,38,0.08)", borderRadius: 10, marginBottom: 8 }}
                   onPress={confirmDeleteCase}
-                  disabled={actionLoading}
+                  disabled={actionLoading || handoverBusy}
                 >
                   {actionLoading
                     ? <ActivityIndicator color={colors.danger} />
@@ -789,7 +726,7 @@ const tabCounts: Record<FilterTab, number> = {
                 <TouchableOpacity
                   style={{ paddingVertical: 14, alignItems: "center" }}
                   onPress={() => setMenuMode("menu")}
-                  disabled={actionLoading}
+                  disabled={actionLoading || handoverBusy}
                 >
                   <Text style={{ color: colors.textSecondary, fontSize: 16 }}>{t("cancel")}</Text>
                 </TouchableOpacity>
