@@ -1,6 +1,6 @@
 {
   "name": "lospor-mobile",
-  "version": "9.2.0",
+  "version": "9.3.0",
   "license": "AGPL-3.0-or-later",
   "main": "expo-router/entry",
   "dependencies": {
@@ -66,7 +66,8 @@
     "test": "vitest run",
     "export:web": "expo export --platform web --clear && node scripts/patch-pwa.mjs",
     "e2e:pwa": "npm run export:web && playwright test --config playwright.pwa.config.ts",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "export:web:e2e": "node scripts/export-web-for-e2e.mjs"
   },
   "overrides": {
     "xcode": {
