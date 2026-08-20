@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native"
 import { Stack, useRouter, type Href } from "expo-router"
-import { ApiError, apiFetch, apiJson, decodeTokenPayload, getToken } from "@/lib/api"
+import { ApiError, apiFetch, apiJson } from "@/lib/api"
 import { notify } from "@/lib/notify"
 import { openPrintCase } from "@/lib/print-case"
 import { useAuth } from "@/lib/auth-context"
@@ -45,6 +45,9 @@ type CaseItem = {
   intraop?: { monthYear?: string; endTime?: string | null }
   postop?: { disposition?: string }
   user?: { name?: string }
+  // Any handover on this case still waiting to be answered. The list endpoint
+  // has always returned this; it was simply not read.
+  transfers?: { id: string }[]
 }
 
 type PendingTransfer = {
@@ -148,7 +151,6 @@ export default function DashboardScreen() {
   const [loadingColleagues, setLoadingColleagues] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const cardScales = useRef(new Map<string, Animated.Value>())
-  const userRoleRef = useRef<string | null>(null)
   const loadInFlightRef = useRef<Promise<void> | null>(null)
   const retryInFlightRef = useRef(false)
   const networkErrorNotifiedRef = useRef(false)
@@ -235,10 +237,6 @@ export default function DashboardScreen() {
 
   useEffect(() => {
     load()
-    getToken().then((token) => {
-      const payload = decodeTokenPayload(token)
-      userRoleRef.current = typeof payload?.role === "string" ? payload.role : null
-    })
   }, [load])
 
   useEffect(() => {
@@ -331,8 +329,14 @@ export default function DashboardScreen() {
         body: JSON.stringify({ toUserId: userId }),
       })
       if (!res.ok) throw new Error()
+      // Say which of the two just happened. A head of department's assignment
+      // moves the case now; anyone else's is a request, and the case stays
+      // theirs until it is accepted. Staying silent would let a clinician walk
+      // away believing they had handed over when they had only offered to.
+      const body = await res.json().catch(() => ({ instant: true }))
       closeMenu()
-      await loadCases()
+      await Promise.all([loadCases(), loadTransfers()])
+      if (!body?.instant) notify(t("handOver"), t("handoverRequested"))
     } catch {
       notify(t("error"), t("actionFailed"))
     } finally {
@@ -341,6 +345,28 @@ export default function DashboardScreen() {
   }
 
   useLiveRefresh(() => load(true), { intervalMs: 20_000 })
+
+  // Only the sender can withdraw, and the server matches on that, so a case
+  // this person did not hand over simply has no pending row to cancel.
+  const menuCasePending = (menuCase?.transfers?.length ?? 0) > 0
+
+  async function handleWithdrawHandover() {
+    if (!menuCase) return
+    setActionLoading(true)
+    try {
+      const res = await apiFetch(`/api/cases/${menuCase.id}/transfer`, {
+        method: "PATCH",
+        body: JSON.stringify({ action: "cancel" }),
+      })
+      if (!res.ok) throw new Error()
+      closeMenu()
+      await Promise.all([loadCases(), loadTransfers()])
+    } catch {
+      notify(t("error"), t("actionFailed"))
+    } finally {
+      setActionLoading(false)
+    }
+  }
 
   async function handleTransferAction(item: PendingTransfer, action: "accept" | "decline") {
     setActioningTransfer(item.id)
@@ -662,14 +688,44 @@ const tabCounts: Record<FilterTab, number> = {
                   </TouchableOpacity>
                 ) : null}
 
-                {(userRoleRef.current === "HOD" || userRoleRef.current === "ADMIN") ? (
+                {/*
+                  Offered to everyone, and the server decides what it means: a
+                  head of department or an administrator assigns and the case
+                  moves at once; anyone else asks, and it moves when the
+                  recipient accepts. Handing a case on at the end of a shift is
+                  an ordinary clinical act, and a phone is where it happens.
+
+                  This used to be gated on `userRoleRef.current === "HOD"`,
+                  which is not a role the API has ever returned — the enum value
+                  is HEAD_OF_DEPT and "HOD" is only a display label in
+                  src/i18n/strings.ts. So the condition was never true for a
+                  head of department, and this control was in practice
+                  admin-only. Removing the gate fixes that too.
+                */}
+                {menuCase?.status !== "COMPLETE" && !menuCasePending ? (
                   <TouchableOpacity
                     style={{ paddingVertical: 16, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
                     onPress={handleShowAssign}
                     disabled={actionLoading}
                   >
-                    <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "700" }}>{t("assignTo")}…</Text>
+                    <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "700" }}>{t("handOver")}…</Text>
                     <Text style={{ color: colors.textMuted, fontSize: 18 }}>›</Text>
+                  </TouchableOpacity>
+                ) : null}
+
+                {/*
+                  A handover nobody answers has to be escapable, and only the
+                  sender may withdraw it. While one is outstanding the case
+                  cannot be offered to anyone else, so without this a case
+                  handed to a colleague on annual leave would be stuck.
+                */}
+                {menuCasePending ? (
+                  <TouchableOpacity
+                    style={{ paddingVertical: 16, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: "row", alignItems: "center" }}
+                    onPress={handleWithdrawHandover}
+                    disabled={actionLoading}
+                  >
+                    <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "700" }}>{t("withdrawHandover")}</Text>
                   </TouchableOpacity>
                 ) : null}
 
