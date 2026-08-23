@@ -9,7 +9,10 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "org.lospor.mobile"
+      "bundleIdentifier": "org.lospor.mobile",
+      "infoPlist": {
+        "CFBundleAllowMixedLocalizations": true
+      }
     },
     "android": {
       "package": "org.lospor.mobile",
@@ -32,23 +35,32 @@
       "output": "single",
       "name": "LOSPOR",
       "shortName": "LOSPOR",
-      "description": "Large Open Source Perioperative Register - clinical anaesthesia documentation",
+      "description": "Отворен периоперативен регистър — клинична анестезиологична документация",
       "themeColor": "#090b0c",
       "backgroundColor": "#090b0c",
-      "lang": "en",
+      "lang": "bg",
       "scope": "/",
       "startUrl": "/"
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      [
+        "expo-localization",
+        {
+          "supportedLocales": {
+            "ios": ["bg", "en"],
+            "android": ["bg", "en"]
+          }
+        }
+      ],
       "expo-status-bar",
       "expo-dev-client",
       [
         "expo-image-picker",
         {
-          "photosPermission": "LOSPOR uses camera to scan lab reports and monitor readings.",
-          "cameraPermission": "LOSPOR uses camera to scan lab reports and monitor readings."
+          "photosPermission": "LOSPOR използва снимките за разчитане на лабораторни резултати и мониторни показатели.",
+          "cameraPermission": "LOSPOR използва камерата за разчитане на лабораторни резултати и мониторни показатели."
         }
       ],
       [
@@ -69,6 +81,10 @@
       ],
       "expo-sharing"
     ],
+    "locales": {
+      "bg": "./locales/bg.json",
+      "en": "./locales/en.json"
+    },
     "extra": {
       "router": {},
       "eas": {
