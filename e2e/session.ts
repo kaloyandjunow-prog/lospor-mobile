@@ -4,8 +4,7 @@ import { join } from "node:path"
 
 // Getting the PWA signed in, without spending login attempts to do it.
 //
-// The phone app authenticates with a bearer token it keeps in storage, so there
-// is no cookie session to save the way the web suite does. The obvious approach
+// The PWA authenticates with a same-origin HttpOnly cookie. The obvious approach
 // — drive the login screen in every test — turned out to be the expensive one:
 // sign-in is rate limited at 10 per email and 50 per IP address in 15 minutes,
 // and a full web + PWA cycle was spending about a dozen. Iterating on a spec
@@ -13,7 +12,8 @@ import { join } from "node:path"
 // login rather than the limiter doing its job.
 //
 // So tokens are minted once against the API, cached on disk until they expire,
-// and injected into storage. Repeat runs cost nothing. The login *screen* is
+// and injected only as an HttpOnly test cookie. Repeat runs cost nothing and no
+// bearer credential enters JS-readable storage. The login *screen* is
 // still covered — see the sign-in spec, which uses signInThroughTheScreen.
 
 export const E2E_PASSWORD = process.env.E2E_PASSWORD ?? "E2e-Test-Pass!234"
@@ -34,8 +34,7 @@ export const INSTITUTION_A_NAME = "E2E Test Hospital"
 export const INSTITUTION_B_NAME = "E2E Second Hospital"
 export const NO_INSTITUTION_NAME = "Без институция"
 
-// src/lib/secure-store-web.ts prefixes every key it puts in localStorage.
-const TOKEN_STORAGE_KEY = "lospor_ss_lospor_access_token"
+const ACCOUNT_LOCALE_STORAGE_PREFIX = "lospor_ss_lospor_account_locale_v1."
 const TOKEN_CACHE_DIR = join(__dirname, ".auth")
 
 /**
@@ -62,6 +61,22 @@ function secondsRemaining(token: string): number {
     return claims.exp - Math.floor(Date.now() / 1000)
   } catch {
     return 0
+  }
+}
+
+/** Account subject carried by an API token; null for an invalid test token. */
+function tokenSubject(token: string): string | null {
+  try {
+    const [, payload] = token.split(".")
+    const claims = JSON.parse(Buffer.from(payload!, "base64url").toString("utf8")) as {
+      sub?: unknown
+      userId?: unknown
+      id?: unknown
+    }
+    const subject = claims.sub ?? claims.userId ?? claims.id
+    return typeof subject === "string" && subject ? subject : null
+  } catch {
+    return null
   }
 }
 
@@ -109,19 +124,44 @@ export async function signInAs(
   email: string,
 ): Promise<void> {
   const token = await tokenFor(request, email)
+  const subject = tokenSubject(token)
+
+  // The authenticated account locale is authoritative. Keep the established
+  // English E2E fixtures deterministic across the 1.2.0 API rollout without
+  // making a pre-rollout API response a test-suite blocker.
+  await request.patch(`${API_BASE}/v1/user`, {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    data: { preferences: { ui: { locale: "en" } } },
+  }).catch(() => null)
+
+  const pwaBase = process.env.PWA_E2E_BASE_URL ?? "http://localhost:3001"
+  await page.context().addCookies([{
+    name: "lospor_session",
+    value: token,
+    url: pwaBase,
+    httpOnly: true,
+    secure: pwaBase.startsWith("https://"),
+    sameSite: "Lax",
+  }])
   await page.addInitScript(
-    ([key, value]) => window.localStorage.setItem(key!, value!),
-    [TOKEN_STORAGE_KEY, token],
+    (localeKey => {
+      if (localeKey) window.localStorage.setItem(localeKey, "en")
+    }),
+    subject ? `${ACCOUNT_LOCALE_STORAGE_PREFIX}${subject}` : "",
   )
   await page.goto("/")
   await expect(
     page.getByText("New case", { exact: true }),
-    `injected a token for ${email} but the app did not consider it signed in`,
+    `installed an HttpOnly session for ${email} but the app did not consider it signed in`,
   ).toBeVisible()
 }
 
 async function attemptScreenSignIn(page: Page, email: string): Promise<void> {
   await page.goto("/")
+  await page.getByText("EN · English", { exact: true }).click()
   await page.getByPlaceholder("you@hospital.org").fill(email)
   await page.locator("input[type=password]").fill(E2E_PASSWORD)
   await page.getByText("Sign in", { exact: true }).click()
