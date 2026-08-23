@@ -174,7 +174,7 @@ function TimetableRowComponent({
                 }}
               >
                 <Text style={{ color: btn.color, fontSize: 12, fontWeight: "700" }}>
-                  {btn.action === "gas" && activeGas ? "Gas" : btn.label}
+                  {btn.action === "gas" && activeGas ? tc("trRowGasActive") : btn.label}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -267,7 +267,7 @@ function TimetableRowComponent({
         )}
         {hasUnsynced && (
           <Text style={{ color: colors.warning, fontSize: 9, fontWeight: "800", lineHeight: 12 }}>
-            unsynced
+            {tc("unsyncedShort")}
           </Text>
         )}
       </View>
