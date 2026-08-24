@@ -6,17 +6,13 @@ import { usePreferences } from "@/lib/preferences-context"
 import { displayClinicalCode } from "@/lib/clinical-display"
 import { DoseSelector } from "@/components/intraop/DoseSelector"
 import type { ScenarioGroup } from "@lospor/core"
-import { calcSuggestedDose as calcDose } from "@/lib/dose-calc"
-import {
-  canonicalDoseUnit,
-  normalizeAdministrationRoute,
-} from "@lospor/core/clinical-rule-vocabulary"
+
+
 import type { PediatricAgeInput } from "@lospor/core/pediatric"
 import type { PediatricDoseProfile } from "@lospor/core/pediatric-dose"
 import {
   applicablePediatricDrugProfiles,
   selectApplicablePediatricDrugProfile,
-  resolvePediatricDrugProfileSurface,
   type PediatricDrugProfileRule,
 } from "@lospor/core/clinical-rules"
 import type { DrugFormulation } from "@/lib/intraop-log-event"
@@ -24,7 +20,7 @@ import type {
   DrugEntryDraft,
   DrugRuleSelection,
 } from "@/lib/use-drug-entry"
-import { applicablePediatricDoseProfiles, resolvePediatricProfileDose } from "@/lib/pediatric-dose-ui"
+import { applicablePediatricDoseProfiles } from "@/lib/pediatric-dose-ui"
 import { resolveDrugSheetPediatric } from "@/lib/drug-sheet-pediatric"
 import { PediatricDoseNotice } from "@/components/intraop/PediatricDoseNotice"
 import type { SearchOnlyMedicationOption } from "@/lib/hidden-clinical-options"
@@ -36,6 +32,7 @@ import {
   type DrugPickerSearchResult,
 } from "@/components/intraop/DrugPickerMenu"
 import { fallbackRange, type DoseCalc, type DoseSurface, type Range } from "@/components/intraop/drug-sheet-types"
+import { createDrugDraftBuilders } from "@/components/intraop/drug-sheet-drafts"
 
 type DrugOption = DrugPickerOption
 type DrugCat = DrugPickerCategory
@@ -102,14 +99,6 @@ export function DrugSheet({
   const scenarioLabel = (group: ScenarioGroup) => displayClinicalCode("scenarioGroup", group.key, language, { label: group.label })
   const [mode, setMode] = useState<DrugPickerMode>("home")
 
-  function calculatedPrefill(name: string, route?: string): string {
-    if (pediatricMode) return ""
-    return calcDose(doseCalcs?.[name], route, {
-      weightKg: patientWeightKg,
-      heightCm: patientHeightCm,
-      sex: patientSex,
-    }).dose
-  }
   const [scenario, setScenario] = useState<ScenarioGroup | null>(null)
   const [query, setQuery] = useState("")
   const [searchOnlySelection, setSearchOnlySelection] = useState<SearchOnlyMedicationOption | null>(null)
@@ -172,52 +161,28 @@ export function DrugSheet({
     drugProfiles: pediatricDrugProfiles,
     doseProfiles: pediatricDoseProfiles,
   })
-  function canonicalRoute(route: string | undefined): string | undefined {
-    return route ? normalizeAdministrationRoute(route) ?? route : undefined
-  }
-
-  function canonicalUnit(unit: string): string {
-    return canonicalDoseUnit(unit)?.display ?? unit
-  }
-
-  function canonicalRoutes(name: string): string[] {
-    return Array.from(new Set((routes[name] ?? []).map(route => canonicalRoute(route) ?? route)))
-  }
-
-  function profileForRoute(name: string, route: string | undefined): DoseSurface | undefined {
-    const canonical = canonicalRoute(route)
-    const routeSurfaces = routeProfiles[name] ?? {}
-    if (canonical && routeSurfaces[canonical]) return routeSurfaces[canonical]
-    const aliasMatch = canonical
-      ? Object.entries(routeSurfaces).find(([candidate]) => canonicalRoute(candidate) === canonical)?.[1]
-      : undefined
-    return aliasMatch ?? baseProfiles[name]
-  }
-
-  function ruleFromProfile(profile: PediatricDoseProfile): DrugRuleSelection {
-    return {
-      key: profile.key,
-      version: profile.version,
-      sourceIds: [...profile.sourceIds],
-      roundTo: profile.roundTo,
-    }
-  }
-
-  function ruleFromStructuredProfile(
-    profile: PediatricDrugProfileRule,
-    route: string,
-  ): DrugRuleSelection {
-    const routeMode = profile.profile?.routeModes?.[route]
-    const doseCalc = routeMode?.doseCalc
-      ?? profile.profile?.doseCalcByRoute?.[route]
-      ?? profile.profile?.doseCalc
-    return {
-      key: profile.ruleKey,
-      version: profile.ruleVersion,
-      sourceIds: [...profile.sourceIds],
-      roundTo: doseCalc?.roundTo,
-    }
-  }
+  // Route canonicalisation and draft building live in drug-sheet-drafts.ts:
+  // they answer questions about the catalogue and the patient, not about this
+  // screen, and the sheet stays the owner of what is currently selected.
+  const {
+    canonicalRoute, canonicalUnit, canonicalRoutes, profileForRoute,
+    pediatricDraft, structuredPediatricDraft, adultDraft,
+  } = useMemo(() => createDrugDraftBuilders({
+    pediatricMode,
+    patientAge: patientAge ?? null,
+    patientWeightKg,
+    patientHeightCm,
+    patientSex,
+    routes,
+    baseProfiles,
+    routeProfiles,
+    laConcentrations,
+    dosePresets,
+    doseCalcs,
+  }), [
+    baseProfiles, doseCalcs, dosePresets, laConcentrations, patientAge, patientHeightCm,
+    patientSex, patientWeightKg, pediatricMode, routeProfiles, routes,
+  ])
 
   function replaceSelection(selection: DrugEntryDraft) {
     if (applyDrugSelection) {
@@ -232,90 +197,6 @@ export function DrugSheet({
     setDrugFormulation?.(selection.formulation)
   }
 
-  function pediatricDraft(
-    drug: DrugOption,
-    route: string | undefined,
-    candidates: readonly PediatricDoseProfile[],
-  ): DrugEntryDraft {
-    const canonical = canonicalRoute(route)
-    const matching = candidates.filter(profile => canonicalRoute(profile.route) === canonical)
-    const profile = matching.length === 1 ? matching[0] : undefined
-    const resolution = profile && patientAge
-      ? resolvePediatricProfileDose({
-          profile,
-          age: patientAge,
-          weightKg: patientWeightKg,
-          heightCm: patientHeightCm,
-        })
-      : null
-    return {
-      pick: { ...drug, unit: canonicalUnit(profile?.doseUnit ?? drug.unit) },
-      dose: resolution?.status === "AVAILABLE" ? String(resolution.amount) : "",
-      route: canonical,
-      rule: profile ? ruleFromProfile(profile) : undefined,
-    }
-  }
-
-  function structuredPediatricDraft(
-    drug: DrugOption,
-    route: string | undefined,
-    profile: PediatricDrugProfileRule,
-  ): DrugEntryDraft {
-    if (!patientAge) {
-      const fallbackRoute = canonicalRoute(route)
-        ?? canonicalRoute(profile.profile?.defaultRoute)
-        ?? canonicalRoute(profile.profile?.routes[0])
-      return {
-        pick: { ...drug, unit: canonicalUnit(profile.profile?.unit ?? profile.manualUnit ?? drug.unit) },
-        dose: "",
-        route: fallbackRoute,
-        rule: fallbackRoute ? ruleFromStructuredProfile(profile, fallbackRoute) : undefined,
-      }
-    }
-    const surface = resolvePediatricDrugProfileSurface({
-      rule: profile,
-      age: patientAge,
-      route,
-      weightKg: patientWeightKg,
-      heightCm: patientHeightCm,
-      sex: patientSex,
-    })
-    if (!surface) return { pick: drug, dose: "", route: canonicalRoute(route) }
-    return {
-      pick: { ...drug, unit: canonicalUnit(surface.unit) },
-      // Preserve only the calculated prefill. If its basis is unavailable (for
-      // example McLaren IBW cannot be resolved), keep the dose manual instead
-      // of substituting a configured quick value.
-      dose: surface.dose,
-      route: surface.route,
-      concentration: surface.concentration || undefined,
-      formulation: surface.formulation,
-      rule: ruleFromStructuredProfile(profile, surface.route),
-    }
-  }
-
-  function adultDraft(drug: DrugOption, route: string | undefined): DrugEntryDraft {
-    const canonical = canonicalRoute(route)
-    const profile = profileForRoute(drug.name, canonical)
-    const concentrations = profile?.mode === "concentration"
-      ? profile.concentrationOptions ?? laConcentrations[drug.name] ?? []
-      : []
-    const doseSuggestion = calculatedPrefill(drug.name, canonical)
-    const routeVolume = canonical ? profile?.suggestedVolumeByRoute?.[canonical] : undefined
-    const fallbackDose = routeVolume
-      ?? profile?.suggestedVolume
-      ?? profile?.quickValues?.[0]
-      ?? dosePresets[drug.name]?.[0]
-    return {
-      pick: { ...drug, unit: canonicalUnit(profile?.unit ?? drug.unit) },
-      dose: doseSuggestion || (fallbackDose != null ? String(fallbackDose) : ""),
-      route: canonical,
-      concentration: concentrations.length
-        ? profile?.suggestedConcentration ?? profile?.defaultConcentration ?? concentrations[0]
-        : undefined,
-      formulation: profile?.defaultFormulation ?? profile?.formulationOptions?.[0],
-    }
-  }
 
   const activeRoute = drugPick
     ? structuredPediatricSurface?.route

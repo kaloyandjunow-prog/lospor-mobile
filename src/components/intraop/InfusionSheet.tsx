@@ -19,7 +19,7 @@ import {
 import type { InfusionRuleSelection } from "@/lib/use-infusion-entry"
 import type { SearchOnlyMedicationOption } from "@/lib/hidden-clinical-options"
 import { InfusionPickerMenu, type InfusionPickerMode } from "@/components/intraop/InfusionPickerMenu"
-import { filterInfusionPickerResults, type ActiveInfProfile, type InfProfile, type InfusionOption, type Range } from "@/components/intraop/infusion-sheet-helpers"
+import { activeInfusionSurface, filterInfusionPickerResults, type ActiveInfProfile, type InfProfile, type InfusionOption, type Range } from "@/components/intraop/infusion-sheet-helpers"
 
 export function InfusionSheet({
   visible, onClose, infDrugs, searchOnlyInfusions = [], favouriteNames, scenarios, ratePresets, infDrug, setInfDrug, infRate, setInfRate, onConfirm,
@@ -173,33 +173,28 @@ export function InfusionSheet({
     return preset != null ? String(preset) : ""
   }
 
-  // Active dose surface (unit / range / quick values / concentration) for the
-  // currently picked drug + route — falls back to the flat ranges/concentration
-  // maps for infusions that have no per-route profile.
-  const pediatricConflict = prospectiveGuidanceEnabled && !searchOnlySelection && infDrug
-    ? availabilityFor(infDrug.name)?.conflict ?? false
-    : false
-  const initialActiveProfile = infDrug ? profileFor(infDrug.name, infRoute) : undefined
-  const activeRoute = infDrug
-    ? (infRoute ?? searchOnlySelection?.routes[0] ?? initialActiveProfile?.route ?? routes[infDrug.name]?.[0])
-    : undefined
-  const activeProfile = infDrug ? profileFor(infDrug.name, activeRoute) : undefined
-  const activeUnit = searchOnlySelection?.unit ?? activeProfile?.unit ?? infDrug?.unit ?? "mg/hr"
-  const activeQuickValues = !prospectiveGuidanceEnabled || searchOnlySelection
-    ? undefined
-    : activeProfile?.quickValues?.length
-      ? activeProfile.quickValues
-      : (infDrug ? ratePresets[infDrug.name]?.map(Number) : undefined)
-  const activeConcentrations = !prospectiveGuidanceEnabled || searchOnlySelection
-    ? undefined
-    : activeProfile
-      ? (activeProfile.mode?.includes("concentration") ? activeProfile.concentrationOptions : undefined)
-      : (infDrug ? laConcentrations[infDrug.name] : undefined)
-  const activeRange = !prospectiveGuidanceEnabled || searchOnlySelection
-    ? { min: 0, max: 100_000, step: 0.1 }
-    : activeProfile
-    ? { min: activeProfile.min, max: activeProfile.max, step: activeProfile.step }
-    : (infDrug ? ranges[infDrug.name] ?? { min: 0, max: 100, step: 1 } : { min: 0, max: 100, step: 1 })
+  // Which unit, range, quick values and concentrations this selection may
+  // offer. Decided in infusion-sheet-helpers so the sheet only renders it.
+  const {
+    pediatricConflict,
+    activeRoute,
+    activeProfile,
+    activeUnit,
+    activeQuickValues,
+    activeConcentrations,
+    activeRange,
+  } = activeInfusionSurface({
+    drug: infDrug,
+    route: infRoute,
+    searchOnlySelection,
+    prospectiveGuidanceEnabled,
+    profileFor,
+    availabilityFor,
+    routes,
+    ratePresets,
+    laConcentrations,
+    ranges,
+  })
 
   function selectInfusion(drug: InfusionOption) {
     setSearchOnlySelection(null)

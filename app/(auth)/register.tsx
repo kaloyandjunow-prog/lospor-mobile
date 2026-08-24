@@ -1,25 +1,25 @@
 import { useMemo, useState } from "react"
 import {
   View, Text, TouchableOpacity, ScrollView,
-  KeyboardAvoidingView, Platform, Linking,
+  KeyboardAvoidingView, Platform,
 } from "react-native"
 import { Stack, useRouter } from "expo-router"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Field, StyledInput, SectionHeader, PrimaryButton, SingleToggle } from "@/components/ui"
+import { RegistrationConsent } from "@/components/auth/RegistrationConsent"
+import { RegistrationUnavailableScreen } from "@/components/auth/RegistrationUnavailable"
 import { ApiError, registerAccount } from "@/lib/api"
 import { AuthBackdrop, AuthBrand } from "@/components/AuthBrand"
 import { PROFESSIONAL_TITLE_LABELS } from "@/i18n/account-options"
 import { CountryPicker, InstitutionPicker } from "@/components/auth/RegistrationPickers"
 import { PasswordStrengthBar, SuccessView } from "@/components/auth/RegistrationFeedback"
 import { usePreferences } from "@/lib/preferences-context"
-import { notify } from "@/lib/notify"
 import {
   createRegistrationSchema,
   type RegistrationFormValues,
 } from "@/lib/registration-schema"
 import { useRegistrationLegalDocuments } from "@/lib/legal-documents"
-import { legalDocumentUrl } from "@/lib/legal-links"
 import { PROFESSIONAL_TITLES } from "@lospor/core/account"
 import { useAuthenticationCapabilities } from "@/lib/deployment-capabilities"
 
@@ -281,77 +281,14 @@ function RegistrationFormScreen() {
             control={control}
             name="acceptedTerms"
             render={({ field: { value, onChange } }) => (
-              <View className="mb-4">
-                <View
-                  style={{
-                    backgroundColor: "#1c1c1c",
-                    borderColor: "#2e2e2e",
-                    borderWidth: 1,
-                    borderRadius: 12,
-                    padding: 12,
-                    marginBottom: 12,
-                  }}
-                >
-                  <Text style={{ color: "#cbd5e1", fontSize: 13, fontWeight: "700", marginBottom: 4 }}>
-                    {t("clinicalRegistryAccount")}
-                  </Text>
-                  <Text style={{ color: "#94a3b8", fontSize: 12, lineHeight: 17 }}>
-                    {t("registryLegalNotice")}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  className="flex-row items-start"
-                  accessibilityRole="checkbox"
-                  accessibilityState={{
-                    checked: Boolean(value),
-                    disabled: !legalDocuments.acceptances,
-                  }}
-                  onPress={() => {
-                    if (legalDocuments.acceptances) onChange(!value)
-                  }}
-                  disabled={!legalDocuments.acceptances}
-                  activeOpacity={0.7}
-                >
-                  <View
-                    className="mt-0.5 mr-3 items-center justify-center"
-                    style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: 4,
-                      borderWidth: 2,
-                      borderColor: value ? "#3b82f6" : "#4b5563",
-                      backgroundColor: value ? "#3b82f6" : "transparent",
-                    }}
-                  >
-                    {value && <Text style={{ color: "#fff", fontSize: 13, lineHeight: 16 }}>✓</Text>}
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-slate-300 text-sm leading-relaxed">
-                      {t("acceptLegalPrefix")}
-                      <Text
-                        className="text-blue-400 underline"
-                        onPress={() => void Linking.openURL(legalDocumentUrl("terms", language))
-                          .catch(() => notify(t("error"), t("legalLinkFailed")))}
-                      >
-                        {t("termsOfUse")}
-                      </Text>
-                      {t("legalAnd")}
-                      <Text
-                        className="text-blue-400 underline"
-                        onPress={() => void Linking.openURL(legalDocumentUrl("privacy", language))
-                          .catch(() => notify(t("error"), t("legalLinkFailed")))}
-                      >
-                        {t("privacyNotice")}
-                      </Text>
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-                {errors.acceptedTerms && (
-                  <Text className="text-red-400 text-xs mt-1 ml-8">
-                    {errors.acceptedTerms.message as string}
-                  </Text>
-                )}
-              </View>
+              <RegistrationConsent
+                value={Boolean(value)}
+                onChange={onChange}
+                canAccept={Boolean(legalDocuments.acceptances)}
+                error={errors.acceptedTerms?.message as string | undefined}
+                language={language}
+                t={t}
+              />
             )}
           />
 
@@ -380,44 +317,6 @@ function RegistrationFormScreen() {
             </Text>
           </TouchableOpacity>
         </ScrollView>
-      </KeyboardAvoidingView>
-    </>
-  )
-}
-
-function RegistrationUnavailableScreen({ instructions }: { instructions: string }) {
-  const router = useRouter()
-  const { t } = usePreferences()
-
-  return (
-    <>
-      <Stack.Screen options={{ headerShown: false }} />
-      <KeyboardAvoidingView
-        className="flex-1 bg-[#111111]"
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <AuthBackdrop />
-        <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 24 }}>
-          <View style={{ marginBottom: 30 }}>
-            <AuthBrand />
-          </View>
-          <Text
-            accessibilityRole="header"
-            style={{ color: "#f8fafc", fontSize: 24, fontWeight: "900", marginBottom: 8 }}
-          >
-            {t("registrationUnavailable")}
-          </Text>
-          <Text style={{ color: "#94a3b8", fontSize: 14, lineHeight: 21 }}>
-            {instructions}
-          </Text>
-          <TouchableOpacity
-            accessibilityRole="link"
-            className="mt-7 items-center"
-            onPress={() => router.replace("/(auth)/login")}
-          >
-            <Text className="text-blue-400 text-sm font-extrabold">{t("backToLogin")}</Text>
-          </TouchableOpacity>
-        </View>
       </KeyboardAvoidingView>
     </>
   )
