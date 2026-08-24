@@ -1,6 +1,6 @@
 # Changelog - LOSPOR Mobile
 
-## [1.2.0] - Unreleased
+## [9.3.1] - 2026-08-24 - 1.2.0 phone wave
 
 ### Added
 
@@ -180,6 +180,20 @@
 - Added `docs/localization-bg-review.md` with the locale contract, screen
   coverage, safety boundary, external legal-content limits, and the locked
   terminology boundary for standardized medical names, codes, and units.
+
+### Fixed
+
+- HPWA-01: the exported PWA's static server now proxies `/v1/*` to the API
+  instead of silently serving the SPA shell for it, so the exported build is
+  actually installable and reproducible rather than only working when a
+  browser happened to already hold a session.
+
+### Changed
+
+- Repinned to `@lospor/core` v9.3.1: an offline event save is now reported as
+  queued rather than failed, matching the fact that it is retained for retry
+  and does replay once the connection returns.
+- Migrated Vitest config to ESM (`vitest.config.mts`).
 
 ## [9.3.0] - 2026-08-20
 
