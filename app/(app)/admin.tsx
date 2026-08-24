@@ -208,7 +208,10 @@ export default function AdminScreen() {
         contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
         ListHeaderComponent={
           <View style={{ marginBottom: 14 }}>
-            <Text style={{ color: colors.textPrimary, fontSize: 22, fontWeight: "900" }}>
+            <Text
+              testID={isAdmin ? "admin-console-heading" : "department-queue-heading"}
+              style={{ color: colors.textPrimary, fontSize: 22, fontWeight: "900" }}
+            >
               {t(isAdmin ? "administration" : "departmentRequestQueue")}
             </Text>
             <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 3, marginBottom: 12 }}>
@@ -218,6 +221,7 @@ export default function AdminScreen() {
               {(isAdmin ? TABS : (["Departments"] as Tab[])).map((item) => (
                 <WorkflowPill
                   key={item}
+                  testID={`admin-tab-${item.replace(/ /g, "-").toLowerCase()}`}
                   label={item === "Registrations" ? t("registrations") : item === "HOD Requests" ? t("hodRequests") : item === "Departments" ? t("departmentRequests") : t("users")}
                   selected={tab === item}
                   onPress={() => setTab(item)}

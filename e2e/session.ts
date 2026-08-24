@@ -81,31 +81,69 @@ function tokenSubject(token: string): string | null {
 }
 
 /**
- * A bearer token for `email`, reused across runs while it has life left in it.
+ * Whether the API still accepts `token`.
+ *
+ * An unexpired JWT is not a live session. The API tracks sessions server-side
+ * and revokes them on purpose: approving an institution change revokes every
+ * session that member held, because the token they were carrying names the
+ * institution whose authority it granted. A cached token can therefore be
+ * well-formed, hours from expiry, and dead — and reusing one makes the app
+ * look signed out for no reason a spec can see. Costs one request and no login
+ * attempt, which is the resource this cache exists to conserve.
+ */
+async function stillAccepted(request: APIRequestContext, token: string): Promise<boolean> {
+  const response = await request.get(`${API_BASE}/v1/auth/session`, {
+    headers: { Authorization: `Bearer ${token}` },
+  }).catch(() => null)
+  return response?.status() === 200
+}
+
+/**
+ * A bearer token for `email`, reused across runs while the API still honours it.
  *
  * Deliberately not cached in memory only: the point is that running the suite
  * twice in a row spends no login attempts at all. A cached token stays correct
  * across a reseed because the API resolves role and institution from the
- * database on every request — the token carries identity, not permissions.
+ * database on every request — the token carries identity, not permissions. It
+ * does not survive a deliberate revocation, so the cache is checked rather
+ * than trusted.
  */
 export async function tokenFor(request: APIRequestContext, email: string): Promise<string> {
   const file = cachePath(email)
   if (existsSync(file)) {
     const cached = readFileSync(file, "utf8").trim()
     // A minute of headroom so a token cannot expire mid-test.
-    if (cached && secondsRemaining(cached) > 60) return cached
+    if (cached && secondsRemaining(cached) > 60 && await stillAccepted(request, cached)) {
+      return cached
+    }
   }
 
-  const response = await request.post(`${API_BASE}/v1/auth/token`, {
-    headers: { "Content-Type": "application/json", "x-forwarded-for": RUN_ADDRESS },
-    data: { email, password: E2E_PASSWORD },
-  })
-  expect(
-    response.status(),
-    `could not mint a token for ${email}: ${await response.text()}`,
-  ).toBe(200)
-  const token = (await response.json()).access_token as string
-  expect(token, `no access_token returned for ${email}`).toBeTruthy()
+  const mint = async (): Promise<string> => {
+    const response = await request.post(`${API_BASE}/v1/auth/token`, {
+      headers: { "Content-Type": "application/json", "x-forwarded-for": RUN_ADDRESS },
+      data: { email, password: E2E_PASSWORD },
+    })
+    expect(
+      response.status(),
+      `could not mint a token for ${email}: ${await response.text()}`,
+    ).toBe(200)
+    const minted = (await response.json()).access_token as string
+    expect(minted, `no access_token returned for ${email}`).toBeTruthy()
+    return minted
+  }
+
+  let token = await mint()
+  // A token records when it was issued to the whole second; a change of
+  // authority — an approved institution move, a password reset — stamps the
+  // account's epoch to the millisecond. A token minted inside that same second
+  // therefore reads as older than the epoch and is refused for the rest of it.
+  // Mint again past the boundary rather than hand back a credential the API
+  // will not accept, which otherwise surfaces as an app that looks signed out
+  // immediately after signing in.
+  if (!await stillAccepted(request, token)) {
+    await new Promise(resolve => setTimeout(resolve, 1_100))
+    token = await mint()
+  }
 
   mkdirSync(TOKEN_CACHE_DIR, { recursive: true })
   writeFileSync(file, token, "utf8")

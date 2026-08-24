@@ -166,6 +166,7 @@ function TimetableRowComponent({
             {quickAddButtons(tc).map(btn => (
               <TouchableOpacity
                 key={btn.action}
+                testID={`timetable-quick-add-${btn.action}`}
                 onPress={() => onQuickAdd(col, btn.action)}
                 style={{
                   paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
@@ -187,6 +188,7 @@ function TimetableRowComponent({
   // ── Collapsed row ──────────────────────────────────────────
   return (
     <TouchableOpacity
+      testID={isNow ? "timetable-row-now" : `timetable-row-${col}`}
       activeOpacity={0.75}
       onPress={() => onExpand(col)}
       style={{

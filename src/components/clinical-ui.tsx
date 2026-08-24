@@ -52,14 +52,17 @@ export function WorkflowPill({
   label,
   selected,
   onPress,
+  testID,
 }: {
   label: string
   selected: boolean
   onPress: () => void
+  testID?: string
 }) {
   return (
     <Pressable
       onPress={onPress}
+      testID={testID}
       style={{
         borderRadius: 999,
         backgroundColor: selected ? colors.primarySoft : colors.surfaceRaised,

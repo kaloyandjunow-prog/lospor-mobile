@@ -101,7 +101,10 @@ test("a hidden canonical drug is available only as provenance-preserving manual 
   await page.goto(`/cases/intraop/${caseId}`)
   await expect(page.getByText("Equipment", { exact: true })).toBeVisible({ timeout: 30_000 })
   await page.getByText("Timetable", { exact: true }).click()
-  await page.getByText("Drug", { exact: true }).last().click()
+  // The quick-add grid lives inside an expanded row, so the current
+  // five-minute slot has to be opened before there is a Drug action at all.
+  await page.getByTestId("timetable-row-now").click()
+  await page.getByTestId("timetable-quick-add-drug").click()
 
   await expect(page.getByText("Add drug", { exact: true })).toBeVisible()
   await expect(page.getByText("Propofol", { exact: true })).toHaveCount(0)
@@ -204,7 +207,10 @@ test("a non-production-ready adult baseline cannot prefill any medication value"
   await page.goto(`/cases/intraop/${caseId}`)
   await expect(page.getByText("Equipment", { exact: true })).toBeVisible({ timeout: 30_000 })
   await page.getByText("Timetable", { exact: true }).click()
-  await page.getByText("Drug", { exact: true }).last().click()
+  // The quick-add grid lives inside an expanded row, so the current
+  // five-minute slot has to be opened before there is a Drug action at all.
+  await page.getByTestId("timetable-row-now").click()
+  await page.getByTestId("timetable-quick-add-drug").click()
   await page.getByText("Browse all drugs", { exact: true }).click()
   await page.getByTestId("drug-search-input").fill("Propofol")
   await page.getByText("Propofol", { exact: true }).click()

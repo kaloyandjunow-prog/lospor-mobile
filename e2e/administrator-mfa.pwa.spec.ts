@@ -31,7 +31,21 @@ test("a PWA administrator enrolls TOTP and must save all ten recovery codes", as
       return
     }
     if (path === "/v1/capabilities") {
-      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ features: {} }) })
+      // A complete authentication contract. The PWA fails sign-in closed when
+      // this block is absent or unrecognised, so an abbreviated stub would
+      // never reach the email field this spec types into.
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          authentication: {
+            loginIdentifier: "EMAIL",
+            selfRegistration: true,
+            passwordRecovery: "EMAIL",
+          },
+          features: {},
+        }),
+      })
       return
     }
     if (path === "/v1/auth/session" && request.method() === "GET") {

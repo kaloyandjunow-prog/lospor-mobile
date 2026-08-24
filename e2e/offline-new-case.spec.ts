@@ -1,7 +1,5 @@
 import { expect, test } from "@playwright/test"
-
-const email = process.env.E2E_EMAIL ?? "e2e@lospor.test"
-const password = process.env.E2E_PASSWORD ?? "E2e-Test-Pass!234"
+import { ACCOUNTS, signInAs } from "./session"
 
 async function draftCount(page: import("@playwright/test").Page): Promise<number> {
   return page.evaluate(() => new Promise<number>((resolve, reject) => {
@@ -34,12 +32,14 @@ async function clearDrafts(page: import("@playwright/test").Page): Promise<void>
   }))
 }
 
-test("an offline new case survives navigation and syncs after reconnection", async ({ page, context }) => {
-  await page.goto("/")
-  await page.getByPlaceholder("you@hospital.org").fill(email)
-  await page.locator("input[type=password]").fill(password)
-  await page.getByText("Sign in", { exact: true }).click()
-  await expect(page.getByText("New case", { exact: true })).toBeVisible()
+test("an offline new case survives navigation and syncs after reconnection", async ({ page, context, request }) => {
+  // Signed in by injecting the session rather than by driving the login
+  // screen. Bulgarian is now the login default, so a spec that types into the
+  // login form has to pick a language before any English label exists — and
+  // this spec is not about the login screen, which sign-in.pwa.spec.ts covers.
+  // signInAs also pins the account locale to English, which is what every
+  // label asserted below is written in.
+  await signInAs(page, request, ACCOUNTS.admin)
   await clearDrafts(page)
 
   await page.getByText("New case", { exact: true }).click()
