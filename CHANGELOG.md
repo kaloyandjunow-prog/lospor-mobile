@@ -1,5 +1,29 @@
 # Changelog - LOSPOR Mobile
 
+## [9.6.0] - 2026-08-31
+
+### Fixed
+
+- **Scanning a lab report failed on every attempt.** API 9.5.0 began requiring
+  per-case AI consent in the request body and this app never sent it, so every
+  scan came back 403. The phone app's own 9.5.0 carried no source change, so the
+  break shipped to production unnoticed — nothing in CI exercises the AI routes,
+  because there is no provider credential to exercise them with.
+
+### Changed
+
+- **Lab scanning is case-scoped.** It now calls `/api/cases/{id}/ai/read-labs`,
+  where the server reads consent from the stored case instead of trusting the
+  caller. The panel saves the draft first and waits for any autosave still in
+  flight, so a consent tick made moments earlier is in the database before the
+  server is asked about it — the same sequence the AI advisor already used, now
+  shared by both rather than written twice.
+
+## [9.5.0] - 2026-08-31
+
+Dependency maintenance only: the shared core repin, a `nanoid` override, and a
+non-blocking dependency audit added to CI. No source change.
+
 ## [9.4.0] - 2026-08-29
 
 ### Fixed
