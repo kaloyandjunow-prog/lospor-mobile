@@ -25,6 +25,18 @@ jobs:
         env:
           EXPO_PUBLIC_API_BASE: https://api.lospor.invalid
       - run: npx expo export --platform android --clear
+      # Advisory only. Nothing upstream of the appliance audited its own
+      # dependencies -- lospor-hospital gates `npm audit`, but only over its own
+      # seven packages, so an advisory reaching a vendored app stayed invisible
+      # until someone looked by hand. A scan today reports six high-severity
+      # production advisories here (image-size via metro, and nanoid), which no
+      # gate would have surfaced.
+      #
+      # Non-blocking for now: the fix means rewriting a lockfile, which is a
+      # deliberate change rather than something to force on the next push.
+      - name: Dependency advisories (advisory, non-blocking)
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high
         env:
           EXPO_PUBLIC_API_BASE: https://api.lospor.invalid
 
