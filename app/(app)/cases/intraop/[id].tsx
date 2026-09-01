@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
  
 import {
   View, ScrollView, FlatList,
@@ -31,6 +31,8 @@ import { pediatricAgeFromPreop, type IntraopPreopSummary } from "@/lib/intraop-p
 import { useIntraopOptionSets } from "@/lib/use-intraop-option-sets"
 import { useIntraopCaseLifecycle } from "@/lib/use-intraop-case-lifecycle"
 import { useIntraopPremedication } from "@/lib/use-intraop-premedication"
+import { useIntraopFluidStatus } from "@/lib/use-intraop-fluid-status"
+import { calcCaseIBW } from "@/lib/case-detail-summary"
 import { useIntraopAirwaySection } from "@/lib/use-intraop-airway-section"
 import { useIntraopSectionSaves } from "@/lib/use-intraop-section-saves"
 import { useIntraopComplicationState } from "@/lib/use-intraop-complication-state"
@@ -322,6 +324,25 @@ export default function IntraopLiveScreen() {
     addSelectedPremedication,
   } = useIntraopPremedication(tab, patchIntraopSection, tc("errorLabel"))
 
+  // Fluid status tab. Urine is displayed from the stored record; blood loss is
+  // the only figure entered here.
+  const [urineMl, setUrineMl] = useState<number | null>(null)
+  // Per-kg infusion totals need the same weights the case summary already uses,
+  // so the two views cannot report different totals for one case.
+  const caseIbw = useMemo(() => calcCaseIBW({
+    clinicalMode,
+    sex: preop?.sex ?? null,
+    heightCm: preop?.height ?? null,
+    ageValue: preop?.ageValue ?? null,
+    ageUnit: preop?.ageUnit ?? null,
+  }), [clinicalMode, preop?.sex, preop?.height, preop?.ageValue, preop?.ageUnit])
+  const caseTbw = preop?.weight ?? null
+  const {
+    bloodLossMl,
+    setBloodLossMl,
+    hydrateBloodLoss,
+  } = useIntraopFluidStatus(tab, patchIntraopSection, tc("errorLabel"))
+
   // Timing tab
   const [caseMonthYear,   setCaseMonthYear]   = useState("")
   const [caseStartTime,   setCaseStartTime]   = useState("")
@@ -523,6 +544,8 @@ export default function IntraopLiveScreen() {
     setPremedMorningText,
     setSelectedComplications,
     setComplicationsNotes,
+    setUrineMl,
+    hydrateBloodLoss,
     setPendingCount,
     setSyncState,
     setSyncErrorMessage,
@@ -695,6 +718,7 @@ export default function IntraopLiveScreen() {
           setPremedEveningText, premedMorningText, setPremedMorningText, savePremedication,
           openPremedPicker, log, selectedComplications, complicationsNotes, setComplicationsNotes,
           saveComplications, setCompOpen, eventActions, promptDelete, prevVitalFor, ttColCount,
+          caseIbw, caseTbw, urineMl, bloodLossMl, setBloodLossMl,
           chartPage, caseEnded, resumeSecsLeft, resumeCase, setChartPage, setTtColCount,
           handleChartTimetableChange, setEntryTs, slotOpen, slotTs, timeStr, slotEventSearch,
           slotCompExpanded, CLINICAL_EVENT_CATS, COMPLICATION_GROUPS, COMPLICATION_ITEMS, isGACase, setSlotOpen,

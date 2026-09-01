@@ -226,6 +226,19 @@ export const CLINICAL_STRINGS = {
     tabEvents:           "Events",
     timetableLabel:      "Timetable",
 
+    // Intraop — fluid status
+    fluidStatusTab:        "Fluid status",
+    infusionTotalsLabel:   "Infusion totals",
+    bolusTotalsLabel:      "Bolus drug totals",
+    fluidBalanceLabel:     "Fluid balance",
+    crystalloidsLabel:     "Crystalloids",
+    colloidsLabel:         "Colloids",
+    bloodProductsLabel:    "Blood products",
+    urineOutputLabel:      "Urine output",
+    bloodLossLabel:        "Estimated blood loss",
+    bloodLossOptionalHint: "Optional — the case can be completed without it.",
+    bloodLossSaveFailed:   "Blood loss could not be saved.",
+
     // Intraop — timing
     anesthesiaStartTime: "Anaesthesia start time",
     anesthesiaEndTime:   "Anaesthesia end time",
@@ -1116,6 +1129,19 @@ export const CLINICAL_STRINGS = {
     tabLog:              "Журнал",
     tabEvents:           "Събития",
     timetableLabel:      "График",
+
+    // Intraop — fluid status
+    fluidStatusTab:        "Течности",
+    infusionTotalsLabel:   "Общо инфузии",
+    bolusTotalsLabel:      "Общо болус медикаменти",
+    fluidBalanceLabel:     "Воден баланс",
+    crystalloidsLabel:     "Кристалоиди",
+    colloidsLabel:         "Колоиди",
+    bloodProductsLabel:    "Кръвни продукти",
+    urineOutputLabel:      "Диуреза",
+    bloodLossLabel:        "Очаквана кръвозагуба",
+    bloodLossOptionalHint: "По желание — случаят може да бъде завършен и без нея.",
+    bloodLossSaveFailed:   "Кръвозагубата не можа да бъде записана.",
 
     // Intraop — timing
     anesthesiaStartTime: "Начало на анестезията",
