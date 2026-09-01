@@ -66,8 +66,11 @@ type UseIntraopCaseLoaderArgs = {
   setPremedMorningText: Dispatch<SetStateAction<string>>
   setSelectedComplications: Dispatch<SetStateAction<string[]>>
   setComplicationsNotes: Dispatch<SetStateAction<string>>
-  setUrineMl: Dispatch<SetStateAction<number | null>>
-  hydrateBloodLoss: (value: number | null | undefined) => void
+  hydrateFluidStatus: (stored: {
+    urineMl?: number | null
+    bloodLossMl?: number | null
+    bloodProductsNote?: string
+  }) => void
   setPendingCount: Dispatch<SetStateAction<number>>
   setSyncState: Dispatch<SetStateAction<"saved" | "saving" | "failed" | "offline">>
   setSyncErrorMessage: Dispatch<SetStateAction<string | null>>
@@ -124,8 +127,7 @@ export function useIntraopCaseLoader({
   setPremedMorningText,
   setSelectedComplications,
   setComplicationsNotes,
-  setUrineMl,
-  hydrateBloodLoss,
+  hydrateFluidStatus,
   setPendingCount,
   setSyncState,
   setSyncErrorMessage,
@@ -196,10 +198,9 @@ export function useIntraopCaseLoader({
               setSelectedComplications(hydrated.complications.selected)
               setComplicationsNotes(hydrated.complications.notes)
             }
-            setUrineMl(hydrated.urineMl)
-            // Adopts the stored figure without marking it dirty, so simply
-            // visiting the tab does not write it back.
-            hydrateBloodLoss(hydrated.bloodLossMl)
+            // Adopts the stored figures without marking them dirty, so simply
+            // visiting the tab does not write them back.
+            hydrateFluidStatus(hydrated.fluidStatus)
           }
           setPreop(hydrated.preop)
           setCaseMonthYear(hydrated.timing.monthYear)
@@ -277,8 +278,7 @@ export function useIntraopCaseLoader({
     setCaseMonthYear,
     setCaseStartTime,
     setComplicationsNotes,
-    setUrineMl,
-    hydrateBloodLoss,
+    hydrateFluidStatus,
     setElapsedMs,
     setLog,
     setMonitoring,

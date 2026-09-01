@@ -40,34 +40,53 @@ function setup(initialTab: IntraopTab = "fluids") {
   }
 }
 
-describe("useIntraopFluidStatus", () => {
-  it("sends null rather than undefined when the figure is cleared", async () => {
-    const harness = setup()
-    act(() => harness.hook.hydrateBloodLoss(400))
-    act(() => harness.hook.setBloodLossMl(null))
-    await act(async () => { await harness.hook.saveBloodLoss() })
+const STORED = { urineMl: null, bloodLossMl: null, bloodProductsNote: "" }
 
-    expect(harness.patch).toHaveBeenCalledWith({ bloodLossMl: null })
+describe("useIntraopFluidStatus", () => {
+  it("sends null rather than undefined when a figure is cleared", async () => {
+    const harness = setup()
+    act(() => harness.hook.hydrateFluidStatus({ ...STORED, bloodLossMl: 400 }))
+    act(() => harness.hook.setBloodLossMl(null))
+    await act(async () => { await harness.hook.saveFluidStatus() })
+
+    const [payload] = harness.patch.mock.calls[0]
     // An undefined key is dropped from the patch as "not mentioned", which
     // would leave the previous figure standing -- the pediatric-to-adult trap.
-    const [payload] = harness.patch.mock.calls[0]
     expect("bloodLossMl" in payload).toBe(true)
-    expect(payload.bloodLossMl).not.toBeUndefined()
+    expect(payload.bloodLossMl).toBeNull()
   })
 
   it("stores an explicit zero instead of treating it as not recorded", async () => {
     const harness = setup()
-    act(() => harness.hook.hydrateBloodLoss(null))
+    act(() => harness.hook.hydrateFluidStatus(STORED))
     act(() => harness.hook.setBloodLossMl(0))
-    await act(async () => { await harness.hook.saveBloodLoss() })
+    await act(async () => { await harness.hook.saveFluidStatus() })
 
-    expect(harness.patch).toHaveBeenCalledWith({ bloodLossMl: 0 })
+    expect(harness.patch.mock.calls[0][0].bloodLossMl).toBe(0)
   })
 
-  it("does not write when the stored figure was only read", async () => {
+  it("records urine output, which mobile previously could not enter at all", async () => {
     const harness = setup()
-    act(() => harness.hook.hydrateBloodLoss(250))
-    await act(async () => { await harness.hook.saveBloodLoss() })
+    act(() => harness.hook.hydrateFluidStatus(STORED))
+    act(() => harness.hook.setUrineMl(350))
+    await act(async () => { await harness.hook.saveFluidStatus() })
+
+    expect(harness.patch.mock.calls[0][0].urineMl).toBe(350)
+  })
+
+  it("clears an emptied blood products note to null rather than an empty string", async () => {
+    const harness = setup()
+    act(() => harness.hook.hydrateFluidStatus({ ...STORED, bloodProductsNote: "2 units PRBC" }))
+    act(() => harness.hook.setBloodProductsNote("   "))
+    await act(async () => { await harness.hook.saveFluidStatus() })
+
+    expect(harness.patch.mock.calls[0][0].bloodProductsNote).toBeNull()
+  })
+
+  it("does not write when the stored figures were only read", async () => {
+    const harness = setup()
+    act(() => harness.hook.hydrateFluidStatus({ urineMl: 250, bloodLossMl: 100, bloodProductsNote: "1 unit" }))
+    await act(async () => { await harness.hook.saveFluidStatus() })
 
     expect(harness.patch).not.toHaveBeenCalled()
   })
@@ -75,23 +94,23 @@ describe("useIntraopFluidStatus", () => {
   it("saves on leaving the tab, and not on arriving at it", async () => {
     const harness = setup("equipment")
     harness.setTab("fluids")
-    act(() => harness.hook.setBloodLossMl(150) )
+    act(() => harness.hook.setBloodLossMl(150))
     expect(harness.patch).not.toHaveBeenCalled()
 
     await act(async () => { harness.setTab("log") })
-    expect(harness.patch).toHaveBeenCalledWith({ bloodLossMl: 150 })
+    expect(harness.patch.mock.calls[0][0].bloodLossMl).toBe(150)
   })
 
-  it("keeps the figure when the save fails, so it can be retried", async () => {
+  it("keeps the figures when the save fails, so they can be retried", async () => {
     const harness = setup()
     harness.patch.mockRejectedValueOnce(new Error("offline"))
-    act(() => harness.hook.hydrateBloodLoss(null))
+    act(() => harness.hook.hydrateFluidStatus(STORED))
     act(() => harness.hook.setBloodLossMl(600))
-    await act(async () => { await harness.hook.saveBloodLoss() })
+    await act(async () => { await harness.hook.saveFluidStatus() })
 
     expect(harness.hook.bloodLossMl).toBe(600)
 
-    await act(async () => { await harness.hook.saveBloodLoss() })
-    expect(harness.patch).toHaveBeenLastCalledWith({ bloodLossMl: 600 })
+    await act(async () => { await harness.hook.saveFluidStatus() })
+    expect(harness.patch.mock.calls[1][0].bloodLossMl).toBe(600)
   })
 })

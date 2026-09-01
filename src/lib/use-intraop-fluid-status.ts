@@ -6,18 +6,25 @@ import { usePreferences } from "@/lib/preferences-context"
 
 type PatchIntraopSection = (payload: Record<string, unknown>) => Promise<unknown>
 
+type FluidStatusFields = {
+  urineMl: number | null
+  bloodLossMl: number | null
+  bloodProductsNote: string
+}
+
+const EMPTY: FluidStatusFields = { urineMl: null, bloodLossMl: null, bloodProductsNote: "" }
+
 /**
- * Blood loss is the only figure on the fluid status tab a clinician types. The
- * infusion, bolus and fluid totals beside it are projections of the timetable
- * and are never written from here.
+ * The three fluid-status figures a clinician types. Everything else on the tab
+ * — infusion, bolus and fluid totals — is a projection of the timetable and is
+ * never written from here.
  *
- * It saves when the tab is left, the same way premedication does, so a number
- * entered mid-case survives a swipe back to the timetable.
+ * They save when the tab is left, the same way premedication does, so numbers
+ * entered mid-case survive a swipe back to the timetable.
  *
- * `null` is sent deliberately when the field is cleared, and never `undefined`:
- * an undefined key is dropped from the patch as "not mentioned", so the
- * previous figure would silently stand. That is the same failure shape as the
- * pediatric-to-adult trap. "Not recorded" and a recorded 0 mL are different
+ * The numeric fields send `null` when cleared, never `undefined`: an undefined
+ * key is dropped from the patch as "not mentioned", so the previous figure
+ * would silently stand. "Not recorded" and a recorded 0 mL are different
  * clinical statements and both have to survive the round trip.
  */
 export function useIntraopFluidStatus(
@@ -26,37 +33,61 @@ export function useIntraopFluidStatus(
   errorLabel: string,
 ) {
   const { tc } = usePreferences()
-  const [bloodLossMl, setBloodLossMl] = useState<number | null>(null)
-  const [bloodLossSaving, setBloodLossSaving] = useState(false)
+  const [fields, setFields] = useState<FluidStatusFields>(EMPTY)
+  const [fluidStatusSaving, setFluidStatusSaving] = useState(false)
   const prevTabRef = useRef<IntraopTab>("equipment")
   const saveRef = useRef<() => Promise<void>>(async () => {})
-  // What the server is known to hold, so leaving the tab untouched does not
-  // issue a write. `undefined` means "not loaded yet" and is distinct from a
-  // loaded null.
-  const lastSavedRef = useRef<number | null | undefined>(undefined)
+  // What the server is known to hold, so leaving the tab untouched issues no
+  // write. `null` means "not loaded yet" and is distinct from a loaded record
+  // whose figures are themselves null.
+  const lastSavedRef = useRef<FluidStatusFields | null>(null)
 
-  /** Adopt the stored value without marking it dirty. */
-  const hydrateBloodLoss = useCallback((value: number | null | undefined) => {
-    const next = value ?? null
-    setBloodLossMl(next)
+  /** Adopt the stored figures without marking them dirty. */
+  const hydrateFluidStatus = useCallback((stored: Partial<FluidStatusFields>) => {
+    const next: FluidStatusFields = {
+      urineMl: stored.urineMl ?? null,
+      bloodLossMl: stored.bloodLossMl ?? null,
+      bloodProductsNote: stored.bloodProductsNote ?? "",
+    }
+    setFields(next)
     lastSavedRef.current = next
   }, [])
 
-  async function saveBloodLoss() {
-    if (lastSavedRef.current !== undefined && bloodLossMl === lastSavedRef.current) return
-    setBloodLossSaving(true)
+  const setUrineMl = useCallback((value: number | null) => {
+    setFields(previous => ({ ...previous, urineMl: value }))
+  }, [])
+  const setBloodLossMl = useCallback((value: number | null) => {
+    setFields(previous => ({ ...previous, bloodLossMl: value }))
+  }, [])
+  const setBloodProductsNote = useCallback((value: string) => {
+    setFields(previous => ({ ...previous, bloodProductsNote: value }))
+  }, [])
+
+  async function saveFluidStatus() {
+    const saved = lastSavedRef.current
+    if (saved
+      && saved.urineMl === fields.urineMl
+      && saved.bloodLossMl === fields.bloodLossMl
+      && saved.bloodProductsNote === fields.bloodProductsNote) return
+
+    setFluidStatusSaving(true)
     try {
-      await patchIntraopSection({ bloodLossMl })
-      lastSavedRef.current = bloodLossMl
+      await patchIntraopSection({
+        urineMl: fields.urineMl,
+        bloodLossMl: fields.bloodLossMl,
+        // An emptied note is a clear, and null is how the API records that.
+        bloodProductsNote: fields.bloodProductsNote.trim() ? fields.bloodProductsNote : null,
+      })
+      lastSavedRef.current = fields
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
     } catch {
-      notify(errorLabel, tc("bloodLossSaveFailed"))
+      notify(errorLabel, tc("fluidStatusSaveFailed"))
     } finally {
-      setBloodLossSaving(false)
+      setFluidStatusSaving(false)
     }
   }
 
-  saveRef.current = saveBloodLoss
+  saveRef.current = saveFluidStatus
 
   useEffect(() => {
     if (prevTabRef.current === "fluids" && tab !== "fluids") {
@@ -65,5 +96,15 @@ export function useIntraopFluidStatus(
     prevTabRef.current = tab
   }, [tab])
 
-  return { bloodLossMl, setBloodLossMl, hydrateBloodLoss, bloodLossSaving, saveBloodLoss }
+  return {
+    urineMl: fields.urineMl,
+    bloodLossMl: fields.bloodLossMl,
+    bloodProductsNote: fields.bloodProductsNote,
+    setUrineMl,
+    setBloodLossMl,
+    setBloodProductsNote,
+    hydrateFluidStatus,
+    fluidStatusSaving,
+    saveFluidStatus,
+  }
 }

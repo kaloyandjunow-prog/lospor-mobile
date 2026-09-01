@@ -135,10 +135,15 @@ export function buildLoadedIntraopCaseState(
       morning: data.intraop?.premedicationMorning != null ? data.intraop.premedicationMorning as string : undefined,
     },
     complications,
-    // Both are nullable on the record and stay nullable here: a stored null
-    // means the figure was never recorded, which is not the same as 0 mL.
-    urineMl: data.intraop?.urineMl ?? null,
-    bloodLossMl: data.intraop?.bloodLossMl ?? null,
+    // The numbers stay nullable: a stored null means the figure was never
+    // recorded, which is not the same as 0 mL.
+    fluidStatus: {
+      urineMl: data.intraop?.urineMl ?? null,
+      bloodLossMl: data.intraop?.bloodLossMl ?? null,
+      bloodProductsNote: data.intraop?.bloodProductsNote != null
+        ? String(data.intraop.bloodProductsNote)
+        : "",
+    },
     loadedTimetable,
     active: rebuildActiveState([...rawLog].reverse()),
   }

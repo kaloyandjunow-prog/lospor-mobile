@@ -237,7 +237,9 @@ export const CLINICAL_STRINGS = {
     urineOutputLabel:      "Urine output",
     bloodLossLabel:        "Estimated blood loss",
     bloodLossOptionalHint: "Optional — the case can be completed without it.",
-    bloodLossSaveFailed:   "Blood loss could not be saved.",
+    fluidStatusSaveFailed: "Fluid status could not be saved.",
+    bloodProductsNoteLabel: "Blood products note",
+    bloodProductsNotePlaceholder: "Units and type given",
 
     // Intraop — timing
     anesthesiaStartTime: "Anaesthesia start time",
@@ -1141,7 +1143,9 @@ export const CLINICAL_STRINGS = {
     urineOutputLabel:      "Диуреза",
     bloodLossLabel:        "Очаквана кръвозагуба",
     bloodLossOptionalHint: "По желание — случаят може да бъде завършен и без нея.",
-    bloodLossSaveFailed:   "Кръвозагубата не можа да бъде записана.",
+    fluidStatusSaveFailed: "Статусът на течностите не можа да бъде записан.",
+    bloodProductsNoteLabel: "Бележка за кръвните продукти",
+    bloodProductsNotePlaceholder: "Брой и вид приложени",
 
     // Intraop — timing
     anesthesiaStartTime: "Начало на анестезията",
