@@ -347,6 +347,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
         crystalloidsMl: fluidTotals.crystalloids,
         colloidsMl: fluidTotals.colloids,
         bloodMl: fluidTotals.blood,
+        urinaryCatheter: monitoring.includes("urinaryCatheter"),
         urineMl,
         setUrineMl,
         bloodLossMl,

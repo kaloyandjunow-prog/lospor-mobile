@@ -29,6 +29,7 @@ export type FluidStatusTotalRow = {
 export function FluidStatusTab({
   infusionTotals, bolusTotals, weightNote,
   crystalloidsMl, colloidsMl, bloodMl,
+  urinaryCatheter,
   urineMl, setUrineMl,
   bloodLossMl, setBloodLossMl,
   tc,
@@ -39,6 +40,7 @@ export function FluidStatusTab({
   crystalloidsMl: number | null
   colloidsMl: number | null
   bloodMl: number | null
+  urinaryCatheter: boolean
   // Both are persisted when the tab is left, the same way premedication is,
   // so there is no save control here.
   urineMl: number | null
@@ -93,15 +95,19 @@ export function FluidStatusTab({
         </View>
       </View>
 
-      <View style={{ marginBottom:24 }}>
-        <SectionLabel>{tc("urineOutputLabel")}</SectionLabel>
-        <ClinicalNumberInput
-          value={urineMl}
-          onChange={value => setUrineMl(value ?? null)}
-          unit="mL" min={0} max={20000} step={50}
-          quickValues={[100, 250, 500, 1000]}
-        />
-      </View>
+      {/* Only offered once a urinary catheter is recorded in monitoring, which
+          is what web does: without one there is no measured output to enter. */}
+      {urinaryCatheter && (
+        <View style={{ marginBottom:24 }}>
+          <SectionLabel>{tc("urineOutputLabel")}</SectionLabel>
+          <ClinicalNumberInput
+            value={urineMl}
+            onChange={value => setUrineMl(value ?? null)}
+            unit="mL" min={0} max={20000} step={50}
+            quickValues={[100, 250, 500, 1000]}
+          />
+        </View>
+      )}
 
       <View>
         <SectionLabel>{tc("bloodLossLabel")}</SectionLabel>

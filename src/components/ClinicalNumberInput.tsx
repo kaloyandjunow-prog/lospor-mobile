@@ -10,7 +10,9 @@ export { parseClinicalNumber } from "@/lib/clinical-number"
 type Props = {
   label?: string
   value?: number | null // null = explicitly cleared; reads below use `value == null`
-  onChange: (value: number | undefined) => void
+  // null is an explicit clear and reaches the server as one; the canonical
+  // patch builder drops undefined as "not in this diff".
+  onChange: (value: number | null) => void
   unit?: string
   min?: number
   max?: number
@@ -129,7 +131,7 @@ export function ClinicalNumberInput({
     }
   }, [])
 
-  function setNumber(next: number | undefined) {
+  function setNumber(next: number | null) {
     hapticConfirm()
     onChange(next)
   }
@@ -190,9 +192,17 @@ export function ClinicalNumberInput({
   }
 
   function commitAndClose() {
-    const typed = entryMode === "keypad" ? parseClinicalNumber(keypadText) : undefined
-    const next = typed != null ? clamp(typed, min, max) : wheelValues[wheelIndexRef.current]
-    if (next != null) setNumber(next)
+    // Confirming an emptied keypad is how a value is removed. Without this the
+    // field fell back to the wheel position, so a figure entered by mistake
+    // could be changed but never taken off the record.
+    const clearing = entryMode === "keypad" && keypadText.trim() === ""
+    if (clearing) {
+      setNumber(null)
+    } else {
+      const typed = entryMode === "keypad" ? parseClinicalNumber(keypadText) : undefined
+      const next = typed != null ? clamp(typed, min, max) : wheelValues[wheelIndexRef.current]
+      if (next != null) setNumber(next)
+    }
     momentumActiveRef.current = false
     if (settleTimerRef.current) {
       clearTimeout(settleTimerRef.current)

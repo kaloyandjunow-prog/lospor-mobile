@@ -325,8 +325,11 @@ function formatClinicalValue(value: number | undefined, precision: number) {
 }
 
 export function VitalStepper({ value, onChange, min, max, step = 1, precision = 0, unit, placeholder = "-" }: {
-  value?: number
-  onChange: (value: number | undefined) => void
+  value?: number | null
+  // null, not undefined: the canonical patch builder drops undefined as "not in
+  // this diff" and keeps the stored reading, so a cleared vital stayed on the
+  // record while the field showed empty.
+  onChange: (value: number | null) => void
   min: number
   max: number
   step?: number
@@ -347,7 +350,7 @@ export function VitalStepper({ value, onChange, min, max, step = 1, precision = 
   const commit = useCallback((next: number | undefined) => {
     hapticTick()
     if (next == null) {
-      onChange(undefined)
+      onChange(null)
       return
     }
     onChange(clampNumber(roundToStep(next, step, precision), min, max))
@@ -523,8 +526,8 @@ export function VitalStepper({ value, onChange, min, max, step = 1, precision = 
 export function VitalNumber({ label, unit, value, onChange, unobtainable, onToggleUnobtainable, min, max, step = 1, precision = 0, labelUnableToObtain, required = false, error }: {
   label: string
   unit: string
-  value?: number
-  onChange: (value: number | undefined) => void
+  value?: number | null
+  onChange: (value: number | null) => void
   unobtainable: boolean
   onToggleUnobtainable: () => void
   min: number
