@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TextInput } from "react-native"
+import { View, Text, ScrollView } from "react-native"
 import type { ClinicalStringKey } from "@/lib/preferences-context"
 import { ClinicalNumberInput } from "@/components/ClinicalNumberInput"
 
@@ -31,7 +31,6 @@ export function FluidStatusTab({
   crystalloidsMl, colloidsMl, bloodMl,
   urineMl, setUrineMl,
   bloodLossMl, setBloodLossMl,
-  bloodProductsNote, setBloodProductsNote,
   tc,
 }: {
   infusionTotals: FluidStatusTotalRow[]
@@ -40,14 +39,12 @@ export function FluidStatusTab({
   crystalloidsMl: number | null
   colloidsMl: number | null
   bloodMl: number | null
-  // All three are persisted when the tab is left, the same way premedication
-  // is, so there is no save control here.
+  // Both are persisted when the tab is left, the same way premedication is,
+  // so there is no save control here.
   urineMl: number | null
   setUrineMl: (value: number | null) => void
   bloodLossMl: number | null
   setBloodLossMl: (value: number | null) => void
-  bloodProductsNote: string
-  setBloodProductsNote: (value: string) => void
   tc: (key: ClinicalStringKey) => string
 }) {
   const given: { label: string; value: number | null; color: string }[] = [
@@ -106,7 +103,7 @@ export function FluidStatusTab({
         />
       </View>
 
-      <View style={{ marginBottom:24 }}>
+      <View>
         <SectionLabel>{tc("bloodLossLabel")}</SectionLabel>
         {/* The stepper hands back `undefined` when the field is emptied. It is
             coalesced to null here so the clear reaches the server instead of
@@ -122,21 +119,6 @@ export function FluidStatusTab({
         </Text>
       </View>
 
-      <View>
-        <SectionLabel>{tc("bloodProductsNoteLabel")}</SectionLabel>
-        <TextInput
-          value={bloodProductsNote}
-          onChangeText={setBloodProductsNote}
-          placeholder={tc("bloodProductsNotePlaceholder")}
-          placeholderTextColor="#475569"
-          multiline
-          style={{
-            color:"#e2e8f0", fontSize:13, minHeight:64, textAlignVertical:"top",
-            paddingHorizontal:12, paddingVertical:10, borderRadius:10,
-            backgroundColor:"#0f1621", borderWidth:1, borderColor:"#1e2d40",
-          }}
-        />
-      </View>
     </ScrollView>
   )
 }

@@ -168,8 +168,6 @@ export type IntraopTabContentBuilderProps = {
   setUrineMl: FluidsProps["setUrineMl"]
   bloodLossMl: FluidsProps["bloodLossMl"]
   setBloodLossMl: FluidsProps["setBloodLossMl"]
-  bloodProductsNote: FluidsProps["bloodProductsNote"]
-  setBloodProductsNote: FluidsProps["setBloodProductsNote"]
 }
 
 export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps): IntraopTabContentHostProps {
@@ -199,7 +197,6 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
     promptDelete, prevVitalFor,
     logEventText, logBuildSummary,
     caseIbw, caseTbw, infusionWeightBasis, urineMl, setUrineMl, bloodLossMl, setBloodLossMl,
-    bloodProductsNote, setBloodProductsNote,
   } = props
 
   // One case per tab, and only the active one runs. Building all eleven groups
@@ -354,8 +351,6 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
         setUrineMl,
         bloodLossMl,
         setBloodLossMl,
-        bloodProductsNote,
-        setBloodProductsNote,
         tc,
       }
     })() }

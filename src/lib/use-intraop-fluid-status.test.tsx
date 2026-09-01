@@ -40,7 +40,7 @@ function setup(initialTab: IntraopTab = "fluids") {
   }
 }
 
-const STORED = { urineMl: null, bloodLossMl: null, bloodProductsNote: "" }
+const STORED = { urineMl: null, bloodLossMl: null }
 
 describe("useIntraopFluidStatus", () => {
   it("sends null rather than undefined when a figure is cleared", async () => {
@@ -74,18 +74,9 @@ describe("useIntraopFluidStatus", () => {
     expect(harness.patch.mock.calls[0][0].urineMl).toBe(350)
   })
 
-  it("clears an emptied blood products note to null rather than an empty string", async () => {
-    const harness = setup()
-    act(() => harness.hook.hydrateFluidStatus({ ...STORED, bloodProductsNote: "2 units PRBC" }))
-    act(() => harness.hook.setBloodProductsNote("   "))
-    await act(async () => { await harness.hook.saveFluidStatus() })
-
-    expect(harness.patch.mock.calls[0][0].bloodProductsNote).toBeNull()
-  })
-
   it("does not write when the stored figures were only read", async () => {
     const harness = setup()
-    act(() => harness.hook.hydrateFluidStatus({ urineMl: 250, bloodLossMl: 100, bloodProductsNote: "1 unit" }))
+    act(() => harness.hook.hydrateFluidStatus({ urineMl: 250, bloodLossMl: 100 }))
     await act(async () => { await harness.hook.saveFluidStatus() })
 
     expect(harness.patch).not.toHaveBeenCalled()

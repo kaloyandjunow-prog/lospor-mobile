@@ -9,13 +9,12 @@ type PatchIntraopSection = (payload: Record<string, unknown>) => Promise<unknown
 type FluidStatusFields = {
   urineMl: number | null
   bloodLossMl: number | null
-  bloodProductsNote: string
 }
 
-const EMPTY: FluidStatusFields = { urineMl: null, bloodLossMl: null, bloodProductsNote: "" }
+const EMPTY: FluidStatusFields = { urineMl: null, bloodLossMl: null }
 
 /**
- * The three fluid-status figures a clinician types. Everything else on the tab
+ * The two fluid-status figures a clinician types. Everything else on the tab
  * — infusion, bolus and fluid totals — is a projection of the timetable and is
  * never written from here.
  *
@@ -47,7 +46,6 @@ export function useIntraopFluidStatus(
     const next: FluidStatusFields = {
       urineMl: stored.urineMl ?? null,
       bloodLossMl: stored.bloodLossMl ?? null,
-      bloodProductsNote: stored.bloodProductsNote ?? "",
     }
     setFields(next)
     lastSavedRef.current = next
@@ -59,24 +57,18 @@ export function useIntraopFluidStatus(
   const setBloodLossMl = useCallback((value: number | null) => {
     setFields(previous => ({ ...previous, bloodLossMl: value }))
   }, [])
-  const setBloodProductsNote = useCallback((value: string) => {
-    setFields(previous => ({ ...previous, bloodProductsNote: value }))
-  }, [])
 
   async function saveFluidStatus() {
     const saved = lastSavedRef.current
     if (saved
       && saved.urineMl === fields.urineMl
-      && saved.bloodLossMl === fields.bloodLossMl
-      && saved.bloodProductsNote === fields.bloodProductsNote) return
+      && saved.bloodLossMl === fields.bloodLossMl) return
 
     setFluidStatusSaving(true)
     try {
       await patchIntraopSection({
         urineMl: fields.urineMl,
         bloodLossMl: fields.bloodLossMl,
-        // An emptied note is a clear, and null is how the API records that.
-        bloodProductsNote: fields.bloodProductsNote.trim() ? fields.bloodProductsNote : null,
       })
       lastSavedRef.current = fields
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
@@ -99,10 +91,8 @@ export function useIntraopFluidStatus(
   return {
     urineMl: fields.urineMl,
     bloodLossMl: fields.bloodLossMl,
-    bloodProductsNote: fields.bloodProductsNote,
     setUrineMl,
     setBloodLossMl,
-    setBloodProductsNote,
     hydrateFluidStatus,
     fluidStatusSaving,
     saveFluidStatus,

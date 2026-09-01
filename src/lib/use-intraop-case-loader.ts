@@ -69,7 +69,6 @@ type UseIntraopCaseLoaderArgs = {
   hydrateFluidStatus: (stored: {
     urineMl?: number | null
     bloodLossMl?: number | null
-    bloodProductsNote?: string
   }) => void
   setPendingCount: Dispatch<SetStateAction<number>>
   setSyncState: Dispatch<SetStateAction<"saved" | "saving" | "failed" | "offline">>

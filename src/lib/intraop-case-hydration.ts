@@ -140,9 +140,6 @@ export function buildLoadedIntraopCaseState(
     fluidStatus: {
       urineMl: data.intraop?.urineMl ?? null,
       bloodLossMl: data.intraop?.bloodLossMl ?? null,
-      bloodProductsNote: data.intraop?.bloodProductsNote != null
-        ? String(data.intraop.bloodProductsNote)
-        : "",
     },
     loadedTimetable,
     active: rebuildActiveState([...rawLog].reverse()),

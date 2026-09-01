@@ -328,7 +328,6 @@ export default function IntraopLiveScreen() {
   const {
     urineMl, setUrineMl,
     bloodLossMl, setBloodLossMl,
-    bloodProductsNote, setBloodProductsNote,
     hydrateFluidStatus,
   } = useIntraopFluidStatus(tab, patchIntraopSection, tc("errorLabel"))
   // Per-kg infusion totals need the same weights the case summary already uses,
@@ -718,7 +717,6 @@ export default function IntraopLiveScreen() {
           saveComplications, setCompOpen, eventActions, promptDelete, prevVitalFor, ttColCount,
           caseIbw, caseTbw, infusionWeightBasis: INFUSION_WEIGHT_BASIS,
           urineMl, setUrineMl, bloodLossMl, setBloodLossMl,
-          bloodProductsNote, setBloodProductsNote,
           chartPage, caseEnded, resumeSecsLeft, resumeCase, setChartPage, setTtColCount,
           handleChartTimetableChange, setEntryTs, slotOpen, slotTs, timeStr, slotEventSearch,
           slotCompExpanded, CLINICAL_EVENT_CATS, COMPLICATION_GROUPS, COMPLICATION_ITEMS, isGACase, setSlotOpen,
