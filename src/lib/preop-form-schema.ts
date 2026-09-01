@@ -41,18 +41,22 @@ export const preopFormSchema = z.object({
   bloodType: z.enum(["A", "B", "AB", "O"]).optional(),
   rhFactor: z.enum(["POSITIVE", "NEGATIVE"]).optional(),
 
-  diagnoses: z.array(z.object({ label: z.string(), code: z.string().optional(), system: z.string().optional(), labelEn: z.string().optional(), labelBg: z.string().optional() })).default([]),
-  procedures: z.array(z.object({ label: z.string(), code: z.string().optional() })).default([]),
+  // `source` ("manual" | "ai-scan" | "import") is per-item provenance shared
+  // with the web client and read by the API. It is optional and appears on
+  // every tag-shaped item below so it is not stripped by these otherwise-
+  // closed inline schemas before the request is built.
+  diagnoses: z.array(z.object({ label: z.string(), code: z.string().optional(), system: z.string().optional(), labelEn: z.string().optional(), labelBg: z.string().optional(), source: z.enum(["manual", "ai-scan", "import"]).optional() })).default([]),
+  procedures: z.array(z.object({ label: z.string(), code: z.string().optional(), source: z.enum(["manual", "ai-scan", "import"]).optional() })).default([]),
   highRiskSurgery: z.boolean().default(false),
   elective: z.boolean().default(false),
   emergencySurgery: z.boolean().default(false),
 
-  comorbidities: z.array(z.object({ label: z.string(), code: z.string().optional(), sub: z.string().optional(), system: z.string().optional(), labelEn: z.string().optional(), labelBg: z.string().optional() })).default([]),
-  currentMedications: z.array(z.object({ label: z.string(), inn: z.string().optional(), atcCode: z.string().optional() })).default([]),
+  comorbidities: z.array(z.object({ label: z.string(), code: z.string().optional(), sub: z.string().optional(), system: z.string().optional(), labelEn: z.string().optional(), labelBg: z.string().optional(), source: z.enum(["manual", "ai-scan", "import"]).optional() })).default([]),
+  currentMedications: z.array(z.object({ label: z.string(), inn: z.string().optional(), atcCode: z.string().optional(), source: z.enum(["manual", "ai-scan", "import"]).optional() })).default([]),
 
   allergies: z.boolean().nullable().default(null),
   latexAllergy: z.boolean().nullable().default(null),
-  allergyDetails: z.array(z.object({ label: z.string(), inn: z.string().optional(), atcCode: z.string().optional() })).default([]),
+  allergyDetails: z.array(z.object({ label: z.string(), inn: z.string().optional(), atcCode: z.string().optional(), source: z.enum(["manual", "ai-scan", "import"]).optional() })).default([]),
   familyAnesthesiaProblems: z.boolean().nullable().default(null),
   familyAnesthesiaDetails: z.string().max(500).optional(),
   dentalProsthetics: z.boolean().nullable().default(null),
@@ -126,7 +130,15 @@ export const preopFormSchema = z.object({
   teamNotes: z.string().max(500).optional(),
   notes: z.string().optional(),
   aiOptIn: z.boolean().default(false),
-  labResults: z.array(z.object({ test: z.string(), value: z.string(), unit: z.string() })).default([]),
+  // Labs additionally carry `takenAt`, the draw time, distinct from when the
+  // row was entered into the form.
+  labResults: z.array(z.object({
+    test: z.string(),
+    value: z.string(),
+    unit: z.string(),
+    source: z.enum(["manual", "ai-scan", "import"]).optional(),
+    takenAt: z.string().optional(),
+  })).default([]),
 })
   .superRefine((d, ctx) => {
     addCoreIssues(validatePreopPatch(d), ctx)
