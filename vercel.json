@@ -1,10 +1,17 @@
 {
   "outputDirectory": "dist",
-  "buildCommand": "npm run export:web",
+  "buildCommand": "EXPO_PUBLIC_WEB_BASE=https://app.lospor.org npm run export:web",
   "routes": [
     {
       "src": "/v1/(.*)",
       "dest": "https://api.lospor.org/v1/$1"
+    },
+    {
+      "src": "/(terms|privacy)",
+      "status": 308,
+      "headers": {
+        "Location": "https://app.lospor.org/$1"
+      }
     },
     {
       "src": "/(.*)",

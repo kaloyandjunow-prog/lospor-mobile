@@ -1,5 +1,57 @@
 # Changelog - LOSPOR Mobile
 
+## [9.7.5] - 2026-09-02
+
+### Added
+
+- **The app repairs itself when it fails to start.** If the bundle has finished
+  arriving and nothing has been rendered, the cached copy is the suspect: it is
+  deleted and the page reloads to fetch a fresh one. One attempt per tab, then
+  it stops and says where to look, because a repair that loops is worse than the
+  fault it is repairing.
+
+  This is what the previous four releases were missing. Each fixed a cause; none
+  of them helped the person holding the phone, who saw a black screen with
+  nothing to act on and no console to consult. A clinician at 2am does not clear
+  Cache Storage — they give up and document on paper.
+
+  It waits for the bundle to finish before deciding, so a slow connection is not
+  mistaken for a fault, and it does nothing when the app starts normally, so a
+  healthy device never loses a good cache.
+
+  **It clears only Cache Storage.** Queued clinical patches live in
+  `localStorage` and the local case store in IndexedDB, and neither is ever
+  touched — losing a case to fix a rendering fault would be a far worse trade
+  than the one this exists to make. There is a test for exactly that.
+
+### Fixed
+
+- **Terms and Privacy opened a page that does not exist.** The links resolved
+  against whatever origin was serving the app. That is right on an appliance,
+  where this app sits at `/app` and the Web application at `/` on one host whose
+  name cannot be known here — and wrong on the public deployment, where this app
+  owns its origin and the Web application is somewhere else. A configured web
+  base now wins outright instead of being consulted only off the web: a
+  deployment stating where its Web application lives should not be overridden by
+  an inference. A redirect covers PWAs already installed, which carry the old
+  link baked into their bundle until they update.
+
+- **The app reported the wrong version, in two different ways.** Three places
+  stated it and nothing held them together: 9.7.5 in `package.json`, 9.3.1 in
+  `app.json`, 8.0.0 in the version sent to the server. About named a release
+  four behind, and a support report — the one artifact whose whole job is to say
+  what was running — named two different wrong versions.
+
+  The last of those could have done real harm. It is sent as
+  `X-LOSPOR-Client-Version` and compared against `PEDIATRIC_MIN_CLIENT_VERSION`
+  before the server permits a paediatric write. Frozen at 8.0.0 through nine
+  releases, it was saved only by the minimum still being 8.0.0 as well; raising
+  that minimum would have refused paediatric dosing on every phone that already
+  carried the fix, and told the clinician to update an app that was up to date.
+
+  A test now fails when the three drift, because nothing else will — a stale
+  version string breaks nothing on the day it goes stale.
+
 ## [9.7.4] - 2026-09-02
 
 ### Fixed
