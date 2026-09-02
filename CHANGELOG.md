@@ -1,5 +1,35 @@
 # Changelog - LOSPOR Mobile
 
+## [9.7.3] - 2026-09-02
+
+### Fixed
+
+- **Leaving during the splash could break the app on that device.** The service
+  worker's cache write was neither awaited nor held open. `respondWith` keeps a
+  worker alive only until the response is *returned*, which happens when the
+  headers arrive and not when the body finishes, so a write started after that
+  point was unprotected and closing the tab mid-download could kill the worker
+  in the middle of it. The write is now held open with `waitUntil`, the body is
+  read to the end and weighed against the length the server declared, and
+  nothing short is stored — a broken transfer leaves no entry, so the next visit
+  simply asks the network again.
+
+  9.7.2 could not have caught this: a half-written entry is still a 200 with an
+  ordinary type, and nothing about the response says it is short.
+
+### Added
+
+- **A diagnostics page at `/diagnostics.html`** that loads no app code, so it
+  works on a device where the app does not. It reports the worker's state and
+  build id, the caches held, and — the measurement everything else is context
+  for — the bytes of each cached bundle against the bytes the server sends for
+  the same URL right now. It also offers a reset, because clearing cookies does
+  not reach Cache Storage and there is otherwise nothing a person can do.
+
+  The worker steps aside for the page's probe. Without that a controlled page
+  cannot reach past its own worker, and the report compares the cache with
+  itself and calls a corrupt bundle healthy.
+
 ## [9.7.2] - 2026-09-02
 
 ### Fixed

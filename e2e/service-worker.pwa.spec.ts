@@ -33,6 +33,28 @@ test.describe("the service worker", () => {
     expect(source).toContain("`lospor-static-${BUILD_ID}`")
   })
 
+  test("holds the cache write open, so closing a tab cannot cut it short", async ({ request }) => {
+    // respondWith keeps the worker alive only until the response is returned,
+    // which is when the headers arrive and not when the body finishes. A write
+    // started after that is unprotected, and leaving during the splash can kill
+    // the worker in the middle of it.
+    const source = await (await request.get("/sw.js")).text()
+
+    expect(source).toContain("event.waitUntil(storeWhenComplete(")
+    // Read to the end and weighed, because a truncated body is still a 200.
+    expect(source).toContain("await response.arrayBuffer()")
+    expect(source).toContain("declared !== body.byteLength")
+  })
+
+  test("steps aside for a diagnostics probe", async ({ request }) => {
+    // Without this the diagnostics page compares the cache against itself and
+    // calls a corrupt bundle healthy — it did exactly that before the line
+    // existed.
+    const source = await (await request.get("/sw.js")).text()
+
+    expect(source).toContain('url.searchParams.has("diagnostics")')
+  })
+
   test("stores only a whole first-party response", async ({ request }) => {
     // A 206 is a fragment and an opaque response has a status of 0. Either one
     // kept under the name of a script is a file the app can never parse and,
