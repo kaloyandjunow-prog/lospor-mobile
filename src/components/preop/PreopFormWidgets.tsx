@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Modal, PanResponder, Pressable, Text, useWindowDimensions, View } from "react-native"
 import { colors, withAlpha } from "@/theme/colors"
+import type { ClinicalNumberChange } from "@/lib/clinical-number-entry"
 import { hapticKey, hapticTick } from "@/lib/haptic"
 import { useOptionLibrary } from "@/lib/use-option-library"
 import { displayOption } from "@/lib/clinical-display"
@@ -326,10 +327,7 @@ function formatClinicalValue(value: number | undefined, precision: number) {
 
 export function VitalStepper({ value, onChange, min, max, step = 1, precision = 0, unit, placeholder = "-" }: {
   value?: number | null
-  // null, not undefined: the canonical patch builder drops undefined as "not in
-  // this diff" and keeps the stored reading, so a cleared vital stayed on the
-  // record while the field showed empty.
-  onChange: (value: number | null) => void
+  onChange: ClinicalNumberChange
   min: number
   max: number
   step?: number
@@ -527,7 +525,7 @@ export function VitalNumber({ label, unit, value, onChange, unobtainable, onTogg
   label: string
   unit: string
   value?: number | null
-  onChange: (value: number | null) => void
+  onChange: ClinicalNumberChange
   unobtainable: boolean
   onToggleUnobtainable: () => void
   min: number

@@ -12,17 +12,10 @@ function getImagePicker(): typeof ImagePickerModule | null {
   try { return require("expo-image-picker") } catch { return null }
 }
 
-// `source` records how this row entered the record -- typed in, read off a
-// scanned report by AI, or imported -- so the API can persist provenance per
-// item instead of the whole case defaulting to "manual". `takenAt` is the
-// draw time for the lab, distinct from when it was entered into the form.
-export type LabResult = {
-  test: string
-  value: string
-  unit: string
-  source?: "manual" | "ai-scan" | "import"
-  takenAt?: string
-}
+// Re-exported rather than redeclared: web holds the identical shape, and this
+// file and its web counterpart had been maintaining it separately.
+import type { LabResult } from "@lospor/core/labs"
+export type { LabResult }
 
 type Props = {
   value: LabResult[]

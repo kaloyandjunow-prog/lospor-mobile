@@ -32,7 +32,7 @@ import { useIntraopOptionSets } from "@/lib/use-intraop-option-sets"
 import { useIntraopCaseLifecycle } from "@/lib/use-intraop-case-lifecycle"
 import { useIntraopPremedication } from "@/lib/use-intraop-premedication"
 import { useIntraopFluidStatus } from "@/lib/use-intraop-fluid-status"
-import { calcCaseIBW } from "@/lib/case-detail-summary"
+import { useCaseWeights } from "@/lib/use-case-weights"
 import { useIntraopAirwaySection } from "@/lib/use-intraop-airway-section"
 import { useIntraopSectionSaves } from "@/lib/use-intraop-section-saves"
 import { useIntraopComplicationState } from "@/lib/use-intraop-complication-state"
@@ -330,16 +330,10 @@ export default function IntraopLiveScreen() {
     bloodLossMl, setBloodLossMl,
     hydrateFluidStatus,
   } = useIntraopFluidStatus(tab, patchIntraopSection, tc("errorLabel"))
-  // Per-kg infusion totals need the same weights the case summary already uses,
-  // so the two views cannot report different totals for one case.
-  const caseIbw = useMemo(() => calcCaseIBW({
-    clinicalMode,
-    sex: preop?.sex ?? null,
-    heightCm: preop?.height ?? null,
-    ageValue: preop?.ageValue ?? null,
-    ageUnit: preop?.ageUnit ?? null,
-  }), [clinicalMode, preop?.sex, preop?.height, preop?.ageValue, preop?.ageUnit])
-  const caseTbw = preop?.weight ?? null
+  const { caseIbw, caseTbw } = useCaseWeights({
+    clinicalMode, sex: preop?.sex, heightCm: preop?.height,
+    weightKg: preop?.weight, ageValue: preop?.ageValue, ageUnit: preop?.ageUnit,
+  })
 
   // Timing tab
   const [caseMonthYear,   setCaseMonthYear]   = useState("")

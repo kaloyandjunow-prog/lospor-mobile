@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Modal, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native"
 import { hapticConfirm, hapticKey, hapticTick } from "@/lib/haptic"
+import { resolveNumberEntry, type ClinicalNumberChange } from "@/lib/clinical-number-entry"
 import { colors, withAlpha } from "@/theme/colors"
 import { usePreferences } from "@/lib/preferences-context"
 import { parseClinicalNumber } from "@/lib/clinical-number"
@@ -10,9 +11,7 @@ export { parseClinicalNumber } from "@/lib/clinical-number"
 type Props = {
   label?: string
   value?: number | null // null = explicitly cleared; reads below use `value == null`
-  // null is an explicit clear and reaches the server as one; the canonical
-  // patch builder drops undefined as "not in this diff".
-  onChange: (value: number | null) => void
+  onChange: ClinicalNumberChange
   unit?: string
   min?: number
   max?: number
@@ -192,17 +191,13 @@ export function ClinicalNumberInput({
   }
 
   function commitAndClose() {
-    // Confirming an emptied keypad is how a value is removed. Without this the
-    // field fell back to the wheel position, so a figure entered by mistake
-    // could be changed but never taken off the record.
-    const clearing = entryMode === "keypad" && keypadText.trim() === ""
-    if (clearing) {
-      setNumber(null)
-    } else {
-      const typed = entryMode === "keypad" ? parseClinicalNumber(keypadText) : undefined
-      const next = typed != null ? clamp(typed, min, max) : wheelValues[wheelIndexRef.current]
-      if (next != null) setNumber(next)
-    }
+    const next = resolveNumberEntry({
+      entryMode,
+      keypadText,
+      wheelValue: wheelValues[wheelIndexRef.current],
+      clamp: v => clamp(v, min, max),
+    })
+    if (next !== undefined) setNumber(next)
     momentumActiveRef.current = false
     if (settleTimerRef.current) {
       clearTimeout(settleTimerRef.current)
