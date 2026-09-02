@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import { Modal, Pressable, ScrollView, Text, View } from "react-native"
 import { applyEhrSelections } from "@lospor/core/ehr-import-apply"
 import { visibleReviewItems, type EhrReviewItem, type EhrReviewPlan } from "@lospor/core/ehr-import-review"
+import type { ClinicalMode } from "@lospor/core/pediatric"
 import type { EhrLabValue, EhrTagValue } from "@lospor/core/ehr-import"
 import { notify } from "@/lib/notify"
 import { colors, withAlpha } from "@/theme/colors"
@@ -26,11 +27,23 @@ type Props = {
   plan: EhrReviewPlan
   /** The case as it stands, by canonical field name. */
   current: Record<string, unknown>
+  /** Decides which fields an accepted age is written into. */
+  currentClinicalMode?: ClinicalMode | null
   /** Field labels come from wherever the form already keeps them. */
   labelFor: (field: string) => string
   onAccept: (patch: Record<string, unknown>, appliedKeys: string[]) => void
   /** Remembered by the server so the item is never offered again. */
   onDecline: (itemKey: string) => void
+  /**
+   * Take the clinician to the mode control.
+   *
+   * This sheet covers the screen, so without it a blocked age is a dead end:
+   * the row says to switch mode and the control is behind the sheet. The host
+   * closes this and puts the toggle in front of them. Reopening rebuilds the
+   * plan from the server, and the age is then an ordinary proposal — the only
+   * thing lost is local ticks, which the mode change has invalidated anyway.
+   */
+  onRequestModeChange?: () => void
   onClose: () => void
 }
 
@@ -54,7 +67,8 @@ function labTest(item: EhrReviewItem): string {
 }
 
 export function EhrImportPanel({
-  plan, current, labelFor, onAccept, onDecline, onClose,
+  plan, current, currentClinicalMode, labelFor,
+  onAccept, onDecline, onRequestModeChange, onClose,
 }: Props) {
   const { tc } = usePreferences()
   const [selected, setSelected] = useState<Set<string>>(() => new Set(plan.preselectedKeys))
@@ -90,7 +104,9 @@ export function EhrImportPanel({
   }
 
   function accept() {
-    const result = applyEhrSelections({ plan, selectedKeys: selected, current })
+    const result = applyEhrSelections({
+      plan, selectedKeys: selected, current, currentClinicalMode,
+    })
     onAccept(result.patch, result.appliedKeys)
   }
 
@@ -160,10 +176,24 @@ export function EhrImportPanel({
                   </View>
                 ) : null}
 
+                {/* A dead end otherwise: the row says to switch mode and the
+                    control is behind this sheet. */}
                 {blocked ? (
-                  <Text style={{ color: colors.warning, fontSize: 12, lineHeight: 17, fontWeight: "700" }}>
-                    {tc("ehrModeBlockedTitle")}
-                  </Text>
+                  <View style={{ gap: 8 }}>
+                    <Text style={{ color: colors.warning, fontSize: 12, lineHeight: 17, fontWeight: "700" }}>
+                      {tc("ehrModeBlockedTitle")}
+                    </Text>
+                    {onRequestModeChange ? (
+                      <Pressable
+                        onPress={onRequestModeChange}
+                        style={{ borderRadius: 10, borderCurve: "continuous", borderWidth: 1, borderColor: withAlpha(colors.warning, "88"), paddingVertical: 10, alignItems: "center" }}
+                      >
+                        <Text style={{ color: colors.warning, fontSize: 13, fontWeight: "900" }}>
+                          {tc("ehrGoToMode")}
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
                 ) : null}
 
                 <Pressable onPress={() => decline(item)} hitSlop={8}>

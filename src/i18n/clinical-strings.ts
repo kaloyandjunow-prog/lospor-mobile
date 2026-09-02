@@ -307,6 +307,7 @@ export const CLINICAL_STRINGS = {
     ehrModeBlockedMsg:   "This age is paediatric but the case is in adult mode. Switching mode clears the adult risk scores and recorded vitals, so LOSPOR will not do it for you. Change the mode yourself, then this age can be added.",
     ehrTakenAt:          "Taken",
     ehrProvenance:       "Reported by the hospital system, not by the patient",
+    ehrGoToMode:         "Go to mode setting",
     lspNoLabResultsFound:"No laboratory results found.",
     retryLabel:          "Retry",
 
@@ -1226,6 +1227,7 @@ export const CLINICAL_STRINGS = {
     ehrModeBlockedMsg:   "Тази възраст е педиатрична, но случаят е в режим за възрастни. Превключването изчиства рисковите скорове за възрастни и записаните витални показатели, затова LOSPOR няма да го направи вместо вас. Сменете режима сами и след това възрастта може да бъде добавена.",
     ehrTakenAt:          "Взета",
     ehrProvenance:       "Съобщено от болничната система, не от пациента",
+    ehrGoToMode:         "Към настройката за режим",
 
     retryLabel:          "Опитайте отново",
 

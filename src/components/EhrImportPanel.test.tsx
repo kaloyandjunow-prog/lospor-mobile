@@ -30,6 +30,7 @@ function panel(
   handlers: Partial<{
     onAccept: (patch: Record<string, unknown>, appliedKeys: string[]) => void
     onDecline: (itemKey: string) => void
+    onRequestModeChange: () => void
   }> = {},
 ) {
   const { canonical } = normalizeEhrImport({ identifierType: "IZ", identifier: "42", fields })
@@ -39,9 +40,11 @@ function panel(
     <EhrImportPanel
       plan={plan}
       current={current}
+      currentClinicalMode={rest.currentClinicalMode}
       labelFor={field => field}
       onAccept={handlers.onAccept ?? vi.fn()}
       onDecline={handlers.onDecline ?? vi.fn()}
+      onRequestModeChange={handlers.onRequestModeChange}
       onClose={vi.fn()}
     />,
   )
@@ -91,6 +94,31 @@ describe("an age needing a mode change cannot be accepted here", () => {
 
   it("still shows it, so the clinician knows the hospital sent an age", () => {
     expect(texts(panel({ ageYears: 7 }, { currentClinicalMode: "ADULT" }))).toContain("7")
+  })
+
+  it("offers a way to the mode control instead of being a dead end", () => {
+    // This sheet covers the screen. Telling someone to switch mode with the
+    // switch behind the sheet is a loop: close, hunt, switch, reopen.
+    const onRequestModeChange = vi.fn()
+    const tree = panel({ ageYears: 7 }, { currentClinicalMode: "ADULT" }, { onRequestModeChange })
+
+    tap(pressable(tree, t => t === "ehrGoToMode"))
+
+    expect(onRequestModeChange).toHaveBeenCalled()
+  })
+
+  it("writes the paediatric pair once the mode has been switched", () => {
+    // The server's preciseAge reads only ageValue/ageUnit, so an age accepted
+    // as ageYears alone would save and leave the field blank.
+    const onAccept = vi.fn()
+    const tree = panel({ ageYears: 7 }, { currentClinicalMode: "PEDIATRIC" }, { onAccept })
+
+    tap(pressable(tree, t => t.startsWith("ehrAccept")))
+
+    expect(onAccept).toHaveBeenCalledWith(
+      expect.objectContaining({ ageValue: 7, ageUnit: "YEARS" }),
+      ["ageYears"],
+    )
   })
 })
 
