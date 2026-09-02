@@ -290,6 +290,23 @@ export const CLINICAL_STRINGS = {
     lspPermissionMsg:    "Allow camera or gallery access to scan a lab report.",
     lspScanFailedTitle:  "Lab scan failed",
     lspScanFailedMsg:    "Could not read this image.",
+
+    // ── Hospital system import — review before anything is written ────────
+    ehrTitle:            "From the hospital system",
+    ehrNothingToReview:  "Nothing new to review.",
+    ehrAccept:           "Add selected",
+    ehrDecline:          "Don't offer again",
+    ehrDeclined:         "Won't be offered again",
+    ehrCurrentValue:     "You entered",
+    ehrProposedValue:    "Hospital system",
+    ehrConflictNote:     "Tap to use the hospital's value instead of yours.",
+    ehrEarlierResults:   "earlier results",
+    ehrModeBlockedTitle: "Switch to paediatric mode first",
+    // Says what will happen, because it is destructive and the clinician is
+    // choosing whether to accept a value they cannot yet act on.
+    ehrModeBlockedMsg:   "This age is paediatric but the case is in adult mode. Switching mode clears the adult risk scores and recorded vitals, so LOSPOR will not do it for you. Change the mode yourself, then this age can be added.",
+    ehrTakenAt:          "Taken",
+    ehrProvenance:       "Reported by the hospital system, not by the patient",
     lspNoLabResultsFound:"No laboratory results found.",
     retryLabel:          "Retry",
 
@@ -1194,6 +1211,22 @@ export const CLINICAL_STRINGS = {
     lspScanFailedTitle:  "Неуспешно сканиране",
     lspScanFailedMsg:    "Изображението не можа да бъде разчетено.",
     lspNoLabResultsFound:"Не са намерени лабораторни резултати.",
+
+    // ── Импорт от болничната система — преглед преди запис ────────────────
+    ehrTitle:            "От болничната система",
+    ehrNothingToReview:  "Няма нищо ново за преглед.",
+    ehrAccept:           "Добави избраните",
+    ehrDecline:          "Не предлагай повече",
+    ehrDeclined:         "Няма да се предлага повече",
+    ehrCurrentValue:     "Вие въведохте",
+    ehrProposedValue:    "Болнична система",
+    ehrConflictNote:     "Докоснете, за да използвате стойността на болницата вместо вашата.",
+    ehrEarlierResults:   "по-ранни резултата",
+    ehrModeBlockedTitle: "Първо превключете на педиатричен режим",
+    ehrModeBlockedMsg:   "Тази възраст е педиатрична, но случаят е в режим за възрастни. Превключването изчиства рисковите скорове за възрастни и записаните витални показатели, затова LOSPOR няма да го направи вместо вас. Сменете режима сами и след това възрастта може да бъде добавена.",
+    ehrTakenAt:          "Взета",
+    ehrProvenance:       "Съобщено от болничната система, не от пациента",
+
     retryLabel:          "Опитайте отново",
 
     // Preop — widgets

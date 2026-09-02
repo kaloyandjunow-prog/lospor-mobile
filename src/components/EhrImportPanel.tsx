@@ -1,0 +1,211 @@
+import { useMemo, useState } from "react"
+import { Modal, Pressable, ScrollView, Text, View } from "react-native"
+import { applyEhrSelections } from "@lospor/core/ehr-import-apply"
+import { visibleReviewItems, type EhrReviewItem, type EhrReviewPlan } from "@lospor/core/ehr-import-review"
+import type { EhrLabValue, EhrTagValue } from "@lospor/core/ehr-import"
+import { notify } from "@/lib/notify"
+import { colors, withAlpha } from "@/theme/colors"
+import { usePreferences } from "@/lib/preferences-context"
+
+/**
+ * Review what the hospital system sent, before any of it is written.
+ *
+ * Every decision about *what* to show and *what may be ticked* is made in Core
+ * and arrives in the plan; this renders it. Keeping the judgement out of the
+ * component is what lets web and this screen behave identically — and it is why
+ * an age that would change the clinical mode cannot be accepted here no matter
+ * what the UI does, because `applyEhrSelections` refuses it on the way out as
+ * well.
+ *
+ * The same file serves native and the PWA. That matters more than usual: those
+ * are the two clients with no conflict UI, so a review they could skip would be
+ * a value written with nobody told.
+ */
+
+type Props = {
+  plan: EhrReviewPlan
+  /** The case as it stands, by canonical field name. */
+  current: Record<string, unknown>
+  /** Field labels come from wherever the form already keeps them. */
+  labelFor: (field: string) => string
+  onAccept: (patch: Record<string, unknown>, appliedKeys: string[]) => void
+  /** Remembered by the server so the item is never offered again. */
+  onDecline: (itemKey: string) => void
+  onClose: () => void
+}
+
+function describe(item: EhrReviewItem): { title: string; detail?: string } {
+  const proposed = item.proposed
+  if (proposed && typeof proposed === "object") {
+    if ("takenAt" in (proposed as object)) {
+      const lab = proposed as EhrLabValue
+      return { title: `${lab.test} ${lab.value}${lab.unit ? ` ${lab.unit}` : ""}` }
+    }
+    const tag = proposed as EhrTagValue
+    const parts = [tag.dose, tag.route, tag.frequency].filter(Boolean)
+    return { title: tag.label, detail: parts.length ? parts.join(" · ") : tag.code }
+  }
+  return { title: proposed === null ? "—" : String(proposed) }
+}
+
+function labTest(item: EhrReviewItem): string {
+  const proposed = item.proposed as { test?: string } | null
+  return typeof proposed?.test === "string" ? proposed.test.trim().toLowerCase() : ""
+}
+
+export function EhrImportPanel({
+  plan, current, labelFor, onAccept, onDecline, onClose,
+}: Props) {
+  const { tc } = usePreferences()
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(plan.preselectedKeys))
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
+
+  const visible = useMemo(() => visibleReviewItems(plan), [plan])
+
+  // Older results stay out of the way until asked for. A falling haemoglobin is
+  // the interesting part, so they are collapsed rather than dropped.
+  const shown = visible.filter(item =>
+    item.state !== "superseded" || expanded.has(labTest(item)))
+
+  function toggle(item: EhrReviewItem) {
+    if (item.state === "needs-mode-decision") {
+      notify(tc("ehrModeBlockedTitle"), tc("ehrModeBlockedMsg"))
+      return
+    }
+    setSelected(previous => {
+      const next = new Set(previous)
+      if (next.has(item.itemKey)) next.delete(item.itemKey)
+      else next.add(item.itemKey)
+      return next
+    })
+  }
+
+  function decline(item: EhrReviewItem) {
+    setSelected(previous => {
+      const next = new Set(previous)
+      next.delete(item.itemKey)
+      return next
+    })
+    onDecline(item.itemKey)
+  }
+
+  function accept() {
+    const result = applyEhrSelections({ plan, selectedKeys: selected, current })
+    onAccept(result.patch, result.appliedKeys)
+  }
+
+  return (
+    <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: colors.background, padding: 16 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: "900" }}>{tc("ehrTitle")}</Text>
+          <Pressable onPress={onClose} hitSlop={12}>
+            <Text style={{ color: colors.textSecondary, fontSize: 15, fontWeight: "800" }}>{tc("lspClose")}</Text>
+          </Pressable>
+        </View>
+
+        <ScrollView contentContainerStyle={{ gap: 10, paddingBottom: 90 }}>
+          {shown.length === 0 ? (
+            <Text style={{ color: colors.textMuted, textAlign: "center", marginTop: 32 }}>
+              {tc("ehrNothingToReview")}
+            </Text>
+          ) : shown.map(item => {
+            const isSelected = selected.has(item.itemKey)
+            const blocked = item.state === "needs-mode-decision"
+            const { title, detail } = describe(item)
+            return (
+              <View
+                key={item.itemKey}
+                style={{
+                  backgroundColor: colors.surfaceRaised,
+                  borderRadius: 14,
+                  borderCurve: "continuous",
+                  borderWidth: 1,
+                  borderColor: blocked
+                    ? withAlpha(colors.warning, "88")
+                    : isSelected ? withAlpha(colors.primary, "66") : colors.border,
+                  padding: 12,
+                  gap: 8,
+                }}
+              >
+                <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 0.4, textTransform: "uppercase" }}>
+                  {labelFor(item.field)}
+                </Text>
+
+                <Pressable
+                  onPress={() => toggle(item)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: isSelected, disabled: blocked }}
+                  style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 }}
+                >
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "900" }}>{title}</Text>
+                    {detail ? (
+                      <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{detail}</Text>
+                    ) : null}
+                  </View>
+                  <Text style={{ color: isSelected ? colors.primary : colors.textMuted, fontSize: 12, fontWeight: "900" }}>
+                    {isSelected ? tc("lspSelected") : tc("lspSkipped")}
+                  </Text>
+                </Pressable>
+
+                {/* Their own value stays on screen beside the proposal — the
+                    point of a conflict row is that they compare the two. */}
+                {item.state === "conflict" ? (
+                  <View style={{ gap: 4, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8 }}>
+                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                      {tc("ehrCurrentValue")}: <Text style={{ fontWeight: "900" }}>{String(item.current ?? "—")}</Text>
+                    </Text>
+                    <Text style={{ color: colors.textMuted, fontSize: 11 }}>{tc("ehrConflictNote")}</Text>
+                  </View>
+                ) : null}
+
+                {blocked ? (
+                  <Text style={{ color: colors.warning, fontSize: 12, lineHeight: 17, fontWeight: "700" }}>
+                    {tc("ehrModeBlockedTitle")}
+                  </Text>
+                ) : null}
+
+                <Pressable onPress={() => decline(item)} hitSlop={8}>
+                  <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "800" }}>{tc("ehrDecline")}</Text>
+                </Pressable>
+              </View>
+            )
+          })}
+
+          {Object.entries(plan.supersededCountByTest).map(([test, count]) => (
+            <Pressable
+              key={`earlier-${test}`}
+              onPress={() => setExpanded(previous => {
+                const next = new Set(previous)
+                if (next.has(test)) next.delete(test)
+                else next.add(test)
+                return next
+              })}
+              style={{ paddingVertical: 8, alignItems: "center" }}
+            >
+              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "800" }}>
+                {expanded.has(test) ? "− " : "+ "}{test.toUpperCase()} · {count} {tc("ehrEarlierResults")}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+
+        <Pressable
+          onPress={accept}
+          disabled={selected.size === 0}
+          style={{
+            position: "absolute", left: 16, right: 16, bottom: 22,
+            borderRadius: 14, borderCurve: "continuous",
+            backgroundColor: selected.size === 0 ? colors.surface : colors.primary,
+            paddingVertical: 14, alignItems: "center",
+          }}
+        >
+          <Text style={{ color: selected.size === 0 ? colors.textMuted : "#fff", fontSize: 15, fontWeight: "900" }}>
+            {tc("ehrAccept")} ({selected.size})
+          </Text>
+        </Pressable>
+      </View>
+    </Modal>
+  )
+}
