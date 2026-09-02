@@ -1,10 +1,11 @@
 // Injects PWA manifest link, Apple meta tags, and SW registration into dist/index.html,
 // and stamps the build id into dist/sw.js.
 // Run after `expo export --platform web`.
-import { createHash } from "crypto"
 import { readFileSync, readdirSync, writeFileSync } from "fs"
 import { resolve, dirname, join } from "path"
 import { fileURLToPath } from "url"
+
+import { pwaBuildId } from "./pwa-build-id.mjs"
 
 const __dir = dirname(fileURLToPath(import.meta.url))
 const distPath = resolve(__dir, "../dist")
@@ -34,13 +35,19 @@ if (additions.length > 0) html = html.replace("</head>", `${additions.join("\n")
 writeFileSync(htmlPath, html, "utf8")
 
 // Give the service worker's caches a name that changes when the build does, so
-// activate retires the previous ones. Derived from the emitted bundle names,
-// which are themselves content hashes, so an identical build keeps its caches
-// and a changed one cannot go on serving the old files.
+// activate retires the previous ones.
+//
+// Derived from the emitted bundle names, which are themselves content hashes,
+// AND from the worker's own source. Both halves are load-bearing. Without the
+// bundles a new app would go on being served the old files; without the worker
+// a change to the caching rules would leave every entry written under the old
+// rules in place, which is precisely the entries a rule change exists to
+// distrust. That second half was missing once: a release that fixed how entries
+// are written could not retire the bad ones it was written to replace, because
+// no app source had changed and the name came out identical.
 const swPath = join(distPath, "sw.js")
-const bundleNames = readdirSync(join(distPath, "_expo", "static", "js", "web")).sort().join("|")
-const buildId = createHash("sha256").update(bundleNames).digest("hex").slice(0, 12)
 const sw = readFileSync(swPath, "utf8")
+const buildId = pwaBuildId(readdirSync(join(distPath, "_expo", "static", "js", "web")), sw)
 if (!sw.includes("__BUILD_ID__")) {
   // Unstamped caches never expire, and a bad entry in one is unreachable to
   // every later release. Refuse to ship rather than leave that in place.

@@ -1,5 +1,24 @@
 # Changelog - LOSPOR Mobile
 
+## [9.7.4] - 2026-09-02
+
+### Fixed
+
+- **A release that fixed the caching rules could not retire what the old rules
+  had written.** The service worker's cache name was derived from the emitted
+  bundle filenames alone, so a release changing only the worker produced an
+  identical name and `activate` retired nothing. 9.7.3 shipped in exactly that
+  shape: it stopped new devices being damaged, and left every already-damaged
+  one damaged, which is the set it was written for.
+
+  The name now covers the worker's own source as well as the bundles. A change
+  to the caching rules retires the entries written under the old rules — which
+  is precisely the set a rule change exists to distrust — while a redeploy that
+  changes nothing keeps its caches rather than throwing away every device's.
+
+  Verified by poisoning a cache, releasing a worker-only change, and watching
+  the bad cache disappear on the first visit and the app render on the second.
+
 ## [9.7.3] - 2026-09-02
 
 ### Fixed
