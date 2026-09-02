@@ -308,6 +308,7 @@ export const CLINICAL_STRINGS = {
     ehrTakenAt:          "Taken",
     ehrProvenance:       "Reported by the hospital system, not by the patient",
     ehrGoToMode:         "Go to mode setting",
+    ehrUndated:          "No date given by the hospital",
     lspNoLabResultsFound:"No laboratory results found.",
     retryLabel:          "Retry",
 
@@ -1228,6 +1229,7 @@ export const CLINICAL_STRINGS = {
     ehrTakenAt:          "Взета",
     ehrProvenance:       "Съобщено от болничната система, не от пациента",
     ehrGoToMode:         "Към настройката за режим",
+    ehrUndated:          "Болницата не е посочила дата",
 
     retryLabel:          "Опитайте отново",
 

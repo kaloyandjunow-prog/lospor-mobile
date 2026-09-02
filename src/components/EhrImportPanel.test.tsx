@@ -167,6 +167,39 @@ describe("older results stay out of the way until asked for", () => {
   })
 })
 
+describe("an undated result says so", () => {
+  it("labels it and leaves it unticked", () => {
+    // Beside dated results it would otherwise read as current, and a
+    // preoperative haemoglobin is only worth anything if you know its age.
+    const tree = panel({ labResults: [{ test: "Hb", value: "89" }] })
+
+    expect(texts(tree)).toContain("ehrUndated")
+    expect(rowFor(tree, "Hb 89").props.accessibilityState.checked).toBe(false)
+  })
+
+  it("shows the draw date when there is one", () => {
+    const tree = panel({
+      labResults: [{ test: "Hb", value: "89", takenAt: "2026-09-01T08:00:00Z" }],
+    })
+
+    expect(texts(tree).join(" ")).toContain("2026-09-01")
+    expect(rowFor(tree, "Hb 89").props.accessibilityState.checked).toBe(true)
+  })
+
+  it("can still be taken, once the clinician has read that it is undated", () => {
+    const onAccept = vi.fn()
+    const tree = panel({ labResults: [{ test: "Hb", value: "89" }] }, {}, { onAccept })
+
+    tap(rowFor(tree, "Hb 89"))
+    tap(pressable(tree, t => t.startsWith("ehrAccept")))
+
+    expect(onAccept).toHaveBeenCalledWith(
+      { labResults: [expect.objectContaining({ test: "Hb", takenAt: null })] },
+      [expect.any(String)],
+    )
+  })
+})
+
 describe("nothing is written without a deliberate act", () => {
   it("offers only what Core preselected", () => {
     const onAccept = vi.fn()
