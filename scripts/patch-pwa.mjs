@@ -1,11 +1,14 @@
-// Injects PWA manifest link, Apple meta tags, and SW registration into dist/index.html.
+// Injects PWA manifest link, Apple meta tags, and SW registration into dist/index.html,
+// and stamps the build id into dist/sw.js.
 // Run after `expo export --platform web`.
-import { readFileSync, writeFileSync } from "fs"
-import { resolve, dirname } from "path"
+import { createHash } from "crypto"
+import { readFileSync, readdirSync, writeFileSync } from "fs"
+import { resolve, dirname, join } from "path"
 import { fileURLToPath } from "url"
 
 const __dir = dirname(fileURLToPath(import.meta.url))
-const htmlPath = resolve(__dir, "../dist/index.html")
+const distPath = resolve(__dir, "../dist")
+const htmlPath = join(distPath, "index.html")
 
 let html = readFileSync(htmlPath, "utf8")
 
@@ -29,4 +32,21 @@ const additions = [
 
 if (additions.length > 0) html = html.replace("</head>", `${additions.join("\n")}\n</head>`)
 writeFileSync(htmlPath, html, "utf8")
-console.log(`patch-pwa: hardened reset persisted; ${additions.length} PWA element(s) added`)
+
+// Give the service worker's caches a name that changes when the build does, so
+// activate retires the previous ones. Derived from the emitted bundle names,
+// which are themselves content hashes, so an identical build keeps its caches
+// and a changed one cannot go on serving the old files.
+const swPath = join(distPath, "sw.js")
+const bundleNames = readdirSync(join(distPath, "_expo", "static", "js", "web")).sort().join("|")
+const buildId = createHash("sha256").update(bundleNames).digest("hex").slice(0, 12)
+const sw = readFileSync(swPath, "utf8")
+if (!sw.includes("__BUILD_ID__")) {
+  // Unstamped caches never expire, and a bad entry in one is unreachable to
+  // every later release. Refuse to ship rather than leave that in place.
+  console.error("patch-pwa: dist/sw.js has no __BUILD_ID__ placeholder to stamp")
+  process.exit(1)
+}
+writeFileSync(swPath, sw.replaceAll("__BUILD_ID__", buildId), "utf8")
+
+console.log(`patch-pwa: hardened reset persisted; ${additions.length} PWA element(s) added; sw build ${buildId}`)

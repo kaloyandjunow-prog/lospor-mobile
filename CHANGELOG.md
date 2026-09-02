@@ -1,5 +1,34 @@
 # Changelog - LOSPOR Mobile
 
+## [9.7.2] - 2026-09-02
+
+### Fixed
+
+- **A phone could cache a half-downloaded bundle and never recover.** The
+  service worker served bundles cache-first, never revalidated them, stored
+  anything with an ok status, and named its caches with a hand-written version
+  no release had ever changed. One interrupted download — a phone leaving a
+  lift, a hotspot dropping mid-fetch — put a truncated bundle in Cache Storage
+  under the exact filename the app asks for, and that device then failed to
+  parse it on every visit afterwards.
+
+  The failure shows nothing: no splash, no error, a black screen, while the same
+  build loads correctly for everyone else and in a private window. Nothing could
+  reach the device either, because every later release served the same cache
+  names, and Cache Storage is not cleared by clearing cookies.
+
+  The cache names now carry the build id, stamped in at export time, so
+  activating a new worker retires everything the previous one held. A device
+  already in this state recovers on its own: the first visit after a release
+  activates the new worker and clears the bad entry, and the app renders on the
+  next. Only whole, first-party responses are stored now — a range response or
+  an opaque one can no longer be kept under the name of a script.
+
+### Changed
+
+- The export refuses to finish if the service worker's build id was not stamped,
+  and the end-to-end suite asserts both the stamping and the narrowed store.
+
 ## [9.7.1] - 2026-09-02
 
 ### Fixed
