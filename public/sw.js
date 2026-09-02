@@ -3,8 +3,21 @@
 //   - App shell (index.html): cache on install, serve from cache as offline fallback
 //   - Static JS/CSS/fonts (/_expo/static/*, /assets/*): cache-first after first fetch
 //   - API calls (/api/*): always network-only — clinical data must be live
-const CACHE = "lospor-shell-v4"
-const STATIC_CACHE = "lospor-static-v4"
+//
+// The cache names carry the build id, stamped in by scripts/patch-pwa.mjs, so a
+// deploy retires the previous caches through the activate handler below.
+//
+// They used to be a hand-written "v4" that no release had ever changed, and the
+// combination was a trap with no way out: a bundle is served cache-first and
+// never revalidated, anything with an ok status is stored, and nothing ever
+// retires an entry. One interrupted download — a phone leaving a lift, a hotspot
+// dropping mid-fetch — puts a truncated bundle in the cache under the filename
+// the app asks for, and the device then fails to parse it on every visit
+// afterwards. That failure shows nothing: no splash, no error, a black screen,
+// and it survives clearing cookies because Cache Storage is not cookies.
+const BUILD_ID = "__BUILD_ID__"
+const CACHE = `lospor-shell-${BUILD_ID}`
+const STATIC_CACHE = `lospor-static-${BUILD_ID}`
 
 self.addEventListener("install", e => {
   e.waitUntil(
@@ -43,7 +56,13 @@ self.addEventListener("fetch", e => {
         const cached = await cache.match(e.request)
         if (cached) return cached
         const response = await fetch(e.request)
-        if (response.ok) cache.put(e.request, response.clone())
+        // Only a whole, first-party 200 is worth keeping. A 206 is a fragment
+        // and an opaque cross-origin response has a status of 0, and either one
+        // stored under the name of a script is a file the app can never parse
+        // and will never re-fetch.
+        if (response.status === 200 && response.type === "basic") {
+          cache.put(e.request, response.clone())
+        }
         return response
       })
     )
