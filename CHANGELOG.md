@@ -1,5 +1,55 @@
 # Changelog - LOSPOR Mobile
 
+## [9.7.1] - 2026-09-02
+
+### Fixed
+
+- **The installed web app opened to a blank dark screen.** The deployment's
+  Content-Security-Policy set `style-src-elem 'self'` with no `'unsafe-inline'`.
+  React Native Web assembles its stylesheet as components mount and inserts it
+  as a `<style>` element, so all of its rules were refused and the app rendered
+  its root container with nothing inside it. The failure produced no error to
+  find: the bundle loaded, nothing threw, every asset returned 200, and a static
+  host has no request log to read.
+
+  That stylesheet cannot be hashed or moved to a file, because it does not exist
+  until the app runs, so inline style elements are now allowed. The concession is
+  narrow — `script-src` stays `'self'`, and `connect-src`, `img-src` and
+  `font-src` already refuse the outbound requests that would make CSS-based
+  exfiltration possible.
+
+  Present since 9.3.1, the first release to carry the policy.
+
+### Changed
+
+- **The end-to-end suite now serves the deployment's own response headers**,
+  read from `vercel.json` rather than restated, so the two cannot drift apart.
+  The suite previously sent no headers at all, which is why a policy that
+  blanked the app passed every gate. A new spec asserts the two halves of the
+  failure separately: that nothing is refused, and that something is actually on
+  the screen. Either alone would have passed while the app was blank.
+
+## [9.7.0] - 2026-09-02
+
+### Added
+
+- **A Fluid status tab on the bedside intraop screen.** Infusion totals, bolus
+  drug totals, and the crystalloid/colloid/blood/urine balance existed only on
+  the web form and the printed record, so an anaesthetist running the case on a
+  phone could not see the numbers the case would later be judged by. Totals come
+  from Core, not a second implementation.
+- **Blood loss**, an optional field with nowhere to be recorded before. It never
+  blocks finalisation, and "not recorded" stays distinct from a recorded zero.
+- **EHR import review**, the screen that shows what a hospital system sent and
+  asks the clinician to accept it field by field. Nothing an import proposes is
+  ever written unattended.
+
+### Fixed
+
+- **A cleared vital did not reach the server.** An emptied measurement was
+  dropped from the patch instead of being sent as an explicit clear, so the
+  stored value survived the edit.
+
 ## [9.6.0] - 2026-08-31
 
 ### Fixed
