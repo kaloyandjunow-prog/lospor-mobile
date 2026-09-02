@@ -24,6 +24,34 @@
   touched — losing a case to fix a rendering fault would be a far worse trade
   than the one this exists to make. There is a test for exactly that.
 
+### Fixed
+
+- **Terms and Privacy opened a page that does not exist.** The links resolved
+  against whatever origin was serving the app. That is right on an appliance,
+  where this app sits at `/app` and the Web application at `/` on one host whose
+  name cannot be known here — and wrong on the public deployment, where this app
+  owns its origin and the Web application is somewhere else. A configured web
+  base now wins outright instead of being consulted only off the web: a
+  deployment stating where its Web application lives should not be overridden by
+  an inference. A redirect covers PWAs already installed, which carry the old
+  link baked into their bundle until they update.
+
+- **The app reported the wrong version, in two different ways.** Three places
+  stated it and nothing held them together: 9.7.5 in `package.json`, 9.3.1 in
+  `app.json`, 8.0.0 in the version sent to the server. About named a release
+  four behind, and a support report — the one artifact whose whole job is to say
+  what was running — named two different wrong versions.
+
+  The last of those could have done real harm. It is sent as
+  `X-LOSPOR-Client-Version` and compared against `PEDIATRIC_MIN_CLIENT_VERSION`
+  before the server permits a paediatric write. Frozen at 8.0.0 through nine
+  releases, it was saved only by the minimum still being 8.0.0 as well; raising
+  that minimum would have refused paediatric dosing on every phone that already
+  carried the fix, and told the clinician to update an app that was up to date.
+
+  A test now fails when the three drift, because nothing else will — a stale
+  version string breaks nothing on the day it goes stale.
+
 ## [9.7.4] - 2026-09-02
 
 ### Fixed
