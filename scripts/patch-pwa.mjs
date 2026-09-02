@@ -27,6 +27,9 @@ const additions = [
   [html.includes('name="apple-mobile-web-app-title"'), '<meta name="apple-mobile-web-app-title" content="LOSPOR">'],
   [html.includes('rel="apple-touch-icon"'), '<link rel="apple-touch-icon" href="/icon-192.png">'],
   [html.includes('src="/register-sw.js"'), '<script src="/register-sw.js" defer></script>'],
+  // Loaded from the page rather than bundled: it has to run when the bundle is
+  // the thing that failed.
+  [html.includes('src="/boot-watchdog.js"'), '<script src="/boot-watchdog.js" defer></script>'],
 ]
   .filter(([present]) => !present)
   .map(([, markup]) => markup)

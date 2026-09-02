@@ -1,5 +1,29 @@
 # Changelog - LOSPOR Mobile
 
+## [9.7.5] - 2026-09-02
+
+### Added
+
+- **The app repairs itself when it fails to start.** If the bundle has finished
+  arriving and nothing has been rendered, the cached copy is the suspect: it is
+  deleted and the page reloads to fetch a fresh one. One attempt per tab, then
+  it stops and says where to look, because a repair that loops is worse than the
+  fault it is repairing.
+
+  This is what the previous four releases were missing. Each fixed a cause; none
+  of them helped the person holding the phone, who saw a black screen with
+  nothing to act on and no console to consult. A clinician at 2am does not clear
+  Cache Storage — they give up and document on paper.
+
+  It waits for the bundle to finish before deciding, so a slow connection is not
+  mistaken for a fault, and it does nothing when the app starts normally, so a
+  healthy device never loses a good cache.
+
+  **It clears only Cache Storage.** Queued clinical patches live in
+  `localStorage` and the local case store in IndexedDB, and neither is ever
+  touched — losing a case to fix a rendering fault would be a far worse trade
+  than the one this exists to make. There is a test for exactly that.
+
 ## [9.7.4] - 2026-09-02
 
 ### Fixed
