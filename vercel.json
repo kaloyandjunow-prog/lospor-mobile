@@ -1,10 +1,16 @@
 {
   "outputDirectory": "dist",
-  "buildCommand": "npm run export:web",
+  "buildCommand": "EXPO_PUBLIC_WEB_BASE=https://app.lospor.org npm run export:web",
   "routes": [
     {
       "src": "/v1/(.*)",
       "dest": "https://api.lospor.org/v1/$1"
+    },
+    {
+      "//": "This deployment serves no legal pages; the Web application does. New builds link there directly, but a PWA already installed carries the old link baked into its bundle, and sends its reader to a 404 until it updates.",
+      "src": "/(terms|privacy)",
+      "status": 308,
+      "headers": { "Location": "https://app.lospor.org/$1" }
     },
     {
       "src": "/(.*)",
