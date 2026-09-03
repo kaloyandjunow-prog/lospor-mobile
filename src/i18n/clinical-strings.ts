@@ -77,6 +77,8 @@ export const CLINICAL_STRINGS = {
     latexAllergy:        "Latex allergy",
     familyAnesthesia:    "Family history of anaesthesia problems",
     familyAnesthesiaDetails: "Family history details",
+    unexplainedAnaesthesiaComplications: "Unexplainable complications during anaesthesia",
+    malignantHyperthermiaHistory: "History of malignant hyperthermia",
     dentalProsthetics:   "Dental prosthetics",
     looseTeeth:          "Loose teeth",
     smoking:             "Smoking",
@@ -140,6 +142,8 @@ export const CLINICAL_STRINGS = {
     facialHair:          "Facial hair / beard",
     difficultAirwayHx:   "Difficult airway history",
     difficultAirwayNotes:"Difficult airway details",
+    airwayOverallAssessment: "Overall assessment",
+    anticipatedDifficultAirway: "Anticipated difficult airway",
 
     // ── Labs ──────────────────────────────────────────────────────────────
     labSectionTitle:     "Lab Results",
@@ -636,6 +640,8 @@ export const CLINICAL_STRINGS = {
     summaryAllergy:      "Allergy",
     summaryLatex:        "Latex allergy",
     summaryFamilyHx:     "Family Hx",
+    summaryMalignantHyperthermia: "MH history",
+    summaryUnexplainedAnaesthesia: "Unexplained anaesthesia event",
     summarySmoking:      "Smoking",
     summarySubstance:    "Substance abuse",
     summaryDental:       "Dental prosthetics",
@@ -1003,6 +1009,8 @@ export const CLINICAL_STRINGS = {
     latexAllergy:        "Алергия към латекс",
     familyAnesthesia:    "Фамилна анамнеза за проблеми при анестезия",
     familyAnesthesiaDetails: "Детайли за фамилната анамнеза",
+    unexplainedAnaesthesiaComplications: "Необясними усложнения по време на анестезия",
+    malignantHyperthermiaHistory: "Анамнеза за малигнена хипертермия",
     dentalProsthetics:   "Зъбни протези",
     looseTeeth:          "Разклатени зъби",
     smoking:             "Тютюнопушене",
@@ -1066,6 +1074,8 @@ export const CLINICAL_STRINGS = {
     facialHair:          "Брада / мустаци",
     difficultAirwayHx:   "Анамнеза за труден дихателен път",
     difficultAirwayNotes:"Детайли за трудния дихателен път",
+    airwayOverallAssessment: "Обща оценка",
+    anticipatedDifficultAirway: "Очакван труден дихателен път",
 
     // ── Labs ──────────────────────────────────────────────────────────────
     labSectionTitle:     "Лабораторни изследвания",
@@ -1557,6 +1567,8 @@ export const CLINICAL_STRINGS = {
     summaryAllergy:      "Алергия",
     summaryLatex:        "Латексова алергия",
     summaryFamilyHx:     "Фамилна Анх",
+    summaryMalignantHyperthermia: "Анамнеза за МХ",
+    summaryUnexplainedAnaesthesia: "Необяснено усложнение при анестезия",
     summarySmoking:      "Тютюнопушене",
     summarySubstance:    "Злоупотреба",
     summaryDental:       "Зъбни протези",

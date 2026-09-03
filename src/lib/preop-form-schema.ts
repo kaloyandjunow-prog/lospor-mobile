@@ -59,6 +59,9 @@ export const preopFormSchema = z.object({
   allergyDetails: z.array(z.object({ label: z.string(), inn: z.string().optional(), atcCode: z.string().optional(), source: z.enum(["manual", "ai-scan", "import"]).optional() })).default([]),
   familyAnesthesiaProblems: z.boolean().nullable().default(null),
   familyAnesthesiaDetails: z.string().max(500).optional(),
+  // The patient's own anaesthetic history, beside the family history above.
+  unexplainedAnaesthesiaComplications: z.boolean().nullable().default(null),
+  malignantHyperthermiaHistory: z.boolean().nullable().default(null),
   dentalProsthetics: z.boolean().nullable().default(null),
   looseTeeth: z.boolean().nullable().default(null),
   smoking: z.boolean().nullable().default(null),
@@ -89,6 +92,10 @@ export const preopFormSchema = z.object({
   facialHair: z.boolean().nullable().default(null),
   difficultAirwayHistory: z.boolean().nullable().default(null),
   difficultAirwayNotes: z.string().max(500).optional(),
+  // The anaesthetist's overall airway judgement, not derived from the
+  // predictors above — it is what prediction-versus-outcome studies compare
+  // against the Cormack-Lehane grade actually found.
+  anticipatedDifficultAirway: z.boolean().nullable().default(null),
   airwayUnobtainable: z.boolean().default(false),
 
   rcriIschemicHeart: z.boolean().nullable().default(null),
