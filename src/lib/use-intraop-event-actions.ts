@@ -121,9 +121,17 @@ export function useIntraopEventActions({
   }
 
   function openSlotEvent(ev: { label: string; color: string }, isComplication = false) {
+    // A complication picked from the quick-pill list is a complication, not
+    // a timeline milestone -- it belongs in the case's complications list
+    // only. Saving a clinical_event here too used to record the same
+    // finding twice, in two tables with no link between them.
+    if (isComplication) {
+      addComplicationFromEvent(ev.label)
+      setSlotOpen(false)
+      return
+    }
     const ts = slotIsoTimestamp(slotTs)
     save({ type: "clinical_event", label: ev.label, color: ev.color }, ts ?? undefined)
-    if (isComplication) addComplicationFromEvent(ev.label)
     setSlotOpen(false)
   }
 
