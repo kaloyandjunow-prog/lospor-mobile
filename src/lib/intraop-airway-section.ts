@@ -54,19 +54,14 @@ export { syncAirwayDeviceSelection }
 export function buildAirwaySectionPatch(
   input: BuildAirwaySectionPatchInput,
 ): Record<string, unknown> {
-  return {
-    ...buildCoreAirwaySectionPatch({
-      airwayTools: input.awTools,
-      airwayDevices: input.awDevices,
-      ...coreCompletenessInput(input),
-      cormackLehane: input.awClGrade,
-      ventilationModes: input.awVentModes,
-      airwayNotes: input.awNotes,
-    }),
-    // Added alongside core's patch rather than inside it: these say why there
-    // is no airway device, which is a fact about the case rather than about a
-    // device, and core's builder is shaped around the devices themselves.
+  return buildCoreAirwaySectionPatch({
+    airwayTools: input.awTools,
+    airwayDevices: input.awDevices,
+    ...coreCompletenessInput(input),
+    cormackLehane: input.awClGrade,
+    ventilationModes: input.awVentModes,
+    airwayNotes: input.awNotes,
     presentsIntubated: input.awPresentsIntubated,
     airwayNotApplicable: input.awNotApplicable,
-  }
+  })
 }

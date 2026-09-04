@@ -11,6 +11,7 @@ import {
   ENDOBRONCHIAL_SIZES,
   ETT_SIZES,
   LMA_SIZES as CORE_LMA_SIZES,
+  airwayAbsentReason,
 } from "@lospor/core/intraop"
 
 type Opt = { code: string; label: string }
@@ -127,16 +128,14 @@ export function AirwayTab({
           <TouchableOpacity
             key={option.key}
             onPress={() => {
-              // Turning one on turns the other off. Read the current values
-              // rather than the updater's argument: setting the sibling from
-              // inside the other's updater would run during render.
-              if (option.key === "presents") {
-                if (!awPresentsIntubated) setAwNotApplicable(() => false)
-                setAwPresentsIntubated(() => !awPresentsIntubated)
-              } else {
-                if (!awNotApplicable) setAwPresentsIntubated(() => false)
-                setAwNotApplicable(() => !awNotApplicable)
-              }
+              // The exclusivity rule lives in core, so web and mobile cannot
+              // disagree about it the way they did when each had its own.
+              const next = airwayAbsentReason(
+                option.key === "presents" ? "presentsIntubated" : "airwayNotApplicable",
+                { presentsIntubated: awPresentsIntubated, airwayNotApplicable: awNotApplicable },
+              )
+              setAwPresentsIntubated(() => next.presentsIntubated)
+              setAwNotApplicable(() => next.airwayNotApplicable)
             }}
             style={{ paddingHorizontal:14, paddingVertical:10, borderRadius:12,
               backgroundColor: option.on ? "#3f2d1a" : "#111111",
