@@ -29,11 +29,10 @@ function sheet(value: LabResult[], onChange = vi.fn()) {
   return { tree, onChange }
 }
 
-function texts(tree: ReturnType<typeof renderWithPreferences>): string {
+function texts(tree: ReturnType<typeof renderWithPreferences>): string[] {
   return tree.root
     .findAll(n => String(n.type) === "Text")
     .map(n => n.children.filter(c => typeof c === "string").join(""))
-    .join(" ")
 }
 
 describe("the sheet edits one draw, not the whole case", () => {
@@ -78,5 +77,33 @@ describe("the sheet edits one draw, not the whole case", () => {
     // appearing as an editable row of the draw currently open.
     expect(shown).toContain("No date given by the hospital")
     expect(shown).toContain("Creatinine 70 µmol/L")
+  })
+})
+
+describe("the summary at the top of the sheet", () => {
+  it("shows abnormal results from the newest draw, worst first", () => {
+    // The same three-result summary the web lane shows, from the same Core
+    // helper. At the top because a phone screen loses anything below the fold.
+    const { tree } = sheet([
+      { test: "Sodium (Na⁺)", value: "130", unit: "mmol/L", takenAt: DRAW },
+      { test: "Potassium (K⁺)", value: "1.2", unit: "mmol/L", takenAt: DRAW },
+    ])
+    const shown = texts(tree)
+    expect(shown).toContain("Latest draw")
+    // Potassium is critical, so it leads.
+    expect(shown.indexOf("Potassium (K⁺) 1.2 mmol/L"))
+      .toBeLessThan(shown.indexOf("Sodium (Na⁺) 130 mmol/L"))
+  })
+
+  it("still says something when the panel is normal", () => {
+    const { tree } = sheet([
+      { test: "Sodium (Na⁺)", value: "140", unit: "mmol/L", takenAt: DRAW },
+    ])
+    expect(texts(tree)).toContain("Sodium (Na⁺) 140 mmol/L")
+  })
+
+  it("says nothing at all when no labs exist", () => {
+    const { tree } = sheet([])
+    expect(texts(tree)).not.toContain("Latest draw")
   })
 })

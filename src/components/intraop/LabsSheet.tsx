@@ -5,7 +5,7 @@ import { FeedbackPressable } from "./FeedbackPressable"
 import { LabScanPanel } from "@/components/LabScanPanel"
 import { ManualLabPanel } from "@/components/preop/ManualLabPanel"
 import { usePreferences } from "@/lib/preferences-context"
-import { groupLabsByDraw, type LabResult } from "@/lib/labs"
+import { abnormalSummary, groupLabsByDraw, type LabResult } from "@/lib/labs"
 
 /**
  * Laboratory results drawn during the case.
@@ -61,6 +61,12 @@ export function LabsSheet({
     [otherDraws],
   )
 
+  // The same three-result summary the web timetable lane shows, from the same
+  // Core helper. It sits at the top rather than the bottom because it is the
+  // reason to open this sheet at all when results already exist, and because
+  // a phone screen loses anything below the fold.
+  const summary = useMemo(() => abnormalSummary(value), [value])
+
   function replaceThisDraw(rows: LabResult[]) {
     onChange([...otherDraws, ...rows.map(row => ({ ...row, takenAt }))])
   }
@@ -68,6 +74,41 @@ export function LabsSheet({
   return (
     <Sheet visible={visible} onClose={onClose} title={title} full>
       <View style={{ gap: 14 }}>
+        {summary.shown.length > 0 ? (
+          <View style={{ gap: 6 }}>
+            <Text style={{ color: "#64748b", fontSize: 11, fontWeight: "900", letterSpacing: 0.4, textTransform: "uppercase" }}>
+              {tc("labsLatestDraw")}
+            </Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+              {summary.shown.map(item => {
+                const tone = item.severity === "critical"
+                  ? { bg: "#dc262633", fg: "#fca5a5", border: "#dc2626" }
+                  : item.severity === "normal"
+                    ? { bg: "#111827", fg: "#94a3b8", border: "#1f2937" }
+                    : { bg: "#78350f44", fg: "#fcd34d", border: "#d97706" }
+                return (
+                  <View
+                    key={`${item.result.test}-${item.result.takenAt ?? ""}`}
+                    style={{
+                      backgroundColor: tone.bg, borderColor: tone.border, borderWidth: 1,
+                      borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4,
+                    }}
+                  >
+                    <Text style={{ color: tone.fg, fontSize: 11, fontWeight: item.severity === "critical" ? "900" : "700" }}>
+                      {item.result.test} {item.result.value}{item.result.unit ? ` ${item.result.unit}` : ""}
+                    </Text>
+                  </View>
+                )
+              })}
+              {summary.hiddenCount > 0 ? (
+                <Text style={{ color: "#64748b", fontSize: 11, fontWeight: "700", alignSelf: "center" }}>
+                  +{summary.hiddenCount}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
+
         {/* Scanning is opt-in per draw rather than always mounted: it is the
             one control here that sends a photograph off the device, and it
             should be a deliberate act, not something sitting under a thumb. */}
