@@ -73,6 +73,11 @@ type UseIntraopCaseLoaderArgs = {
     urineMl?: number | null
     bloodLossMl?: number | null
   }) => void
+  hydrateMonitoringValues: (stored: {
+    bisValue?: number | null
+    tofRatio?: number | null
+    cvpMmHg?: number | null
+  }) => void
   hydrateLabs: (stored: LabResult[] | undefined) => void
   setPendingCount: Dispatch<SetStateAction<number>>
   setSyncState: Dispatch<SetStateAction<"saved" | "saving" | "failed" | "offline">>
@@ -133,6 +138,7 @@ export function useIntraopCaseLoader({
   setSelectedComplications,
   setComplicationsNotes,
   hydrateFluidStatus,
+  hydrateMonitoringValues,
   hydrateLabs,
   setPendingCount,
   setSyncState,
@@ -209,6 +215,7 @@ export function useIntraopCaseLoader({
             // Adopts the stored figures without marking them dirty, so simply
             // visiting the tab does not write them back.
             hydrateFluidStatus(hydrated.fluidStatus)
+            hydrateMonitoringValues(hydrated.monitoringValues)
             hydrateLabs(hydrated.labResults)
           }
           setPreop(hydrated.preop)

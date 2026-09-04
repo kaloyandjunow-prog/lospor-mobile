@@ -97,6 +97,8 @@ export type IntraopTabContentBuilderProps = {
   monitoring: MonitoringProps["monitoring"]
   setMonitoring: MonitoringProps["setMonitoring"]
   saveMonitoring: MonitoringProps["saveMonitoring"]
+  monitoringValues: MonitoringProps["values"]
+  saveMonitoringValues: MonitoringProps["saveValues"]
   MONITORING_OPTS: MonitoringProps["monitoringOpts"]
   advMonOpen: MonitoringProps["advMonOpen"]
   setAdvMonOpen: MonitoringProps["setAdvMonOpen"]
@@ -186,7 +188,8 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
     setOtherTechText, caseMonthYear, setCaseMonthYear, caseStartTime, setCaseStartTime,
     caseEndTime, setCaseEndTime, caseEndNextDay, setCaseEndNextDay, timingSaving, saveTiming,
     positions, setPositions, savePositions, fieldSaving, POSITIONS_LIST, monitoring,
-    setMonitoring, saveMonitoring, MONITORING_OPTS, advMonOpen, setAdvMonOpen, awTools,
+    setMonitoring, saveMonitoring, monitoringValues, saveMonitoringValues,
+    MONITORING_OPTS, advMonOpen, setAdvMonOpen, awTools,
     setAwTools, awClGrade, setAwClGrade, awDevices, setAwDevices, awLmaSize, setAwLmaSize,
     awOralTubeSize, setAwOralTubeSize, awOralCuffed, setAwOralCuffed, awNasalTubeSize,
     setAwNasalTubeSize, awNasalCuffed, setAwNasalCuffed, awDltType, setAwDltType,
@@ -288,6 +291,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
     case "monitoring": return { tab, content: {
       monitoring, setMonitoring, saveMonitoring, fieldSaving,
       monitoringOpts: MONITORING_OPTS, advMonOpen, setAdvMonOpen,
+      values: monitoringValues, saveValues: saveMonitoringValues,
     } }
 
     case "airway": return { tab, content: {

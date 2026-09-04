@@ -31,6 +31,7 @@ import { pediatricAgeFromPreop, type IntraopPreopSummary } from "@/lib/intraop-p
 import { useIntraopOptionSets } from "@/lib/use-intraop-option-sets"
 import { useIntraopCaseLifecycle } from "@/lib/use-intraop-case-lifecycle"
 import { useIntraopPremedication } from "@/lib/use-intraop-premedication"
+import { useIntraopMonitoringValues } from "@/lib/use-intraop-monitoring-values"
 import { useIntraopFluidStatus } from "@/lib/use-intraop-fluid-status"
 import { useCaseWeights } from "@/lib/use-case-weights"
 import { useIntraopAirwaySection } from "@/lib/use-intraop-airway-section"
@@ -332,6 +333,12 @@ export default function IntraopLiveScreen() {
     bloodLossMl, setBloodLossMl,
     hydrateFluidStatus,
   } = useIntraopFluidStatus(tab, patchIntraopSection, tc("errorLabel"))
+  // What the BIS, train-of-four and CVP monitors read. Saved on change, like
+  // the monitoring chips beside them, so a clear from unticking a monitor
+  // reaches the server without waiting for the tab to be left.
+  const {
+    monitoringValues, hydrateMonitoringValues, saveMonitoringValues,
+  } = useIntraopMonitoringValues(patchIntraopSection, tc("errorLabel"))
   // Laboratory draws taken during the case, each stamped with its own time.
   const { labResults, hydrateLabs, saveLabs } = useIntraopLabs(patchIntraopSection, tc("errorLabel"))
   const [labsOpen, setLabsOpen] = useState(false)
@@ -550,6 +557,7 @@ export default function IntraopLiveScreen() {
     setSelectedComplications,
     setComplicationsNotes,
     hydrateFluidStatus,
+    hydrateMonitoringValues,
     hydrateLabs,
     setPendingCount,
     setSyncState,
@@ -712,6 +720,7 @@ export default function IntraopLiveScreen() {
           setCaseMonthYear, caseStartTime, setCaseStartTime, caseEndTime, setCaseEndTime,
           caseEndNextDay, setCaseEndNextDay, timingSaving, saveTiming, positions, setPositions,
           savePositions, fieldSaving, POSITIONS_LIST, monitoring, setMonitoring, saveMonitoring,
+          monitoringValues, saveMonitoringValues,
           MONITORING_OPTS, advMonOpen, setAdvMonOpen, awTools, setAwTools, awClGrade,
           setAwClGrade, awDevices, setAwDevices, awLmaSize, setAwLmaSize, awOralTubeSize,
           setAwOralTubeSize, awOralCuffed, setAwOralCuffed, awNasalTubeSize, setAwNasalTubeSize,

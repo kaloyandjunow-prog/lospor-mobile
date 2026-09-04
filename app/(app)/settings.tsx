@@ -52,7 +52,7 @@ export default function SettingsScreen() {
   const { options: infusionOptions } = useOptionLibrary("INTRAOP_INFUSION")
   const {
     language, setLanguage, theme, setTheme, preopLayout, setPreopLayout, t, tc,
-    heightUnit, setHeightUnit, weightUnit, setWeightUnit, temperatureUnit, setTemperatureUnit, etco2Unit, setEtco2Unit,
+    heightUnit, setHeightUnit, weightUnit, setWeightUnit, temperatureUnit, setTemperatureUnit, etco2Unit, setEtco2Unit, cvpUnit, setCvpUnit,
     autoFillVitalsPreferences,
     setAutoFillVitalsPreferences,
     defaultMonitoring,
@@ -595,6 +595,13 @@ export default function SettingsScreen() {
             label="EtCO₂"
             subtitle={etco2Unit === "mmHg" ? "mmHg" : "kPa"}
             onPress={() => setEtco2Unit(etco2Unit === "mmHg" ? "kPa" : "mmHg")}
+          />
+          {/* Display only. CVP is stored and exported in mmHg either way, so
+              switching this re-renders existing cases rather than altering them. */}
+          <SettingsRow
+            label="CVP"
+            subtitle={cvpUnit === "cmH2O" ? "cmH₂O" : "mmHg"}
+            onPress={() => setCvpUnit(cvpUnit === "cmH2O" ? "mmHg" : "cmH2O")}
             last
           />
         </Card>
