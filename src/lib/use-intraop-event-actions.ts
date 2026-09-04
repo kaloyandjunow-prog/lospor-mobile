@@ -30,6 +30,7 @@ type UseIntraopEventActionsArgs = {
   openFluid: (ts: string) => void
   openAgent: (ts: string) => void
   openGasSettings: (ts: string) => void
+  openLabs: (ts: string) => void
   setSlotTs: Dispatch<SetStateAction<Date | null>>
   slotTs: Date | null
   setSlotOpen: Dispatch<SetStateAction<boolean>>
@@ -50,6 +51,7 @@ export function useIntraopEventActions({
   openFluid,
   openAgent,
   openGasSettings,
+  openLabs,
   setSlotTs,
   slotTs,
   setSlotOpen,
@@ -113,6 +115,7 @@ export function useIntraopEventActions({
       openFluid,
       openAgent,
       openGasSettings,
+      openLabs,
       openEvent: date => {
         setSlotTs(date)
         setSlotOpen(true)

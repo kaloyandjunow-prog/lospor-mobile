@@ -13,6 +13,7 @@ import { buildIntraopPreopSummary } from "@/lib/intraop-preop-summary"
 import { expandedVentilationPanelForModes } from "@/lib/airway-ventilation"
 import { parseLegacyKeyEvents, parseLogEvent, type LogEvent } from "@/lib/intraop-log-event"
 import type { VascularEntry } from "@/lib/intraop-types"
+import type { LabResult } from "@/lib/labs"
 import type { CaseDetailDto } from "@lospor/core/case-detail"
 import type { EventMutation } from "@lospor/core/sync"
 import { isValidTimeZone, localTimeOf } from "@lospor/core/intraop-time"
@@ -141,6 +142,7 @@ export function buildLoadedIntraopCaseState(
       urineMl: data.intraop?.urineMl ?? null,
       bloodLossMl: data.intraop?.bloodLossMl ?? null,
     },
+    labResults: Array.isArray(data.intraop?.labResults) ? data.intraop.labResults as LabResult[] : undefined,
     loadedTimetable,
     active: rebuildActiveState([...rawLog].reverse()),
   }

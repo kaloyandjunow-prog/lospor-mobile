@@ -42,6 +42,8 @@ import { useIntraopTimetableViewport } from "@/lib/use-intraop-timetable-viewpor
 import { useIntraopFavourites } from "@/lib/use-intraop-favourites"
 import { useIntraopEventPersistence } from "@/lib/use-intraop-event-persistence"
 import { useIntraopEventActions } from "@/lib/use-intraop-event-actions"
+import { useIntraopLabs } from "@/lib/use-intraop-labs"
+import { LabsSheet } from "@/components/intraop/LabsSheet"
 import { useIntraopRuntimeEffects } from "@/lib/use-intraop-runtime-effects"
 import { useIntraopCaseLoader } from "@/lib/use-intraop-case-loader"
 import { useIntraopAutofillPreferences } from "@/lib/use-intraop-autofill-preferences"
@@ -330,6 +332,11 @@ export default function IntraopLiveScreen() {
     bloodLossMl, setBloodLossMl,
     hydrateFluidStatus,
   } = useIntraopFluidStatus(tab, patchIntraopSection, tc("errorLabel"))
+  // Laboratory draws taken during the case, each stamped with its own time.
+  const { labResults, hydrateLabs, saveLabs } = useIntraopLabs(patchIntraopSection, tc("errorLabel"))
+  const [labsOpen, setLabsOpen] = useState(false)
+  const [labsTs, setLabsTs] = useState<string | null>(null)
+  const openLabs = useCallback((ts: string) => { setLabsTs(ts); setLabsOpen(true) }, [])
   const { caseIbw, caseTbw } = useCaseWeights({
     clinicalMode, sex: preop?.sex, heightCm: preop?.height,
     weightKg: preop?.weight, ageValue: preop?.ageValue, ageUnit: preop?.ageUnit,
@@ -537,6 +544,7 @@ export default function IntraopLiveScreen() {
     setSelectedComplications,
     setComplicationsNotes,
     hydrateFluidStatus,
+    hydrateLabs,
     setPendingCount,
     setSyncState,
     setSyncErrorMessage,
@@ -614,6 +622,7 @@ export default function IntraopLiveScreen() {
     openFluid,
     openAgent,
     openGasSettings,
+    openLabs,
     setSlotTs,
     slotTs,
     setSlotOpen,
@@ -757,6 +766,21 @@ export default function IntraopLiveScreen() {
         }} />
         </IntraopScreenChrome>
       </View>
+      {/* Rendered here rather than threaded through IntraopRenderSurface: the
+          sheet needs only the draw list and the case id, and passing it through
+          that props object would add six more names to a list that is already
+          the reason this screen is hard to read. */}
+      {labsTs ? (
+        <LabsSheet
+          visible={labsOpen}
+          takenAt={labsTs}
+          value={labResults}
+          title={`${tc("trRowLabs")} · ${formatHHMM(new Date(labsTs))}`}
+          onClose={() => setLabsOpen(false)}
+          onChange={next => { void saveLabs(next) }}
+          onEnsureCase={async () => id ?? null}
+        />
+      ) : null}
     </>
   )
 }

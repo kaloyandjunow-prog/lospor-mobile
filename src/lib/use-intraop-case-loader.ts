@@ -10,6 +10,7 @@ import type { MonitoringOption } from "@/lib/intraop-option-mappers"
 import type { TimetableData } from "@/components/IntraopTimetable"
 import type { LogEvent, ActiveInfusion, ActiveFluid, ActiveGasSettings } from "@/lib/intraop-log-event"
 import type { VascularEntry } from "@/lib/intraop-types"
+import type { LabResult } from "@/lib/labs"
 import type { IntraopPreopSummary } from "@/lib/intraop-preop-summary"
 import type { VentilationPanel } from "@/lib/airway-ventilation"
 import type { CaseDetailDto } from "@lospor/core/case-detail"
@@ -70,6 +71,7 @@ type UseIntraopCaseLoaderArgs = {
     urineMl?: number | null
     bloodLossMl?: number | null
   }) => void
+  hydrateLabs: (stored: LabResult[] | undefined) => void
   setPendingCount: Dispatch<SetStateAction<number>>
   setSyncState: Dispatch<SetStateAction<"saved" | "saving" | "failed" | "offline">>
   setSyncErrorMessage: Dispatch<SetStateAction<string | null>>
@@ -127,6 +129,7 @@ export function useIntraopCaseLoader({
   setSelectedComplications,
   setComplicationsNotes,
   hydrateFluidStatus,
+  hydrateLabs,
   setPendingCount,
   setSyncState,
   setSyncErrorMessage,
@@ -200,6 +203,7 @@ export function useIntraopCaseLoader({
             // Adopts the stored figures without marking them dirty, so simply
             // visiting the tab does not write them back.
             hydrateFluidStatus(hydrated.fluidStatus)
+            hydrateLabs(hydrated.labResults)
           }
           setPreop(hydrated.preop)
           setCaseMonthYear(hydrated.timing.monthYear)
@@ -278,6 +282,7 @@ export function useIntraopCaseLoader({
     setCaseStartTime,
     setComplicationsNotes,
     hydrateFluidStatus,
+    hydrateLabs,
     setElapsedMs,
     setLog,
     setMonitoring,
