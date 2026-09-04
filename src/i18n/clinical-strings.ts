@@ -535,6 +535,8 @@ export const CLINICAL_STRINGS = {
     vsScanPrivacyNote:   "Monitor images are sent to the configured AI provider for extraction only and are not stored by LOSPOR. Do not capture patient names or identifiers.",
 
     // Intraop — airway tab
+    awPresentsIntubated: "Presents intubated",
+    awNotApplicable:     "No airway intervention",
     awToolsUsed:         "Tools used",
     awClGrade:           "Cormack-Lehane grade",
     awDeviceUsed:        "Device used",
@@ -1463,6 +1465,8 @@ export const CLINICAL_STRINGS = {
     vsScanPrivacyNote:   "Снимките на монитора се изпращат към конфигурирания доставчик на ИИ само за разчитане и не се съхраняват от LOSPOR. Не заснемайте имена на пациенти или идентификатори.",
 
     // Intraop — airway tab
+    awPresentsIntubated: "Постъпва интубиран",
+    awNotApplicable:     "Без намеса на дихателния път",
     awToolsUsed:         "Използвани инструменти",
     awClGrade:           "Cormack-Lehane степен",
     awDeviceUsed:        "Използвано устройство",

@@ -128,6 +128,8 @@ export function buildLoadedIntraopCaseState(
       ventilationModes,
       ventilationExpanded: ventilationModes ? expandedVentilationPanelForModes(ventilationModes) : undefined,
       notes: data.intraop?.airwayNotes != null ? data.intraop.airwayNotes as string : undefined,
+      presentsIntubated: data.intraop?.presentsIntubated != null ? !!data.intraop.presentsIntubated : undefined,
+      notApplicable: data.intraop?.airwayNotApplicable != null ? !!data.intraop.airwayNotApplicable : undefined,
     },
     hasAdvancedMonitoring: hasAdvancedMonitoringSelected(monitoringOptions, data.intraop),
     vascularAccesses: Array.isArray(data.intraop?.vascularAccesses) ? data.intraop.vascularAccesses as VascularEntry[] : undefined,

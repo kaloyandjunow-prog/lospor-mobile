@@ -61,6 +61,8 @@ type UseIntraopCaseLoaderArgs = {
   setAwVentModes: Dispatch<SetStateAction<string[]>>
   setAwVentExpanded: Dispatch<SetStateAction<VentilationPanel>>
   setAwNotes: Dispatch<SetStateAction<string>>
+  setAwPresentsIntubated: Dispatch<SetStateAction<boolean>>
+  setAwNotApplicable: Dispatch<SetStateAction<boolean>>
   setAdvMonOpen: Dispatch<SetStateAction<boolean>>
   setVascularAccesses: Dispatch<SetStateAction<VascularEntry[]>>
   setPremedEveningText: Dispatch<SetStateAction<string>>
@@ -122,6 +124,8 @@ export function useIntraopCaseLoader({
   setAwVentModes,
   setAwVentExpanded,
   setAwNotes,
+  setAwPresentsIntubated,
+  setAwNotApplicable,
   setAdvMonOpen,
   setVascularAccesses,
   setPremedEveningText,
@@ -193,6 +197,8 @@ export function useIntraopCaseLoader({
               if (hydrated.airway.ventilationExpanded !== undefined) setAwVentExpanded(hydrated.airway.ventilationExpanded)
             }
             if (hydrated.airway.notes != null) setAwNotes(hydrated.airway.notes)
+            if (hydrated.airway.presentsIntubated != null) setAwPresentsIntubated(hydrated.airway.presentsIntubated)
+            if (hydrated.airway.notApplicable != null) setAwNotApplicable(hydrated.airway.notApplicable)
             if (hydrated.vascularAccesses) setVascularAccesses(hydrated.vascularAccesses)
             if (hydrated.premedication.evening != null) setPremedEveningText(hydrated.premedication.evening)
             if (hydrated.premedication.morning != null) setPremedMorningText(hydrated.premedication.morning)
@@ -268,6 +274,8 @@ export function useIntraopCaseLoader({
     setAwNasalCuffed,
     setAwNasalTubeSize,
     setAwNotes,
+    setAwPresentsIntubated,
+    setAwNotApplicable,
     setAwOralCuffed,
     setAwOralTubeSize,
     setAwTools,

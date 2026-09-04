@@ -26,6 +26,7 @@ export function AirwayTab({
   awNasalTubeSize, setAwNasalTubeSize, awNasalCuffed, setAwNasalCuffed,
   awDltType, setAwDltType, awDltSide, setAwDltSide, awDltSize, setAwDltSize,
   awEbSize, setAwEbSize, awVentModes, setAwVentModes, awNotes, setAwNotes,
+  awPresentsIntubated, setAwPresentsIntubated, awNotApplicable, setAwNotApplicable,
   saveAirwaySection, awExpandedDevice, setAwExpandedDevice, awExpandedWasComplete,
   airwayTools, airwayDevices, awVentExpanded, setAwVentExpanded,
 }: {
@@ -56,6 +57,10 @@ export function AirwayTab({
   awVentModes: string[]
   setAwVentModes: (updater: (prev: string[]) => string[]) => void
   awNotes: string
+  awPresentsIntubated: boolean
+  setAwPresentsIntubated: (updater: (prev: boolean) => boolean) => void
+  awNotApplicable: boolean
+  setAwNotApplicable: (updater: (prev: boolean) => boolean) => void
   setAwNotes: (v: string) => void
   saveAirwaySection: () => void
   awExpandedDevice: string | null
@@ -109,6 +114,41 @@ export function AirwayTab({
 
   return (
     <ScrollView style={{ flex:1 }} contentContainerStyle={{ padding:16, paddingBottom:40 }}>
+      {/* Why there is no airway device of this team's own.
+          First, because both answers mean the rest of this tab does not apply:
+          finding out after scrolling through tools and devices that neither was
+          needed is the wrong order. Mutually exclusive — a patient who arrived
+          intubated did have an airway intervention, just not this team's. */}
+      <View style={{ flexDirection:"row", flexWrap:"wrap", gap:8, marginBottom:20 }}>
+        {([
+          { key: "presents", on: awPresentsIntubated, label: tc("awPresentsIntubated") },
+          { key: "na", on: awNotApplicable, label: tc("awNotApplicable") },
+        ] as const).map(option => (
+          <TouchableOpacity
+            key={option.key}
+            onPress={() => {
+              // Turning one on turns the other off. Read the current values
+              // rather than the updater's argument: setting the sibling from
+              // inside the other's updater would run during render.
+              if (option.key === "presents") {
+                if (!awPresentsIntubated) setAwNotApplicable(() => false)
+                setAwPresentsIntubated(() => !awPresentsIntubated)
+              } else {
+                if (!awNotApplicable) setAwPresentsIntubated(() => false)
+                setAwNotApplicable(() => !awNotApplicable)
+              }
+            }}
+            style={{ paddingHorizontal:14, paddingVertical:10, borderRadius:12,
+              backgroundColor: option.on ? "#3f2d1a" : "#111111",
+              borderWidth:1, borderColor: option.on ? "#f59e0b" : "#1e2d40" }}
+          >
+            <Text style={{ color: option.on ? "#fcd34d" : "#64748b", fontSize:12, fontWeight:"700" }}>
+              {option.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {/* Tools used */}
       <Text style={{ color:"#94a3b8", fontSize:10, fontWeight:"700", letterSpacing:1.2,
         textTransform:"uppercase", marginBottom:10 }}>{tc("awToolsUsed")}</Text>
