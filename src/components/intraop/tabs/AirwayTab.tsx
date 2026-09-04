@@ -115,11 +115,12 @@ export function AirwayTab({
 
   return (
     <ScrollView style={{ flex:1 }} contentContainerStyle={{ padding:16, paddingBottom:40 }}>
-      {/* Why there is no airway device of this team's own.
-          First, because both answers mean the rest of this tab does not apply:
-          finding out after scrolling through tools and devices that neither was
-          needed is the wrong order. Mutually exclusive — a patient who arrived
-          intubated did have an airway intervention, just not this team's. */}
+      {/* Why there is no airway device of this team's own. First, because both
+          answers change what the rest of this tab means, and finding that out
+          after scrolling through tools and devices is the wrong order.
+          Independent, not exclusive: a patient can arrive from the ICU already
+          intubated AND have no airway intervention here, which is both of them
+          at once. */}
       <View style={{ flexDirection:"row", flexWrap:"wrap", gap:8, marginBottom:20 }}>
         {([
           { key: "presents", on: awPresentsIntubated, label: tc("awPresentsIntubated") },
