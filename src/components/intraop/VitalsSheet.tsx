@@ -13,7 +13,6 @@ type Props = {
   scanBusy: boolean
   showEtco2: boolean
   showTemperature: boolean
-  showGlucose: boolean
   showBis: boolean
   showTofRatio: boolean
   showCvp: boolean
@@ -26,7 +25,6 @@ type Props = {
   spo2Ref: RefObject<TextInput | null>
   etco2Ref: RefObject<TextInput | null>
   tempRef: RefObject<TextInput | null>
-  glucoseRef: RefObject<TextInput | null>
   bisRef: RefObject<TextInput | null>
   tofRatioRef: RefObject<TextInput | null>
   cvpRef: RefObject<TextInput | null>
@@ -36,7 +34,6 @@ type Props = {
   spo2: string
   etco2: string
   temperature: string
-  glucose: string
   bis: string
   tofRatio: string
   cvp: string
@@ -51,7 +48,6 @@ type Props = {
   onBisChange: (value: string) => void
   onTofRatioChange: (value: string) => void
   onCvpChange: (value: string) => void
-  onGlucoseChange: (value: string) => void
   onConfirm: () => void
 }
 
@@ -62,7 +58,6 @@ export function VitalsSheet({
   scanBusy,
   showEtco2,
   showTemperature,
-  showGlucose,
   showBis,
   showTofRatio,
   showCvp,
@@ -75,7 +70,6 @@ export function VitalsSheet({
   spo2Ref,
   etco2Ref,
   tempRef,
-  glucoseRef,
   bisRef,
   tofRatioRef,
   cvpRef,
@@ -85,7 +79,6 @@ export function VitalsSheet({
   spo2,
   etco2,
   temperature,
-  glucose,
   bis,
   tofRatio,
   cvp,
@@ -100,7 +93,6 @@ export function VitalsSheet({
   onBisChange,
   onTofRatioChange,
   onCvpChange,
-  onGlucoseChange,
   onConfirm,
 }: Props) {
   const { tc } = usePreferences()
@@ -304,25 +296,6 @@ export function VitalsSheet({
             </View>
           )}
 
-          {showGlucose && (
-            <View style={{ flexDirection:"row", gap:10, marginBottom:20 }}>
-              <View style={{ flex:1, minWidth:0 }}>
-                <Text style={{ color:"#34d399", fontSize:11, fontWeight:"700", marginBottom:6 }}>{tc("vsGlucoseMmol")}</Text>
-                <TextInput
-                  style={{ backgroundColor:"#111111", color:"#34d399", borderRadius:10,
-                    padding: Platform.OS === "web" ? 8 : 10,
-                    fontSize: Platform.OS === "web" ? 16 : 20,
-                    fontWeight:"600", borderWidth:1, borderColor:"#34d39933", textAlign:"center" }}
-                  placeholder="-"
-                  placeholderTextColor="#3e3e3e"
-                  ref={glucoseRef}
-                  keyboardType="decimal-pad"
-                  value={glucose}
-                  onChangeText={onGlucoseChange}
-                />
-              </View>
-            </View>
-          )}
         </>
       )}
 

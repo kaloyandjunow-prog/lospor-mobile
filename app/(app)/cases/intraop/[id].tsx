@@ -208,7 +208,6 @@ export default function IntraopLiveScreen() {
   const vSpO2Ref = useRef<TextInput | null>(null)
   const vEtco2Ref = useRef<TextInput | null>(null)
   const vTempRef = useRef<TextInput | null>(null)
-  const vBglRef = useRef<TextInput | null>(null)
   const vBisRef = useRef<TextInput | null>(null)
   const vTofRef = useRef<TextInput | null>(null)
   const vCvpRef = useRef<TextInput | null>(null)
@@ -504,7 +503,7 @@ export default function IntraopLiveScreen() {
 
   const {
     vitOpen, setVitOpen, vitMode, vitScanBusy, editingVitalId, setEditingVitalId,
-    vSys, setVSys, vDia, setVDia, vHR, setVHR, vSpO2, setVSpO2, vEtco2, setVEtco2, vTemp, setVTemp, vBgl, setVBgl,
+    vSys, setVSys, vDia, setVDia, vHR, setVHR, vSpO2, setVSpO2, vEtco2, setVEtco2, vTemp, setVTemp,
     vBis, setVBis, vTof, setVTof, vCvp, setVCvp,
     openVitals, confirmVitals, scanVitalsFromCamera, setAndAdvance,
   } = useVitalsEntry(save, syncLog, setEntryTs, entryTs, log, logRef, setLog, startRef, setTimetable, eventsToTimetable, roundDown5Min, id, tc("errorLabel"), etco2Unit, temperatureUnit, cvpUnit)
@@ -745,12 +744,12 @@ export default function IntraopLiveScreen() {
           drugCustomConcentration, setDrugCustomConcentration, drugFormulation, setDrugFormulation,
           drugRule, applyDrugSelection, DRUG_BASE_PROFILES,
           DRUG_ROUTE_PROFILES, DRUG_DOSE_CALCS, vitOpen, vitMode, editingVitalId, vitScanBusy,
-          vitalVisibility, etco2Unit, temperatureUnit, vSysRef, vDiaRef, vHRRef, vSpO2Ref,
-          vEtco2Ref, vTempRef, vBglRef, vBisRef, vTofRef, vCvpRef, cvpUnit,
-          vSys, vDia, vHR, vSpO2, vEtco2, vTemp, vBgl, vBis, vTof, vCvp,
-          setVBis, setVTof, setVCvp,
+          vitalVisibility, etco2Unit, temperatureUnit, cvpUnit, vSysRef, vDiaRef, vHRRef, vSpO2Ref,
+          vEtco2Ref, vTempRef, vBisRef, vTofRef, vCvpRef,
+          vSys, vDia, vHR, vSpO2, vEtco2, vTemp, vBis, vTof, vCvp,
+          setVBis, setVTof, setVCvp, confirmVitals,
           setVitOpen, setEditingVitalId, scanVitalsFromCamera, setAndAdvance, setVSys, setVDia,
-          setVHR, setVSpO2, setVEtco2, setVTemp, setVBgl, confirmVitals, infOpen, setInfOpen,
+          setVHR, setVSpO2, setVEtco2, setVTemp, infOpen, setInfOpen,
           setInfDrug, setInfRate, setInfRoute, setInfConcentration,
           setInfCustomConcentration, setInfFormulation, setInfRule, SEARCH_ONLY_INFUSIONS, INFUSION_SCENARIOS,
           INFUSION_QUICK_RATES, INFUSION_ROUTES, INFUSION_LA_CONCENTRATIONS, INFUSION_RANGES,

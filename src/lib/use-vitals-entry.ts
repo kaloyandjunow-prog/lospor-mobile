@@ -65,7 +65,6 @@ export function useVitalsEntry(
   const [vSpO2, setVSpO2]   = useState("")
   const [vEtco2, setVEtco2] = useState("")
   const [vTemp, setVTemp]   = useState("")
-  const [vBgl, setVBgl]     = useState("")
   const [vBis, setVBis]     = useState("")
   const [vTof, setVTof]     = useState("")
   const [vCvp, setVCvp]     = useState("")
@@ -87,7 +86,6 @@ export function useVitalsEntry(
     setVSpO2(prefill?.spO2     != null ? String(prefill.spO2)      : "")
     setVEtco2(prefill?.etco2   != null ? String(etco2ToDisplay(prefill.etco2)) : "")
     setVTemp(prefill?.temp     != null ? String(tempToDisplay(prefill.temp))   : "")
-    setVBgl(prefill?.bgl       != null ? String(prefill.bgl)       : "")
     setVBis(prefill?.bis       != null ? String(prefill.bis)       : "")
     setVTof(prefill?.tofRatio  != null ? String(prefill.tofRatio)  : "")
     setVCvp(prefill?.cvp       != null ? String(cvpDisplay(prefill.cvp)) : "")
@@ -101,13 +99,13 @@ export function useVitalsEntry(
     const cvpRaw = n(vCvp)
     const vitals = { type:"vital" as const, systolic:n(vSys), diastolic:n(vDia),
       heartRate:n(vHR), spO2:n(vSpO2), etco2: etco2Raw != null ? etco2ToCanonical(etco2Raw) : undefined,
-      temp: tempRaw != null ? tempToCanonical(tempRaw) : undefined, bgl:n(vBgl),
+      temp: tempRaw != null ? tempToCanonical(tempRaw) : undefined,
       bis:n(vBis), tofRatio:n(vTof),
       cvp: cvpRaw != null ? cvpCanonical(cvpRaw) : undefined }
     // A charted 0 counts as a reading: a BIS of 0 is an isoelectric EEG and a
     // train-of-four of 0 is a fully paralysed patient, so this checks for
     // absence rather than falsiness.
-    if ([vitals.systolic,vitals.diastolic,vitals.heartRate,vitals.spO2,vitals.etco2,vitals.temp,vitals.bgl,
+    if ([vitals.systolic,vitals.diastolic,vitals.heartRate,vitals.spO2,vitals.etco2,vitals.temp,
          vitals.bis,vitals.tofRatio,vitals.cvp].every(v => v == null)) return
     if (editingVitalId) {
       // Replace existing vital — remove old event, insert new at same timestamp
@@ -188,7 +186,7 @@ export function useVitalsEntry(
 
   return {
     vitOpen, setVitOpen, vitMode, setVitMode, vitScanBusy, editingVitalId, setEditingVitalId,
-    vSys, setVSys, vDia, setVDia, vHR, setVHR, vSpO2, setVSpO2, vEtco2, setVEtco2, vTemp, setVTemp, vBgl, setVBgl,
+    vSys, setVSys, vDia, setVDia, vHR, setVHR, vSpO2, setVSpO2, vEtco2, setVEtco2, vTemp, setVTemp,
     vBis, setVBis, vTof, setVTof, vCvp, setVCvp,
     openVitals, confirmVitals, scanVitalsFromCamera, setAndAdvance,
   }

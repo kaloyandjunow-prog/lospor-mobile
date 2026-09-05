@@ -81,7 +81,6 @@ export type IntraopMedicationSheetBuilderProps = {
   vitalVisibility: {
     showEtco2: boolean
     showTemperature: boolean
-    showGlucose: boolean
     showBis: boolean
     showTofRatio: boolean
     showCvp: boolean
@@ -94,7 +93,6 @@ export type IntraopMedicationSheetBuilderProps = {
   vSpO2Ref: VitalsProps["spo2Ref"]
   vEtco2Ref: VitalsProps["etco2Ref"]
   vTempRef: VitalsProps["tempRef"]
-  vBglRef: VitalsProps["glucoseRef"]
   vBisRef: VitalsProps["bisRef"]
   vTofRef: VitalsProps["tofRatioRef"]
   vCvpRef: VitalsProps["cvpRef"]
@@ -105,7 +103,6 @@ export type IntraopMedicationSheetBuilderProps = {
   vSpO2: VitalsProps["spo2"]
   vEtco2: VitalsProps["etco2"]
   vTemp: VitalsProps["temperature"]
-  vBgl: VitalsProps["glucose"]
   setVitOpen: (open: boolean) => void
   setEditingVitalId: (id: string | null) => void
   scanVitalsFromCamera: VitalsProps["onScan"]
@@ -121,7 +118,6 @@ export type IntraopMedicationSheetBuilderProps = {
   setVSpO2: VitalsProps["onSpo2Change"]
   setVEtco2: VitalsProps["onEtco2Change"]
   setVTemp: VitalsProps["onTemperatureChange"]
-  setVBgl: VitalsProps["onGlucoseChange"]
   vBis: VitalsProps["bis"]
   vTof: VitalsProps["tofRatio"]
   vCvp: VitalsProps["cvp"]
@@ -223,10 +219,11 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
     pediatricRulesSource, pediatricRulesCachedAt, pediatricRulesLoading, pediatricRulesError,
     vitOpen, vitMode, editingVitalId,
     vitScanBusy, vitalVisibility, etco2Unit, temperatureUnit, vSysRef, vDiaRef, vHRRef,
-    vSpO2Ref, vEtco2Ref, vTempRef, vBglRef, vBisRef, vTofRef, vCvpRef, cvpUnit,
-    vSys, vDia, vHR, vSpO2, vEtco2, vTemp,
-    vBgl, vBis, vTof, vCvp, setVBis, setVTof, setVCvp, setVitOpen, setEditingVitalId, scanVitalsFromCamera, setAndAdvance, setVSys,
-    setVDia, setVHR, setVSpO2, setVEtco2, setVTemp, setVBgl, confirmVitals, infOpen,
+    vSpO2Ref, vEtco2Ref, vTempRef, vBisRef, vTofRef, vCvpRef, cvpUnit,
+    vSys, vDia, vHR, vSpO2, vEtco2, vTemp, vBis, vTof, vCvp,
+    setVitOpen, setEditingVitalId, scanVitalsFromCamera, setAndAdvance,
+    setVSys, setVDia, setVHR, setVSpO2, setVEtco2, setVTemp,
+    setVBis, setVTof, setVCvp, confirmVitals, infOpen,
     setInfOpen, setInfDrug, setInfRate, setInfRoute, setInfConcentration,
     setInfCustomConcentration, setInfFormulation, setInfRule, SEARCH_ONLY_INFUSIONS,
     INFUSION_SCENARIOS, INFUSION_QUICK_RATES, INFUSION_ROUTES, INFUSION_LA_CONCENTRATIONS,
@@ -319,7 +316,6 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
       scanBusy: vitScanBusy,
       showEtco2: vitalVisibility.showEtco2,
       showTemperature: vitalVisibility.showTemperature,
-      showGlucose: vitalVisibility.showGlucose,
       showBis: vitalVisibility.showBis,
       showTofRatio: vitalVisibility.showTofRatio,
       showCvp: vitalVisibility.showCvp,
@@ -332,7 +328,6 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
       spo2Ref: vSpO2Ref,
       etco2Ref: vEtco2Ref,
       tempRef: vTempRef,
-      glucoseRef: vBglRef,
       bisRef: vBisRef,
       tofRatioRef: vTofRef,
       cvpRef: vCvpRef,
@@ -342,7 +337,6 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
       spo2: vSpO2,
       etco2: vEtco2,
       temperature: vTemp,
-      glucose: vBgl,
       bis: vBis,
       tofRatio: vTof,
       cvp: vCvp,
@@ -353,8 +347,7 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
       onHeartRateChange: vitMode === "bp" ? setVHR : v => setAndAdvance(v, setVHR, vSpO2Ref),
       onSpo2Change: v => setAndAdvance(v, setVSpO2, vitalVisibility.showEtco2 ? vEtco2Ref : vitalVisibility.showTemperature ? vTempRef : undefined),
       onEtco2Change: v => setAndAdvance(v, setVEtco2, vitalVisibility.showTemperature ? vTempRef : undefined, 2),
-      onTemperatureChange: v => setAndAdvance(v, setVTemp, vitalVisibility.showGlucose ? vBglRef : undefined, 4),
-      onGlucoseChange: setVBgl,
+      onTemperatureChange: setVTemp,
       onBisChange: setVBis,
       onTofRatioChange: setVTof,
       onCvpChange: setVCvp,

@@ -67,7 +67,6 @@ describe("intraop vital log helpers", () => {
       systolic: 120,
       diastolic: 70,
       heartRate: 80,
-      bgl: 100,
     }), false)).toEqual({
       type: "vital",
       etco2: 35,
@@ -94,7 +93,7 @@ describe("intraop vital log helpers", () => {
 
   it("derives vital field visibility from case type and monitoring labels", () => {
     const none = {
-      showEtco2: false, showTemperature: false, showGlucose: false,
+      showEtco2: false, showTemperature: false,
       showBis: false, showTofRatio: false, showCvp: false,
     }
     // A general anaesthetic implies capnography and temperature. It does not
@@ -103,8 +102,8 @@ describe("intraop vital log helpers", () => {
     expect(vitalFieldVisibility(true, [])).toEqual({
       ...none, showEtco2: true, showTemperature: true,
     })
-    expect(vitalFieldVisibility(false, ["EtCO2", "Temperature", "blood glucose"])).toEqual({
-      ...none, showEtco2: true, showTemperature: true, showGlucose: true,
+    expect(vitalFieldVisibility(false, ["EtCO2", "Temperature"])).toEqual({
+      ...none, showEtco2: true, showTemperature: true,
     })
     expect(vitalFieldVisibility(false, [])).toEqual(none)
   })
