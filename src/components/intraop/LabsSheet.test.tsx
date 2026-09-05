@@ -86,11 +86,13 @@ describe("the summary at the top of the sheet", () => {
     // helper. At the top because a phone screen loses anything below the fold.
     const { tree } = sheet([
       { test: "Sodium (Na⁺)", value: "130", unit: "mmol/L", takenAt: DRAW },
-      { test: "Potassium (K⁺)", value: "1.2", unit: "mmol/L", takenAt: DRAW },
+      // Critical only because the laboratory said so: nothing is derived from
+      // a reference range any more.
+      { test: "Potassium (K⁺)", value: "1.2", unit: "mmol/L", takenAt: DRAW, criticalLow: 2.5 },
     ])
     const shown = texts(tree)
     expect(shown).toContain("Latest draw")
-    // Potassium is critical, so it leads.
+    // Potassium carries a critical threshold, so it leads.
     expect(shown.indexOf("Potassium (K⁺) 1.2 mmol/L"))
       .toBeLessThan(shown.indexOf("Sodium (Na⁺) 130 mmol/L"))
   })
