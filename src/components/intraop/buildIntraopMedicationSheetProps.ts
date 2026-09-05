@@ -82,6 +82,9 @@ export type IntraopMedicationSheetBuilderProps = {
     showEtco2: boolean
     showTemperature: boolean
     showGlucose: boolean
+    showBis: boolean
+    showTofRatio: boolean
+    showCvp: boolean
   }
   etco2Unit: VitalsProps["etco2Unit"]
   temperatureUnit: VitalsProps["temperatureUnit"]
@@ -92,6 +95,10 @@ export type IntraopMedicationSheetBuilderProps = {
   vEtco2Ref: VitalsProps["etco2Ref"]
   vTempRef: VitalsProps["tempRef"]
   vBglRef: VitalsProps["glucoseRef"]
+  vBisRef: VitalsProps["bisRef"]
+  vTofRef: VitalsProps["tofRatioRef"]
+  vCvpRef: VitalsProps["cvpRef"]
+  cvpUnit: "cmH2O" | "mmHg"
   vSys: VitalsProps["systolic"]
   vDia: VitalsProps["diastolic"]
   vHR: VitalsProps["heartRate"]
@@ -115,6 +122,12 @@ export type IntraopMedicationSheetBuilderProps = {
   setVEtco2: VitalsProps["onEtco2Change"]
   setVTemp: VitalsProps["onTemperatureChange"]
   setVBgl: VitalsProps["onGlucoseChange"]
+  vBis: VitalsProps["bis"]
+  vTof: VitalsProps["tofRatio"]
+  vCvp: VitalsProps["cvp"]
+  setVBis: VitalsProps["onBisChange"]
+  setVTof: VitalsProps["onTofRatioChange"]
+  setVCvp: VitalsProps["onCvpChange"]
   confirmVitals: VitalsProps["onConfirm"]
   infOpen: InfusionProps["visible"]
   setInfOpen: (open: boolean) => void
@@ -210,8 +223,9 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
     pediatricRulesSource, pediatricRulesCachedAt, pediatricRulesLoading, pediatricRulesError,
     vitOpen, vitMode, editingVitalId,
     vitScanBusy, vitalVisibility, etco2Unit, temperatureUnit, vSysRef, vDiaRef, vHRRef,
-    vSpO2Ref, vEtco2Ref, vTempRef, vBglRef, vSys, vDia, vHR, vSpO2, vEtco2, vTemp,
-    vBgl, setVitOpen, setEditingVitalId, scanVitalsFromCamera, setAndAdvance, setVSys,
+    vSpO2Ref, vEtco2Ref, vTempRef, vBglRef, vBisRef, vTofRef, vCvpRef, cvpUnit,
+    vSys, vDia, vHR, vSpO2, vEtco2, vTemp,
+    vBgl, vBis, vTof, vCvp, setVBis, setVTof, setVCvp, setVitOpen, setEditingVitalId, scanVitalsFromCamera, setAndAdvance, setVSys,
     setVDia, setVHR, setVSpO2, setVEtco2, setVTemp, setVBgl, confirmVitals, infOpen,
     setInfOpen, setInfDrug, setInfRate, setInfRoute, setInfConcentration,
     setInfCustomConcentration, setInfFormulation, setInfRule, SEARCH_ONLY_INFUSIONS,
@@ -306,8 +320,12 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
       showEtco2: vitalVisibility.showEtco2,
       showTemperature: vitalVisibility.showTemperature,
       showGlucose: vitalVisibility.showGlucose,
+      showBis: vitalVisibility.showBis,
+      showTofRatio: vitalVisibility.showTofRatio,
+      showCvp: vitalVisibility.showCvp,
       etco2Unit,
       temperatureUnit,
+      cvpUnit: cvpUnit === "cmH2O" ? "cmH₂O" : "mmHg",
       sysRef: vSysRef,
       diaRef: vDiaRef,
       hrRef: vHRRef,
@@ -315,6 +333,9 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
       etco2Ref: vEtco2Ref,
       tempRef: vTempRef,
       glucoseRef: vBglRef,
+      bisRef: vBisRef,
+      tofRatioRef: vTofRef,
+      cvpRef: vCvpRef,
       systolic: vSys,
       diastolic: vDia,
       heartRate: vHR,
@@ -322,6 +343,9 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
       etco2: vEtco2,
       temperature: vTemp,
       glucose: vBgl,
+      bis: vBis,
+      tofRatio: vTof,
+      cvp: vCvp,
       onClose: () => { setVitOpen(false); setEditingVitalId(null) },
       onScan: scanVitalsFromCamera,
       onSystolicChange: v => setAndAdvance(v, setVSys, vDiaRef),
@@ -331,6 +355,9 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
       onEtco2Change: v => setAndAdvance(v, setVEtco2, vitalVisibility.showTemperature ? vTempRef : undefined, 2),
       onTemperatureChange: v => setAndAdvance(v, setVTemp, vitalVisibility.showGlucose ? vBglRef : undefined, 4),
       onGlucoseChange: setVBgl,
+      onBisChange: setVBis,
+      onTofRatioChange: setVTof,
+      onCvpChange: setVCvp,
       onConfirm: confirmVitals,
     },
     infusion: {

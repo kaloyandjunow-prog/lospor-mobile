@@ -88,9 +88,9 @@ export default function NewCaseScreen() {
   const router = useRouter()
   const { continue: continueId, localId: localIdParam } = useLocalSearchParams<{ continue?: string; localId?: string }>()
   const insets = useSafeAreaInsets()
-  const { preopLayout, tc, language, heightUnit, weightUnit, temperatureUnit, etco2Unit } = usePreferences()
+  const { preopLayout, tc, language, heightUnit, weightUnit, temperatureUnit, etco2Unit, cvpUnit } = usePreferences()
   const { clinicalAi, pediatricMode: pediatricModeCapability } = useDeploymentCapabilities()
-  const unitPrefs = { heightUnit, weightUnit, temperatureUnit, etco2Unit }
+  const unitPrefs = { heightUnit, weightUnit, temperatureUnit, etco2Unit, cvpUnit }
   const ageRange         = useRangeSpec("AGE_RANGE")
   const heightRange      = useRangeSpec("HEIGHT_RANGE")
   const weightRange      = useRangeSpec("WEIGHT_RANGE")

@@ -243,7 +243,6 @@ export const CLINICAL_STRINGS = {
     bloodLossOptionalHint: "Optional — the case can be completed without it.",
     fluidStatusSaveFailed: "Fluid status could not be saved.",
     tofRatioLabel:         "TOF ratio",
-    monitoringValueSaveFailed: "The monitor reading could not be saved.",
 
     // Intraop — timing
     anesthesiaStartTime: "Anaesthesia start time",
@@ -1178,7 +1177,6 @@ export const CLINICAL_STRINGS = {
     bloodLossOptionalHint: "По желание — случаят може да бъде завършен и без нея.",
     fluidStatusSaveFailed: "Статусът на течностите не можа да бъде записан.",
     tofRatioLabel:         "TOF съотношение",
-    monitoringValueSaveFailed: "Отчитането на монитора не можа да бъде записано.",
 
     // Intraop — timing
     anesthesiaStartTime: "Начало на анестезията",

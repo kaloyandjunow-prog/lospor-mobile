@@ -31,7 +31,6 @@ import { pediatricAgeFromPreop, type IntraopPreopSummary } from "@/lib/intraop-p
 import { useIntraopOptionSets } from "@/lib/use-intraop-option-sets"
 import { useIntraopCaseLifecycle } from "@/lib/use-intraop-case-lifecycle"
 import { useIntraopPremedication } from "@/lib/use-intraop-premedication"
-import { useIntraopMonitoringValues } from "@/lib/use-intraop-monitoring-values"
 import { useIntraopFluidStatus } from "@/lib/use-intraop-fluid-status"
 import { useCaseWeights } from "@/lib/use-case-weights"
 import { useIntraopAirwaySection } from "@/lib/use-intraop-airway-section"
@@ -119,6 +118,7 @@ export default function IntraopLiveScreen() {
     tc,
     etco2Unit,
     temperatureUnit,
+    cvpUnit,
     defaultMonitoring,
     clinicalPreferencesReady,
   } = usePreferences()
@@ -209,6 +209,9 @@ export default function IntraopLiveScreen() {
   const vEtco2Ref = useRef<TextInput | null>(null)
   const vTempRef = useRef<TextInput | null>(null)
   const vBglRef = useRef<TextInput | null>(null)
+  const vBisRef = useRef<TextInput | null>(null)
+  const vTofRef = useRef<TextInput | null>(null)
+  const vCvpRef = useRef<TextInput | null>(null)
   const [timetable,  setTimetable]  = useState<TimetableData>(emptyTimetable())
   const [ttColCount, setTtColCount] = useState(12)
   const [chartPage,  setChartPage]  = useState(0)
@@ -333,12 +336,6 @@ export default function IntraopLiveScreen() {
     bloodLossMl, setBloodLossMl,
     hydrateFluidStatus,
   } = useIntraopFluidStatus(tab, patchIntraopSection, tc("errorLabel"))
-  // What the BIS, train-of-four and CVP monitors read. Saved on change, like
-  // the monitoring chips beside them, so a clear from unticking a monitor
-  // reaches the server without waiting for the tab to be left.
-  const {
-    monitoringValues, hydrateMonitoringValues, saveMonitoringValues,
-  } = useIntraopMonitoringValues(patchIntraopSection, tc("errorLabel"))
   // Laboratory draws taken during the case, each stamped with its own time.
   const { labResults, hydrateLabs, saveLabs } = useIntraopLabs(patchIntraopSection, tc("errorLabel"))
   const [labsOpen, setLabsOpen] = useState(false)
@@ -508,8 +505,9 @@ export default function IntraopLiveScreen() {
   const {
     vitOpen, setVitOpen, vitMode, vitScanBusy, editingVitalId, setEditingVitalId,
     vSys, setVSys, vDia, setVDia, vHR, setVHR, vSpO2, setVSpO2, vEtco2, setVEtco2, vTemp, setVTemp, vBgl, setVBgl,
+    vBis, setVBis, vTof, setVTof, vCvp, setVCvp,
     openVitals, confirmVitals, scanVitalsFromCamera, setAndAdvance,
-  } = useVitalsEntry(save, syncLog, setEntryTs, entryTs, log, logRef, setLog, startRef, setTimetable, eventsToTimetable, roundDown5Min, id, tc("errorLabel"), etco2Unit, temperatureUnit)
+  } = useVitalsEntry(save, syncLog, setEntryTs, entryTs, log, logRef, setLog, startRef, setTimetable, eventsToTimetable, roundDown5Min, id, tc("errorLabel"), etco2Unit, temperatureUnit, cvpUnit)
 
   // ── Load auto-fill settings from SecureStore (once) ──────────────────
   useIntraopCaseLoader({
@@ -557,7 +555,6 @@ export default function IntraopLiveScreen() {
     setSelectedComplications,
     setComplicationsNotes,
     hydrateFluidStatus,
-    hydrateMonitoringValues,
     hydrateLabs,
     setPendingCount,
     setSyncState,
@@ -720,7 +717,6 @@ export default function IntraopLiveScreen() {
           setCaseMonthYear, caseStartTime, setCaseStartTime, caseEndTime, setCaseEndTime,
           caseEndNextDay, setCaseEndNextDay, timingSaving, saveTiming, positions, setPositions,
           savePositions, fieldSaving, POSITIONS_LIST, monitoring, setMonitoring, saveMonitoring,
-          monitoringValues, saveMonitoringValues,
           MONITORING_OPTS, advMonOpen, setAdvMonOpen, awTools, setAwTools, awClGrade,
           setAwClGrade, awDevices, setAwDevices, awLmaSize, setAwLmaSize, awOralTubeSize,
           setAwOralTubeSize, awOralCuffed, setAwOralCuffed, awNasalTubeSize, setAwNasalTubeSize,
@@ -750,7 +746,9 @@ export default function IntraopLiveScreen() {
           drugRule, applyDrugSelection, DRUG_BASE_PROFILES,
           DRUG_ROUTE_PROFILES, DRUG_DOSE_CALCS, vitOpen, vitMode, editingVitalId, vitScanBusy,
           vitalVisibility, etco2Unit, temperatureUnit, vSysRef, vDiaRef, vHRRef, vSpO2Ref,
-          vEtco2Ref, vTempRef, vBglRef, vSys, vDia, vHR, vSpO2, vEtco2, vTemp, vBgl,
+          vEtco2Ref, vTempRef, vBglRef, vBisRef, vTofRef, vCvpRef, cvpUnit,
+          vSys, vDia, vHR, vSpO2, vEtco2, vTemp, vBgl, vBis, vTof, vCvp,
+          setVBis, setVTof, setVCvp,
           setVitOpen, setEditingVitalId, scanVitalsFromCamera, setAndAdvance, setVSys, setVDia,
           setVHR, setVSpO2, setVEtco2, setVTemp, setVBgl, confirmVitals, infOpen, setInfOpen,
           setInfDrug, setInfRate, setInfRoute, setInfConcentration,

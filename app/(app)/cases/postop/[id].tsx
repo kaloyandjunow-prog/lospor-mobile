@@ -40,8 +40,8 @@ type AutosaveState = "idle" | "saving" | "saved" | "queued" | "blocked" | "error
 export default function PostopFormScreen() {
   const { id, continuedItems } = useLocalSearchParams<{ id: string; continuedItems?: string }>()
   const router    = useRouter()
-  const { tc, t, heightUnit, weightUnit, temperatureUnit, etco2Unit } = usePreferences()
-  const unitPrefs = { heightUnit, weightUnit, temperatureUnit, etco2Unit }
+  const { tc, t, heightUnit, weightUnit, temperatureUnit, etco2Unit, cvpUnit } = usePreferences()
+  const unitPrefs = { heightUnit, weightUnit, temperatureUnit, etco2Unit, cvpUnit }
   const recoveryBpSystolicRange  = useRangeSpec("BP_SYSTOLIC_RANGE")
   const recoveryBpDiastolicRange = useRangeSpec("BP_DIASTOLIC_RANGE")
   const recoveryHeartRateRange   = useRangeSpec("HEART_RATE_RANGE")

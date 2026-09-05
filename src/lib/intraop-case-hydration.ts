@@ -144,13 +144,6 @@ export function buildLoadedIntraopCaseState(
       urineMl: data.intraop?.urineMl ?? null,
       bloodLossMl: data.intraop?.bloodLossMl ?? null,
     },
-    // Same reasoning: a stored null means no reading was charted, which is not
-    // a BIS of 0 (an isoelectric EEG) or a train-of-four of 0 (fully paralysed).
-    monitoringValues: {
-      bisValue: data.intraop?.bisValue ?? null,
-      tofRatio: data.intraop?.tofRatio ?? null,
-      cvpMmHg: data.intraop?.cvpMmHg ?? null,
-    },
     labResults: Array.isArray(data.intraop?.labResults) ? data.intraop.labResults as LabResult[] : undefined,
     loadedTimetable,
     active: rebuildActiveState([...rawLog].reverse()),

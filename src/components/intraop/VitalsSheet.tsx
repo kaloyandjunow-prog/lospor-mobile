@@ -14,7 +14,11 @@ type Props = {
   showEtco2: boolean
   showTemperature: boolean
   showGlucose: boolean
+  showBis: boolean
+  showTofRatio: boolean
+  showCvp: boolean
   etco2Unit: string
+  cvpUnit: string
   temperatureUnit: string
   sysRef: RefObject<TextInput | null>
   diaRef: RefObject<TextInput | null>
@@ -23,6 +27,9 @@ type Props = {
   etco2Ref: RefObject<TextInput | null>
   tempRef: RefObject<TextInput | null>
   glucoseRef: RefObject<TextInput | null>
+  bisRef: RefObject<TextInput | null>
+  tofRatioRef: RefObject<TextInput | null>
+  cvpRef: RefObject<TextInput | null>
   systolic: string
   diastolic: string
   heartRate: string
@@ -30,6 +37,9 @@ type Props = {
   etco2: string
   temperature: string
   glucose: string
+  bis: string
+  tofRatio: string
+  cvp: string
   onClose: () => void
   onScan: () => void
   onSystolicChange: (value: string) => void
@@ -38,6 +48,9 @@ type Props = {
   onSpo2Change: (value: string) => void
   onEtco2Change: (value: string) => void
   onTemperatureChange: (value: string) => void
+  onBisChange: (value: string) => void
+  onTofRatioChange: (value: string) => void
+  onCvpChange: (value: string) => void
   onGlucoseChange: (value: string) => void
   onConfirm: () => void
 }
@@ -50,6 +63,10 @@ export function VitalsSheet({
   showEtco2,
   showTemperature,
   showGlucose,
+  showBis,
+  showTofRatio,
+  showCvp,
+  cvpUnit,
   etco2Unit,
   temperatureUnit,
   sysRef,
@@ -59,6 +76,9 @@ export function VitalsSheet({
   etco2Ref,
   tempRef,
   glucoseRef,
+  bisRef,
+  tofRatioRef,
+  cvpRef,
   systolic,
   diastolic,
   heartRate,
@@ -66,6 +86,9 @@ export function VitalsSheet({
   etco2,
   temperature,
   glucose,
+  bis,
+  tofRatio,
+  cvp,
   onClose,
   onScan,
   onSystolicChange,
@@ -74,6 +97,9 @@ export function VitalsSheet({
   onSpo2Change,
   onEtco2Change,
   onTemperatureChange,
+  onBisChange,
+  onTofRatioChange,
+  onCvpChange,
   onGlucoseChange,
   onConfirm,
 }: Props) {
@@ -212,6 +238,68 @@ export function VitalsSheet({
                 <Text style={{ color:"#64748b", fontSize:10, marginTop:6 }}>
                   {formatMessage(tc("vsCurrentUnit"), { unit: `°${temperatureUnit}` })}
                 </Text>
+              </View>
+            </View>
+          )}
+
+          {showBis && (
+            <View style={{ flexDirection:"row", gap:10, marginBottom:14 }}>
+              <View style={{ flex:1, minWidth:0 }}>
+                <Text style={{ color:"#e879f9", fontSize:11, fontWeight:"700", marginBottom:6 }}>BIS</Text>
+                <TextInput
+                  style={{ backgroundColor:"#111111", color:"#e879f9", borderRadius:10,
+                    padding: Platform.OS === "web" ? 8 : 10,
+                    fontSize: Platform.OS === "web" ? 16 : 20,
+                    fontWeight:"600", borderWidth:1, borderColor:"#e879f933", textAlign:"center" }}
+                  placeholder="-"
+                  placeholderTextColor="#3e3e3e"
+                  ref={bisRef}
+                  keyboardType="decimal-pad"
+                  value={bis}
+                  onChangeText={onBisChange}
+                />
+              </View>
+            </View>
+          )}
+
+          {showTofRatio && (
+            <View style={{ flexDirection:"row", gap:10, marginBottom:14 }}>
+              <View style={{ flex:1, minWidth:0 }}>
+                <Text style={{ color:"#fb923c", fontSize:11, fontWeight:"700", marginBottom:6 }}>TOF</Text>
+                <TextInput
+                  style={{ backgroundColor:"#111111", color:"#fb923c", borderRadius:10,
+                    padding: Platform.OS === "web" ? 8 : 10,
+                    fontSize: Platform.OS === "web" ? 16 : 20,
+                    fontWeight:"600", borderWidth:1, borderColor:"#fb923c33", textAlign:"center" }}
+                  placeholder="-"
+                  placeholderTextColor="#3e3e3e"
+                  ref={tofRatioRef}
+                  keyboardType="decimal-pad"
+                  value={tofRatio}
+                  onChangeText={onTofRatioChange}
+                />
+                <Text style={{ color:"#64748b", fontSize:10, marginTop:6 }}>{tc("tofRatioLabel")}</Text>
+              </View>
+            </View>
+          )}
+
+          {showCvp && (
+            <View style={{ flexDirection:"row", gap:10, marginBottom:14 }}>
+              <View style={{ flex:1, minWidth:0 }}>
+                <Text style={{ color:"#38bdf8", fontSize:11, fontWeight:"700", marginBottom:6 }}>CVP</Text>
+                <TextInput
+                  style={{ backgroundColor:"#111111", color:"#38bdf8", borderRadius:10,
+                    padding: Platform.OS === "web" ? 8 : 10,
+                    fontSize: Platform.OS === "web" ? 16 : 20,
+                    fontWeight:"600", borderWidth:1, borderColor:"#38bdf833", textAlign:"center" }}
+                  placeholder="-"
+                  placeholderTextColor="#3e3e3e"
+                  ref={cvpRef}
+                  keyboardType="decimal-pad"
+                  value={cvp}
+                  onChangeText={onCvpChange}
+                />
+                <Text style={{ color:"#64748b", fontSize:10, marginTop:6 }}>{formatMessage(tc("vsCurrentUnit"), { unit: cvpUnit })}</Text>
               </View>
             </View>
           )}
