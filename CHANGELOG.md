@@ -1,5 +1,31 @@
 # Changelog - LOSPOR Mobile
 
+## [9.8.0] - 2026-09-06
+
+### Changed
+
+- **Clinical provenance comes from Core.** The six fields that say which rule
+  and which preset produced a recorded dose were written out by hand here and
+  again in the web timetable — nine sites across the two apps. They are one
+  concept and now have one home, `@lospor/core/clinical-provenance`.
+
+  It also fixes something this app did quietly: a preset id was recorded even
+  when its version or scope was missing. An id with no version cannot be
+  resolved back to what was applied, so the shared version drops a
+  half-recorded preset rather than storing a reference that reads as an answer
+  and resolves to nothing. The rule fields are unaffected.
+
+- **Depends on Core 9.8.1**, which also resolves an age from a date of birth
+  by calendar arithmetic rather than by dividing days by an average year.
+
+### Added
+
+- **The EHR import review says what it does not know:** when a patient was
+  matched on the record number alone, because the site has not yet said which
+  of its numberings a record number belongs to; and which groups the hospital
+  system could not be read for. An empty allergy list reads as reassurance, and
+  it must not be the same empty list a failed fetch produces.
+
 ## [9.7.5] - 2026-09-02
 
 ### Added
