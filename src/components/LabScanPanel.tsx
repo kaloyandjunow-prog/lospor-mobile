@@ -15,7 +15,7 @@ function getImagePicker(): typeof ImagePickerModule | null {
 
 // Re-exported rather than redeclared: web holds the identical shape, and this
 // file and its web counterpart had been maintaining it separately.
-import type { LabResult } from "@lospor/core/labs"
+import { labSourceDiffers, type LabResult, type ScannedLabResult } from "@lospor/core/labs"
 export type { LabResult }
 
 type Props = {
@@ -52,7 +52,7 @@ export function LabScanPanel({ value, onAddResults, onEnsureCase, takenAt }: Pro
   const clinicalAi = useClinicalAiCapabilities()
   const [scanning, setScanning] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
-  const [results, setResults] = useState<(LabResult & { selected: boolean })[]>([])
+  const [results, setResults] = useState<(ScannedLabResult & { selected: boolean })[]>([])
 
   async function pick(source: "camera" | "library") {
     const ImagePicker = getImagePicker()
@@ -103,7 +103,7 @@ export function LabScanPanel({ value, onAddResults, onEnsureCase, takenAt }: Pro
         notify(tc("lspScanFailedTitle"), tc("lspScanFailedMsg"))
         return
       }
-      const data = await apiJson<{ results: LabResult[] }>(`/api/cases/${caseId}/ai/read-labs`, {
+      const data = await apiJson<{ results: ScannedLabResult[] }>(`/api/cases/${caseId}/ai/read-labs`, {
         method: "POST",
         body: JSON.stringify({
           imageBase64,
@@ -115,7 +115,7 @@ export function LabScanPanel({ value, onAddResults, onEnsureCase, takenAt }: Pro
       // value for checking against the report, but never accepted by default.
       const imported = (data.results ?? []).map((r) => ({
         ...r,
-        selected: (r as { confident?: boolean }).confident !== false
+        selected: r.confident !== false
           && !value.some((existing) => existing.test === r.test),
       }))
       setResults(imported)
@@ -205,6 +205,16 @@ export function LabScanPanel({ value, onAddResults, onEnsureCase, takenAt }: Pro
                   <TextInput value={row.value} onChangeText={(text) => update(idx, { value: text })} style={{ flex: 1, color: colors.textPrimary, backgroundColor: colors.surface, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, borderColor: colors.border }} />
                   <TextInput value={row.unit} onChangeText={(text) => update(idx, { unit: text })} style={{ flex: 1, color: colors.textPrimary, backgroundColor: colors.surface, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, borderColor: colors.border }} />
                 </View>
+                {/* What the report printed, whenever the conversion changed it.
+                    The number above is an AI reading of a photograph multiplied by
+                    a conversion factor, and it looks entirely plausible whether or
+                    not either step was right -- so the original has to be beside it
+                    for the review to be a review. */}
+                {labSourceDiffers(row) ? (
+                  <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "700" }}>
+                    {tc("lspReportPrinted")} {row.sourceValue} {row.sourceUnit}
+                  </Text>
+                ) : null}
               </View>
             ))}
           </ScrollView>

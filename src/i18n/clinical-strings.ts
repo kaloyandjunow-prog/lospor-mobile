@@ -330,6 +330,9 @@ export const CLINICAL_STRINGS = {
     ehrGoToMode:         "Go to mode setting",
     ehrUndated:          "No date given by the hospital",
     lspNoLabResultsFound:"No laboratory results found.",
+    // Shown when the unit conversion changed what the paper said, so the
+    // clinician can check the converted value against the report in their hand.
+    lspReportPrinted:    "Report printed:",
     retryLabel:          "Retry",
 
     // Preop — widgets
@@ -1243,6 +1246,7 @@ export const CLINICAL_STRINGS = {
     lspScanFailedTitle:  "Неуспешно сканиране",
     lspScanFailedMsg:    "Изображението не можа да бъде разчетено.",
     lspNoLabResultsFound:"Не са намерени лабораторни резултати.",
+    lspReportPrinted:    "В доклада пише:",
 
     // ── Импорт от болничната система — преглед преди запис ────────────────
     ehrTitle:            "От болничната система",

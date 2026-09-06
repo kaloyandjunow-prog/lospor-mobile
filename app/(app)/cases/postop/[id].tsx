@@ -193,8 +193,8 @@ export default function PostopFormScreen() {
       recoverySpO2Unobtainable:        p.recoverySpO2Unobtainable        ?? false,
       recoveryTemperatureUnobtainable: p.recoveryTemperatureUnobtainable ?? false,
       painScoreNRS:       p.painScoreNRS,
-      // Left undefined when the record has no value: "not asked" is not "absent".
-      ponv:               p.ponv,
+      // null, not undefined: only null survives into a patch to clear an answer.
+      ponv:               p.ponv ?? null,
       disposition:        p.disposition,
       dispositionNotes:   p.dispositionNotes   ?? "",
       pediatricPainScale: p.pediatricPainScale,
@@ -547,7 +547,7 @@ export default function PostopFormScreen() {
               render={({ field: { onChange, value } }) => (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: value ? colors.warning : colors.border, borderRadius: 14, borderCurve: "continuous", paddingHorizontal: 14, paddingVertical: 10 }}>
                   <Switch
-                    value={value}
+                    value={value ?? false}
                     onValueChange={onChange}
                     trackColor={{ false: colors.borderStrong, true: withAlpha(colors.warning, "66") }}
                     ios_backgroundColor={colors.borderStrong}
