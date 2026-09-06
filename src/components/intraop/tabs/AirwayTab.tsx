@@ -12,6 +12,7 @@ import {
   ETT_SIZES,
   LMA_SIZES as CORE_LMA_SIZES,
   airwayAbsentReason,
+  airwayDeviceSummary,
 } from "@lospor/core/intraop"
 
 type Opt = { code: string; label: string }
@@ -73,14 +74,22 @@ export function AirwayTab({
   setAwVentExpanded: (v: "assisted" | "controlled" | null) => void
 }) {
   const { tc, language } = usePreferences()
+  // Composition is core's; the words are this app's. Cuffing now resolves
+  // through the shared clinical vocabulary, as web already did -- the two used
+  // to be able to print different words for the same tube.
   const deviceName = (code: string) => airwayDevices.find(device => device.code === code)?.label ?? code
-  const deviceSummary: Record<string, string | null> = {
-    LMA:               awLmaSize ? `${deviceName("LMA")} ${awLmaSize}` : null,
-    ORAL_ETT:          awOralTubeSize && awOralCuffed != null ? `${deviceName("ORAL_ETT")} ${awOralTubeSize} ${awOralCuffed ? tc("awCuffed") : tc("awUncuffed")}` : null,
-    NASAL_ETT:         awNasalTubeSize && awNasalCuffed != null ? `${deviceName("NASAL_ETT")} ${awNasalTubeSize} ${awNasalCuffed ? tc("awCuffed") : tc("awUncuffed")}` : null,
-    DOUBLE_LUMEN_TUBE: (awDltType || awDltSide || awDltSize) ? `${deviceName("DOUBLE_LUMEN_TUBE")}${awDltType ? " "+awDltType : ""}${awDltSide ? " "+displayClinicalCode("clinicalAttribute", awDltSide.toLowerCase(), language) : ""}${awDltSize ? " "+awDltSize+"Fr" : ""}` : null,
-    ENDOBRONCHIAL_TUBE:awEbSize ? `${deviceName("ENDOBRONCHIAL_TUBE")} ${awEbSize}mm` : null,
+  const deviceWords = {
+    device: deviceName,
+    attribute: (code: string) => displayClinicalCode("clinicalAttribute", code, language),
   }
+  const airwayFields = {
+    lmaSize: awLmaSize, oralTubeSize: awOralTubeSize, oralCuffed: awOralCuffed,
+    nasalTubeSize: awNasalTubeSize, nasalCuffed: awNasalCuffed,
+    dltType: awDltType, dltSide: awDltSide, dltSize: awDltSize, endobronchialSize: awEbSize,
+  }
+  const deviceSummary: Record<string, string | null> = Object.fromEntries(
+    AIRWAY_HAS_SUBOPTIONS.map(code => [code, airwayDeviceSummary(code, airwayFields, deviceWords)]),
+  )
   function clearDeviceFields(code: string) {
     switch (code) {
       case "LMA": setAwLmaSize(null); break
