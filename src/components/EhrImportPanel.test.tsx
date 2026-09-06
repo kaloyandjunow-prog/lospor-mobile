@@ -12,6 +12,7 @@ vi.mock("@/lib/preferences-context", () => ({
 import { normalizeEhrImport } from "@lospor/core/ehr-import"
 import { buildEhrReviewPlan, type EhrReviewInput } from "@lospor/core/ehr-import-review"
 import { render } from "@/test/render"
+import type { EhrUnreadSource } from "@lospor/core/ehr-import-transport"
 import { EhrImportPanel } from "./EhrImportPanel"
 
 /**
@@ -32,6 +33,8 @@ function panel(
     onDecline: (itemKey: string) => void
     onRequestModeChange: () => void
   }> = {},
+  identityUnverified?: boolean,
+  unreadSources?: EhrUnreadSource[],
 ) {
   const { canonical } = normalizeEhrImport({ identifierType: "IZ", identifier: "42", fields })
   const current = rest.current ?? {}
@@ -39,6 +42,8 @@ function panel(
   return render(
     <EhrImportPanel
       plan={plan}
+      identityUnverified={identityUnverified}
+      unreadSources={unreadSources}
       current={current}
       currentClinicalMode={rest.currentClinicalMode}
       labelFor={field => field}
@@ -242,5 +247,47 @@ describe("nothing is written without a deliberate act", () => {
     tap(pressable(tree, t => t === "ehrDecline"))
 
     expect(onDecline).toHaveBeenCalledWith("diagnoses|k35")
+  })
+})
+
+/**
+ * The paired case of `EhrImportReview.test.tsx` in lospor-app.
+ *
+ * A hospital numbers the same person several ways, and until a site says which
+ * numbering its record numbers use, one clean match can belong to a different
+ * one. The import still proceeds -- a site has to be able to work before it has
+ * configured that -- so the only thing between a stranger's allergy list and
+ * this case is the clinician reading this sentence.
+ */
+describe("an identity nothing could verify", () => {
+  it("says so, above the values it qualifies", () => {
+    const tree = panel({ allergies: ["Penicillin"] }, {}, {}, true)
+    expect(texts(tree)).toContain("ehrIdentityUnverified")
+  })
+
+  it("says nothing when the match was checked against a configured system", () => {
+    const tree = panel({ allergies: ["Penicillin"] })
+    expect(texts(tree)).not.toContain("ehrIdentityUnverified")
+  })
+})
+
+/**
+ * Paired with `EhrImportReview.test.tsx` in lospor-app.
+ *
+ * A failed allergy fetch and a patient with no allergies produce the same
+ * empty list, and the empty list reads as reassurance. This is the only thing
+ * that separates them.
+ */
+describe("groups the hospital system could not be read for", () => {
+  it("names them", () => {
+    const tree = panel({ allergies: ["Penicillin"] }, {}, {}, undefined, [
+      { group: "allergies", errorCode: "HTTP_503" },
+    ])
+    expect(texts(tree).join(" ")).toContain("ehrGroupAllergies")
+  })
+
+  it("says nothing when everything was read", () => {
+    const tree = panel({ allergies: ["Penicillin"] })
+    expect(texts(tree).join(" ")).not.toContain("ehrUnreadSources")
   })
 })

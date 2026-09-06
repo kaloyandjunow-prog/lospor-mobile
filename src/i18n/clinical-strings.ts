@@ -299,6 +299,21 @@ export const CLINICAL_STRINGS = {
     // ── Hospital system import — review before anything is written ────────
     ehrTitle:            "From the hospital system",
     ehrNothingToReview:  "Nothing new to review.",
+    // Shown when the site has not yet said which of its numberings a record
+    // number belongs to, so the patient was matched on the value alone. No
+    // jargon: what the clinician has to do is compare the values below with
+    // the patient in front of them, and that is what it says.
+    ehrIdentityUnverified: "Matched on the record number alone — nothing confirmed it is the right kind of number for this hospital. Check these against the patient in front of you before accepting.",
+    // Named per group, because "the import partly failed" tells a clinician
+    // nothing they can act on and "allergies could not be read" tells them
+    // exactly what to go and check.
+    ehrUnreadSources: "Could not be read from the hospital system:",
+    ehrUnreadWarning: "An empty list below does not mean the patient has none. Check these yourself.",
+    ehrGroupLabs: "laboratory results",
+    ehrGroupDiagnoses: "diagnoses",
+    ehrGroupAllergies: "allergies",
+    ehrGroupMedications: "current medications",
+    ehrGroupProcedures: "planned procedures",
     ehrAccept:           "Add selected",
     ehrDecline:          "Don't offer again",
     ehrDeclined:         "Won't be offered again",
@@ -1232,6 +1247,14 @@ export const CLINICAL_STRINGS = {
     // ── Импорт от болничната система — преглед преди запис ────────────────
     ehrTitle:            "От болничната система",
     ehrNothingToReview:  "Няма нищо ново за преглед.",
+    ehrIdentityUnverified: "Съвпадение само по номера на ИЗ — нищо не потвърждава, че това е точният вид номер за тази болница. Проверете стойностите спрямо пациента пред вас, преди да ги приемете.",
+    ehrUnreadSources: "Не можа да бъде прочетено от болничната система:",
+    ehrUnreadWarning: "Празен списък по-долу не означава, че пациентът няма такива. Проверете ги сами.",
+    ehrGroupLabs: "лабораторни резултати",
+    ehrGroupDiagnoses: "диагнози",
+    ehrGroupAllergies: "алергии",
+    ehrGroupMedications: "текуща медикаментозна терапия",
+    ehrGroupProcedures: "планирани процедури",
     ehrAccept:           "Добави избраните",
     ehrDecline:          "Не предлагай повече",
     ehrDeclined:         "Няма да се предлага повече",
