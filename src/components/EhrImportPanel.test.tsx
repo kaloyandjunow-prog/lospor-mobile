@@ -12,6 +12,7 @@ vi.mock("@/lib/preferences-context", () => ({
 import { normalizeEhrImport } from "@lospor/core/ehr-import"
 import { buildEhrReviewPlan, type EhrReviewInput } from "@lospor/core/ehr-import-review"
 import { render } from "@/test/render"
+import type { EhrUnreadSource } from "@lospor/core/ehr-import-transport"
 import { EhrImportPanel } from "./EhrImportPanel"
 
 /**
@@ -32,6 +33,8 @@ function panel(
     onDecline: (itemKey: string) => void
     onRequestModeChange: () => void
   }> = {},
+  identityUnverified?: boolean,
+  unreadSources?: EhrUnreadSource[],
 ) {
   const { canonical } = normalizeEhrImport({ identifierType: "IZ", identifier: "42", fields })
   const current = rest.current ?? {}
@@ -39,6 +42,8 @@ function panel(
   return render(
     <EhrImportPanel
       plan={plan}
+      identityUnverified={identityUnverified}
+      unreadSources={unreadSources}
       current={current}
       currentClinicalMode={rest.currentClinicalMode}
       labelFor={field => field}
@@ -56,6 +61,20 @@ function texts(tree: ReturnType<typeof render>): string[] {
     .map(n => n.children.filter(c => typeof c === "string").join(""))
     .filter(Boolean)
 }
+
+/**
+ * A test name the catalogue actually holds, with its canonical unit.
+ *
+ * These fixtures used the shorthand "Hb" and no unit, which passed when any
+ * name flowed through untouched. Core now resolves an incoming result against
+ * the catalogue and refuses one it has no field for -- an unrecognised name is
+ * `unsupported-test` and an unconvertible unit is `unconverted`, neither of
+ * which is offered pre-ticked. That is the point of the check: a hospital's own
+ * code reaches a LOSPOR field only once a site has mapped it. So the fixture
+ * has to name a real test, or it is exercising the refusal path rather than the
+ * freshness ranking these tests are about.
+ */
+const HB = "Haemoglobin (Hb)"
 
 function rowFor(tree: ReturnType<typeof render>, title: string) {
   const node = tree.root.findAll(n =>
@@ -144,8 +163,8 @@ describe("what the clinician already wrote stays on screen", () => {
 describe("older results stay out of the way until asked for", () => {
   const twoHaemoglobins = {
     labResults: [
-      { test: "Hb", value: "120", takenAt: "2026-08-29T08:00:00Z" },
-      { test: "Hb", value: "89", takenAt: "2026-09-01T08:00:00Z" },
+      { test: HB, value: "120", unit: "g/L", takenAt: "2026-08-29T08:00:00Z" },
+      { test: HB, value: "89", unit: "g/L", takenAt: "2026-09-01T08:00:00Z" },
     ],
   }
 
@@ -153,8 +172,8 @@ describe("older results stay out of the way until asked for", () => {
     const tree = panel(twoHaemoglobins)
     const shown = texts(tree).join(" ")
 
-    expect(shown).toContain("Hb 89")
-    expect(shown).not.toContain("Hb 120")
+    expect(shown).toContain(`${HB} 89 g/L`)
+    expect(shown).not.toContain(`${HB} 120 g/L`)
     expect(shown).toContain("1 ehrEarlierResults")
   })
 
@@ -163,7 +182,7 @@ describe("older results stay out of the way until asked for", () => {
 
     tap(pressable(tree, t => t.includes("ehrEarlierResults")))
 
-    expect(texts(tree).join(" ")).toContain("Hb 120")
+    expect(texts(tree).join(" ")).toContain(`${HB} 120 g/L`)
   })
 })
 
@@ -171,30 +190,30 @@ describe("an undated result says so", () => {
   it("labels it and leaves it unticked", () => {
     // Beside dated results it would otherwise read as current, and a
     // preoperative haemoglobin is only worth anything if you know its age.
-    const tree = panel({ labResults: [{ test: "Hb", value: "89" }] })
+    const tree = panel({ labResults: [{ test: HB, value: "89", unit: "g/L" }] })
 
     expect(texts(tree)).toContain("ehrUndated")
-    expect(rowFor(tree, "Hb 89").props.accessibilityState.checked).toBe(false)
+    expect(rowFor(tree, `${HB} 89 g/L`).props.accessibilityState.checked).toBe(false)
   })
 
   it("shows the draw date when there is one", () => {
     const tree = panel({
-      labResults: [{ test: "Hb", value: "89", takenAt: "2026-09-01T08:00:00Z" }],
+      labResults: [{ test: HB, value: "89", unit: "g/L", takenAt: "2026-09-01T08:00:00Z" }],
     })
 
     expect(texts(tree).join(" ")).toContain("2026-09-01")
-    expect(rowFor(tree, "Hb 89").props.accessibilityState.checked).toBe(true)
+    expect(rowFor(tree, `${HB} 89 g/L`).props.accessibilityState.checked).toBe(true)
   })
 
   it("can still be taken, once the clinician has read that it is undated", () => {
     const onAccept = vi.fn()
-    const tree = panel({ labResults: [{ test: "Hb", value: "89" }] }, {}, { onAccept })
+    const tree = panel({ labResults: [{ test: HB, value: "89", unit: "g/L" }] }, {}, { onAccept })
 
-    tap(rowFor(tree, "Hb 89"))
+    tap(rowFor(tree, `${HB} 89 g/L`))
     tap(pressable(tree, t => t.startsWith("ehrAccept")))
 
     expect(onAccept).toHaveBeenCalledWith(
-      { labResults: [expect.objectContaining({ test: "Hb", takenAt: null })] },
+      { labResults: [expect.objectContaining({ test: HB, takenAt: null })] },
       [expect.any(String)],
     )
   })
@@ -228,5 +247,47 @@ describe("nothing is written without a deliberate act", () => {
     tap(pressable(tree, t => t === "ehrDecline"))
 
     expect(onDecline).toHaveBeenCalledWith("diagnoses|k35")
+  })
+})
+
+/**
+ * The paired case of `EhrImportReview.test.tsx` in lospor-app.
+ *
+ * A hospital numbers the same person several ways, and until a site says which
+ * numbering its record numbers use, one clean match can belong to a different
+ * one. The import still proceeds -- a site has to be able to work before it has
+ * configured that -- so the only thing between a stranger's allergy list and
+ * this case is the clinician reading this sentence.
+ */
+describe("an identity nothing could verify", () => {
+  it("says so, above the values it qualifies", () => {
+    const tree = panel({ allergies: ["Penicillin"] }, {}, {}, true)
+    expect(texts(tree)).toContain("ehrIdentityUnverified")
+  })
+
+  it("says nothing when the match was checked against a configured system", () => {
+    const tree = panel({ allergies: ["Penicillin"] })
+    expect(texts(tree)).not.toContain("ehrIdentityUnverified")
+  })
+})
+
+/**
+ * Paired with `EhrImportReview.test.tsx` in lospor-app.
+ *
+ * A failed allergy fetch and a patient with no allergies produce the same
+ * empty list, and the empty list reads as reassurance. This is the only thing
+ * that separates them.
+ */
+describe("groups the hospital system could not be read for", () => {
+  it("names them", () => {
+    const tree = panel({ allergies: ["Penicillin"] }, {}, {}, undefined, [
+      { group: "allergies", errorCode: "HTTP_503" },
+    ])
+    expect(texts(tree).join(" ")).toContain("ehrGroupAllergies")
+  })
+
+  it("says nothing when everything was read", () => {
+    const tree = panel({ allergies: ["Penicillin"] })
+    expect(texts(tree).join(" ")).not.toContain("ehrUnreadSources")
   })
 })

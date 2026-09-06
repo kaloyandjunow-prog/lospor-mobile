@@ -5,6 +5,7 @@ import { apiJson } from "@/lib/api"
 import { notify } from "@/lib/notify"
 import { colors, withAlpha } from "@/theme/colors"
 import { usePreferences } from "@/lib/preferences-context"
+import { capabilityMessageKey, useClinicalAiCapabilities } from "@/lib/deployment-capabilities"
 
 // Lazy require — native module is only present after a full expo run:android build.
  
@@ -31,10 +32,24 @@ type Props = {
    * image is sent.
    */
   onEnsureCase: () => Promise<string | null>
+  /**
+   * The draw time to stamp on every accepted row, for a panel scanned during a
+   * case. Omitted preoperatively, where a snapshot has no single draw time and
+   * the clinician may not know it.
+   */
+  takenAt?: string
 }
 
-export function LabScanPanel({ value, onAddResults, onEnsureCase }: Props) {
+export function LabScanPanel({ value, onAddResults, onEnsureCase, takenAt }: Props) {
   const { tc } = usePreferences()
+  // Gated here rather than at the call site. Scanning sends a photograph of a
+  // report -- patient name and EGN in its header -- to an external provider,
+  // and on an appliance that is exactly what the Status external-AI switch
+  // turns off. A second mount point that forgot to re-check would reopen the
+  // hole silently, so the component refuses to render its own controls instead
+  // of trusting every caller to remember. The server refuses the call too;
+  // this is what stops the button being there to press.
+  const clinicalAi = useClinicalAiCapabilities()
   const [scanning, setScanning] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
   const [results, setResults] = useState<(LabResult & { selected: boolean })[]>([])
@@ -123,9 +138,27 @@ export function LabScanPanel({ value, onAddResults, onEnsureCase }: Props) {
       .filter((row) => !value.some((existing) => existing.test === row.test))
       // Read off a photograph by AI, not typed in -- tag it so the API stores
       // real per-item provenance instead of defaulting the case to "manual".
-      .map((row) => ({ ...row, source: "ai-scan" as const }))
+      // A panel scanned during a case is stamped with the draw time the sheet
+      // was opened at, so it joins the timeline as one draw rather than as
+      // undated rows that cannot be placed in a trend.
+      .map((row) => ({ ...row, source: "ai-scan" as const, ...(takenAt ? { takenAt } : {}) }))
     onAddResults(selected)
     setReviewOpen(false)
+  }
+
+  // Turned off for this deployment, or no provider configured. Say which,
+  // rather than leaving a gap where a control used to be -- a clinician who
+  // cannot find the scan button needs to know it was switched off, not wonder
+  // whether the app is broken.
+  if (!clinicalAi.labImageExtraction.enabled) {
+    return (
+      <View style={{ backgroundColor: colors.surfaceRaised, borderRadius: 16, borderCurve: "continuous", borderWidth: 1, borderColor: colors.border, padding: 14, gap: 6, marginBottom: 14 }}>
+        <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "900" }}>{tc("lspScanLabReport")}</Text>
+        <Text style={{ color: colors.textMuted, fontSize: 12, lineHeight: 17 }}>
+          {tc(capabilityMessageKey(clinicalAi.labImageExtraction.reason))}
+        </Text>
+      </View>
+    )
   }
 
   return (

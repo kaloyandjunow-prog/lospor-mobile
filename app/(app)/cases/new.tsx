@@ -88,9 +88,9 @@ export default function NewCaseScreen() {
   const router = useRouter()
   const { continue: continueId, localId: localIdParam } = useLocalSearchParams<{ continue?: string; localId?: string }>()
   const insets = useSafeAreaInsets()
-  const { preopLayout, tc, language, heightUnit, weightUnit, temperatureUnit, etco2Unit } = usePreferences()
+  const { preopLayout, tc, language, heightUnit, weightUnit, temperatureUnit, etco2Unit, cvpUnit } = usePreferences()
   const { clinicalAi, pediatricMode: pediatricModeCapability } = useDeploymentCapabilities()
-  const unitPrefs = { heightUnit, weightUnit, temperatureUnit, etco2Unit }
+  const unitPrefs = { heightUnit, weightUnit, temperatureUnit, etco2Unit, cvpUnit }
   const ageRange         = useRangeSpec("AGE_RANGE")
   const heightRange      = useRangeSpec("HEIGHT_RANGE")
   const weightRange      = useRangeSpec("WEIGHT_RANGE")
@@ -1186,6 +1186,8 @@ export default function NewCaseScreen() {
                 if (!value) setValue("familyAnesthesiaDetails", "", { shouldDirty: true })
               }} activeColor={colors.warning} />} />
               {familyAnesthesiaProblems ? <Field label={tc("familyAnesthesiaDetails")} error={blockedErrorFor("familyAnesthesiaDetails")}><Controller control={control} name="familyAnesthesiaDetails" render={({ field }) => <StyledInput value={field.value ?? ""} onChangeText={field.onChange} maxLength={500} multiline placeholder={tc("familyAnesthesiaHint")} />} /></Field> : null}
+              <Controller control={control} name="unexplainedAnaesthesiaComplications" render={({ field }) => <ClinicalYesNoRow label={tc("unexplainedAnaesthesiaComplications")} value={field.value ?? null} onValueChange={field.onChange} activeColor={colors.danger} />} />
+              <Controller control={control} name="malignantHyperthermiaHistory" render={({ field }) => <ClinicalYesNoRow label={tc("malignantHyperthermiaHistory")} value={field.value ?? null} onValueChange={field.onChange} activeColor={colors.danger} />} />
               <Controller control={control} name="dentalProsthetics" render={({ field }) => <ClinicalYesNoRow label={tc("dentalProsthetics")} value={field.value ?? null} onValueChange={field.onChange} />} />
               <Controller control={control} name="looseTeeth" render={({ field }) => <ClinicalYesNoRow label={tc("looseTeeth")} value={field.value ?? null} onValueChange={field.onChange} activeColor={colors.warning} />} />
               <Controller control={control} name="smoking" render={({ field }) => <ClinicalYesNoRow label={tc("smoking")} value={field.value ?? null} onValueChange={field.onChange} />} />
@@ -1298,6 +1300,12 @@ export default function NewCaseScreen() {
                     if (!value) setValue("difficultAirwayNotes", "", { shouldDirty: true })
                   }} activeColor={colors.danger} />} />
                   {difficultAirwayHistory ? <Field label={tc("difficultAirwayNotes")} error={blockedErrorFor("difficultAirwayNotes")}><Controller control={control} name="difficultAirwayNotes" render={({ field }) => <StyledInput value={field.value ?? ""} onChangeText={field.onChange} maxLength={500} multiline placeholder={tc("difficultAirwayHint")} />} /></Field> : null}
+                  {/* The conclusion the airway section builds to: the clinician's
+                      overall judgement, kept last and separate from the bedside
+                      predictors above so prediction can be paired against the
+                      Cormack-Lehane grade actually found. */}
+                  <SectionHeader title={tc("airwayOverallAssessment")} />
+                  <Controller control={control} name="anticipatedDifficultAirway" render={({ field }) => <ClinicalYesNoRow label={tc("anticipatedDifficultAirway")} value={field.value ?? null} onValueChange={field.onChange} activeColor={colors.danger} />} />
                 </>
               ) : null}
             </SectionCard>

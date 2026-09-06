@@ -11,6 +11,7 @@ import {
   ENDOBRONCHIAL_SIZES,
   ETT_SIZES,
   LMA_SIZES as CORE_LMA_SIZES,
+  airwayAbsentReason,
 } from "@lospor/core/intraop"
 
 type Opt = { code: string; label: string }
@@ -26,6 +27,7 @@ export function AirwayTab({
   awNasalTubeSize, setAwNasalTubeSize, awNasalCuffed, setAwNasalCuffed,
   awDltType, setAwDltType, awDltSide, setAwDltSide, awDltSize, setAwDltSize,
   awEbSize, setAwEbSize, awVentModes, setAwVentModes, awNotes, setAwNotes,
+  awPresentsIntubated, setAwPresentsIntubated, awNotApplicable, setAwNotApplicable,
   saveAirwaySection, awExpandedDevice, setAwExpandedDevice, awExpandedWasComplete,
   airwayTools, airwayDevices, awVentExpanded, setAwVentExpanded,
 }: {
@@ -56,6 +58,10 @@ export function AirwayTab({
   awVentModes: string[]
   setAwVentModes: (updater: (prev: string[]) => string[]) => void
   awNotes: string
+  awPresentsIntubated: boolean
+  setAwPresentsIntubated: (updater: (prev: boolean) => boolean) => void
+  awNotApplicable: boolean
+  setAwNotApplicable: (updater: (prev: boolean) => boolean) => void
   setAwNotes: (v: string) => void
   saveAirwaySection: () => void
   awExpandedDevice: string | null
@@ -109,6 +115,40 @@ export function AirwayTab({
 
   return (
     <ScrollView style={{ flex:1 }} contentContainerStyle={{ padding:16, paddingBottom:40 }}>
+      {/* Why there is no airway device of this team's own. First, because both
+          answers change what the rest of this tab means, and finding that out
+          after scrolling through tools and devices is the wrong order.
+          Independent, not exclusive: a patient can arrive from the ICU already
+          intubated AND have no airway intervention here, which is both of them
+          at once. */}
+      <View style={{ flexDirection:"row", flexWrap:"wrap", gap:8, marginBottom:20 }}>
+        {([
+          { key: "presents", on: awPresentsIntubated, label: tc("awPresentsIntubated") },
+          { key: "na", on: awNotApplicable, label: tc("awNotApplicable") },
+        ] as const).map(option => (
+          <TouchableOpacity
+            key={option.key}
+            onPress={() => {
+              // The exclusivity rule lives in core, so web and mobile cannot
+              // disagree about it the way they did when each had its own.
+              const next = airwayAbsentReason(
+                option.key === "presents" ? "presentsIntubated" : "airwayNotApplicable",
+                { presentsIntubated: awPresentsIntubated, airwayNotApplicable: awNotApplicable },
+              )
+              setAwPresentsIntubated(() => next.presentsIntubated)
+              setAwNotApplicable(() => next.airwayNotApplicable)
+            }}
+            style={{ paddingHorizontal:14, paddingVertical:10, borderRadius:12,
+              backgroundColor: option.on ? "#3f2d1a" : "#111111",
+              borderWidth:1, borderColor: option.on ? "#f59e0b" : "#1e2d40" }}
+          >
+            <Text style={{ color: option.on ? "#fcd34d" : "#64748b", fontSize:12, fontWeight:"700" }}>
+              {option.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {/* Tools used */}
       <Text style={{ color:"#94a3b8", fontSize:10, fontWeight:"700", letterSpacing:1.2,
         textTransform:"uppercase", marginBottom:10 }}>{tc("awToolsUsed")}</Text>
