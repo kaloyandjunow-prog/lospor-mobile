@@ -290,7 +290,7 @@ export default function IntraopLiveScreen() {
     useAgentEntry(save, setEntryTs, activeAgent, setActiveAgent)
   // Gas settings sheet (FGF/carrier gas/FiO2) - event-based gas_start/gas_change/gas_stop.
   const { gasOpen, setGasOpen, gasFgf, setGasFgf, gasCarrierGas, setGasCarrierGas, gasFio2, setGasFio2, openGasSettings, confirmGasSettings, stopGasSettings } =
-    useGasSettingsEntry(save, setEntryTs, activeGas, setActiveGas, pediatricMode)
+    useGasSettingsEntry(save, setEntryTs, activeGas, setActiveGas)
   const { favouriteDrugs, favouriteInfusions } = useIntraopFavourites()
 
   const {

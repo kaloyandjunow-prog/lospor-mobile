@@ -126,7 +126,7 @@ export const preopFormSchema = z.object({
   coldsSurgery: z.enum(["NON_AIRWAY", "MINOR_AIRWAY", "MAJOR_AIRWAY"]).optional(),
   pediatricFasting: z.array(z.object({
     category: z.enum(["CLEAR_FLUIDS", "BREAST_MILK", "INFANT_FORMULA_UNDER_1_YEAR", "SOLID_FOOD_OR_COW_MILK"]),
-    lastIntakeAt: z.string().nullable(),
+    lastIntakeAt: z.string().datetime().nullable(),
     status: z.enum(["MET", "NOT_MET", "UNKNOWN"]).optional(),
     requiredHours: z.number().optional(),
     policyId: z.string(),
@@ -144,7 +144,7 @@ export const preopFormSchema = z.object({
     value: z.string(),
     unit: z.string(),
     source: z.enum(["manual", "ai-scan", "import"]).optional(),
-    takenAt: z.string().optional(),
+    takenAt: z.string().datetime().optional(),
   })).default([]),
 })
   .superRefine((d, ctx) => {

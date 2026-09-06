@@ -55,6 +55,7 @@ import { usePreferences } from "@/lib/preferences-context"
 import { localizedPreopValidationMessage } from "@/lib/preop-validation-messages"
 import { useOptionLibrary, useRangeSpec } from "@/lib/use-option-library"
 import { resolveIdealBodyWeight } from "@lospor/core/ideal-body-weight"
+import { calcApfel, calcRCRI, calcStopBang } from "@lospor/core/scores"
 import { displayOption } from "@/lib/clinical-display"
 import type { BlockedSaveIssue } from "@lospor/core/sync"
 import { blockedSaveMessage } from "@/lib/blocked-save-message"
@@ -254,18 +255,34 @@ export default function NewCaseScreen() {
   }), [ageUnit, ageValue, heightCm, pediatricMode, sex])
   const ibw = ibwResolution.available ? ibwResolution.roundedKg : null
   const abw = !pediatricMode && ibw != null && weightKg && weightKg > ibw ? ibw + 0.4 * (weightKg - ibw) : null
-  const rcriScore = [highRiskSurgery, ...rcriInputs].filter(Boolean).length
-  const apfelScore = [sex === "FEMALE", !smoking, apfelPONVHistory, apfelPostopOpioids].filter(Boolean).length
-  const stopBangScore = [
-    stopbangInputs[0],
-    stopbangInputs[1],
-    stopbangInputs[2],
-    stopbangInputs[3],
-    bmi != null && bmi > 35,
-    ageYears != null && ageYears > 50,
-    stopbangInputs[4],
-    sex === "MALE",
-  ].filter(Boolean).length
+  const rcriScore = calcRCRI({
+    highRiskSurgery: !!highRiskSurgery,
+    ischaemicHeartDisease: !!rcriInputs[0],
+    congestiveHeartFailure: !!rcriInputs[1],
+    cerebrovascularDisease: !!rcriInputs[2],
+    insulinDependentDiabetes: !!rcriInputs[3],
+    creatinineHigh: !!rcriInputs[4],
+  })
+  const apfelScore = calcApfel({
+    female: sex === "FEMALE",
+    // Answered `false` only -- `smoking` is tri-state and this factor is the
+    // negation of the question asked. `!smoking` mapped an unanswered `null`
+    // to `true`, awarding the non-smoker point to a question nobody had
+    // answered yet.
+    nonSmoker: smoking === false,
+    ponvHistory: !!apfelPONVHistory,
+    opioidsPlanned: !!apfelPostopOpioids,
+  })
+  const stopBangScore = calcStopBang({
+    snoring: !!stopbangInputs[0],
+    tired: !!stopbangInputs[1],
+    observed: !!stopbangInputs[2],
+    highBP: !!stopbangInputs[3],
+    bmi: bmi ?? 0,
+    ageOver50: ageYears != null && ageYears > 50,
+    neckOver40cm: !!stopbangInputs[4],
+    male: sex === "MALE",
+  })
 
   useEffect(() => {
     if (!allergies && (getValues("allergyDetails")?.length ?? 0) > 0) {
