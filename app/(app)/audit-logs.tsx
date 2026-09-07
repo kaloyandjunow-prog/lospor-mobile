@@ -19,7 +19,7 @@ import {
   auditActionLabel,
   parseAuditActionDefinitions,
   type AuditActionDefinition,
-} from "@/lib/audit-actions"
+} from "@lospor/core/audit-actions"
 
 type AuditLog = {
   id: string
