@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { View, Text, TextInput, TouchableOpacity } from "react-native"
 import {
   administrationRouteLabel,
@@ -116,18 +116,24 @@ export function DoseSelector({
     CONCENTRATION_PILL_PAGE_SIZE,
   )
 
+  // presetValues/concentrationValues are rebuilt every render, so the effects
+  // below read them through a ref and key on presetKey/concentrationKey (the
+  // list's actual content) instead -- otherwise a new array reference on an
+  // unrelated re-render would reset the visible page every time.
+  const presetValuesRef = useRef(presetValues)
+  presetValuesRef.current = presetValues
+  const concentrationValuesRef = useRef(concentrationValues)
+  concentrationValuesRef.current = concentrationValues
+
   useEffect(() => {
-    setPresetPage(pageOfSelection(presetValues, DOSE_PILL_PAGE_SIZE, selectedPreset ?? null))
-    // presetKey stands in for the list's contents; presetValues is rebuilt each render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setPresetPage(pageOfSelection(presetValuesRef.current, DOSE_PILL_PAGE_SIZE, selectedPreset ?? null))
   }, [presetKey, selectedPreset])
 
   useEffect(() => {
     const selected = concentration && customConcentration === undefined ? concentration : null
     setConcentrationPage(
-      pageOfSelection(concentrationValues, CONCENTRATION_PILL_PAGE_SIZE, selected),
+      pageOfSelection(concentrationValuesRef.current, CONCENTRATION_PILL_PAGE_SIZE, selected),
     )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [concentration, concentrationKey, customConcentration])
 
   const canonicalRoutes = useMemo(() => {
