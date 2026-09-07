@@ -17,7 +17,8 @@ import { ScreenState, WorkflowPill } from "@/components/clinical-ui"
 import { AppHeader } from "@/components/AppHeader"
 import { colors, withAlpha } from "@/theme/colors"
 import { deriveCaseStage } from "@lospor/core/case-status"
-import { dashboardCaseTarget, preopReadyForAllocation, dashboardTabCounts, type DashboardServerCounts } from "@/lib/dashboard-case-routing"
+import { dashboardCaseTarget, dashboardTabCounts, type DashboardServerCounts } from "@/lib/dashboard-case-routing"
+import { preopReadyForAllocation } from "@lospor/core/clinical-validation"
 import { useDashboardPagination } from "@/lib/use-dashboard-pagination"
 import { caseIsWritable } from "@lospor/core/case-capabilities"
 import { isSameCalendarDay, isSameCalendarMonth } from "@lospor/core/dashboard-date-scope"
@@ -352,7 +353,10 @@ export default function DashboardScreen() {
     if (activeTab === "Month") return isThisMonth(c.createdAt)
     if (activeTab === "Active") return c.status !== "COMPLETE"
     if (activeTab === "Drafts") return c.status === "DRAFT"
-    if (activeTab === "Awaiting Postop") return c.status !== "COMPLETE" && !!c.intraop
+    // `endTime != null`, not "an intraop record exists" -- the server's count
+    // for this tab uses the former, so a case still in theatre was counted by
+    // one and listed by the other. The tab read "3" over a list of five.
+    if (activeTab === "Awaiting Postop") return c.status !== "COMPLETE" && c.intraop?.endTime != null
     if (activeTab === "Complete") return c.status === "COMPLETE"
     if (activeTab === "Handovers") return false
     return true
