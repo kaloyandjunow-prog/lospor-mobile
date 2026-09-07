@@ -89,3 +89,35 @@ export function dashboardTabCounts(
     Handovers: handoverCount,
   }
 }
+
+export type DashboardTabKey = keyof DashboardTabCounts
+
+/**
+ * Whether a case belongs on the tab currently selected.
+ *
+ * Beside dashboardTabCounts deliberately: the tab's number and the list under
+ * it have to answer the same question, and they stopped doing so once the two
+ * lived apart. "Awaiting Postop" in particular means a *finished* intraop --
+ * `endTime` set -- and not merely that an intraop record exists, which is what
+ * the server counts and what a case still in theatre would otherwise satisfy.
+ *
+ * Handovers is not a filter over cases at all; it is its own list, so nothing
+ * from this one belongs on it.
+ */
+export function caseMatchesDashboardTab(
+  caseItem: DashboardCountableCase,
+  tab: DashboardTabKey,
+  isToday: (iso: string) => boolean,
+  isThisMonth: (iso: string) => boolean,
+): boolean {
+  switch (tab) {
+    case "Today":           return isToday(caseItem.createdAt)
+    case "Month":           return isThisMonth(caseItem.createdAt)
+    case "Active":          return caseItem.status !== "COMPLETE"
+    case "Drafts":          return caseItem.status === "DRAFT"
+    case "Awaiting Postop": return caseItem.status !== "COMPLETE" && caseItem.intraop?.endTime != null
+    case "Complete":        return caseItem.status === "COMPLETE"
+    case "Handovers":       return false
+    default:                return true
+  }
+}

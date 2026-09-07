@@ -43,3 +43,11 @@ export async function submitCaseForReview(id: string): Promise<SubmitForReviewRe
   }
   return { ok: false, reason: "unreachable" }
 }
+
+/**
+ * What to tell the clinician about a refusal. Here rather than at the call site
+ * so the two reasons stay beside the code that distinguishes them.
+ */
+export function submitForReviewMessage(result: SubmitForReviewResult & { ok: false }): "submitForReviewBlocked" | "submitForReviewUnreachable" {
+  return result.reason === "blocked" ? "submitForReviewBlocked" : "submitForReviewUnreachable"
+}
