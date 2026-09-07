@@ -183,18 +183,11 @@ export default function IntraopLiveScreen() {
   const [slotTs, setSlotTs]           = useState<Date | null>(null)
   const [slotEventSearch, setSlotEventSearch] = useState("")
   const [slotCompExpanded, setSlotCompExpanded] = useState(false)
-  // Save status lives in a store, not in this component's state. Every
-  // autosave moves it at least twice, and this screen carries every tab under
-  // it, so holding it here re-rendered the whole thing -- header, tab rail,
-  // timetable -- for a change only the badge can see. The setters below have a
-  // fixed identity, so the hooks that take them do not re-run either.
-  const {
-    store: syncStatusStore,
-    setSyncState,
-    setPendingCount,
-    setLastSavedAt,
-    setSyncErrorMessage,
-  } = useIntraopSyncStatusStore()
+  // In a store, not this component's state: every autosave moves it twice, and
+  // holding it here re-rendered the whole screen for what only a badge shows.
+  // See intraop-sync-status.ts. The setters keep a fixed identity.
+  const { store: syncStatusStore, setSyncState, setPendingCount, setLastSavedAt, setSyncErrorMessage }
+    = useIntraopSyncStatusStore()
   // Tracks concurrent in-flight section saves so case refresh does not reset
   // user-selected state while a save is still outstanding.
   const pendingSaveCountRef = useRef(0)
