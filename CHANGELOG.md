@@ -1,5 +1,20 @@
 # Changelog - LOSPOR Mobile
 
+## [9.9.1] - 2026-09-07
+
+### Fixed
+
+- **`npm audit fix`**: resolved the `@xmldom/xmldom` XML fragment injection
+  advisory (transitive, via `plist`). The remaining 7 advisories
+  (`decode-uri-component` via `expo-router`'s `query-string`, `image-size`
+  via `metro`) only resolve through `--force`, which would downgrade
+  `expo-router` to 5.1.11 — a breaking regression on Expo SDK 56 — and
+  `image-size` is a Metro build-time dependency, not code shipped in the app
+  bundle. Left alone.
+- **Depends on Core 9.9.1** (unused-import cleanup, no behavioral change).
+- `LOSPOR_MOBILE_CLIENT_VERSION`, `package.json`, and `app.json` bumped to
+  9.9.1.
+
 ## [9.9.0] - 2026-09-07
 
 ### Added
