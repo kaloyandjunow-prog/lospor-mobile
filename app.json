@@ -2,7 +2,7 @@
   "expo": {
     "name": "LOSPOR",
     "slug": "lospor-mobile",
-    "version": "9.9.1",
+    "version": "9.9.2",
     "scheme": "lospor",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -49,8 +49,14 @@
         "expo-localization",
         {
           "supportedLocales": {
-            "ios": ["bg", "en"],
-            "android": ["bg", "en"]
+            "ios": [
+              "bg",
+              "en"
+            ],
+            "android": [
+              "bg",
+              "en"
+            ]
           }
         }
       ],

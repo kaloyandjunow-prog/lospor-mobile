@@ -16,12 +16,17 @@
 // afterwards. That failure shows nothing: no splash, no error, a black screen,
 // and it survives clearing cookies because Cache Storage is not cookies.
 const BUILD_ID = "__BUILD_ID__"
+// Where this app is served from: "" at a site root, "/app" on the Hospital
+// appliance. Stamped by patch-pwa.mjs from app.json experiments.baseUrl, because
+// a worker scoped to /app/ sees /app/... pathnames and every absolute path below
+// would otherwise never match.
+const BASE = "__BASE__"
 const CACHE = `lospor-shell-${BUILD_ID}`
 const STATIC_CACHE = `lospor-static-${BUILD_ID}`
 
 self.addEventListener("install", e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(["/", "/index.html"]))
+    caches.open(CACHE).then(c => c.addAll([`${BASE}/`, `${BASE}/index.html`]))
   )
   self.skipWaiting()
 })
@@ -94,7 +99,7 @@ self.addEventListener("fetch", e => {
   const url = new URL(e.request.url)
 
   // Never intercept API calls — clinical data must always come from the server
-  if (url.pathname.startsWith("/api/")) return
+  if (url.pathname.startsWith(`${BASE}/api/`) || url.pathname.startsWith("/api/")) return
 
   // Nor a request the diagnostics page marks, which needs to weigh what this
   // device holds against what the server sends. A controlled page cannot reach
@@ -106,8 +111,8 @@ self.addEventListener("fetch", e => {
   // Cache-first for hashed static bundles (JS, CSS, fonts, images)
   // These filenames change on every build so stale entries are never served
   if (
-    url.pathname.startsWith("/_expo/static/") ||
-    url.pathname.startsWith("/assets/")
+    url.pathname.startsWith(`${BASE}/_expo/static/`) ||
+    url.pathname.startsWith(`${BASE}/assets/`)
   ) {
     e.respondWith(serveStatic(e))
     return
@@ -116,7 +121,7 @@ self.addEventListener("fetch", e => {
   // Navigation requests (HTML): network-first, cached shell as offline fallback
   if (e.request.mode === "navigate") {
     e.respondWith(
-      fetch(e.request).catch(() => caches.match("/index.html"))
+      fetch(e.request).catch(() => caches.match(`${BASE}/index.html`))
     )
   }
 })
@@ -129,7 +134,7 @@ self.addEventListener("notificationclick", e => {
       for (const client of list) {
         if ("focus" in client) return client.focus()
       }
-      if (self.clients.openWindow) return self.clients.openWindow("/")
+      if (self.clients.openWindow) return self.clients.openWindow(`${BASE}/`)
     })
   )
 })
