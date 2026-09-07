@@ -450,6 +450,10 @@ export const STRINGS = {
     editWindowClosesIn: "Edit window closes in",
     summaryBack: "← Summary",
 
+    // ── PendingCloseBanner ────────────────────────────────────────────────────
+    pendingCloseIn: "Case pending close — auto-closes in",
+    pendingCloseHint: "Review and correct any data before the case is closed.",
+
     // ── Postop form ───────────────────────────────────────────────────────────
     loadingRecovery: "Loading recovery",
     savedLocally: "Saved locally",
@@ -957,6 +961,10 @@ export const STRINGS = {
     // ── EditWindowBanner ──────────────────────────────────────────────────────
     editWindowClosesIn: "Прозорецът за редакция се затваря след",
     summaryBack: "← Резюме",
+
+    // ── PendingCloseBanner ────────────────────────────────────────────────────
+    pendingCloseIn: "Случаят ще се затвори автоматично след",
+    pendingCloseHint: "Прегледайте и коригирайте данните преди затварянето на случая.",
 
     // ── Postop form ───────────────────────────────────────────────────────────
     loadingRecovery: "Зареждане на събуждане",

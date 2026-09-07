@@ -1,5 +1,55 @@
 # Changelog - LOSPOR Mobile
 
+## [9.9.0] - 2026-09-07
+
+### Added
+
+- **Postop's "continue to summary" now calls `POST /api/cases/:id/submit-for-review`**
+  before returning to the case screen, matching the web app: reaching the case
+  summary is the clinician's deliberate "I'm done with postop" signal, not
+  whichever autosave happened to complete the last field. The case screen shows
+  a countdown banner (`PendingCloseBanner`, sharing `@lospor/core/case-close-window`
+  with web) whenever the server says the case is `AWAITING_REVIEW`, and silently
+  auto-finalizes when it expires with no confirmation dialog — the countdown
+  itself was already the warning.
+- Dashboard stat tiles, filter counts, and "Load more" now read the server's
+  true, whole-accessible-set figures via `/api/cases?take=200`, not values
+  derived from whatever 50-case page happened to load by default. A "Load more"
+  control fetches the next 200-row page in the server's own priority order.
+
+### Fixed
+
+- Case rows and the dashboard's Delete/Handover menu route by `caseIsWritable`
+  (from core), not case status alone — a case handed to someone else, or an
+  older response with no `capabilities`, is now read-only rather than showing
+  actions the server was always going to refuse.
+- The case-summary screen's Finalize/Unfinalize/Delete actions gained the same
+  `caseIsWritable` check, and Unfinalize additionally requires the undo window
+  still be open.
+- `preopReadyForAllocation` now also recognizes a precise days/months age
+  (`ageValue`+`ageUnit`), not only `ageYears` — an infant's age recorded that
+  way no longer reads as "not yet entered" on the dashboard.
+- Reopening postop no longer defaults an unassessed Aldrete component to `0`:
+  0 is a real, pathological score, not "not yet assessed" (`postop-aldrete-hydration`).
+- Reopening a preop draft via `?continue=<id>` now flushes any queued offline
+  patch before the GET that hydrates the form, so a patch still waiting for
+  the background flusher's next tick no longer gets silently overwritten by
+  the stale pre-edit snapshot the GET would otherwise return.
+- The preop autosave debounce no longer `JSON.stringify`s the entire ~106-field
+  form on every keystroke to decide whether a change was a discrete tap; only
+  boolean fields are compared, which is all that decision ever needed.
+
+### Changed
+
+- `LOSPOR_MOBILE_CLIENT_VERSION`, `package.json`, and `app.json` bumped to 9.9.0.
+- `@lospor/core` moved from a local `file:` link to `github:kaloyandjunow-prog/lospor-core#v9.9.0`.
+- Internal-only: `app/(app)/settings.tsx` and `AirwayTab.tsx` split into
+  smaller files under `src/components/settings/` and
+  `src/components/intraop/tabs/` respectively, and `app/(app)/index.tsx`
+  and `app/(app)/cases/[id].tsx` had pagination/finalize logic extracted into
+  `src/lib/use-dashboard-pagination.ts` and `src/lib/use-case-finalize.ts`, to
+  stay under this repo's per-file line budget. No behavior change.
+
 ## [9.8.0] - 2026-09-06
 
 ### Changed

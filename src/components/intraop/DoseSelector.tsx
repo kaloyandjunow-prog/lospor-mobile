@@ -4,6 +4,14 @@ import {
   administrationRouteLabel,
   normalizeAdministrationRoute,
 } from "@lospor/core/clinical-rule-vocabulary"
+import {
+  CONCENTRATION_PILL_PAGE_SIZE,
+  DOSE_PILL_PAGE_SIZE,
+  pageOfSelection,
+  presetConcentrations as corePresetConcentrations,
+  selectorPage,
+  selectorPageCount,
+} from "@lospor/core/selector-pagination"
 import { VitalStepper } from "@/components/VitalStepper"
 import { usePreferences } from "@/lib/preferences-context"
 import type { DrugFormulation } from "@/lib/intraop-log-event"
@@ -93,22 +101,34 @@ export function DoseSelector({
   const concentrationKey = concentrationOptions?.join("|") ?? ""
   const [presetPage, setPresetPage] = useState(0)
   const [concentrationPage, setConcentrationPage] = useState(0)
-  const presetPageCount = Math.max(1, Math.ceil((presets?.length ?? 0) / 5))
-  const concentrationPageCount = Math.max(1, Math.ceil((concentrationOptions?.length ?? 0) / 4))
+  // Paging comes from core, shared with web. This used to be derived inline
+  // with the page sizes as bare 5s and 4s, and answered "1 page" for an empty
+  // list where web answered "0" -- two screens paging the same clinical
+  // options must not be able to disagree about what is on screen.
+  const presetValues = presets ?? []
+  const concentrationValues = useMemo(
+    () => corePresetConcentrations(concentrationOptions),
+    [concentrationOptions],
+  )
+  const presetPageCount = selectorPageCount(presetValues.length, DOSE_PILL_PAGE_SIZE)
+  const concentrationPageCount = selectorPageCount(
+    concentrationValues.length,
+    CONCENTRATION_PILL_PAGE_SIZE,
+  )
 
   useEffect(() => {
-    const index = selectedPreset == null
-      ? -1
-      : presets?.findIndex(candidate => candidate === selectedPreset) ?? -1
-    setPresetPage(index >= 0 ? Math.floor(index / 5) : 0)
-  }, [presetKey, presets, selectedPreset])
+    setPresetPage(pageOfSelection(presetValues, DOSE_PILL_PAGE_SIZE, selectedPreset ?? null))
+    // presetKey stands in for the list's contents; presetValues is rebuilt each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presetKey, selectedPreset])
 
   useEffect(() => {
-    const index = concentration && customConcentration === undefined
-      ? concentrationOptions?.indexOf(concentration) ?? -1
-      : -1
-    setConcentrationPage(index >= 0 ? Math.floor(index / 4) : 0)
-  }, [concentration, concentrationKey, concentrationOptions, customConcentration])
+    const selected = concentration && customConcentration === undefined ? concentration : null
+    setConcentrationPage(
+      pageOfSelection(concentrationValues, CONCENTRATION_PILL_PAGE_SIZE, selected),
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [concentration, concentrationKey, customConcentration])
 
   const canonicalRoutes = useMemo(() => {
     const seen = new Set<string>()
@@ -121,16 +141,14 @@ export function DoseSelector({
     })
   }, [routes])
 
-  const visiblePresets = presets?.slice(
-    presetPage * 5,
-    presetPage * 5 + 5,
-  ) ?? []
-  const visibleConcentrations = concentrationOptions?.slice(
-    concentrationPage * 4,
-    concentrationPage * 4 + 4,
-  ) ?? []
+  const visiblePresets = selectorPage(presetValues, DOSE_PILL_PAGE_SIZE, presetPage)
+  const visibleConcentrations = selectorPage(
+    concentrationValues,
+    CONCENTRATION_PILL_PAGE_SIZE,
+    concentrationPage,
+  )
   const customConcentrationActive = customConcentration !== undefined
-  const showConcentration = !!concentrationUnit || (concentrationOptions?.length ?? 0) > 0
+  const showConcentration = !!concentrationUnit || concentrationValues.length > 0
 
   function formulationLabel(value: DrugFormulation): string {
     return value.charAt(0) + value.slice(1).toLowerCase()

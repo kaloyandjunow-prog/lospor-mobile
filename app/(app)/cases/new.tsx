@@ -22,15 +22,17 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Controller, useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { ApiError, apiFetch, apiJson } from "@/lib/api"
+import { ApiError, apiFetch } from "@/lib/api"
 import { autosaveManager } from "@/lib/autosave-manager"
 import { ensureSavedCaseForAi } from "@/lib/ensure-saved-case"
-import { deleteLocalCaseDraft, loadLocalCaseDraft, makeLocalCaseId, saveLocalCaseDraft } from "@/lib/local-case-store"
+import { deleteLocalCaseDraft, makeLocalCaseId, saveLocalCaseDraft } from "@/lib/local-case-store"
 import { buildPreopPayload } from "@/lib/preop-payload"
 import { preopFormSchema, type PreopFormData as FormData, type PreopFormInput as FormInput, type PreopSection } from "@/lib/preop-form-schema"
 import { buildPreopSectionItems } from "@/lib/preop-section-overview"
 import { localizedPreopSectionLabels } from "@/lib/preop-section-labels"
 import { valuesFromServerPreop, type ServerPreop } from "@/lib/preop-server-values"
+import { usePreopDraftLoader } from "@/lib/use-preop-draft-loader"
+import { autosaveDelayMs, isDiscreteTapChange } from "@/lib/preop-autosave-cadence"
 import { PREOP_REQUIRED_FIELD_SECTION, preopInvalidSubmitMessage } from "@/lib/preop-validation-navigation"
 import { postPreopServerCase } from "@/lib/preop-server-create"
 import { suggestASAFromTags } from "@/lib/preop-asa-suggestion"
@@ -56,6 +58,7 @@ import { localizedPreopValidationMessage } from "@/lib/preop-validation-messages
 import { useOptionLibrary, useRangeSpec } from "@/lib/use-option-library"
 import { resolveIdealBodyWeight } from "@lospor/core/ideal-body-weight"
 import { calcApfel, calcRCRI, calcStopBang } from "@lospor/core/scores"
+import { canProgressAfterSave } from "@lospor/core/save-progression"
 import { displayOption } from "@/lib/clinical-display"
 import type { BlockedSaveIssue } from "@lospor/core/sync"
 import { blockedSaveMessage } from "@/lib/blocked-save-message"
@@ -404,67 +407,27 @@ export default function NewCaseScreen() {
     return ok
   }, [tc])
 
-  // Load existing case when ?continue=<id> is in the URL
-  useEffect(() => {
-    if (!continueId) return
-    caseIdRef.current = continueId
-    setCaseId(continueId)
-    // Flush any queued-but-unsent preop patch for this case before fetching —
-    // otherwise a patch queued from a previous offline autosave sits unsent
-    // until the periodic background flusher's next tick (up to 15s), and the
-    // GET below would silently reset the form to that stale pre-edit
-    // snapshot in the meantime, discarding the queued edit.
-    autosaveManager.flushCase(continueId).catch(() => {}).then(() => Promise.all([
-      apiJson<{ clinicalMode?: "ADULT" | "PEDIATRIC"; preop?: ServerPreop; finalizedAt?: string | null; status?: string }>(`/api/cases/${continueId}`),
-      autosaveManager.outbox.load<Record<string, unknown>>(continueId, "preop").catch(() => null),
-    ]))
-      .then(([caseData, queuedPreop]) => {
-        const p = caseData.preop ?? {}
-        const loadedValues = valuesFromServerPreop({ ...p, ...(queuedPreop ?? {}) }, caseData.clinicalMode) as FormInput
-        autosaveManager.hydrateSection(
-          continueId,
-          "preop",
-          buildPreopPayload(valuesFromServerPreop(p, caseData.clinicalMode) as FormInput),
-          p.syncRevision ?? p.updatedAt ?? null,
-        )
-        reset(loadedValues)
-        setPersistedPediatricRecord(
-          (caseData.clinicalMode ?? loadedValues.clinicalMode) === "PEDIATRIC",
-        )
-        const managerState = autosaveManager.getState(continueId)
-        if (managerState.status === "blocked" && managerState.blocked) {
-          setBlockedIssue(managerState.blocked)
-          setSaveError(blockedMessage(managerState.blocked))
-          setDraftState("blocked")
-        }
-        setPreopFinalizedAt(caseData.finalizedAt ?? null)
-        setPreopCaseStatus(caseData.status ?? null)
-        void clearLocalDraft()
-      })
-      .catch(async (err: Error) => {
-        if (err instanceof ApiError && err.status === 404) {
-          caseIdRef.current = null
-          setCaseId(null)
-          setPersistedPediatricRecord(false)
-          notify(tc("errorLabel"), tc("draftNoLongerExists"))
-          router.replace("/(app)")
-          return
-        }
-        notify(tc("errorLabel"), tc("caseLoadFailed"))
-      })
-
-  }, [blockedMessage, clearLocalDraft, continueId, reset, router, tc])
-
-  // Restore local draft silently when opened from the dashboard via ?localId=
-  useEffect(() => {
-    if (continueId || !localIdParam) return
-    loadLocalCaseDraft(localIdParam).then(draft => {
-      if (!draft) return
-      reset(draft.formValues as FormInput)
-      setDraftState("queued")
-    })
-
-  }, [continueId, localIdParam, reset])
+  // Reopening a case, by either route in. See @/lib/use-preop-draft-loader --
+  // including why a queued patch is flushed before the GET.
+  usePreopDraftLoader<FormInput>({
+    continueId,
+    localIdParam,
+    valuesFromServerPreop: (preop, mode) =>
+      valuesFromServerPreop(preop as ServerPreop, mode) as FormInput,
+    buildPreopPayload,
+    blockedMessage,
+    clearLocalDraft,
+    reset,
+    caseIdRef,
+    setCaseId,
+    setPersistedPediatricRecord,
+    setBlockedIssue,
+    setSaveError,
+    setDraftState,
+    setPreopFinalizedAt,
+    setPreopCaseStatus,
+    tc,
+  })
 
   // useWatch triggers a React re-render on every field change — works on both native and web.
   // (watch(callback) subscription doesn't fire reliably on Expo web builds.)
@@ -482,42 +445,11 @@ export default function NewCaseScreen() {
     // state is set inside `runAutosave`, when a save actually begins.
     if (autosaveDraftRef.current) clearTimeout(autosaveDraftRef.current)
 
-    // Classify this change: a toggle/pill tap saves quickly, typing waits.
-    //
-    // This used to `JSON.stringify` both sides of all 106 fields on every
-    // keystroke — over 200 serialisations per character, across an object graph
-    // that grows as diagnoses, procedures, medications and labs are added. The
-    // form therefore got measurably slower the more of it you filled in, which
-    // is the opposite of what a form should do.
-    //
-    // Only booleans can make a change "discrete", so only booleans need
-    // comparing, and they compare with `!==`. Everything else is irrelevant to
-    // the question being asked.
+    // A toggle/pill tap saves quickly, typing waits. The rule -- and why it is
+    // not a deep compare -- lives in @/lib/preop-autosave-cadence.
     const current = (_allFormValues ?? {}) as Record<string, unknown>
-    const prev = prevFormValuesRef.current
+    const discreteTap = isDiscreteTapChange(current, prevFormValuesRef.current)
     prevFormValuesRef.current = current
-    let discreteTap = false
-    if (prev) {
-      let changed = 0
-      let allBoolean = true
-      for (const key of Object.keys(current)) {
-        const now = current[key]
-        const before = prev[key]
-        const isBoolean = typeof now === "boolean" || typeof before === "boolean"
-        if (isBoolean) {
-          if (now !== before) changed += 1
-          continue
-        }
-        // Non-boolean fields: a reference change is enough to count as changed.
-        // react-hook-form hands back new references for edited values, and a
-        // false negative here only costs the slower debounce.
-        if (now !== before) {
-          changed += 1
-          allBoolean = false
-        }
-      }
-      discreteTap = changed > 0 && allBoolean
-    }
 
     function runAutosave() {
       setDraftState("saving")
@@ -598,7 +530,7 @@ export default function NewCaseScreen() {
     }
 
     flushAutosaveRef.current = runAutosave
-    autosaveDraftRef.current = setTimeout(runAutosave, discreteTap ? 300 : 2000)
+    autosaveDraftRef.current = setTimeout(runAutosave, autosaveDelayMs(discreteTap))
 
   }, [_allFormValues, blockedMessage, clearLocalDraft, getValues, persistLocalDraft, rejectedFieldsMessage, tc, tryCreateServerCase])
 
@@ -871,9 +803,10 @@ export default function NewCaseScreen() {
         const patchResult = await autosaveManager.saveSection(caseIdRef.current, "preop", preopPayload, {
           fullPayload: preopPayload,
         })
-        if (patchResult.result === "saved") {
+        const decision = canProgressAfterSave(patchResult.result, { caseExistedBeforeSave: true })
+        if (decision.canProgress) {
           id = caseIdRef.current
-        } else if (patchResult.result === "blocked" && patchResult.blocked) {
+        } else if (decision.reason === "blocked" && patchResult.blocked) {
           const message = blockedMessage(patchResult.blocked)
           setBlockedIssue(patchResult.blocked)
           setSaveError(message)
@@ -924,7 +857,7 @@ export default function NewCaseScreen() {
         { monthYear: monthYearForDate(new Date()) },
         { partial: true },
       )
-      if (transition.result !== "saved" && transition.result !== "queued") {
+      if (!canProgressAfterSave(transition.result, { caseExistedBeforeSave: true }).canProgress) {
         await persistLocalDraft(getValues())
         notify(
           tc("savePendingTitle"),
