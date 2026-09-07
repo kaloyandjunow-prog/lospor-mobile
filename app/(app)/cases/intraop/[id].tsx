@@ -35,6 +35,7 @@ import { useIntraopFluidStatus } from "@/lib/use-intraop-fluid-status"
 import { useCaseWeights } from "@/lib/use-case-weights"
 import { useIntraopAirwaySection } from "@/lib/use-intraop-airway-section"
 import { useIntraopSectionSaves } from "@/lib/use-intraop-section-saves"
+import { useIntraopSyncStatusStore } from "@/lib/intraop-sync-status"
 import { useIntraopComplicationState } from "@/lib/use-intraop-complication-state"
 import { useIntraopAutofillVitals } from "@/lib/use-intraop-autofill-vitals"
 import { useIntraopSectionPatch } from "@/lib/use-intraop-section-patch"
@@ -182,10 +183,18 @@ export default function IntraopLiveScreen() {
   const [slotTs, setSlotTs]           = useState<Date | null>(null)
   const [slotEventSearch, setSlotEventSearch] = useState("")
   const [slotCompExpanded, setSlotCompExpanded] = useState(false)
-  const [syncState, setSyncState] = useState<"saved" | "saving" | "failed" | "offline">("saved")
-  const [, setSyncErrorMessage] = useState<string | null>(null)
-  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
-  const [pendingCount, setPendingCount] = useState(0)
+  // Save status lives in a store, not in this component's state. Every
+  // autosave moves it at least twice, and this screen carries every tab under
+  // it, so holding it here re-rendered the whole thing -- header, tab rail,
+  // timetable -- for a change only the badge can see. The setters below have a
+  // fixed identity, so the hooks that take them do not re-run either.
+  const {
+    store: syncStatusStore,
+    setSyncState,
+    setPendingCount,
+    setLastSavedAt,
+    setSyncErrorMessage,
+  } = useIntraopSyncStatusStore()
   // Tracks concurrent in-flight section saves so case refresh does not reset
   // user-selected state while a save is still outstanding.
   const pendingSaveCountRef = useRef(0)
@@ -689,9 +698,7 @@ export default function IntraopLiveScreen() {
               setStartAtInput(formatHHMM(now))
               setStartAtOpen(true)
             },
-            syncState,
-            pendingCount,
-            lastSavedAt,
+            syncStatusStore,
             onRetrySync: retryPendingEvents,
             lastVitals,
           }}
