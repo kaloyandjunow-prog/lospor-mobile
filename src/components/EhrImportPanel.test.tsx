@@ -265,6 +265,27 @@ describe("nothing is written without a deliberate act", () => {
     expect(texts(tree)).toContain("30445-00 · Лапароскопска холецистектомия")
   })
 
+  it("shows an operation proposed for a hospital code, with the code the hospital sent", () => {
+    const { canonical } = normalizeEhrImport({ identifierType: "IZ", identifier: "42", fields: { procedures: [{
+      label: "Cholecystectomy", group: "Cholecystectomy", code: "0FT44ZZ", system: "ICD-10-PCS",
+      description: "Resection of Gallbladder, Percutaneous Endoscopic Approach",
+      imported: { code: "30445-00", system: "urn:bg:ksmp", sourceVocabulary: "KSMP", sourceLabel: "Лапароскопска холецистектомия" },
+    }] } })
+    const tree = render(
+      <EhrImportPanel
+        plan={buildEhrReviewPlan({ canonical, current: {} })}
+        current={{}}
+        labelFor={field => field}
+        onAccept={vi.fn()}
+        onDecline={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    )
+
+    expect(texts(tree)).toContain("Cholecystectomy: Resection of Gallbladder, Percutaneous Endoscopic Approach [0FT44ZZ]")
+    expect(texts(tree)).toContain("30445-00 · Лапароскопска холецистектомия")
+  })
+
   it("reports a refusal so it is never offered again", () => {
     const onDecline = vi.fn()
     const tree = panel({ diagnoses: [{ code: "K35", label: "Acute appendicitis" }] }, {}, { onDecline })
