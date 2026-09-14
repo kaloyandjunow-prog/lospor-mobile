@@ -4,6 +4,7 @@
 
 ### Added
 
+- **Premedication phases renamed.** "The day before" and "Morning before surgery" (Предишния ден / Сутринта преди операцията) replace evening and morning on the premedication tab and case detail. Each entry now exports as its coded drug.
 - **Exact planned operation.** Below the planned-procedure field, each chosen group offers its ICD-10-PCS operations, narrowed by typing ("лапароскопска" and "laparoscopic" both work), from `/api/search/procedures/codes`. Picking one stores the exact code, which is also its research code. An imported procedure shows the hospital's code and wording, lists the operations its code crosswalked to first, and keeps the hospital's code when an operation is picked. With no network the list comes from the copy of every ICD-10-PCS operation bundled in Core, loaded only then; the planned-procedure line on the record and printed sheet names the chosen operation. A procedure now keeps its system, group, section and provenance through the form instead of only its label and code.
 
 ## [9.9.5] - 2026-09-07
