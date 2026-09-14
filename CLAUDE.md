@@ -40,7 +40,7 @@
 - Weight wheel behavior is intentionally non-uniform: 0.5 kg increments only up to 20 kg, then whole-kilo increments after 20 kg.
 - Do not use the wheel for preop vitals. SBP, DBP, HR, SpO2, temperature, and respiratory rate use the mobile `VitalStepper` in `app/(app)/cases/new.tsx`: web-like `- / number / +`, hold-to-repeat buttons, thin slider, and custom keypad when the number is tapped.
 - Search fields use inline dropdown autocomplete via `src/components/SearchTagInput.tsx`, not full-screen modals/page sheets.
-- Procedure autocomplete displays the web endpoint shape like the web app: primary label is `group`; supporting text is `code · domain`. Do not switch it back to raw PCS `description` as the primary mobile label.
+- Procedure autocomplete displays the web endpoint shape like the web app: primary label is `group`; supporting text is the ICD-10-PCS section (`domain`). The example code is no longer shown or stored: the exact operation is a second choice in `ProcedureOperationPicker` (online, or from the bundled `@lospor/core/vocabulary/procedure-codes` offline). Do not switch it back to raw PCS `description` as the primary mobile label.
 - The preop Case details section no longer includes Surgeon, Anesthesiologist, or Anaesthesia nurse fields.
 - `src/components/LabScanPanel.tsx` adds mobile camera/gallery lab scanning through the existing web Mistral lab extraction API, with review-before-import.
 - Medication/search chips use stable keys to avoid duplicate-label warnings from drug search results.

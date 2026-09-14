@@ -5,6 +5,15 @@ import { describe, expect, it, vi } from "vitest"
 const { apiJsonMock } = vi.hoisted(() => ({ apiJsonMock: vi.fn() }))
 
 vi.mock("@/lib/api", () => ({ apiJson: apiJsonMock }))
+// Core tests the real 4 MB module; loading it here slowed every suite beside it.
+vi.mock("@lospor/core/vocabulary/procedure-codes", () => ({
+  procedureCodeRowsForGroup: (group: string) => group === "Cholecystectomy"
+    ? [
+        { code: "0FT40ZZ", group, domain: "Hepatobiliary and Pancreas Procedures", description: "Resection of Gallbladder, Open Approach" },
+        { code: "0FT44ZZ", group, domain: "Hepatobiliary and Pancreas Procedures", description: "Resection of Gallbladder, Percutaneous Endoscopic Approach" },
+      ]
+    : [],
+}))
 vi.mock("@/lib/preferences-context", () => ({
   usePreferences: () => ({ tc: (key: string) => key }),
 }))
@@ -66,13 +75,17 @@ describe("choosing the exact operation of a planned procedure", () => {
     }])
   })
 
-  it("keeps the group when the list cannot be loaded", async () => {
+  it("offers every operation from the device's copy when there is no network", async () => {
     apiJsonMock.mockRejectedValue(new Error("offline"))
     const onChange = vi.fn()
     const tree = render(<ProcedureOperationPicker value={[GROUP]} onChange={onChange} />)
     pressByText(tree, "procedureSpecifyExact")
     await settle()
-    expect(queryByText(tree, "procedureExactUnavailable")).not.toBeNull()
-    expect(onChange).not.toHaveBeenCalled()
+    expect(queryByText(tree, "procedureExactOffline")).not.toBeNull()
+
+    pressByText(tree, "Resection of Gallbladder, Percutaneous Endoscopic Approach")
+    expect(onChange).toHaveBeenCalledWith([expect.objectContaining({
+      code: "0FT44ZZ", system: "ICD-10-PCS", group: "Cholecystectomy", domain: "Hepatobiliary and Pancreas Procedures",
+    })])
   })
 })

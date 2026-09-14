@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native"
 import {
   exactProcedureTag,
+  filterProcedureCodes,
   isExactProcedure,
   procedureGroupOf,
   procedureGroupTag,
@@ -13,7 +14,23 @@ import { colors, withAlpha } from "@/theme/colors"
 
 type ProcedureItem = CanonicalSearchTag & { source?: "manual" | "ai-scan" | "import" }
 type CodeRow = { code: string; description: string; domain: string | null }
-type CodeList = { total: number; codes: CodeRow[] }
+type CodeList = { total: number; codes: CodeRow[]; offline?: boolean }
+
+/** Mirrors the online endpoint's cap, so both lists behave alike. */
+const CODE_LIMIT = 200
+
+/** The same list from the bundled vocabulary, for when the network is gone. */
+async function offlineCodeList(group: string, query: string): Promise<CodeList> {
+  const { procedureCodeRowsForGroup } = await import("@lospor/core/vocabulary/procedure-codes")
+  const rows = procedureCodeRowsForGroup(group)
+  const domainByCode = new Map(rows.map(row => [row.code, row.domain]))
+  const codes = filterProcedureCodes(rows, group, query)
+  return {
+    total: codes.length,
+    codes: codes.slice(0, CODE_LIMIT).map(code => ({ ...code, domain: domainByCode.get(code.code) ?? null })),
+    offline: true,
+  }
+}
 
 type Props = {
   value: ProcedureItem[]
@@ -26,8 +43,8 @@ type Props = {
  * Mirrors the web form's picker. A group holds several operations --
  * laparoscopic or open, whole or partial -- and only the one actually planned
  * is a research code, so each chosen group offers its ICD-10-PCS operations,
- * narrowed by typing. The list needs the network; offline the group is kept
- * and the operation can be chosen later.
+ * narrowed by typing. With no network the list comes from the bundled copy of
+ * every ICD-10-PCS operation, loaded only then.
  */
 export function ProcedureOperationPicker({ value, onChange }: Props) {
   const { tc } = usePreferences()
@@ -113,7 +130,12 @@ function OperationList({ group, selected, onPick }: {
         const body = await apiJson<CodeList>(`/api/search/procedures/codes?${params}`)
         if (!cancelled) { setList(body); setFailed(false) }
       } catch {
-        if (!cancelled) setFailed(true)
+        try {
+          const body = await offlineCodeList(group, query)
+          if (!cancelled) { setList(body); setFailed(false) }
+        } catch {
+          if (!cancelled) setFailed(true)
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -136,6 +158,9 @@ function OperationList({ group, selected, onPick }: {
         <Text style={{ color: colors.warning, fontSize: 12, fontWeight: "800", backgroundColor: withAlpha(colors.warning, "1A"), padding: 8, borderRadius: 8 }}>
           {tc("procedureExactUnavailable")}
         </Text>
+      ) : null}
+      {list?.offline ? (
+        <Text style={{ color: colors.warning, fontSize: 11, fontWeight: "800" }}>{tc("procedureExactOffline")}</Text>
       ) : null}
       {!loading && list && list.total === 0 ? (
         <Text style={{ color: colors.textMuted, fontSize: 13 }}>{tc("procedureExactNone")}</Text>
