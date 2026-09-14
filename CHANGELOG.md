@@ -1,5 +1,11 @@
 # Changelog - LOSPOR Mobile
 
+## [Unreleased]
+
+### Added
+
+- **Exact planned operation.** Below the planned-procedure field, each chosen group offers its ICD-10-PCS operations, narrowed by typing ("лапароскопска" and "laparoscopic" both work), from `/api/search/procedures/codes`. Picking one stores the exact code, which is also its research code. The list needs a connection; offline the group is kept and the operation can be chosen later. A procedure now keeps its system, group, section and provenance through the form instead of only its label and code.
+
 ## [9.9.5] - 2026-09-07
 
 ### Changed
