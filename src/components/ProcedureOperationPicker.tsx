@@ -1,30 +1,32 @@
 import { useEffect, useState } from "react"
 import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native"
 import {
-  exactProcedureTag,
+  backToProcedureGroup,
+  chooseExactOperation,
   filterProcedureCodes,
+  importedProcedureOf,
   isExactProcedure,
   procedureGroupOf,
-  procedureGroupTag,
+  suggestedProcedureCodes,
 } from "@lospor/core/procedure-codes"
 import type { CanonicalSearchTag } from "@lospor/core/search"
 import { apiJson } from "@/lib/api"
 import { usePreferences } from "@/lib/preferences-context"
 import { colors, withAlpha } from "@/theme/colors"
 
-type ProcedureItem = CanonicalSearchTag & { source?: "manual" | "ai-scan" | "import" }
-type CodeRow = { code: string; description: string; domain: string | null }
+type ProcedureItem = CanonicalSearchTag & { source?: "manual" | "ai-scan" | "import"; [key: string]: unknown }
+type CodeRow = { code: string; description: string; domain: string | null; suggested?: boolean }
 type CodeList = { total: number; codes: CodeRow[]; offline?: boolean }
 
 /** Mirrors the online endpoint's cap, so both lists behave alike. */
 const CODE_LIMIT = 200
 
 /** The same list from the bundled vocabulary, for when the network is gone. */
-async function offlineCodeList(group: string, query: string): Promise<CodeList> {
+async function offlineCodeList(group: string, query: string, suggested: string[]): Promise<CodeList> {
   const { procedureCodeRowsForGroup } = await import("@lospor/core/vocabulary/procedure-codes")
   const rows = procedureCodeRowsForGroup(group)
   const domainByCode = new Map(rows.map(row => [row.code, row.domain]))
-  const codes = filterProcedureCodes(rows, group, query)
+  const codes = filterProcedureCodes(rows, group, query, suggested)
   return {
     total: codes.length,
     codes: codes.slice(0, CODE_LIMIT).map(code => ({ ...code, domain: domainByCode.get(code.code) ?? null })),
@@ -60,7 +62,7 @@ export function ProcedureOperationPicker({ value, onChange }: Props) {
         const group = procedureGroupOf(item)
         if (!group) return null
         const exact = isExactProcedure(item)
-        const source = item.source ? { source: item.source } : {}
+        const imported = importedProcedureOf(item)
         return (
           <View
             key={`${item.code || item.label}-${index}`}
@@ -70,6 +72,11 @@ export function ProcedureOperationPicker({ value, onChange }: Props) {
             <Text style={{ color: exact ? colors.textSecondary : colors.textMuted, fontSize: 13, marginTop: 2 }}>
               {exact ? `${item.code} · ${item.description ?? ""}` : tc("procedureNoExact")}
             </Text>
+            {imported ? (
+              <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
+                {`${tc("procedureFromHospital")}: ${[imported.code, imported.sourceLabel].filter(Boolean).join(" · ")}`}
+              </Text>
+            ) : null}
             <View style={{ flexDirection: "row", gap: 16, marginTop: 8 }}>
               <TouchableOpacity
                 accessibilityRole="button"
@@ -84,7 +91,7 @@ export function ProcedureOperationPicker({ value, onChange }: Props) {
                 <TouchableOpacity
                   accessibilityRole="button"
                   onPress={() => {
-                    replace(index, { ...procedureGroupTag({ group, domain: item.domain ?? "" }), ...source })
+                    replace(index, backToProcedureGroup(item) as ProcedureItem)
                     setOpenIndex(null)
                   }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -97,8 +104,9 @@ export function ProcedureOperationPicker({ value, onChange }: Props) {
               <OperationList
                 group={group}
                 selected={exact ? item.code : null}
+                suggested={suggestedProcedureCodes(item)}
                 onPick={row => {
-                  replace(index, { ...exactProcedureTag({ ...row, group, domain: row.domain ?? "" }), ...source })
+                  replace(index, chooseExactOperation(item, { ...row, group, domain: row.domain ?? "" }) as ProcedureItem)
                   setOpenIndex(null)
                 }}
               />
@@ -110,9 +118,10 @@ export function ProcedureOperationPicker({ value, onChange }: Props) {
   )
 }
 
-function OperationList({ group, selected, onPick }: {
+function OperationList({ group, selected, suggested, onPick }: {
   group: string
   selected: string | null
+  suggested: string[]
   onPick: (row: CodeRow) => void
 }) {
   const { tc } = usePreferences()
@@ -120,18 +129,19 @@ function OperationList({ group, selected, onPick }: {
   const [list, setList] = useState<CodeList | null>(null)
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
+  const suggestedKey = suggested.join(",")
 
   useEffect(() => {
     let cancelled = false
     const timer = setTimeout(async () => {
       setLoading(true)
       try {
-        const params = new URLSearchParams({ group, q: query })
+        const params = new URLSearchParams({ group, q: query, ...(suggestedKey ? { suggested: suggestedKey } : {}) })
         const body = await apiJson<CodeList>(`/api/search/procedures/codes?${params}`)
         if (!cancelled) { setList(body); setFailed(false) }
       } catch {
         try {
-          const body = await offlineCodeList(group, query)
+          const body = await offlineCodeList(group, query, suggestedKey ? suggestedKey.split(",") : [])
           if (!cancelled) { setList(body); setFailed(false) }
         } catch {
           if (!cancelled) setFailed(true)
@@ -141,7 +151,7 @@ function OperationList({ group, selected, onPick }: {
       }
     }, query ? 250 : 0)
     return () => { cancelled = true; clearTimeout(timer) }
-  }, [group, query])
+  }, [group, query, suggestedKey])
 
   return (
     <View style={{ marginTop: 10, gap: 8 }}>
@@ -187,7 +197,9 @@ function OperationList({ group, selected, onPick }: {
               }}
             >
               <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: "700" }}>{row.description}</Text>
-              <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>{row.code}</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
+                {row.code}{row.suggested ? ` · ${tc("procedureSuggested")}` : ""}
+              </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>

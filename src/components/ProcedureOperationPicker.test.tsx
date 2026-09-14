@@ -89,3 +89,30 @@ describe("choosing the exact operation of a planned procedure", () => {
     })])
   })
 })
+
+describe("an imported procedure", () => {
+  const IMPORTED = {
+    label: "Cholecystectomy", group: "Cholecystectomy", code: "30445-00", system: "urn:bg:ksmp", sourceVocabulary: "KSMP",
+    sourceLabel: "Лапароскопска холецистектомия", suggestedCodes: ["0FB44ZZ", "0FT44ZZ"], source: "import" as const,
+  }
+
+  it("asks for the operations its code crosswalked to first, and keeps the hospital's code when one is picked", async () => {
+    apiJsonMock.mockResolvedValue({
+      total: 1,
+      codes: [{ code: "0FT44ZZ", description: "Resection of Gallbladder, Percutaneous Endoscopic Approach", domain: "Hepatobiliary and Pancreas Procedures", suggested: true }],
+    })
+    const onChange = vi.fn()
+    const tree = render(<ProcedureOperationPicker value={[IMPORTED]} onChange={onChange} />)
+
+    expect(queryByText(tree, "procedureFromHospital: 30445-00 · Лапароскопска холецистектомия")).not.toBeNull()
+    pressByText(tree, "procedureSpecifyExact")
+    await settle()
+    expect(apiJsonMock).toHaveBeenLastCalledWith("/api/search/procedures/codes?group=Cholecystectomy&q=&suggested=0FB44ZZ%2C0FT44ZZ")
+
+    pressByText(tree, "Resection of Gallbladder, Percutaneous Endoscopic Approach")
+    expect(onChange).toHaveBeenCalledWith([expect.objectContaining({
+      code: "0FT44ZZ", system: "ICD-10-PCS", source: "import",
+      imported: { code: "30445-00", system: "urn:bg:ksmp", sourceVocabulary: "KSMP", sourceLabel: "Лапароскопска холецистектомия", suggestedCodes: ["0FB44ZZ", "0FT44ZZ"] },
+    })])
+  })
+})
