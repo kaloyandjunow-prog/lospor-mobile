@@ -14,6 +14,16 @@ import { expect, test } from "@playwright/test"
  * on a slow connection would do it repeatedly.
  */
 const POISON = async (page: import("@playwright/test").Page) => {
+  // The worker's own install handler now precaches every static asset itself
+  // (see sw.js's STATIC_PRECACHE), sequentially and after this page has
+  // already rendered. Poisoning before that finishes races it: the install
+  // loop reaches the same URL moments later and silently overwrites the
+  // corrupted entry with a good one, and the app then boots fine on the next
+  // load -- exactly as if nothing had ever poisoned it.
+  await page.evaluate(() => navigator.serviceWorker.ready)
+  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller)))
+    .toBe(true)
+
   const bundle = await page.evaluate(() =>
     [...document.querySelectorAll("script[src]")].map(s => (s as HTMLScriptElement).src)
       .find(s => s.includes("/_expo/static/js/")))
