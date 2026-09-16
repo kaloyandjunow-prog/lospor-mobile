@@ -1,7 +1,31 @@
+# ENGLISH BELOW
+
+# LOSPOR Mobile — български
+
+LOSPOR Mobile е клиничният клиент за Expo, React Native и Progressive Web App
+на периоперативната платформа LOSPOR. Това не е отделно „протоколно
+приложение“, а оптимизиран за мобилна работа интерфейс към версионирания
+LOSPOR API.
+
+Приложението поддържа бързо документиране край пациента, включително
+предоперативни, интраоперативни и следоперативни данни, работа при временна
+липса на връзка и последваща синхронизация. Клиничните записи трябва да се
+съхраняват през API; локалната опашка служи само за безопасно възстановяване и
+синхронизация.
+
+Публична PWA инсталация: [pwa.lospor.org](https://pwa.lospor.org)
+
+Инструкциите за разработка, конфигурация, Expo изграждане, офлайн поведение,
+лиценз и проверки са в английската версия по-долу.
+
+---
+
+# English
+
 # LOSPOR Mobile
 
-LOSPOR Mobile is the Expo and React Native client for the Large Open Source
-Perioperative Register.
+LOSPOR Mobile is the Expo, React Native, and Progressive Web App clinician
+client for the LOSPOR perioperative platform.
 
 Copyright (C) 2026 Kaloyan Dzhunov.
 
