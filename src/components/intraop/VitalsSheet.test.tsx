@@ -1,4 +1,4 @@
-import { createRef } from "react"
+import { createRef, type ComponentProps } from "react"
 import { TextInput } from "react-native"
 import { describe, expect, it, vi } from "vitest"
 
@@ -16,11 +16,11 @@ import { VitalsSheet } from "./VitalsSheet"
 
 const inputRef = () => createRef<TextInput>()
 
-function props() {
+function props(): ComponentProps<typeof VitalsSheet> {
   return {
     visible: true,
     title: "Vitals",
-    mode: "full" as const,
+    mode: "full",
     scanBusy: false,
     showEtco2: true,
     showTemperature: true,
@@ -86,5 +86,29 @@ describe("VitalsSheet validation feedback", () => {
     expect(getByText(tree, "Unusually high systolic pressure (>300 mmHg). Verify the reading.")).toBeTruthy()
     pressByText(tree, "Save vitals")
     expect(sheetProps.onConfirm).toHaveBeenCalledOnce()
+  })
+
+  it("reveals a hidden hard-invalid field in BP mode so Save explains why it is blocked", () => {
+    const sheetProps = props()
+    sheetProps.mode = "bp"
+    sheetProps.showEtco2 = false
+    sheetProps.etco2 = "-1"
+    sheetProps.feedback = { errors: { etco2: "below_min" }, warnings: {}, hasHardErrors: true }
+    const tree = renderWithPreferences(<VitalsSheet {...sheetProps} />)
+
+    expect(getByText(tree, "Enter a number of 0 or greater.")).toBeTruthy()
+    expect(getByText(tree, "EtCO₂")).toBeTruthy()
+    pressByText(tree, "Save vitals")
+    expect(sheetProps.onConfirm).not.toHaveBeenCalled()
+  })
+
+  it("reveals an invalid monitor field even when that monitor is not selected", () => {
+    const sheetProps = props()
+    sheetProps.showBis = false
+    sheetProps.bis = "101"
+    sheetProps.feedback = { errors: { bis: "above_max" }, warnings: {}, hasHardErrors: true }
+    const tree = renderWithPreferences(<VitalsSheet {...sheetProps} />)
+
+    expect(getByText(tree, "BIS must be a whole number from 0 to 100.")).toBeTruthy()
   })
 })

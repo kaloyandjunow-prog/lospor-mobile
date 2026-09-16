@@ -130,6 +130,18 @@ export function VitalsSheet({
       </Text>
     ) : null
   }
+  const hasExtendedHardError = !!(
+    feedback.errors.spO2
+    || feedback.errors.etco2
+    || feedback.errors.temp
+    || feedback.errors.bis
+    || feedback.errors.tofRatio
+    || feedback.errors.cvp
+  )
+  // BP-only entry and monitoring visibility must never hide the field that is
+  // blocking Save. Reveal the extended section only while it has an error, so
+  // the clinician can see and correct the exact value without changing setup.
+  const showExtendedFields = mode === "full" || hasExtendedHardError
   return (
     <Sheet visible={visible} onClose={onClose} title={title} full>
       {clinicalAi.monitorOcr.enabled ? (
@@ -192,7 +204,7 @@ export function VitalsSheet({
         </View>
       </View>
 
-      {mode === "full" && (
+      {showExtendedFields && (
         <>
           <View style={{ flexDirection:"row", gap:10, marginBottom:14 }}>
             <View style={{ flex:1, minWidth:0 }}>
@@ -229,7 +241,7 @@ export function VitalsSheet({
             </View>
           </View>
 
-          {showEtco2 && (
+          {(showEtco2 || feedback.errors.etco2) && (
             <View style={{ flexDirection:"row", gap:10, marginBottom:14 }}>
               <View style={{ flex:1, minWidth:0 }}>
                 <Text style={{ color:"#f59e0b", fontSize:11, fontWeight:"700", marginBottom:6 }}>EtCO₂</Text>
@@ -253,7 +265,7 @@ export function VitalsSheet({
             </View>
           )}
 
-          {showTemperature && (
+          {(showTemperature || feedback.errors.temp) && (
             <View style={{ flexDirection:"row", gap:10, marginBottom:14 }}>
               <View style={{ flex:1, minWidth:0 }}>
                 <Text style={{ color:"#a78bfa", fontSize:11, fontWeight:"700", marginBottom:6 }}>{tc("vsTemp")}</Text>
@@ -277,7 +289,7 @@ export function VitalsSheet({
             </View>
           )}
 
-          {showBis && (
+          {(showBis || feedback.errors.bis) && (
             <View style={{ flexDirection:"row", gap:10, marginBottom:14 }}>
               <View style={{ flex:1, minWidth:0 }}>
                 <Text style={{ color:"#e879f9", fontSize:11, fontWeight:"700", marginBottom:6 }}>BIS</Text>
@@ -298,7 +310,7 @@ export function VitalsSheet({
             </View>
           )}
 
-          {showTofRatio && (
+          {(showTofRatio || feedback.errors.tofRatio) && (
             <View style={{ flexDirection:"row", gap:10, marginBottom:14 }}>
               <View style={{ flex:1, minWidth:0 }}>
                 <Text style={{ color:"#fb923c", fontSize:11, fontWeight:"700", marginBottom:6 }}>TOF</Text>
@@ -320,7 +332,7 @@ export function VitalsSheet({
             </View>
           )}
 
-          {showCvp && (
+          {(showCvp || feedback.errors.cvp) && (
             <View style={{ flexDirection:"row", gap:10, marginBottom:14 }}>
               <View style={{ flex:1, minWidth:0 }}>
                 <Text style={{ color:"#38bdf8", fontSize:11, fontWeight:"700", marginBottom:6 }}>CVP</Text>
@@ -345,7 +357,7 @@ export function VitalsSheet({
         </>
       )}
 
-      {mode === "bp" && (
+      {mode === "bp" && !showExtendedFields && (
         <View style={{ flexDirection:"row", gap:10, marginBottom:18 }}>
           <View style={{ flex:1 }}>
             <Text style={{ color:"#22c55e", fontSize:11, fontWeight:"700", marginBottom:6 }}>{tc("vsHeartRate")}</Text>
