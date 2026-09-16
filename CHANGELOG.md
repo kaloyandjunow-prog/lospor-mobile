@@ -1,5 +1,18 @@
 # Changelog - LOSPOR Mobile
 
+## [9.10.2] - 2026-09-16
+
+### Fixed
+
+- **Intraoperative vital edits stay atomic, visible and recoverable.** Device-
+  scale errors are shown before submission, hidden invalid scan fields become
+  visible for correction, warning-range clinical extremes remain saveable,
+  edits preserve the original event ID, and partial BIS/TOF/CVP observations
+  no longer erase the previous BP/HR display.
+- **Offline vocabulary tests are stable under release-runner load.** The real
+  generated ICD-10 dataset is warmed under an explicit cold-load boundary so
+  functional search assertions retain their normal, strict timeouts.
+
 ## [9.10.0] - 2026-09-15
 
 ### Added
