@@ -5,6 +5,8 @@ import { Sheet } from "./Sheet"
 import { usePreferences } from "@/lib/preferences-context"
 import { formatMessage } from "@/i18n/locale"
 import { capabilityMessageKey, useClinicalAiCapabilities } from "@/lib/deployment-capabilities"
+import type { IntraopVitalKey } from "@lospor/core/intraop-vitals"
+import type { VitalEntryFeedback } from "@/lib/intraop-vital-entry"
 
 type Props = {
   visible: boolean
@@ -37,6 +39,7 @@ type Props = {
   bis: string
   tofRatio: string
   cvp: string
+  feedback: VitalEntryFeedback
   onClose: () => void
   onScan: () => void
   onSystolicChange: (value: string) => void
@@ -82,6 +85,7 @@ export function VitalsSheet({
   bis,
   tofRatio,
   cvp,
+  feedback,
   onClose,
   onScan,
   onSystolicChange,
@@ -97,6 +101,35 @@ export function VitalsSheet({
 }: Props) {
   const { tc } = usePreferences()
   const clinicalAi = useClinicalAiCapabilities()
+  function feedbackText(field: IntraopVitalKey): { text: string; error: boolean } | null {
+    if (feedback.errors[field]) {
+      const text = field === "bis" ? tc("vsErrorBis")
+        : field === "tofRatio" ? tc("vsErrorTofRatio")
+        : field === "spO2" ? tc("vsErrorSpo2")
+        : field === "systolic" || field === "diastolic" || field === "heartRate"
+          ? tc("vsErrorWholeNonnegative")
+          : field === "etco2" ? tc("vsErrorNonnegative")
+          : tc("vsErrorNumber")
+      return { text, error: true }
+    }
+    const warning = feedback.warnings[field]
+    if (!warning) return null
+    const text = field === "systolic" ? tc("vsWarningSysHigh")
+      : field === "diastolic" ? tc("vsWarningDiaHigh")
+      : field === "heartRate" && warning === "low" ? tc("vsWarningHeartLow")
+      : field === "heartRate" ? tc("vsWarningHeartHigh")
+      : field === "temp" && warning === "low" ? tc("vsWarningTempLow")
+      : tc("vsWarningTempHigh")
+    return { text, error: false }
+  }
+  function renderFeedback(field: IntraopVitalKey) {
+    const message = feedbackText(field)
+    return message ? (
+      <Text style={{ color: message.error ? "#f87171" : "#f59e0b", fontSize:10, marginTop:6, lineHeight:14 }}>
+        {message.text}
+      </Text>
+    ) : null
+  }
   return (
     <Sheet visible={visible} onClose={onClose} title={title} full>
       {clinicalAi.monitorOcr.enabled ? (
@@ -125,32 +158,38 @@ export function VitalsSheet({
       )}
       <Text style={{ color:"#ef4444", fontSize:11, fontWeight:"700", letterSpacing:1,
         textTransform:"uppercase", marginBottom:8 }}>{tc("vsBloodPressure")}</Text>
-      <View style={{ flexDirection:"row", gap:10, marginBottom:18 }}>
-        <TextInput
-          style={{ flex:1, minWidth:0, backgroundColor:"#111111", color:"#ef4444", borderRadius:12,
-            padding: Platform.OS === "web" ? 10 : 14,
-            fontSize: Platform.OS === "web" ? 20 : 30,
-            fontWeight:"700", borderWidth:1, borderColor:"#ef444444", textAlign:"center" }}
-          placeholder={tc("vsSys")}
-          placeholderTextColor="#3e3e3e"
-          ref={sysRef}
-          keyboardType="number-pad"
-          value={systolic}
-          onChangeText={onSystolicChange}
-        />
+      <View style={{ flexDirection:"row", gap:10, marginBottom:18, alignItems:"flex-start" }}>
+        <View style={{ flex:1, minWidth:0 }}>
+          <TextInput
+            style={{ backgroundColor:"#111111", color:"#ef4444", borderRadius:12,
+              padding: Platform.OS === "web" ? 10 : 14,
+              fontSize: Platform.OS === "web" ? 20 : 30,
+              fontWeight:"700", borderWidth:1, borderColor:feedback.errors.systolic ? "#f87171" : "#ef444444", textAlign:"center" }}
+            placeholder={tc("vsSys")}
+            placeholderTextColor="#3e3e3e"
+            ref={sysRef}
+            keyboardType="number-pad"
+            value={systolic}
+            onChangeText={onSystolicChange}
+          />
+          {renderFeedback("systolic")}
+        </View>
         <Text style={{ color:"#475569", fontSize: Platform.OS === "web" ? 20 : 28, alignSelf:"center", fontWeight:"200" }}>/</Text>
-        <TextInput
-          style={{ flex:1, minWidth:0, backgroundColor:"#111111", color:"#f87171", borderRadius:12,
-            padding: Platform.OS === "web" ? 10 : 14,
-            fontSize: Platform.OS === "web" ? 20 : 30,
-            fontWeight:"700", borderWidth:1, borderColor:"#ef444433", textAlign:"center" }}
-          placeholder={tc("vsDia")}
-          placeholderTextColor="#3e3e3e"
-          ref={diaRef}
-          keyboardType="number-pad"
-          value={diastolic}
-          onChangeText={onDiastolicChange}
-        />
+        <View style={{ flex:1, minWidth:0 }}>
+          <TextInput
+            style={{ backgroundColor:"#111111", color:"#f87171", borderRadius:12,
+              padding: Platform.OS === "web" ? 10 : 14,
+              fontSize: Platform.OS === "web" ? 20 : 30,
+              fontWeight:"700", borderWidth:1, borderColor:feedback.errors.diastolic ? "#f87171" : "#ef444433", textAlign:"center" }}
+            placeholder={tc("vsDia")}
+            placeholderTextColor="#3e3e3e"
+            ref={diaRef}
+            keyboardType="number-pad"
+            value={diastolic}
+            onChangeText={onDiastolicChange}
+          />
+          {renderFeedback("diastolic")}
+        </View>
       </View>
 
       {mode === "full" && (
@@ -170,6 +209,7 @@ export function VitalsSheet({
                 value={heartRate}
                 onChangeText={onHeartRateChange}
               />
+              {renderFeedback("heartRate")}
             </View>
             <View style={{ flex:1, minWidth:0 }}>
               <Text style={{ color:"#06b6d4", fontSize:11, fontWeight:"700", marginBottom:6 }}>SpO₂ %</Text>
@@ -185,6 +225,7 @@ export function VitalsSheet({
                 value={spo2}
                 onChangeText={onSpo2Change}
               />
+              {renderFeedback("spO2")}
             </View>
           </View>
 
@@ -207,6 +248,7 @@ export function VitalsSheet({
                 <Text style={{ color:"#64748b", fontSize:10, marginTop:6 }}>
                   {formatMessage(tc("vsCurrentUnit"), { unit: etco2Unit })}
                 </Text>
+                {renderFeedback("etco2")}
               </View>
             </View>
           )}
@@ -230,6 +272,7 @@ export function VitalsSheet({
                 <Text style={{ color:"#64748b", fontSize:10, marginTop:6 }}>
                   {formatMessage(tc("vsCurrentUnit"), { unit: `°${temperatureUnit}` })}
                 </Text>
+                {renderFeedback("temp")}
               </View>
             </View>
           )}
@@ -250,6 +293,7 @@ export function VitalsSheet({
                   value={bis}
                   onChangeText={onBisChange}
                 />
+                {renderFeedback("bis")}
               </View>
             </View>
           )}
@@ -270,7 +314,8 @@ export function VitalsSheet({
                   value={tofRatio}
                   onChangeText={onTofRatioChange}
                 />
-                <Text style={{ color:"#64748b", fontSize:10, marginTop:6 }}>{tc("tofRatioLabel")}</Text>
+                <Text style={{ color:"#64748b", fontSize:10, marginTop:6 }}>{tc("vsTofRatioHint")}</Text>
+                {renderFeedback("tofRatio")}
               </View>
             </View>
           )}
@@ -292,6 +337,7 @@ export function VitalsSheet({
                   onChangeText={onCvpChange}
                 />
                 <Text style={{ color:"#64748b", fontSize:10, marginTop:6 }}>{formatMessage(tc("vsCurrentUnit"), { unit: cvpUnit })}</Text>
+                {renderFeedback("cvp")}
               </View>
             </View>
           )}
@@ -315,14 +361,16 @@ export function VitalsSheet({
               value={heartRate}
               onChangeText={onHeartRateChange}
             />
+            {renderFeedback("heartRate")}
           </View>
         </View>
       )}
 
-      <FeedbackPressable onPress={onConfirm}
-        style={{ backgroundColor:"#0f2a1a", borderRadius:14, padding:18, alignItems:"center",
-          borderWidth:1, borderColor:"#22c55e" }}>
-        <Text style={{ color:"#86efac", fontSize:16, fontWeight:"700" }}>{tc("vsSaveVitals")}</Text>
+      <FeedbackPressable onPress={onConfirm} disabled={feedback.hasHardErrors}
+        accessibilityState={{ disabled: feedback.hasHardErrors }}
+        style={{ backgroundColor:feedback.hasHardErrors ? "#1e293b" : "#0f2a1a", borderRadius:14, padding:18, alignItems:"center",
+          borderWidth:1, borderColor:feedback.hasHardErrors ? "#475569" : "#22c55e" }}>
+        <Text style={{ color:feedback.hasHardErrors ? "#64748b" : "#86efac", fontSize:16, fontWeight:"700" }}>{tc("vsSaveVitals")}</Text>
       </FeedbackPressable>
     </Sheet>
   )
