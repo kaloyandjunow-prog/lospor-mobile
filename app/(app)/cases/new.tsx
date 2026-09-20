@@ -369,9 +369,8 @@ export default function NewCaseScreen() {
       caseIdRef.current ?? undefined,
     )
     // Set on failure and cleared on success: this banner is state, not a log.
-    // Leaving a previous failure on screen after the draft has since been
-    // written tells the clinician their work is unsaved when it is saved --
-    // the one thing this message exists to be trusted about.
+    // A failure left on screen after the draft has since been written tells
+    // the clinician their work is unsaved when it is saved.
     setSaveError(ok ? null : tc("storageDraftFailed"))
     return ok
   }, [tc])
