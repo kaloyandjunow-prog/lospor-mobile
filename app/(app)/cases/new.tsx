@@ -368,10 +368,10 @@ export default function NewCaseScreen() {
       values,
       caseIdRef.current ?? undefined,
     )
-    if (!ok) {
-      // Storage write failed — tell the user the draft is NOT saved
-      setSaveError(tc("storageDraftFailed"))
-    }
+    // Set on failure and cleared on success: this banner is state, not a log.
+    // A failure left on screen after the draft has since been written tells
+    // the clinician their work is unsaved when it is saved.
+    setSaveError(ok ? null : tc("storageDraftFailed"))
     return ok
   }, [tc])
 
