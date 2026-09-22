@@ -1,5 +1,13 @@
 # Changelog - LOSPOR Mobile
 
+## [9.10.6] - 2026-09-23
+
+### Changed
+
+- **Shared EHR import contract aligned with Core 9.10.3.** Mobile/PWA consumes
+  the coordinated API/Core release used by Hospital 1.4.6 for reviewable vital
+  and medication proposals. The client version remains aligned at 9.10.6.
+
 ## [9.10.3] - 2026-09-20
 
 ### Changed
