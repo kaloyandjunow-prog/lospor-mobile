@@ -76,7 +76,11 @@ export function PreopQuestionList({
           ? <SectionHeader title={groupLabel(question.section)} />
           : null
         if (depth === 0) previousGroup = question.section
-        const pending = suggestions.find(item => item.stableKey === question.stableKey)
+        // Offered only on an unanswered question: the clinician's own answer
+        // wins, and accepting would otherwise overwrite it on the next save.
+        const pending = state == null || state === "NOT_ASKED"
+          ? suggestions.find(item => item.stableKey === question.stableKey)
+          : undefined
         const answer = (next: PreopQuestionAnswer["state"] | null) =>
           onAnswer(question.stableKey, next
             ? { stableKey: question.stableKey, state: next, optionKey: next === "YES" || next === "NO" ? next : null }

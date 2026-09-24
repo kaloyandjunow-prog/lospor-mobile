@@ -89,3 +89,17 @@ describe("the anamnesis toggles follow the profile", () => {
     expect(withoutSmoking).toContain("\"latexAllergy\"")
   })
 })
+
+describe("suggestions from the record", () => {
+  const suggestion = [{ id: "s1", stableKey: "A12", proposedState: "YES" as const }]
+  const render2 = (states: Record<string, PreopAnswerState>) => JSON.stringify(render(
+    <PreopQuestionList profile={{ questions: [question("A12")] }} formSection="anamnesis" mode="ADULT"
+      states={new Map(Object.entries(states))} onAnswer={vi.fn()} suggestions={suggestion} onReviewSuggestion={vi.fn()} tc={tc as never} language="en" />,
+  ).toJSON())
+
+  it("are offered on an unanswered question and never over the clinician's own answer", () => {
+    expect(render2({})).toContain("preopSuggestionAccept")
+    expect(render2({ A12: "NOT_ASKED" })).toContain("preopSuggestionAccept")
+    expect(render2({ A12: "NO" })).not.toContain("preopSuggestionAccept")
+  })
+})
