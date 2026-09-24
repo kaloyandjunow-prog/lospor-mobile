@@ -23,7 +23,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Controller, useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ApiError, apiFetch } from "@/lib/api"
-import { autosaveManager } from "@/lib/autosave-manager"
+import { autosaveManager, isServerRefusal } from "@/lib/autosave-manager"
+import { usePreopProfile } from "@/lib/use-preop-profile"
+import type { PreopFormSection } from "@lospor/core/preop-assessment"
+import { fetchMissingRequiredPreop, missingRequiredPreopMessage } from "@/lib/preop-required"
+import { PreopQuestionList } from "@/components/preop/PreopQuestionList"
+import { PreopAnamnesisFields } from "@/components/preop/PreopAnamnesisFields"
 import { ensureSavedCaseForAi } from "@/lib/ensure-saved-case"
 import { deleteLocalCaseDraft, makeLocalCaseId, saveLocalCaseDraft } from "@/lib/local-case-store"
 import { buildPreopPayload } from "@/lib/preop-payload"
@@ -37,7 +42,7 @@ import { PREOP_REQUIRED_FIELD_SECTION, preopInvalidSubmitMessage } from "@/lib/p
 import { postPreopServerCase } from "@/lib/preop-server-create"
 import { suggestASAFromTags } from "@/lib/preop-asa-suggestion"
 import { monthYearForDate } from "@/lib/intraop-timing"
-import { ChecklistGroup, ChecklistRow, ClinicalSwitchRow, Field, PrimaryButton, SectionHeader, StyledInput } from "@/components/ui"
+import { ClinicalSwitchRow, Field, PrimaryButton, SectionHeader, StyledInput } from "@/components/ui"
 import { ClinicalYesNoRow } from "@/components/ClinicalYesNoRow"
 import { SearchTagInput } from "@/components/SearchTagInput"
 import { ProcedureOperationPicker } from "@/components/ProcedureOperationPicker"
@@ -400,6 +405,8 @@ export default function NewCaseScreen() {
   // useWatch triggers a React re-render on every field change — works on both native and web.
   // (watch(callback) subscription doesn't fire reliably on Expo web builds.)
   const _allFormValues = useWatch({ control })
+  const preopProfile = usePreopProfile({ caseId, pediatric: pediatricMode, values: _allFormValues as Record<string, unknown>, form: { getAnswers: () => getValues("preopAnswers") ?? [], setAnswers: answers => setValue("preopAnswers", answers, { shouldDirty: true }) } })
+  const questionList = (formSection: PreopFormSection) => <PreopQuestionList profile={preopProfile.profile} formSection={formSection} mode={preopProfile.mode} states={preopProfile.states} onAnswer={preopProfile.answerQuestion} suggestions={preopProfile.suggestions} onReviewSuggestion={preopProfile.reviewSuggestion} tc={tc} language={language} />
   // Previous snapshot so the effect can tell WHAT changed: a tap on a toggle/
   // pill (boolean value) saves near-instantly; typing keeps the long pause.
   const prevFormValuesRef = useRef<Record<string, unknown> | null>(null)
@@ -460,14 +467,11 @@ export default function NewCaseScreen() {
             setSaveError(blockedMessage(result.blocked))
             setDraftState("blocked")
           } else if (result.result === "queued" || result.result === "failed") {
-            const failure = result.failure
-            setSaveError(
-              failure?.kind === "http"
-                ? tc("caseSaveQueued")
-                : tc("caseSaveQueued"),
-            )
+            // Refused is not offline: never promise a 4xx "syncs when online".
+            const refused = isServerRefusal(result.failure)
+            setSaveError(tc(refused ? "caseSaveRefused" : "caseSaveQueued"))
             await persistLocalDraft(values)
-            setDraftState("queued")
+            setDraftState(refused ? "blocked" : "queued")
           } else {
             setDraftState("idle")
           }
@@ -819,6 +823,8 @@ export default function NewCaseScreen() {
           return
         }
       }
+      const missingRequired = await fetchMissingRequiredPreop(id)
+      if (missingRequired.length > 0) return void notify(tc("requiredFieldsMissing"), missingRequiredPreopMessage(missingRequired, language, tc("completeBeforeProceeding")))
       const transition = await autosaveManager.saveSection(
         id,
         "intraop",
@@ -1049,6 +1055,7 @@ export default function NewCaseScreen() {
               <Field label={tc("bloodGroup")}>
                 <BloodGrid bloodType={bloodType} rhFactor={rhFactor} onChange={(bt, rh) => { setValue("bloodType", bt); setValue("rhFactor", rh) }} />
               </Field>
+              {questionList("demographics")}
             </SectionCard>
 
             <SectionCard title={tc("sectionCaseDetails")} onLayout={(y) => { sectionY.current.case = y }} visible={showSection("case")}>
@@ -1061,7 +1068,7 @@ export default function NewCaseScreen() {
                   <ProcedureOperationPicker value={(field.value ?? []).map((item) => ({ ...item, code: item.code ?? item.label }))} onChange={(items) => field.onChange(items)} />
                 </>
               )} />
-              <Controller control={control} name="highRiskSurgery" render={({ field }) => <ClinicalSwitchRow label={tc("highRiskSurgery")} value={!!field.value} onValueChange={field.onChange} activeColor={colors.warning} />} />
+              {preopProfile.shownField("highRiskSurgery") ? <Controller control={control} name="highRiskSurgery" render={({ field }) => <ClinicalSwitchRow label={tc("highRiskSurgery")} value={!!field.value} onValueChange={field.onChange} activeColor={colors.warning} />} /> : null}
               <Controller control={control} name="emergencySurgery" render={({ field }) => (
                 <ClinicalSwitchRow label={field.value ? tc("emergencySurgery") : tc("electiveSurgery")} value={!!field.value}
                   onValueChange={(v) => { field.onChange(v); setValue("elective", !v) }} activeColor={colors.danger} />
@@ -1071,6 +1078,7 @@ export default function NewCaseScreen() {
                   <StyledInput value={field.value ?? ""} onChangeText={field.onChange} maxLength={500} multiline placeholder={tc("teamNotesPlaceholder")} />
                 )} />
               </Field>
+              {questionList("case_details")}
             </SectionCard>
 
             <SectionCard title={tc("sectionHistory")} subtitle={tc("historySubtitle")} onLayout={(y) => { sectionY.current.history = y }} visible={showSection("history")}>
@@ -1083,67 +1091,19 @@ export default function NewCaseScreen() {
                   />
                 </>
               )} />
+              {questionList("medical_history")}
             </SectionCard>
 
             <SectionCard title={tc("sectionMeds")} onLayout={(y) => { sectionY.current.meds = y }} visible={showSection("meds")}>
               <Controller control={control} name="currentMedications" render={({ field }) => (
                 <SearchTagInput kind="medication" label={tc("medicationSearch")} value={(field.value ?? []).map((item) => ({ code: item.atcCode ?? item.inn ?? item.label, label: item.label, inn: item.inn, atcCode: item.atcCode }))} onChange={(items) => field.onChange(items.map((item) => ({ label: item.label, inn: item.inn, atcCode: item.atcCode })))} endpoint="/api/search/drugs" placeholder={tc("searchMedications")} onFocus={() => scrollToSection("meds", 60)} error={blockedErrorFor("currentMedications")} />
               )} />
+              {questionList("current_medications")}
             </SectionCard>
 
             <SectionCard title={tc("sectionAnamnesis")} onLayout={(y) => { sectionY.current.anamnesis = y }} visible={showSection("anamnesis")}>
-              <Controller control={control} name="allergies" render={({ field }) => <ClinicalYesNoRow label={tc("drugAllergy")} value={field.value ?? null} onValueChange={(value) => {
-                field.onChange(value)
-                if (!value) setValue("allergyDetails", [], { shouldDirty: true })
-              }} activeColor={colors.danger} />} />
-              {allergies ? (
-                <Controller control={control} name="allergyDetails" render={({ field }) => (
-                  <SearchTagInput kind="medication" label={tc("allergenSearch")} value={(field.value ?? []).map((item) => ({ code: item.atcCode ?? item.inn ?? item.label, label: item.label, inn: item.inn, atcCode: item.atcCode }))} onChange={(items) => field.onChange(items.map((item) => ({ label: item.label, inn: item.inn, atcCode: item.atcCode })))} endpoint="/api/search/drugs" placeholder={tc("allergenSearchPlaceholder")} onFocus={() => scrollToSection("history", 200)} error={blockedErrorFor("allergyDetails")} />
-                )} />
-              ) : null}
-              <Controller control={control} name="latexAllergy" render={({ field }) => <ClinicalYesNoRow label={tc("latexAllergy")} value={field.value ?? null} onValueChange={field.onChange} activeColor={colors.danger} />} />
-              <Controller control={control} name="familyAnesthesiaProblems" render={({ field }) => <ClinicalYesNoRow label={tc("familyAnesthesia")} value={field.value ?? null} onValueChange={(value) => {
-                field.onChange(value)
-                if (!value) setValue("familyAnesthesiaDetails", "", { shouldDirty: true })
-              }} activeColor={colors.warning} />} />
-              {familyAnesthesiaProblems ? <Field label={tc("familyAnesthesiaDetails")} error={blockedErrorFor("familyAnesthesiaDetails")}><Controller control={control} name="familyAnesthesiaDetails" render={({ field }) => <StyledInput value={field.value ?? ""} onChangeText={field.onChange} maxLength={500} multiline placeholder={tc("familyAnesthesiaHint")} />} /></Field> : null}
-              <Controller control={control} name="unexplainedAnaesthesiaComplications" render={({ field }) => <ClinicalYesNoRow label={tc("unexplainedAnaesthesiaComplications")} value={field.value ?? null} onValueChange={field.onChange} activeColor={colors.danger} />} />
-              <Controller control={control} name="malignantHyperthermiaHistory" render={({ field }) => <ClinicalYesNoRow label={tc("malignantHyperthermiaHistory")} value={field.value ?? null} onValueChange={field.onChange} activeColor={colors.danger} />} />
-              <Controller control={control} name="dentalProsthetics" render={({ field }) => <ClinicalYesNoRow label={tc("dentalProsthetics")} value={field.value ?? null} onValueChange={field.onChange} />} />
-              <Controller control={control} name="looseTeeth" render={({ field }) => <ClinicalYesNoRow label={tc("looseTeeth")} value={field.value ?? null} onValueChange={field.onChange} activeColor={colors.warning} />} />
-              <Controller control={control} name="smoking" render={({ field }) => <ClinicalYesNoRow label={tc("smoking")} value={field.value ?? null} onValueChange={field.onChange} />} />
-              <Controller control={control} name="substanceAbuse" render={({ field }) => <ClinicalYesNoRow label={tc("substanceAbuse")} value={field.value ?? null} onValueChange={field.onChange} activeColor={colors.warning} />} />
-
-              {!pediatricMode ? <>
-              <SectionHeader title={tc("rcriSection")} />
-              <ChecklistGroup>
-                <Controller control={control} name="rcriIschemicHeart" render={({ field }) => <ChecklistRow label={tc("rcriIschemicHeart")} checked={!!field.value} onPress={() => field.onChange(!field.value)} hint={rcriSuggested.rcriIschemicHeart ? RCRI_HINT : undefined} />} />
-                <Controller control={control} name="rcriCHF" render={({ field }) => <ChecklistRow label={tc("rcriCHF")} checked={!!field.value} onPress={() => field.onChange(!field.value)} hint={rcriSuggested.rcriCHF ? RCRI_HINT : undefined} />} />
-                <Controller control={control} name="rcriCVD" render={({ field }) => <ChecklistRow label={tc("rcriCVD")} checked={!!field.value} onPress={() => field.onChange(!field.value)} hint={rcriSuggested.rcriCVD ? RCRI_HINT : undefined} />} />
-                <Controller control={control} name="rcriInsulinDM" render={({ field }) => <ChecklistRow label={tc("rcriInsulinDM")} checked={!!field.value} onPress={() => field.onChange(!field.value)} hint={rcriSuggested.rcriInsulinDM ? RCRI_HINT : undefined} />} />
-                <Controller control={control} name="rcriCreatinine" render={({ field }) => <ChecklistRow label={tc("rcriCreatinine")} checked={!!field.value} onPress={() => field.onChange(!field.value)} hint={rcriSuggested.rcriCreatinine ? RCRI_HINT : undefined} last />} />
-              </ChecklistGroup>
-
-              <SectionHeader title={tc("apfelSection")} />
-              <ChecklistGroup>
-                <ChecklistRow label={tc("apfelFemaleSex")} checked={sex === "FEMALE"} muted />
-                <ChecklistRow label={tc("apfelNonSmoker")} checked={!smoking} muted />
-                <Controller control={control} name="apfelPONVHistory" render={({ field }) => <ChecklistRow label={tc("apfelPONV")} checked={!!field.value} onPress={() => field.onChange(!field.value)} />} />
-                <Controller control={control} name="apfelPostopOpioids" render={({ field }) => <ChecklistRow label={tc("apfelOpioids")} checked={!!field.value} onPress={() => field.onChange(!field.value)} last />} />
-              </ChecklistGroup>
-
-              <SectionHeader title={tc("stopbangSection")} />
-              <ChecklistGroup>
-                <Controller control={control} name="stopbangSnoring" render={({ field }) => <ChecklistRow label={tc("stopbangSnoring")} checked={!!field.value} onPress={() => field.onChange(!field.value)} />} />
-                <Controller control={control} name="stopbangTired" render={({ field }) => <ChecklistRow label={tc("stopbangTired")} checked={!!field.value} onPress={() => field.onChange(!field.value)} />} />
-                <Controller control={control} name="stopbangObserved" render={({ field }) => <ChecklistRow label={tc("stopbangObserved")} checked={!!field.value} onPress={() => field.onChange(!field.value)} />} />
-                <Controller control={control} name="stopbangBP" render={({ field }) => <ChecklistRow label={tc("stopbangBP")} checked={!!field.value} onPress={() => field.onChange(!field.value)} hint={stopBangBPSuggested ? RCRI_HINT : undefined} />} />
-                <ChecklistRow label={`${tc("stopbangBMI")}: ${bmi ? bmi.toFixed(1) : "-"}`} checked={bmi != null && bmi > 35} muted />
-                <ChecklistRow label={`${tc("stopbangAge")}: ${ageYears ?? "-"}`} checked={ageYears != null && ageYears > 50} muted />
-                <Controller control={control} name="stopbangNeck" render={({ field }) => <ChecklistRow label={tc("stopbangNeck")} checked={!!field.value} onPress={() => field.onChange(!field.value)} />} />
-                <ChecklistRow label={tc("stopbangMale")} checked={sex === "MALE"} muted last />
-              </ChecklistGroup>
-              </> : null}
+              <PreopAnamnesisFields control={control} setValue={setValue} tc={tc} allergies={allergies} familyAnesthesiaProblems={familyAnesthesiaProblems} pediatricMode={pediatricMode} rcriSuggested={rcriSuggested} stopBangBPSuggested={stopBangBPSuggested} RCRI_HINT={RCRI_HINT} sex={sex} smoking={smoking} bmi={bmi} ageYears={ageYears} blockedErrorFor={blockedErrorFor} scrollToSection={scrollToSection} shownField={preopProfile.shownField} />
+              {questionList("anamnesis")}
             </SectionCard>
 
             <SectionCard title={tc("sectionExam")} onLayout={(y) => { sectionY.current.exam = y }} visible={showSection("exam")}>
@@ -1169,7 +1129,7 @@ export default function NewCaseScreen() {
                   <VitalNumber label={tc("heartRateLabel")} unit="bpm" value={field.value} onChange={field.onChange} min={pediatricMode ? 10 : heartRateRange?.min ?? 1} max={pediatricMode ? 350 : heartRateRange?.max ?? 300} step={heartRateRange?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(null) }} labelUnableToObtain={tc("unableToObtain")} required error={localizedPreopValidationMessage(errors.heartRate?.message, tc)} />
                 )} />
               )} />
-              <Controller control={control} name="heartArrhythmia" render={({ field }) => <ClinicalYesNoRow label={tc("arrhythmiaLabel")} value={field.value ?? null} onValueChange={field.onChange} activeColor={colors.warning} />} />
+              {preopProfile.shownField("heartArrhythmia") ? <Controller control={control} name="heartArrhythmia" render={({ field }) => <ClinicalYesNoRow label={tc("arrhythmiaLabel")} value={field.value ?? null} onValueChange={field.onChange} activeColor={colors.warning} />} /> : null}
               <Controller control={control} name="spO2" render={({ field }) => (
                 <Controller control={control} name="spO2Unobtainable" render={({ field: uto }) => (
                   <VitalNumber label={tc("spO2Label")} unit="%" value={field.value} onChange={field.onChange} min={spo2Range?.min ?? 0} max={spo2Range?.max ?? 100} step={spo2Range?.step ?? 1} unobtainable={!!uto.value} onToggleUnobtainable={() => { uto.onChange(!uto.value); if (!uto.value) field.onChange(null) }} labelUnableToObtain={tc("unableToObtain")} />
@@ -1189,6 +1149,7 @@ export default function NewCaseScreen() {
               <Field label={tc("physicalExamReport")} error={blockedErrorFor("physicalExamReport")}>
                 <Controller control={control} name="physicalExamReport" render={({ field }) => <StyledInput value={field.value ?? ""} onChangeText={field.onChange} maxLength={500} multiline placeholder={tc("physicalExamHint")} />} />
               </Field>
+              {questionList("physical_exam")}
             </SectionCard>
 
             <SectionCard title={tc("sectionAirway")} onLayout={(y) => { sectionY.current.airway = y }} visible={showSection("airway")}>
@@ -1226,9 +1187,10 @@ export default function NewCaseScreen() {
                       predictors above so prediction can be paired against the
                       Cormack-Lehane grade actually found. */}
                   <SectionHeader title={tc("airwayOverallAssessment")} />
-                  <Controller control={control} name="anticipatedDifficultAirway" render={({ field }) => <ClinicalYesNoRow label={tc("anticipatedDifficultAirway")} value={field.value ?? null} onValueChange={field.onChange} activeColor={colors.danger} />} />
+                  {preopProfile.shownField("anticipatedDifficultAirway") ? <Controller control={control} name="anticipatedDifficultAirway" render={({ field }) => <ClinicalYesNoRow label={tc("anticipatedDifficultAirway")} value={field.value ?? null} onValueChange={field.onChange} activeColor={colors.danger} />} /> : null}
                 </>
               ) : null}
+              {questionList("airway")}
             </SectionCard>
 
             <SectionCard
@@ -1247,6 +1209,7 @@ export default function NewCaseScreen() {
                   <ManualLabPanel value={field.value ?? []} onChange={field.onChange} labelManualLabEntry={tc("manualLabEntry")} labelHideManualLab={tc("hideManualLab")} labelSearchLabs={tc("searchLabs")} />
                 </>
               )} />
+              {questionList("labs")}
             </SectionCard>
 
             <SectionCard title={tc("sectionRisk")} onLayout={(y) => { sectionY.current.risk = y }} visible={showSection("risk")}>
@@ -1265,12 +1228,12 @@ export default function NewCaseScreen() {
               </Field>
               {!pediatricMode ? (
                 <View style={{ flexDirection: "row", gap: 8, marginBottom: 14 }}>
-                  <ScoreBadge label="RCRI" score={rcriScore} max={6} riskLabel={rcriRiskLabel(rcriScore, language)} />
-                  <ScoreBadge label="Apfel" score={apfelScore} max={4} riskLabel={apfelRiskLabel(apfelScore, language)} />
-                  <ScoreBadge label="STOP-BANG" score={stopBangScore} max={8} riskLabel={stopBangRiskLabel(stopBangScore, language)} />
+                  <ScoreBadge label="RCRI" score={rcriScore} max={6} riskLabel={rcriRiskLabel(rcriScore, language)} unavailable={preopProfile.scoreAvailable("RCRI") ? undefined : tc("preopScoreUnavailable")} />
+                  <ScoreBadge label="Apfel" score={apfelScore} max={4} riskLabel={apfelRiskLabel(apfelScore, language)} unavailable={preopProfile.scoreAvailable("APFEL") ? undefined : tc("preopScoreUnavailable")} />
+                  <ScoreBadge label="STOP-BANG" score={stopBangScore} max={8} riskLabel={stopBangRiskLabel(stopBangScore, language)} unavailable={preopProfile.scoreAvailable("STOPBANG") ? undefined : tc("preopScoreUnavailable")} />
                 </View>
               ) : (
-                <PediatricRiskAndCalculators control={control} setValue={setValue} tc={tc} language={language} caseId={caseId} />
+                <PediatricRiskAndCalculators control={control} setValue={setValue} tc={tc} language={language} caseId={caseId} isShown={preopProfile.shownField} />
               )}
               {!pediatricMode && clinicalAi.clinicalAdvice.enabled ? (
                 <Controller control={control} name="aiOptIn" render={({ field }) => (
@@ -1289,6 +1252,7 @@ export default function NewCaseScreen() {
                   {tc(capabilityMessageKey(clinicalAi.clinicalAdvice.reason))}
                 </Text>
               ) : null}
+              {questionList("risk_scores")}
             </SectionCard>
 
             <PrimaryButton label={tc("continueIntraop")} onPress={handleSubmit(onSubmit, onInvalid)} loading={saving} />
