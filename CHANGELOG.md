@@ -1,5 +1,13 @@
 # Changelog - LOSPOR Mobile
 
+## [9.11.1] - 2026-09-25
+
+### Changed
+
+- **Version alignment only, no behaviour change.** Released with API 9.11.1,
+  which fixes preoperative saves failing ("Saved locally") after the
+  catalogue upgrade on a hosted database.
+
 ## [9.11.0] - 2026-09-24
 
 ### Added
