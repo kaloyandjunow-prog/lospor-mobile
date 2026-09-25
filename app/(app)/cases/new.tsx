@@ -401,8 +401,7 @@ export default function NewCaseScreen() {
     tc,
   })
 
-  // useWatch triggers a React re-render on every field change — works on both native and web.
-  // (watch(callback) subscription doesn't fire reliably on Expo web builds.)
+  // useWatch re-renders on every field change on native and web (watch(callback) is unreliable on Expo web).
   const _allFormValues = useWatch({ control })
   const preopProfile = usePreopProfile({ caseId, pediatric: pediatricMode, values: _allFormValues as Record<string, unknown>, form: { getAnswers: () => getValues("preopAnswers") ?? [], setAnswers: answers => setValue("preopAnswers", answers, { shouldDirty: true }) } })
   const questionList = (formSection: PreopFormSection) => <PreopQuestionList profile={preopProfile.profile} formSection={formSection} mode={preopProfile.mode} states={preopProfile.states} onAnswer={preopProfile.answerQuestion} suggestions={preopProfile.suggestions} onReviewSuggestion={preopProfile.reviewSuggestion} tc={tc} language={language} />
