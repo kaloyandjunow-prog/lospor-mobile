@@ -6,15 +6,19 @@ import { autosaveManager, resetAutosaveNetworkBreaker } from "./autosave-manager
 import { getAllLocalCaseDrafts, deleteLocalCaseDraft } from "./local-case-store"
 import { buildPreopPayload } from "./preop-payload"
 import { apiFetch } from "./api"
+import { isPreopFormOpen } from "./preop-open-forms"
 import { useLiveRefresh } from "./use-live-refresh"
 
-async function flushLocalCaseDrafts(): Promise<void> {
+export async function flushLocalCaseDrafts(): Promise<void> {
   const drafts = await getAllLocalCaseDrafts()
   for (const draft of drafts) {
     try {
       // Build the normalised payload (includes derived BMI, RCRI, Apfel, STOP-BANG)
       const preop = buildPreopPayload(draft.formValues)
       if (draft.serverCaseId) {
+        // The open form saves this case and clears the draft itself; a replay
+        // racing its newer save could land last with older values.
+        if (isPreopFormOpen(draft.serverCaseId)) continue
         const outcome = await autosaveManager.saveSection(draft.serverCaseId, "preop", preop, {
           fullPayload: preop,
           force: true,

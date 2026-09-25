@@ -330,7 +330,9 @@ export default function PostopFormScreen() {
         // navigate regardless, so an unsubmitted case and a submitted one
         // looked identical, and nothing said otherwise later.
         const submitted = await submitCaseForReview(id)
-        if (!submitted.ok) return notify(tc("errorLabel"), tc(submitForReviewMessage(submitted)))
+        if (!submitted.ok && submitted.reason !== "finalised") return notify(tc("errorLabel"), tc(submitForReviewMessage(submitted)))
+        // Already finalised elsewhere: say so, and show the finished case.
+        if (!submitted.ok) notify(tc("errorLabel"), tc(submitForReviewMessage(submitted)))
         router.replace(`/(app)/cases/${id}`)
       } else if (result === "blocked") {
         notify(tc("draftBlocked"), autosaveManager.getState(id).error ?? tc("autosaveError"))

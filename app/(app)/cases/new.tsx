@@ -31,6 +31,7 @@ import { PreopQuestionList } from "@/components/preop/PreopQuestionList"
 import { PreopAnamnesisFields } from "@/components/preop/PreopAnamnesisFields"
 import { ensureSavedCaseForAi } from "@/lib/ensure-saved-case"
 import { deleteLocalCaseDraft, makeLocalCaseId, saveLocalCaseDraft } from "@/lib/local-case-store"
+import { usePreopFormOpen } from "@/lib/preop-open-forms"
 import { buildPreopPayload } from "@/lib/preop-payload"
 import { preopFormSchema, type PreopFormData as FormData, type PreopFormInput as FormInput, type PreopSection } from "@/lib/preop-form-schema"
 import { buildPreopSectionItems } from "@/lib/preop-section-overview"
@@ -201,6 +202,7 @@ export default function NewCaseScreen() {
   const caseLoadedRef = useRef(false)
   const draftIdRef = useRef<string>(makeLocalCaseId())
   const [caseId, setCaseId] = useState<string | null>(null)
+  usePreopFormOpen(caseId)
   const [persistedPediatricRecord, setPersistedPediatricRecord] = useState(false)
   const [preopFinalizedAt, setPreopFinalizedAt] = useState<string | null>(null)
   const [preopCaseStatus,  setPreopCaseStatus]  = useState<string | null>(null)
@@ -414,9 +416,8 @@ export default function NewCaseScreen() {
     if (submittingRef.current) return
     // Never autosave a reopened case before its server copy is in the form (blanks would overwrite it).
     if (continueId && !caseLoadedRef.current) return
-    // Marking "saving" here fired a second render on every keystroke, for a
-    // save that had not started and would not start for another 2 seconds. The
-    // state is set inside `runAutosave`, when a save actually begins.
+    // "saving" is set in `runAutosave`, when a save begins: setting it here
+    // re-rendered every keystroke for a save 2 seconds away.
     if (autosaveDraftRef.current) clearTimeout(autosaveDraftRef.current)
 
     // A toggle/pill tap saves quickly, typing waits. The rule -- and why it is
