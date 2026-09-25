@@ -1,5 +1,5 @@
 {
-  "app/(app)/cases/new.tsx": 1365,
+  "app/(app)/cases/new.tsx": 1329,
   "src/components/IntraopTimetable.tsx": 1074,
   "app/(app)/settings.tsx": 220,
   "app/(app)/index.tsx": 785,
@@ -8,7 +8,7 @@
   "src/components/intraop/DrugSheet.tsx": 537,
   "app/(app)/cases/postop/[id].tsx": 640,
   "app/(auth)/register.tsx": 337,
-  "src/components/preop/PreopFormWidgets.tsx": 578,
+  "src/components/preop/PreopFormWidgets.tsx": 567,
   "src/components/ClinicalNumberInput.tsx": 489,
   "src/components/intraop/tabs/AirwayTab.tsx": 177,
   "src/components/intraop/FluidSheet.test.tsx": 448,

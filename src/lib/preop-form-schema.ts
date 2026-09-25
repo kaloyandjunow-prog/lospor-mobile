@@ -39,8 +39,6 @@ export const preopFormSchema = z.object({
     valueNumber: z.number().nullable().optional(),
     valueDate: z.string().datetime().nullable().optional(),
   }).passthrough()).default([]),
-  preopProfileVersion: z.number().int().positive().optional(),
-  adoptPreopProfile: z.boolean().optional(),
   // nullable, not merely optional. Switching a case out of pediatric mode has
   // to clear the stored precise age, and only an explicit null survives into
   // the patch -- undefined is dropped before it reaches the wire.
