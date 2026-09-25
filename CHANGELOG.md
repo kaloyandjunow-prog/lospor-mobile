@@ -1,5 +1,12 @@
 # Changelog - LOSPOR Mobile
 
+## [9.11.2] - 2026-09-25
+
+### Changed
+
+- **Version alignment only, no behaviour change.** Released with API 9.11.2,
+  which fixes preoperative saves staying at "Saved locally" on the hosted demo.
+
 ## [9.11.1] - 2026-09-25
 
 ### Changed
