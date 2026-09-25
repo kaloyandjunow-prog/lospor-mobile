@@ -198,6 +198,7 @@ export default function NewCaseScreen() {
   const flushAutosaveRef = useRef<() => void>(() => {})
   const submittingRef = useRef(false)
   const caseIdRef = useRef<string | null>(null)
+  const caseLoadedRef = useRef(false)
   const draftIdRef = useRef<string>(makeLocalCaseId())
   const [caseId, setCaseId] = useState<string | null>(null)
   const [persistedPediatricRecord, setPersistedPediatricRecord] = useState(false)
@@ -391,14 +392,10 @@ export default function NewCaseScreen() {
     blockedMessage,
     clearLocalDraft,
     reset,
-    caseIdRef,
-    setCaseId,
+    caseIdRef, caseLoadedRef, setCaseId,
     setPersistedPediatricRecord,
-    setBlockedIssue,
-    setSaveError,
-    setDraftState,
-    setPreopFinalizedAt,
-    setPreopCaseStatus,
+    setBlockedIssue, setSaveError, setDraftState,
+    setPreopFinalizedAt, setPreopCaseStatus,
     tc,
   })
 
@@ -415,6 +412,8 @@ export default function NewCaseScreen() {
   // server-first, local fallback
   useEffect(() => {
     if (submittingRef.current) return
+    // Never autosave a reopened case before its server copy is in the form (blanks would overwrite it).
+    if (continueId && !caseLoadedRef.current) return
     // Marking "saving" here fired a second render on every keystroke, for a
     // save that had not started and would not start for another 2 seconds. The
     // state is set inside `runAutosave`, when a save actually begins.
@@ -504,7 +503,7 @@ export default function NewCaseScreen() {
     flushAutosaveRef.current = runAutosave
     autosaveDraftRef.current = setTimeout(runAutosave, autosaveDelayMs(discreteTap))
 
-  }, [_allFormValues, blockedMessage, clearLocalDraft, getValues, persistLocalDraft, rejectedFieldsMessage, tc, tryCreateServerCase])
+  }, [_allFormValues, blockedMessage, clearLocalDraft, continueId, getValues, persistLocalDraft, rejectedFieldsMessage, tc, tryCreateServerCase])
 
   useEffect(() => {
     activeSectionRef.current = activeSection
