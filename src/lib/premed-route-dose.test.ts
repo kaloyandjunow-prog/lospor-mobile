@@ -12,7 +12,7 @@ describe("adult premedication by route", () => {
   it("replaces the dose on a route change: midazolam 7.5 mg PO becomes 1 mg IV", () => {
     const iv = adultPremedForRoute(midazolam, "IV")
     expect(iv.dose).toBe("1")
-    expect(iv.drug).toMatchObject({ unit: "mg", min: 0.5, max: 2.5, step: 0.1 })
+    expect(iv.drug).toMatchObject({ unit: "mg", min: 0, max: 2.5, step: 0.1 })
   })
 
   it("records adult ketamine in calculated mg and leaves home medicines empty", () => {

@@ -24,7 +24,7 @@ export function adultPremedForRoute(
     drug: {
       ...drug,
       unit: rule.unit,
-      min: needsWeight ? 1 : rule.min,
+      min: rule.min,
       max: needsWeight ? 1000 : rule.max,
       step: rule.step,
       hint: rule.hint,
