@@ -112,7 +112,7 @@ function routeFor(item: CaseItem, hasQueuedIntraop: boolean): Href {
 export default function DashboardScreen() {
   const router = useRouter()
   const { logout } = useAuth()
-  const { t, tc, language } = usePreferences()
+  const { t, tc, language, shade } = usePreferences()
 
   const [cases, setCases] = useState<CaseItem[]>([])
   const { counts, setCounts, caseTotal, setCaseTotal, loadingMore, loadMoreCases } = useDashboardPagination(cases, setCases, t, DASHBOARD_REQUEST_TIMEOUT_MS)
@@ -447,7 +447,7 @@ export default function DashboardScreen() {
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                         <View style={{ backgroundColor: colors.warning, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
-                          <Text style={{ color: "#000", fontSize: 9, fontWeight: "900" }}>{t("localBadge")}</Text>
+                          <Text style={{ color: shade("#000"), fontSize: 9, fontWeight: "900" }}>{t("localBadge")}</Text>
                         </View>
                         <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: "800" }} numberOfLines={1}>{diag}</Text>
                       </View>
@@ -565,8 +565,8 @@ export default function DashboardScreen() {
         onPress={() => router.push("/(app)/cases/new")}
         activeOpacity={0.85}
       >
-        <Text style={{ color: "#fff", fontSize: 22, fontWeight: "800", lineHeight: 24 }}>＋</Text>
-        <Text style={{ color: "#fff", fontSize: 13, fontWeight: "900" }}>{t("newCase")}</Text>
+        <Text style={{ color: shade("#fff"), fontSize: 22, fontWeight: "800", lineHeight: 24 }}>＋</Text>
+        <Text style={{ color: shade("#fff"), fontSize: 13, fontWeight: "900" }}>{t("newCase")}</Text>
       </TouchableOpacity>
 
       <Modal visible={menuCase !== null} transparent animationType="fade" onRequestClose={closeMenu}>

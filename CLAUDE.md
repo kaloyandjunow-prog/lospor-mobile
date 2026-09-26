@@ -51,7 +51,7 @@
 - Best direction is a scrollable/zoomable connected timeline with 5-minute rhythm, now marker, vitals lane, drugs lane, fluids/output lane, airway/events lane, and fast thumb actions.
 - Avoid generic stacked form UI for intraop documentation.
 - Keep the screen optimized for rapid entry: one-tap common actions, sticky now controls, large touch targets, clear recent entries, and immediate visual confirmation.
-- Some hardcoded dark clinical colors remain in intraop intentionally; do not blindly convert them to the global palette without a focused redesign.
+- Intraop colours are written for dark and shown in light through `shade()` (see `src/theme/shade.ts` and `light-shades.ts`); adjust a light colour in the table, not per screen.
 - Intraop sections support horizontal swipe navigation and the active tab is centred in the rail.
 - Automatic vitals must be persisted as `vital` events through `/api/cases/[id]/events`; never implement them as timetable-only local state.
 - Mobile gas entry uses shared `VitalStepper` controls: FGF 0-100 L/min, O2 plus exclusive Air/N2O, and FiO2 0-100%.
