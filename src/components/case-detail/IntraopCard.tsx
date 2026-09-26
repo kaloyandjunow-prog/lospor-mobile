@@ -1,4 +1,6 @@
 import React from "react"
+import { projectIntraopEvents } from "@lospor/core/intraop-engine"
+import { parseLogEvents } from "@lospor/core/intraop-types"
 import { View, Text } from "react-native"
 import { colors, withAlpha } from "@/theme/colors"
 import { usePreferences, type ClinicalStringKey, type TranslationKey } from "@/lib/preferences-context"
@@ -72,8 +74,20 @@ export function IntraopCard({ intraop, preop, clinicalMode, tc, t }: { intraop: 
     ageUnit: preop?.ageUnit,
   })
   const summaryTBW = preop?.weightKg ?? null
-  // Build infusion segments from timetable for total calculation
-  const timetableInfusions = (() => {
+  // Infusion segments for the totals. A timed event log goes through the Core
+  // projection -- the same bars as the chart: planned items count for nothing,
+  // restarts are separate runs, and continued items stop at the case end.
+  const timedLog = parseLogEvents((intraop.keyEvents?.log ?? []).filter(event => typeof event.ts === "string"))
+  const chartStart = intraop.startedAt ?? timedLog.map(event => event.ts).sort()[0]
+  const timetableInfusions = timedLog.length > 0 && chartStart
+    ? projectIntraopEvents(timedLog, { start: chartStart, endedAt: intraop.endedAt ?? null, openThrough: new Date() }).infusions
+      .map(infusion => ({
+        ...infusion,
+        rate: String(infusion.rate),
+        rateChanges: infusion.rateChanges?.map(change => ({ ...change, rate: String(change.rate) })),
+      }))
+    : legacyTimetableInfusions()
+  function legacyTimetableInfusions() {
     const infMap: Record<string, { name: string; rate: string; unit: string; startCol: number; endCol: number; rateChanges: { col: number; rate: string; unit: string }[] }> = {}
     const chrono = [...log].reverse()
     let maxCol = 0
@@ -94,7 +108,7 @@ export function IntraopCard({ intraop, preop, clinicalMode, tc, t }: { intraop: 
       if (entry.endCol === entry.startCol && maxCol > entry.startCol) entry.endCol = maxCol
     }
     return Object.values(infMap)
-  })()
+  }
   const infusionTotals = calcInfusionTotals(timetableInfusions, summaryIBW, summaryTBW)
   const infWeightNote = (() => {
     const weighted = infusionTotals.filter(r => r.weightUsed != null)

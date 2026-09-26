@@ -24,14 +24,15 @@ type Props = {
   eventCategories: ClinicalEventCategory[]
   extraComplicationLabels: string[]
   isGACase: boolean
-  activeAgent: ActiveAgent
+  /** Every running volatile agent; several may run at once. */
+  activeAgents: NonNullable<ActiveAgent>[]
   activeGas: ActiveGasSettings
   onClose: () => void
   onEventSearchChange: (value: string) => void
   onToggleComplications: () => void
   onSelectEvent: (event: ClinicalEventDef, isComplication: boolean) => void
   onBrowseDrugs: () => void
-  onStopAgent: () => void
+  onStopAgent: (name: string) => void
   onOpenAgent: () => void
   onStopGas: () => void
   onOpenGas: () => void
@@ -45,7 +46,7 @@ export function SlotActionSheet({
   eventCategories,
   extraComplicationLabels,
   isGACase,
-  activeAgent,
+  activeAgents,
   activeGas,
   onClose,
   onEventSearchChange,
@@ -123,26 +124,26 @@ export function SlotActionSheet({
         <>
           <Text style={{ color:"#a855f7", fontSize:10, fontWeight:"800", letterSpacing:1.2,
             textTransform:"uppercase", marginBottom:8 }}>{tc("sasInhaledAgent")}</Text>
-          {activeAgent ? (
-            <View style={{ flexDirection:"row", gap:8, marginBottom:8 }}>
+          {activeAgents.map(activeAgent => (
+            <View key={activeAgent.name} style={{ flexDirection:"row", gap:8, marginBottom:8 }}>
               <View style={{ flex:1, borderRadius:10, paddingVertical:10, paddingHorizontal:12,
                 backgroundColor:activeAgent.color+"18", borderWidth:1, borderColor:activeAgent.color+"55" }}>
                 <Text style={{ color:activeAgent.color, fontWeight:"700" }}>
                   {formatMessage(tc("agentIsRunning"), { name: agentLabel(activeAgent.name) })}
                 </Text>
               </View>
-              <TouchableOpacity onPress={onStopAgent}
+              <TouchableOpacity onPress={() => onStopAgent(activeAgent.name)}
                 style={{ borderRadius:10, paddingHorizontal:14, paddingVertical:10,
                   backgroundColor:"#1e1010", borderWidth:1, borderColor:"#ef444444" }}>
                 <Text style={{ color:"#ef4444", fontWeight:"700", fontSize:12 }}>{tc("sasStop")}</Text>
               </TouchableOpacity>
             </View>
-          ) : null}
+          ))}
           <TouchableOpacity onPress={onOpenAgent}
             style={{ borderRadius:10, paddingVertical:10, alignItems:"center",
               backgroundColor:"#1a1030", borderWidth:1, borderColor:"#a855f744" }}>
             <Text style={{ color:"#d8b4fe", fontWeight:"700", fontSize:12 }}>
-              {activeAgent ? tc("slotSwitchAgent") : tc("slotStartAgent")}
+              {activeAgents.length > 0 ? tc("slotSwitchAgent") : tc("slotStartAgent")}
             </Text>
           </TouchableOpacity>
 

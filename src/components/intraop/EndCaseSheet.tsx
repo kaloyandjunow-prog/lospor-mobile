@@ -21,10 +21,16 @@ export type EndCaseCleanupItem = {
   }
 }
 
+/** An entry dated after the end (a planned item): it must be resolved before finalising. */
+export type EndCaseAfterEndItem = { id: string; label: string; time: string; color: string }
+
 type Props = {
   visible: boolean
   onClose: () => void
   items: EndCaseCleanupItem[]
+  afterEnd?: EndCaseAfterEndItem[]
+  /** "delete": it did not happen. "move": it happened, by the end time. */
+  onResolveAfterEnd?: (id: string, resolution: "delete" | "move") => void
   decisions: Record<string, "stop" | "continue">
   continueLabel: string
   onDecision: (key: string, decision: "stop" | "continue") => void
@@ -35,6 +41,8 @@ export function EndCaseSheet({
   visible,
   onClose,
   items,
+  afterEnd = [],
+  onResolveAfterEnd,
   decisions,
   continueLabel,
   onDecision,
@@ -48,7 +56,8 @@ export function EndCaseSheet({
     const edited = fluidActualVolumes[item.key]
     return edited === undefined || (edited.trim() !== "" && Number.isFinite(Number(edited)) && Number(edited) >= 0)
   })
-  const canFinalize = allDecided && endedFluidVolumesValid
+  // Nothing may remain after the end (1.4.9).
+  const canFinalize = allDecided && endedFluidVolumesValid && afterEnd.length === 0
 
   function close() {
     setFluidActualVolumes({})
@@ -72,7 +81,7 @@ export function EndCaseSheet({
               <Text style={{ color:item.color, fontWeight:"700" }}>{item.label}</Text>
               <Text style={{ color:"#94a3b8", fontSize:11 }}>{item.sublabel}</Text>
             </View>
-            {dec && item.fluidVolume ? (
+            {dec === "stop" && item.fluidVolume ? (
               <View style={{ marginBottom:10 }}>
                 <Text style={{ color:"#94a3b8", fontSize:11, marginBottom:5 }}>
                   {item.fluidVolume.mode === "RATE" ? tc("calculatedPumpActual") : tc("actualAdministeredVolume")}
@@ -110,6 +119,29 @@ export function EndCaseSheet({
           </View>
         )
       })}
+      {afterEnd.length > 0 && (
+        <View testID="end-case-after-end" style={{ marginTop:6, marginBottom:10 }}>
+          <Text style={{ color:"#fbbf24", fontWeight:"700", fontSize:13 }}>{tc("endCaseAfterEndTitle")}</Text>
+          <Text style={{ color:"#94a3b8", fontSize:11, marginBottom:8 }}>{tc("endCaseAfterEndHint")}</Text>
+          {afterEnd.map(entry => (
+            <View key={entry.id} style={{ marginBottom:8, backgroundColor:entry.color+"14", borderRadius:10, padding:10,
+              borderWidth:1, borderStyle:"dashed", borderColor:entry.color+"66" }}>
+              <Text style={{ color:entry.color, fontWeight:"700", marginBottom:6 }}>{entry.time} · {entry.label}</Text>
+              <View style={{ flexDirection:"row", gap:8 }}>
+                <TouchableOpacity testID={`end-case-after-end-delete-${entry.id}`} onPress={() => onResolveAfterEnd?.(entry.id, "delete")}
+                  style={{ flex:1, paddingVertical:8, borderRadius:8, alignItems:"center", backgroundColor:"#1c1c1c", borderWidth:1, borderColor:"#ef444455" }}>
+                  <Text style={{ color:"#f87171", fontWeight:"700", fontSize:13 }}>{tc("endCaseDidntHappen")}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity testID={`end-case-after-end-move-${entry.id}`} onPress={() => onResolveAfterEnd?.(entry.id, "move")}
+                  style={{ flex:1, paddingVertical:8, borderRadius:8, alignItems:"center", backgroundColor:"#1c1c1c", borderWidth:1, borderColor:"#22c55e55" }}>
+                  <Text style={{ color:"#86efac", fontWeight:"700", fontSize:13 }}>{tc("endCaseHappened")}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+          <Text style={{ color:"#fbbf24", fontSize:11 }}>{tc("endCaseFinaliseBlocked")}</Text>
+        </View>
+      )}
       {allDecided && (
         <TouchableOpacity
           testID="end-case-finalize"
@@ -119,10 +151,10 @@ export function EndCaseSheet({
             // Run all stops concurrently instead of one full round-trip at a
             // time — each item's local optimistic update no longer needs to
             // wait for the previous item's network save to finish.
-            await Promise.all(items.filter(item => (
-              decisions[item.key] === "stop" || !!item.fluidVolume
-            )).map(item => {
-              if (!item.fluidVolume) return item.onStop()
+            // Only items marked "stop" get a stop, at the end time. Items continued
+            // postoperatively keep running; the chart and every total stop at the end.
+            await Promise.all(items.filter(item => decisions[item.key] === "stop").map(item => {
+              if (!item.fluidVolume) return item.onStop({ endTs })
               const edited = fluidActualVolumes[item.key]
               const administeredVolumeMl = edited === undefined
                 ? item.fluidVolume.atEnd(endTs)

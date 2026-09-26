@@ -1,4 +1,6 @@
 import { memo } from "react"
+import { LabDrawDetail, LabDrawPill, mergeRowLabDraws } from "@/components/intraop/LabDrawCell"
+import type { IntraopLabDraw } from "@lospor/core/labs"
 import { View, Text, TouchableOpacity } from "react-native"
 import { colors } from "@/theme/colors"
 import { timeAtCol, formatDateHHMM } from "@/lib/intraop-projection"
@@ -32,6 +34,9 @@ function quickAddButtons(tc: (key: ClinicalStringKey) => string): { label: strin
 // callbacks so the screen keeps owning state/sheets.
 type TimetableRowProps = {
   col: number
+  /** Lab draws taken in this row (usually none). */
+  labDraws?: IntraopLabDraw[]
+  onOpenLabs?: (takenAt: string) => void
   chartStart: Date
   rowHeight: number
   isNow: boolean
@@ -45,21 +50,21 @@ type TimetableRowProps = {
   labelOf: (ev: LogEvent) => string
   activeInfusions: ActiveInfusion[]
   activeFluids: ActiveFluid[]
-  activeAgent: ActiveAgent
+  activeAgents: NonNullable<ActiveAgent>[]
   activeGas: ActiveGasSettings
   onExpand: (col: number) => void
   onCollapse: () => void
   onManageInfusion: (inf: ActiveInfusion, col?: number) => void
-  onEndFluid: (fl: ActiveFluid) => void
+  onEndFluid: (fl: ActiveFluid, col?: number) => void
   onEditGas: (col: number) => void
-  onStopAgent: () => void
+  onStopAgent: (name: string, col?: number) => void
   onQuickAdd: (col: number, action: QuickAddAction) => void
 }
 
 function TimetableRowComponent({
-  col, chartStart, rowHeight, isNow, isQuarter, isExpanded, nowSlotPercent,
+  col, labDraws, onOpenLabs, chartStart, rowHeight, isNow, isQuarter, isExpanded, nowSlotPercent,
   vital, rowEvents, running, summary, labelOf,
-  activeInfusions, activeFluids, activeAgent, activeGas,
+  activeInfusions, activeFluids, activeAgents, activeGas,
   onExpand, onCollapse, onManageInfusion, onEndFluid, onEditGas, onStopAgent, onQuickAdd,
 }: TimetableRowProps) {
   const { tc } = usePreferences()
@@ -113,6 +118,8 @@ function TimetableRowComponent({
           <Text style={{ color: "#475569", fontSize: 18, fontWeight: "300" }}>×</Text>
         </TouchableOpacity>
 
+        <LabDrawDetail draws={labDraws ?? []} onOpen={onOpenLabs} />
+
         {/* Running items */}
         {running.length > 0 && (
           <View style={{ paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8 }}>
@@ -124,29 +131,33 @@ function TimetableRowComponent({
               {running.map(item => {
                 const activeInf = activeInfusions.find(i => item.id === `inf-${i.infId}`)
                 const activeFl  = activeFluids.find(f => item.id === `fluid-${f.fluidId}`)
-                const isAgentItem = item.id.startsWith("agent-")
+                const runningAgent = activeAgents.find(agent => item.id === `agent-${agent.name}`)
                 const isGasItem = item.id === "gas-settings"
-                const canManage = !!(activeInf || activeFl || (isAgentItem && activeAgent) || (isGasItem && activeGas))
+                // A planned item, or the row of a planned stop, is a marker, not a control.
+                const marker = !!(item.planned || item.plannedStop)
+                const canManage = !marker && !!(activeInf || activeFl || runningAgent || (isGasItem && activeGas))
                 return (
                   <TouchableOpacity
                     key={item.id}
                     activeOpacity={canManage ? 0.7 : 1}
                     onPress={() => {
+                      if (!canManage) return
+                      // Every stop and change is recorded at this row, not the tap time.
                       if (activeInf) onManageInfusion(activeInf, col)
-                      else if (activeFl) onEndFluid(activeFl)
+                      else if (activeFl) onEndFluid(activeFl, col)
                       else if (isGasItem && activeGas) onEditGas(col)
-                      else if (isAgentItem && activeAgent) onStopAgent()
+                      else if (runningAgent) onStopAgent(runningAgent.name, col)
                     }}
                     style={{
                       flexDirection: "row", alignItems: "center",
-                      backgroundColor: item.color + "14",
+                      backgroundColor: item.color + (marker ? "08" : "14"),
                       borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9,
-                      borderWidth: 1, borderColor: item.color + "44",
+                      borderWidth: 1, borderColor: item.color + "44", borderStyle: marker ? "dashed" : "solid",
                       borderLeftWidth: 4, borderLeftColor: item.color,
                     }}
                   >
                     <Text style={{ color: item.color, fontSize: 13, fontWeight: "700", flex: 1 }}>
-                      {item.label}
+                      {item.planned ? `${tc("plannedLabel")} · ` : item.plannedStop ? `${tc("plannedStopLabel")} · ` : ""}{item.label}
                     </Text>
                     {canManage && (
                       <Text style={{ color: "#64748b", fontSize: 11 }}>
@@ -271,6 +282,7 @@ function TimetableRowComponent({
             {drugParts.join("  ·  ")}
           </Text>
         )}
+        <LabDrawPill count={mergeRowLabDraws(labDraws).count} />
         {hasUnsynced && (
           <Text style={{ color: colors.warning, fontSize: 9, fontWeight: "800", lineHeight: 12 }}>
             {tc("unsyncedShort")}
@@ -281,7 +293,7 @@ function TimetableRowComponent({
       {/* Running strips — full height, stacked from right edge inward (5px each) */}
       <View style={{ flexDirection: "row", alignSelf: "stretch" }}>
         {running.slice().reverse().map(item => (
-          <View key={item.id} style={{ width: 5, backgroundColor: item.color + "88" }} />
+          <View key={item.id} style={{ width: 5, backgroundColor: item.color + (item.planned || item.plannedStop ? "33" : "88") }} />
         ))}
       </View>
     </TouchableOpacity>
@@ -291,6 +303,7 @@ function TimetableRowComponent({
 export const TimetableRow = memo(TimetableRowComponent, (prev, next) => {
   if (
     prev.col !== next.col ||
+    prev.labDraws !== next.labDraws ||
     prev.chartStart !== next.chartStart ||
     prev.rowHeight !== next.rowHeight ||
     prev.isNow !== next.isNow ||
@@ -314,7 +327,7 @@ export const TimetableRow = memo(TimetableRowComponent, (prev, next) => {
   if ((prev.isExpanded || next.isExpanded) && (
     prev.activeInfusions !== next.activeInfusions ||
     prev.activeFluids !== next.activeFluids ||
-    prev.activeAgent !== next.activeAgent ||
+    prev.activeAgents !== next.activeAgents ||
     prev.activeGas !== next.activeGas
   )) {
     return false
