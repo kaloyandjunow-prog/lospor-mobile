@@ -2,7 +2,7 @@ import React from "react"
 import { projectIntraopEvents } from "@lospor/core/intraop-engine"
 import { parseLogEvents } from "@lospor/core/intraop-types"
 import { View, Text } from "react-native"
-import { colors, withAlpha } from "@/theme/colors"
+import { colors, withAlpha, useShade } from "@/theme/colors"
 import { usePreferences, type ClinicalStringKey, type TranslationKey } from "@/lib/preferences-context"
 import { displayClinicalCode, displayOptionEntry, displayOptionPath } from "@/lib/clinical-display"
 import { SummaryCard, InfoRow, Chip, ChipRow, Divider } from "./CaseDetailPrimitives"
@@ -51,6 +51,7 @@ function legacyKeyEventsToSummaryLog(keyEvents: unknown): KeyEvent[] {
 }
 
 export function IntraopCard({ intraop, preop, clinicalMode, tc, t }: { intraop: CaseData["intraop"]; preop?: CaseData["preop"]; clinicalMode?: CaseData["clinicalMode"]; tc: (key: ClinicalStringKey) => string; t: (key: TranslationKey) => string }) {
+  const shade = useShade()
   const { language } = usePreferences()
 
   if (!intraop) {
@@ -317,9 +318,9 @@ export function IntraopCard({ intraop, preop, clinicalMode, tc, t }: { intraop: 
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
         {([
           { labelKey: "summaryCrystalloid" as ClinicalStringKey, value: intraop.crystalloidsMl ?? 0, color: colors.primary },
-          { labelKey: "summaryColloid" as ClinicalStringKey, value: intraop.colloidsMl ?? 0, color: "#38bdf8" },
+          { labelKey: "summaryColloid" as ClinicalStringKey, value: intraop.colloidsMl ?? 0, color: shade("#38bdf8") },
           { labelKey: "summaryBlood" as ClinicalStringKey, value: intraop.bloodMl ?? 0, color: colors.danger },
-          { labelKey: "summaryUrineOut" as ClinicalStringKey, value: intraop.urineMl ?? 0, color: "#2dd4bf" },
+          { labelKey: "summaryUrineOut" as ClinicalStringKey, value: intraop.urineMl ?? 0, color: shade("#2dd4bf") },
         ]).map(item => (
           <View key={item.labelKey} style={{
             flex: 1, minWidth: 72,

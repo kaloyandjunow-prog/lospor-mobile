@@ -4,6 +4,7 @@ import { formatMessage } from "@/i18n/locale"
 import { formatDateHHMM } from "@/lib/intraop-projection"
 import { usePreferences } from "@/lib/preferences-context"
 import type { IntraopLabDraw } from "@lospor/core/labs"
+import { useShade } from "@/theme/shade"
 
 export const LAB_DRAW_COLOR = "#14b8a6"
 
@@ -31,6 +32,7 @@ export function LabDrawPill({ count }: { count: number }) {
 
 /** The full draw an expanded chart row shows; tapping opens it for editing. */
 export function LabDrawDetail({ draws, onOpen }: { draws: IntraopLabDraw[]; onOpen?: (takenAt: string) => void }) {
+  const shade = useShade()
   const { tc } = usePreferences()
   if (draws.length === 0) return null
   return (
@@ -50,7 +52,7 @@ export function LabDrawDetail({ draws, onOpen }: { draws: IntraopLabDraw[]; onOp
             {tc("labsDrawLabel")} · {formatDateHHMM(new Date(draw.takenAt))}
           </Text>
           {draw.results.map((result, index) => (
-            <Text key={`${result.test}-${index}`} style={{ color: "#cbd5e1", fontSize: 12, fontVariant: ["tabular-nums"] }}>
+            <Text key={`${result.test}-${index}`} style={{ color: shade("#cbd5e1"), fontSize: 12, fontVariant: ["tabular-nums"] }}>
               {result.test} {result.value} {result.unit}
             </Text>
           ))}

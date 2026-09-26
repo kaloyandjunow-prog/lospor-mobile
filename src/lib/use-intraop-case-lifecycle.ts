@@ -23,6 +23,7 @@ import {
   type ClinicalIssueCode,
 } from "@lospor/core/clinical-validation"
 import { usePreferences, type ClinicalStringKey } from "@/lib/preferences-context"
+import { useShade } from "@/theme/shade"
 
 const INTRAOP_ISSUE_LABEL_KEYS: Partial<Record<ClinicalIssueCode, ClinicalStringKey>> = {
   missing_start_time: "issueAnaesthesiaStart",
@@ -108,6 +109,7 @@ export function useIntraopCaseLifecycle({
   getReadinessInput,
   timeline,
 }: UseIntraopCaseLifecycleArgs) {
+  const shade = useShade()
   const { tc } = usePreferences()
   const [endCaseOpen, setEndCaseOpen] = useState(false)
   const [startAtOpen, setStartAtOpen] = useState(false)
@@ -145,7 +147,7 @@ export function useIntraopCaseLifecycle({
     await saveTiming(timing)
     setCaseInfo(promoteDraftCaseToInProgress)
     await save(
-      { type: "clinical_event", label: "Anaesthesia start", color: "#22c55e" },
+      { type: "clinical_event", label: "Anaesthesia start", color: shade("#22c55e") },
       timing.startedAt,
     )
   }
@@ -161,7 +163,7 @@ export function useIntraopCaseLifecycle({
     setCaseStartTime(timing.startTime)
     await saveTiming(timing)
     setCaseInfo(promoteDraftCaseToInProgress)
-    await save({ type: "clinical_event", label: "Anaesthesia start", color: "#22c55e" }, timing.startedAt)
+    await save({ type: "clinical_event", label: "Anaesthesia start", color: shade("#22c55e") }, timing.startedAt)
     setStartAtOpen(false)
   }
 
@@ -275,7 +277,7 @@ export function useIntraopCaseLifecycle({
     id: event.id,
     label: timeline.labelOf(event),
     time: formatDateHHMM(new Date(event.ts)),
-    color: event.color ?? "#fbbf24",
+    color: event.color ?? shade("#fbbf24"),
   }))
 
   const endCaseRunningItems: EndCaseCleanupItem[] = buildEndCaseRunningItems({
