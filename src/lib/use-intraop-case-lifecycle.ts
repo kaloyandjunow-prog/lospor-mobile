@@ -27,6 +27,7 @@ import { usePreferences, type ClinicalStringKey } from "@/lib/preferences-contex
 const INTRAOP_ISSUE_LABEL_KEYS: Partial<Record<ClinicalIssueCode, ClinicalStringKey>> = {
   missing_start_time: "issueAnaesthesiaStart",
   missing_end_time: "issueAnaesthesiaEnd",
+  entries_after_case_end: "endCaseFinaliseBlocked",
   missing_technique: "issueAnaesthesiaTechnique",
   invalid_intraop_times: "issueInvalidTimes",
   missing_airway_documentation: "issueAirway",

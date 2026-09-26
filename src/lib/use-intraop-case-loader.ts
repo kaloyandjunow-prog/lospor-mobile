@@ -243,6 +243,8 @@ export function useIntraopCaseLoader({
         if (loadedTimetable.startDate) setElapsedMs(loadedTimetable.elapsedMs)
         endedAtRef.current = hydrated.endedAt
         applyActiveState(hydrated.active)
+        // Ended automatically 48 hours after it started: say so once on open.
+        if (!silent && data.intraop?.autoEndedAt) notify(tc("tfEndCase"), tc("autoEndedNotice"))
         if (loadedTimetable.timetable) {
           setTimetable(loadedTimetable.timetable)
           setTtColCount(loadedTimetable.columnCount)
