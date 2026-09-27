@@ -7,9 +7,13 @@ import { runningItemsByCol, type RunningItem, type RowSummary } from "@/lib/intr
 import { TimetableFooter } from "./TimetableFooter"
 import { TimetableRow, type QuickAddAction } from "./TimetableRow"
 import { IntraopUndoBar } from "./IntraopUndoBar"
+import { IntraopAttentionBanner, type IntraopAttentionView } from "./IntraopAttentionBanner"
+import type { IntraopAttentionAction } from "@lospor/core/intraop-attention"
 
 type Props = {
   screenWidth: number
+  /** Questions the timeline is waiting on (Core intraop-attention). */
+  attention?: IntraopAttentionView
   undoEvent: LogEvent | null
   chartRows: number[]
   rowHeight: number
@@ -47,6 +51,7 @@ type Props = {
 
 export function IntraopTimetableTab({
   screenWidth,
+  attention,
   undoEvent,
   chartRows,
   rowHeight,
@@ -109,6 +114,11 @@ export function IntraopTimetableTab({
   }, [labDraws])
 
   const collapseExpandedRow = useCallback(() => onSetExpandedRow(null), [onSetExpandedRow])
+  const resolveAttention = attention?.resolve
+  const answerAttention = useMemo(
+    () => isWatching || !resolveAttention ? undefined : (key: string, action: IntraopAttentionAction) => { void resolveAttention(key, action) },
+    [isWatching, resolveAttention],
+  )
 
   const renderRow = useCallback(({ item: col }: { item: number }) => {
     const rowData = rowDataByCol.get(col)
@@ -143,6 +153,7 @@ export function IntraopTimetableTab({
         onEditGas={onEditGas}
         onStopAgent={onStopAgent}
         onQuickAdd={onQuickAdd}
+        onAnswerAttention={answerAttention}
       />
     )
   }, [
@@ -163,6 +174,7 @@ export function IntraopTimetableTab({
     onEndFluid,
     onManageInfusion,
     onQuickAdd,
+    answerAttention,
     onSetExpandedRow,
     onStopAgent,
     rowDataByCol,
@@ -178,6 +190,9 @@ export function IntraopTimetableTab({
           onDismiss={onDismissUndo}
         />
       )}
+
+      {/* A screen watching another screen's case writes nothing, so it asks nothing. */}
+      {attention && !isWatching && <IntraopAttentionBanner attention={attention} />}
 
       <FlatList
         ref={listRef}

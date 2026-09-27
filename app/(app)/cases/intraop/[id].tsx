@@ -395,7 +395,7 @@ export default function IntraopLiveScreen() {
     openEndCase,
     finaliseCase,
     resumeCase, resumeUnlimited, restoreEndedCase,
-    endCaseRunningItems, afterEndItems, resolveAfterEnd,
+    endCaseRunningItems, afterEndItems, resolveAfterEnd, attention,
   } = useIntraopCaseLifecycle({
     startRef,
     setElapsedMs,
@@ -412,7 +412,7 @@ export default function IntraopLiveScreen() {
     activeGas,
     activeInfusions,
     activeFluids,
-    timeline: { logRef, syncLog, removeEvent, labelOf: ev => eventLabel(ev).text, endedAtRef, resyncActiveRef },
+    timeline: { log, logRef, syncLog, removeEvent, labelOf: ev => eventLabel(ev).text, endedAtRef, resyncActiveRef },
     stopAgent,
     stopGasSettings,
     stopInfusion,
@@ -693,7 +693,7 @@ export default function IntraopLiveScreen() {
           tabBar={{ tab, onSelect: selectTab, tc, screenWidth, railRef: tabRailRef, layouts: tabLayouts }}
         >
         <IntraopRenderSurface {...{
-          screenWidth, tabSwipeResponder, tab, undoEv, chartRows, chartStart, currentCol,
+          screenWidth, tabSwipeResponder, tab, undoEv, chartRows, chartStart, currentCol, attention,
           expandedRow, nowSlotPercent, timetable, eventRows, activeInfusions, activeFluids,
           activeAgent, activeAgents, activeGas, startRef, isWatching, verticalTimetableRef, undoLastEvent,
           setUndoEv, setExpandedRow, eventLabel, setInfActTgt, setInfActRate, setInfActTs,

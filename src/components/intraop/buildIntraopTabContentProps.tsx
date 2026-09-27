@@ -39,6 +39,7 @@ type VascularProps = ComponentProps<typeof VascularTab>
 
 export type IntraopTabContentBuilderProps = {
   screenWidth: LogProps["screenWidth"]
+  attention?: LogProps["attention"] // Core intraop-attention, shown above the chart
   tab: Host["tab"]
   undoEv: LogProps["undoEvent"]
   chartRows: LogProps["chartRows"]
@@ -183,7 +184,7 @@ export type IntraopTabContentBuilderProps = {
 
 export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps): IntraopTabContentHostProps {
   const {
-    labResults, openLabs, screenWidth, tab, undoEv, chartRows, chartStart, currentCol, expandedRow, nowSlotPercent,
+    labResults, openLabs, screenWidth, attention, tab, undoEv, chartRows, chartStart, currentCol, expandedRow, nowSlotPercent,
     timetable, eventRows, activeInfusions, activeFluids, activeAgents, activeGas, startRef,
     isWatching, verticalTimetableRef, undoLastEvent, setUndoEv, setExpandedRow, eventLabel,
     setInfActTgt, setInfActRate, setInfActOpen, setInfActTs, openFluidEnd, openGasSettings, tc, stopAgent,
@@ -218,6 +219,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
 
   switch (tab) {
     case "log": return { tab, content: {
+      attention,
       labDraws: labDraws(),
       onOpenLabs: openLabs,
       screenWidth,

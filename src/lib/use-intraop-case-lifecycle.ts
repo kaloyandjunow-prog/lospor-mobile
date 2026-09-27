@@ -8,7 +8,10 @@ import type { EndCaseAfterEndItem, EndCaseCleanupItem, EndCaseStopContext } from
 import type { RunningAgent } from "@/lib/use-intraop-running-state"
 import { formatDateHHMM } from "@/lib/intraop-projection"
 import { formatMessage } from "@/i18n/locale"
-import { intraopEndCaseStopIds, intraopEventsAfter } from "@lospor/core/intraop-commands"
+import { intraopEndCaseStopIds } from "@lospor/core/intraop-commands"
+import { intraopAttentionItems, type IntraopAttentionAction } from "@lospor/core/intraop-attention"
+import { localTimeOf } from "@lospor/core/intraop-time"
+import { logAfterAttentionAnswer, useIntraopAttention } from "@/lib/use-intraop-attention"
 import { promoteDraftCaseToInProgress, type IntraopTimingOverrides } from "@/lib/intraop-timing"
 import {
   buildIntraopEndTiming,
@@ -77,6 +80,7 @@ type UseIntraopCaseLifecycleArgs = {
   getReadinessInput: () => Record<string, unknown>
   /** The saved log and its editors, for entries after the end and Resume. */
   timeline: {
+    log: LogEvent[]
     logRef: MutableRefObject<LogEvent[]>
     syncLog: (next: LogEvent[]) => Promise<boolean>
     removeEvent: (event: LogEvent) => Promise<void>
@@ -120,9 +124,17 @@ export function useIntraopCaseLifecycle({
   const caseEndedAtRef = useRef<Date | null>(null)
   const [resumeSecsLeft, setResumeSecsLeft] = useState(0)
   const [resumeUnlimited, setResumeUnlimited] = useState(false)
-  // Planned entries dated after "now": End case lists them, and the case
-  // cannot be finalised while any remain (nothing may lie after the end).
-  const [afterEndEvents, setAfterEndEvents] = useState<LogEvent[]>([])
+  // The minute End case was opened at: entries dated after it, and stops
+  // entered ahead and still unconfirmed, are answered before the case ends.
+  // Which ones, and what each answer writes, is Core's (intraop-attention).
+  const [endCaseAt, setEndCaseAt] = useState<Date | null>(null)
+  const attention = useIntraopAttention({
+    log: timeline.log,
+    logRef: timeline.logRef,
+    endedAtRef: timeline.endedAtRef,
+    syncLog: timeline.syncLog,
+    resyncActiveRef: timeline.resyncActiveRef,
+  })
 
   useEffect(() => {
     if (resumeSecsLeft <= 0) return
@@ -240,9 +252,10 @@ export function useIntraopCaseLifecycle({
       )
       if (!proceed) return
     }
-    const afterEnd = intraopEventsAfter(timeline.logRef.current, new Date())
-    setAfterEndEvents(afterEnd)
-    if (afterEnd.length > 0 || hasEndCaseRunningItems({ activeAgents, activeGas, activeInfusions, activeFluids })) {
+    const at = new Date(Math.floor(Date.now() / 60_000) * 60_000)
+    const pending = intraopAttentionItems(timeline.logRef.current, { now: at, endedAt: at })
+    setEndCaseAt(at)
+    if (pending.length > 0 || hasEndCaseRunningItems({ activeAgents, activeGas, activeInfusions, activeFluids })) {
       setEndCaseDecisions({})
       setEndCaseOpen(true)
     } else {
@@ -276,27 +289,29 @@ export function useIntraopCaseLifecycle({
     timeline.resyncActiveRef.current()
   }
 
-  // "Didn't happen" deletes the entry; "Happened" moves it to now (the end).
-  async function resolveAfterEnd(id: string, resolution: "delete" | "move") {
-    const event = timeline.logRef.current.find(item => item.id === id)
-    setAfterEndEvents(current => current.filter(item => item.id !== id))
-    if (!event) return
-    if (resolution === "delete") {
-      await timeline.removeEvent(event)
-    } else {
-      const ts = new Date(Math.floor(Date.now() / 60_000) * 60_000).toISOString()
-      const moved = await timeline.syncLog(timeline.logRef.current.map(item => item.id === id ? { ...item, ts } : item))
-      if (!moved) setAfterEndEvents(current => [...current, event])
-    }
+  // Each answer writes exactly what Core says it writes: "happened" moves an
+  // entry to the end (a stop there is one Resume offers back), "did not
+  // happen" deletes it with what depends on it, and an unconfirmed stop is
+  // confirmed or withdrawn.
+  async function resolveAfterEnd(id: string, action: IntraopAttentionAction) {
+    const at = endCaseAt ?? new Date()
+    const next = logAfterAttentionAnswer(timeline.logRef.current, id, action, { now: new Date(), endedAt: at })
+    if (next) await timeline.syncLog(next)
     timeline.resyncActiveRef.current()
   }
 
-  const afterEndItems: EndCaseAfterEndItem[] = afterEndEvents.map(event => ({
-    id: event.id,
-    label: timeline.labelOf(event),
-    time: formatDateHHMM(new Date(event.ts)),
-    color: event.color ?? shade("#fbbf24"),
-  }))
+  // Times in the case's own zone, never the device's.
+  const clockOf = (ts: string) =>
+    (isValidTimeZone(caseTimezone) ? localTimeOf(new Date(ts), caseTimezone) : null) ?? formatDateHHMM(new Date(ts))
+  const afterEndItems: EndCaseAfterEndItem[] = endCaseAt
+    ? intraopAttentionItems(timeline.log, { now: endCaseAt, endedAt: endCaseAt }).map(item => ({
+        id: item.key,
+        kind: item.kind,
+        label: timeline.labelOf(item.event),
+        time: clockOf(item.event.ts),
+        color: item.event.color ?? shade("#fbbf24"),
+      }))
+    : []
 
   const endCaseRunningItems: EndCaseCleanupItem[] = buildEndCaseRunningItems({
     activeAgents,
@@ -337,5 +352,6 @@ export function useIntraopCaseLifecycle({
     endCaseRunningItems,
     afterEndItems,
     resolveAfterEnd,
+    attention: { ...attention, clockOf, labelOf: timeline.labelOf },
   }
 }

@@ -23,6 +23,7 @@ import { timelineRefusalMessageKey } from "@/lib/intraop-timeline-refusal"
 import {
   intraopCascadeDeleteIds,
   newIntraopTimelineIssues,
+  stampEnteredEvents,
 } from "@lospor/core/intraop-commands"
 
 type SyncState = "saved" | "saving" | "failed" | "offline"
@@ -142,6 +143,9 @@ export function useIntraopEventPersistence({
     const event: LogEvent = {
       id: uid(),
       ts,
+      // When it was entered, beside when it happened: a stop dated ahead of
+      // its entry is asked about when its time comes (9.13.0).
+      recordedAt: new Date().toISOString(),
       syncStatus: "pending",
       ...partial,
     }
@@ -183,10 +187,12 @@ export function useIntraopEventPersistence({
     return event
   }
 
-  async function syncLog(newLog: LogEvent[]): Promise<boolean> {
+  async function syncLog(edited: LogEvent[]): Promise<boolean> {
     seedLegacyRevision()
     const previousLog = log
-    if (refused(previousLog, newLog)) return false
+    if (refused(previousLog, edited)) return false
+    // Re-timed events get a new entry time; a moved stop is a new guess.
+    const newLog = stampEnteredEvents(previousLog, edited, new Date())
     logRef.current = newLog
     setLog(newLog)
     if (startRef.current) {

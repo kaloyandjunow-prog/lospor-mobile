@@ -7,6 +7,8 @@ import { timeAtCol, formatDateHHMM } from "@/lib/intraop-projection"
 import type { LogEvent, ActiveInfusion, ActiveFluid, ActiveGasSettings } from "@/lib/intraop-log-event"
 import type { ActiveAgent } from "@/lib/intraop-active-state"
 import type { RunningItem, RowSummary } from "@/lib/intraop-running"
+import type { IntraopAttentionAction } from "@lospor/core/intraop-attention"
+import { AttentionAnswers } from "./AttentionAnswers"
 import type { VitalsEntry } from "@/components/IntraopTimetable"
 import { usePreferences, type ClinicalStringKey } from "@/lib/preferences-context"
 
@@ -59,13 +61,15 @@ type TimetableRowProps = {
   onEditGas: (col: number) => void
   onStopAgent: (name: string, col?: number) => void
   onQuickAdd: (col: number, action: QuickAddAction) => void
+  /** Answers an unconfirmed stop in its row; absent on a watching screen. */
+  onAnswerAttention?: (key: string, action: IntraopAttentionAction) => void
 }
 
 function TimetableRowComponent({
   col, labDraws, onOpenLabs, chartStart, rowHeight, isNow, isQuarter, isExpanded, nowSlotPercent,
   vital, rowEvents, running, summary, labelOf,
   activeInfusions, activeFluids, activeAgents, activeGas,
-  onExpand, onCollapse, onManageInfusion, onEndFluid, onEditGas, onStopAgent, onQuickAdd,
+  onExpand, onCollapse, onManageInfusion, onEndFluid, onEditGas, onStopAgent, onQuickAdd, onAnswerAttention,
 }: TimetableRowProps) {
   const shade = useShade()
   const { tc } = usePreferences()
@@ -135,11 +139,11 @@ function TimetableRowComponent({
                 const runningAgent = activeAgents.find(agent => item.id === `agent-${agent.name}`)
                 const isGasItem = item.id === "gas-settings"
                 // A planned item, or the row of a planned stop, is a marker, not a control.
-                const marker = !!(item.planned || item.plannedStop)
+                const marker = !!(item.planned || item.plannedStop || item.plannedChange)
                 const canManage = !marker && !!(activeInf || activeFl || runningAgent || (isGasItem && activeGas))
                 return (
+                  <View key={item.id}>
                   <TouchableOpacity
-                    key={item.id}
                     activeOpacity={canManage ? 0.7 : 1}
                     onPress={() => {
                       if (!canManage) return
@@ -158,7 +162,7 @@ function TimetableRowComponent({
                     }}
                   >
                     <Text style={{ color: item.color, fontSize: 13, fontWeight: "700", flex: 1 }}>
-                      {item.planned ? `${tc("plannedLabel")} · ` : item.plannedStop ? `${tc("plannedStopLabel")} · ` : ""}{item.label}
+                      {item.planned ? `${tc("plannedLabel")} · ` : item.plannedStop ? `${tc("plannedStopLabel")} · ` : item.plannedChange ? `${tc("plannedChangeLabel")} · ` : ""}{item.label}
                     </Text>
                     {canManage && (
                       <Text style={{ color: shade("#64748b"), fontSize: 11 }}>
@@ -166,6 +170,14 @@ function TimetableRowComponent({
                       </Text>
                     )}
                   </TouchableOpacity>
+                  {/* A stop entered ahead reached this row unconfirmed (9.13.0). */}
+                  {item.stopUnconfirmed && item.stopEventId && onAnswerAttention ? (
+                    <View style={{ marginTop: 6 }}>
+                      <Text style={{ color: shade("#fbbf24"), fontSize: 12, fontWeight: "700", marginBottom: 6 }}>{tc("stopUnconfirmedLabel")}</Text>
+                      <AttentionAnswers id={item.stopEventId} kind="unconfirmed_stop" onAnswer={onAnswerAttention} />
+                    </View>
+                  ) : null}
+                  </View>
                 )
               })}
             </View>
@@ -321,7 +333,8 @@ export const TimetableRow = memo(TimetableRowComponent, (prev, next) => {
     prev.onEndFluid !== next.onEndFluid ||
     prev.onEditGas !== next.onEditGas ||
     prev.onStopAgent !== next.onStopAgent ||
-    prev.onQuickAdd !== next.onQuickAdd
+    prev.onQuickAdd !== next.onQuickAdd ||
+    prev.onAnswerAttention !== next.onAnswerAttention
   ) {
     return false
   }
