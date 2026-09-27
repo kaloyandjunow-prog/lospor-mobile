@@ -10,6 +10,8 @@ export type FluidStatusTotalRow = {
   count?: number
   mgTotal?: number | null
   weightUsed?: number | null
+  /** The total as shown, when it says more than number and unit (infusions). */
+  display?: string
 }
 
 /**
@@ -155,7 +157,7 @@ function TotalRow({ row }: { row: FluidStatusTotalRow }) {
         )}
       </Text>
       <Text style={{ color:shade("#93c5fd"), fontSize:13, fontWeight:"700", fontVariant:["tabular-nums"] }}>
-        {row.total} {row.unit}{row.weightUsed != null ? " †" : ""}
+        {row.display ?? `${row.total} ${row.unit}`}{row.weightUsed != null ? " †" : ""}
         {row.mgTotal != null && (
           <Text style={{ color:shade("#64748b"), fontSize:11, fontWeight:"500" }}>{`  (${row.mgTotal} mg)`}</Text>
         )}

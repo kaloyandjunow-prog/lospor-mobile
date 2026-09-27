@@ -1,5 +1,22 @@
 # Changelog - LOSPOR Mobile
 
+## [9.12.3] - 2026-09-27
+
+### Fixed
+
+- **The case summary totalled infusions on a built-in weight table** instead of
+  the institution's drug library. It now uses the library (cached on the
+  device, the bundle before the first sync), as the intraop screen does, so the
+  summary, the web form and the printed record agree.
+- **Infusion totals follow Core 9.12.3:** the time actually run, per kg when no
+  weight is recorded, mg and mcg converted, and the weight used named when the
+  drug's own could not be.
+
+### Added
+
+- **New infusions record their weight basis** from the library, and per-m²
+  infusions are totalled on the body surface area.
+
 ## [9.12.2] - 2026-09-26
 
 ### Fixed

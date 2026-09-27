@@ -252,7 +252,7 @@ export default function IntraopLiveScreen() {
     infActOpen, setInfActOpen, infActTgt, setInfActTgt, infActRate, setInfActRate,
     infActConcentration, setInfActConcentration, infActTs, setInfActTs,
     openInfusion, confirmInfusion, stopInfusion, changeRate,
-  } = useInfusionEntry(save, setEntryTs, setActiveInfusions, INFUSION_CODES)
+  } = useInfusionEntry(save, setEntryTs, setActiveInfusions, INFUSION_CODES, INFUSION_WEIGHT_BASIS)
 
   // Drug sheet
   const {
@@ -339,7 +339,7 @@ export default function IntraopLiveScreen() {
   const [labsOpen, setLabsOpen] = useState(false)
   const [labsTs, setLabsTs] = useState<string | null>(null)
   const openLabs = useCallback((ts: string) => { setLabsTs(ts); setLabsOpen(true) }, [])
-  const { caseIbw, caseTbw } = useCaseWeights({
+  const { caseIbw, caseTbw, caseBsa } = useCaseWeights({
     clinicalMode, sex: preop?.sex, heightCm: preop?.height,
     weightKg: preop?.weight, ageValue: preop?.ageValue, ageUnit: preop?.ageUnit,
   })
@@ -723,7 +723,7 @@ export default function IntraopLiveScreen() {
           setPremedEveningText, premedMorningText, setPremedMorningText, savePremedication,
           openPremedPicker, log, selectedComplications, complicationsNotes, setComplicationsNotes,
           saveComplications, setCompOpen, eventActions, promptDelete, prevVitalFor, ttColCount,
-          caseIbw, caseTbw, infusionWeightBasis: INFUSION_WEIGHT_BASIS,
+          caseIbw, caseTbw, caseBsa, infusionWeightBasis: INFUSION_WEIGHT_BASIS,
           urineMl, setUrineMl, bloodLossMl, setBloodLossMl,
           chartPage, caseEnded, resumeSecsLeft, resumeCase, setChartPage, setTtColCount,
           handleChartTimetableChange, setEntryTs, slotOpen, slotTs, timeStr, slotEventSearch,

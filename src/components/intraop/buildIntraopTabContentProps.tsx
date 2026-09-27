@@ -7,6 +7,7 @@ import { calculateDrugTotals } from "@lospor/core/intraop-summary"
 import {
   calcInfusionTotals,
   calculateDeliveredFluidTotals,
+  formatInfusionTotal,
   infusionLocalAnaestheticMg,
   type WeightBasisMap,
 } from "@lospor/core/intraop-totals"
@@ -168,6 +169,8 @@ export type IntraopTabContentBuilderProps = {
   logBuildSummary?: LogProps["buildSummary"]
   caseIbw: number | null
   caseTbw: number | null
+  /** Body surface area for per-m² infusions; null when height or weight is missing. */
+  caseBsa?: number | null
   infusionWeightBasis: WeightBasisMap
   /** Lab results of the case; drawn on the chart and in the event log by time. */
   labResults: LabResult[]
@@ -205,7 +208,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
     complicationsNotes, setComplicationsNotes, saveComplications, setCompOpen, eventActions,
     promptDelete, prevVitalFor,
     logEventText, logBuildSummary,
-    caseIbw, caseTbw, infusionWeightBasis, urineMl, setUrineMl, bloodLossMl, setBloodLossMl,
+    caseIbw, caseTbw, caseBsa = null, infusionWeightBasis, urineMl, setUrineMl, bloodLossMl, setBloodLossMl,
   } = props
 
   // One case per tab, and only the active one runs. Building all eleven groups
@@ -340,7 +343,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
     // one being displayed.
     case "fluids": return { tab, content: (() => {
       const infusionRows = calcInfusionTotals(
-        timetable.infusions ?? [], caseIbw, caseTbw, infusionWeightBasis,
+        timetable.infusions ?? [], caseIbw, caseTbw, infusionWeightBasis, caseBsa,
       )
       const weighted = infusionRows.filter(row => row.weightUsed != null)
       const ibwUsed = weighted.some(row => row.weightBasis === "IBW") ? caseIbw : null
@@ -348,6 +351,8 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
       const weightParts: string[] = []
       if (ibwUsed != null) weightParts.push(`IBW ${Math.round(ibwUsed * 10) / 10} kg`)
       if (tbwUsed != null) weightParts.push(`TBW ${Math.round(tbwUsed * 10) / 10} kg`)
+      const bsaUsed = infusionRows.find(row => row.bsaUsed != null)?.bsaUsed
+      if (bsaUsed != null) weightParts.push(`BSA ${bsaUsed} m²`)
       // Delivered volume, not the stored `volume` string: that field is only
       // written when a fluid is stopped, so a running crystalloid would read
       // as 0 while it is actually going in.
@@ -356,6 +361,9 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
         infusionTotals: infusionRows.map(row => ({
           ...row,
           mgTotal: infusionLocalAnaestheticMg(row.name, row.total, row.unit),
+          // Per kg without a weight, both totals of a unit switch, and which
+          // weight was used when the drug's own could not be (9.12.3).
+          display: formatInfusionTotal(row),
         })),
         bolusTotals: calculateDrugTotals(timetable),
         weightNote: weightParts.length ? `† ${weightParts.join(" / ")}` : null,
