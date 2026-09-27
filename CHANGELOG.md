@@ -1,6 +1,6 @@
 # Changelog - LOSPOR Mobile
 
-## [9.13.0] - 2026-09-27
+## [9.13.0] - 2026-09-28
 
 ### Added
 
@@ -36,9 +36,17 @@
   suggestions accepted and rejected; the save badge store; the save-state
   hook's re-renders; the save-then-delete race.
 
-## [9.12.3] - 2026-09-27
+### Fixed (release sweep)
 
-### Fixed
+- Deleting an entry went around the case's send lock: an entry deleted while
+  it was being sent was saved anyway and came back on the next reload, and an
+  entry queued at that moment could be dropped from the queue. Every deletion
+  now goes through the autosave manager, which cancels an unsent entry or
+  deletes a sent one after it arrives.
+
+### Included from 9.12.3 (never released on its own)
+
+#### Fixed
 
 - **The case summary totalled infusions on a built-in weight table** instead of
   the institution's drug library. It now uses the library (cached on the
@@ -48,7 +56,7 @@
   weight is recorded, mg and mcg converted, and the weight used named when the
   drug's own could not be.
 
-### Added
+#### Added
 
 - **New infusions record their weight basis** from the library, and per-m²
   infusions are totalled on the body surface area.
