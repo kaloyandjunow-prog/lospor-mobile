@@ -1,5 +1,5 @@
 import { Text, View } from "react-native"
-import type { IntraopAttentionAction, IntraopAttentionItem } from "@lospor/core/intraop-attention"
+import { intraopAttentionText, type IntraopAttentionAction, type IntraopAttentionItem } from "@lospor/core/intraop-attention"
 
 import type { LogEvent } from "@/lib/intraop-log-event"
 import { usePreferences } from "@/lib/preferences-context"
@@ -23,7 +23,7 @@ export type IntraopAttentionView = {
  */
 export function IntraopAttentionBanner({ attention }: { attention: IntraopAttentionView }) {
   const shade = useShade()
-  const { tc } = usePreferences()
+  const { tc, language } = usePreferences()
   if (attention.items.length === 0) return null
   return (
     <View testID="intraop-attention" style={{
@@ -36,7 +36,7 @@ export function IntraopAttentionBanner({ attention }: { attention: IntraopAttent
       {attention.items.map(item => (
         <View key={item.key} style={{ marginBottom: 8 }}>
           <Text style={{ color: shade("#e2e8f0"), fontWeight: "700", fontSize: 13, marginBottom: 6 }}>
-            {attention.clockOf(item.event.ts)} · {attention.labelOf(item.event)}
+            {attention.clockOf(item.event.ts)} · {intraopAttentionText(item, language)}
             {item.kind === "unconfirmed_stop" ? ` — ${tc("stopUnconfirmedLabel")}` : ""}
           </Text>
           <AttentionAnswers id={item.key} kind={item.kind} onAnswer={(key, action) => { void attention.resolve(key, action) }} />

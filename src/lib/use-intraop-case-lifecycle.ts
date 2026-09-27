@@ -9,7 +9,7 @@ import type { RunningAgent } from "@/lib/use-intraop-running-state"
 import { formatDateHHMM } from "@/lib/intraop-projection"
 import { formatMessage } from "@/i18n/locale"
 import { intraopEndCaseStopIds } from "@lospor/core/intraop-commands"
-import { intraopAttentionItems, type IntraopAttentionAction } from "@lospor/core/intraop-attention"
+import { intraopAttentionItems, intraopAttentionText, type IntraopAttentionAction } from "@lospor/core/intraop-attention"
 import { localTimeOf } from "@lospor/core/intraop-time"
 import { logAfterAttentionAnswer, useIntraopAttention } from "@/lib/use-intraop-attention"
 import { promoteDraftCaseToInProgress, type IntraopTimingOverrides } from "@/lib/intraop-timing"
@@ -114,7 +114,7 @@ export function useIntraopCaseLifecycle({
   timeline,
 }: UseIntraopCaseLifecycleArgs) {
   const shade = useShade()
-  const { tc } = usePreferences()
+  const { tc, language } = usePreferences()
   const [endCaseOpen, setEndCaseOpen] = useState(false)
   const [startAtOpen, setStartAtOpen] = useState(false)
   const [startAtInput, setStartAtInput] = useState("")
@@ -307,7 +307,7 @@ export function useIntraopCaseLifecycle({
     ? intraopAttentionItems(timeline.log, { now: endCaseAt, endedAt: endCaseAt }).map(item => ({
         id: item.key,
         kind: item.kind,
-        label: timeline.labelOf(item.event),
+        label: intraopAttentionText(item, language),
         time: clockOf(item.event.ts),
         color: item.event.color ?? shade("#fbbf24"),
       }))

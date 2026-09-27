@@ -4,7 +4,8 @@ import { describe, expect, it, vi } from "vitest"
 import { intraopAttentionItems } from "@lospor/core/intraop-attention"
 import { INTRAOP_ATTENTION_SCENARIOS } from "@lospor/core/intraop-attention-scenarios"
 
-vi.mock("@/lib/preferences-context", () => ({ usePreferences: () => ({ tc: (key: string) => key, language: "en" }) }))
+const preferences = vi.hoisted(() => ({ language: "en" }))
+vi.mock("@/lib/preferences-context", () => ({ usePreferences: () => ({ tc: (key: string) => key, language: preferences.language }) }))
 
 import { logAfterAttentionAnswer } from "@/lib/use-intraop-attention"
 import { render } from "@/test/render"
@@ -48,4 +49,24 @@ describe.each(INTRAOP_ATTENTION_SCENARIOS)("$name", scenario => {
       }
     },
   )
+})
+
+describe("in Bulgarian", () => {
+  it.each(INTRAOP_ATTENTION_SCENARIOS.filter(scenario => scenario.expected.length > 0))("$name says Core's Bulgarian line", async scenario => {
+    const { intraopAttentionText } = await import("@lospor/core/intraop-attention")
+    preferences.language = "bg"
+    try {
+      const items = intraopAttentionItems(scenario.log, scenario.context)
+      const tree = render(
+        <IntraopAttentionBanner attention={{ items, resolve: vi.fn(async () => {}), clockOf: () => "00:00", labelOf: () => "" }} />,
+      )
+      const text = tree.root.findAll(node => String(node.type) === "Text")
+        .map(node => node.children.filter(child => typeof child === "string").join(""))
+        .join("\n")
+      for (const item of items) expect(text).toContain(intraopAttentionText(item, "bg"))
+      expect(/[А-Яа-я]/.test(text)).toBe(true)
+    } finally {
+      preferences.language = "en"
+    }
+  })
 })
