@@ -9,10 +9,8 @@ import {
   loadPendingIntraopEvents,
   markIntraopEventFailed,
   markIntraopEventSynced,
-  removePendingIntraopEvent,
   serializeIntraopEventForServer,
   stripIntraopLogSyncStatuses,
-  storePendingIntraopEvents,
 } from "@/lib/pending-intraop-events"
 import { uid, type LogEvent } from "@/lib/intraop-log-event"
 import { planEventMutations } from "@/lib/intraop-event-mutations"
@@ -247,25 +245,17 @@ export function useIntraopEventPersistence({
   }
 
   // Deleting a start takes its changes and its stop with it (Core rule).
-  // Read from the log as last written, after the storage steps: an entry
-  // saved meanwhile, not yet rendered, was otherwise read as deleted too.
-  async function removeEvent(event: LogEvent, sync = true) {
-    const ids = new Set(intraopCascadeDeleteIds(logRef.current, event.id))
-    ids.add(event.id)
-    let remainingPending = await loadPendingIntraopEvents<LogEvent>(caseId)
-    for (const id of ids) remainingPending = removePendingIntraopEvent(remainingPending, id)
-    await storePendingIntraopEvents(caseId, remainingPending)
-    setPendingCount(remainingPending.length)
+  // Every deletion is staged through the autosave manager, which decides
+  // under the case's write lock (9.13.0): an entry that never left the device
+  // is cancelled there, and one being sent right now is deleted after it
+  // arrives. This used to edit the unsent queue itself, outside that lock --
+  // so an entry queued meanwhile could be wiped from the queue, and an entry
+  // deleted mid-send was saved anyway and came back on the next reload.
+  async function removeEvent(event: LogEvent) {
     const current = logRef.current
-    const next = current.filter((item) => !ids.has(item.id))
-    if (sync && current.some(item => ids.has(item.id) && !item.syncStatus)) {
-      await syncLog(next)
-      return
-    }
-    logRef.current = next
-    setLog(next)
-    if (startRef.current) setTimetable(eventsToTimetable(next, roundDown5Min(startRef.current), serverNow(), endedAtRef?.current))
-    setSyncState(remainingPending.length > 0 ? "failed" : "saved")
+    const ids = new Set(intraopCascadeDeleteIds(current, event.id))
+    ids.add(event.id)
+    await syncLog(current.filter((item) => !ids.has(item.id)))
   }
 
   async function undoLastEvent() {
