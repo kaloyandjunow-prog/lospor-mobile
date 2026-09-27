@@ -110,7 +110,7 @@ export function useIntraopEventPersistence({
         eventId: event.id,
         event: serializeIntraopEventForServer(event) as Record<string, unknown>,
         baseRevision: autosaveManager.getRevision(caseId, "intraop"),
-        queuedAt: new Date().toISOString(),
+        queuedAt: serverNow().toISOString(),
       })
     }
     legacyWebLogNeedsSyncRef.current = false
@@ -208,7 +208,7 @@ export function useIntraopEventPersistence({
           caseId,
           ...mutation,
           baseRevision: autosaveManager.getRevision(caseId, "intraop"),
-          queuedAt: new Date().toISOString(),
+          queuedAt: serverNow().toISOString(),
         })
       }
       legacyWebLogNeedsSyncRef.current = false
