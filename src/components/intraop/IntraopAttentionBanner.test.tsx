@@ -51,6 +51,33 @@ describe.each(INTRAOP_ATTENTION_SCENARIOS)("$name", scenario => {
   )
 })
 
+describe("a change the server refused", () => {
+  it("is listed in Core's words at the entry's own time, until marked seen", async () => {
+    const { intraopRefusedEntry } = await import("@lospor/core/intraop-attention")
+    const log = [
+      { id: "start", ts: "2026-09-27T12:00:00.000Z", type: "infusion_start", infId: "i", name: "Remifentanil", rate: "0.1", unit: "mcg/kg/min" },
+      { id: "stop", ts: "2026-09-27T12:40:00.000Z", type: "infusion_stop", infId: "i" },
+    ] as never[]
+    const refused = [{ eventId: "stop", status: 412, at: "2026-09-27T12:50:00.000Z", change: "edit" as const, event: { id: "stop", ts: "2026-09-27T12:35:00.000Z", type: "infusion_stop", infId: "i" } }]
+    const dismissRefused = vi.fn()
+    const clockOf = (ts: string) => ts.slice(11, 16)
+    const tree = render(
+      <IntraopAttentionBanner attention={{
+        items: [], resolve: vi.fn(async () => {}), clockOf, labelOf: () => "raw label", log,
+        saveState: { queuedEventIds: [], sendingEventId: null, refused, queuedSections: [], dismissRefused },
+      }} />,
+    )
+    const text = tree.root.findAll(node => String(node.type) === "Text")
+      .map(node => node.children.filter(child => typeof child === "string").join("")).join("\n")
+    const entry = intraopRefusedEntry(refused[0], "en", log)
+    expect(text).toContain(`12:35 · ${entry.text}`)
+    expect(text).toContain("Remifentanil")
+    expect(text).not.toContain("raw label")
+    act(() => { tree.root.findAll(node => node.props?.testID === "intraop-refused-dismiss")[0].props.onPress() })
+    expect(dismissRefused).toHaveBeenCalled()
+  })
+})
+
 describe("in Bulgarian", () => {
   it.each(INTRAOP_ATTENTION_SCENARIOS.filter(scenario => scenario.expected.length > 0))("$name says Core's Bulgarian line", async scenario => {
     const { intraopAttentionText } = await import("@lospor/core/intraop-attention")
