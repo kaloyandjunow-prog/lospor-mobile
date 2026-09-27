@@ -1,5 +1,22 @@
 # Changelog - LOSPOR Mobile
 
+## [9.13.0] - 2026-09-27
+
+### Added
+
+- **Every timetable row says whether what it holds is saved,** from the
+  queue itself: entries, running infusions' starts, changes and stops, labs.
+  Refusals are listed until marked seen; totals show "≈" while part of them
+  is unsaved.
+- **Questions on the timetable:** a banner and the stop's own row ask about a
+  stop entered ahead whose time came; End case and an ended case ask about
+  entries after the end. Planned changes show in their row.
+
+### Fixed
+
+- "Now" on the timeline follows the server's clock.
+- The chart view prints each dose at its minute in the case's time zone.
+
 ## [9.12.3] - 2026-09-27
 
 ### Fixed
