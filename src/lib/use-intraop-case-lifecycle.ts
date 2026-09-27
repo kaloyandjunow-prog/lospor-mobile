@@ -1,4 +1,5 @@
 import type { SaveIntraopEvent } from "@/lib/intraop-stamp"
+import { serverNow } from "@/lib/server-clock"
 import { useEffect, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react"
 import { confirmAction, notify } from "@/lib/notify"
 import type { ActiveFluid, ActiveGasSettings, ActiveInfusion, LogEvent } from "@/lib/intraop-log-event"
@@ -153,7 +154,7 @@ export function useIntraopCaseLifecycle({
 
   async function startCaseNow() {
     if (startRef.current) return
-    const now = new Date()
+    const now = serverNow()
     const zone = isValidTimeZone(caseTimezone) ? caseTimezone : resolvedTimeZone()
     const timing = zone ? buildIntraopStartTiming(now, zone) : null
     if (!timing) return
@@ -171,11 +172,11 @@ export function useIntraopCaseLifecycle({
   async function startCaseAt(hhmm: string) {
     if (startRef.current) return
     const zone = isValidTimeZone(caseTimezone) ? caseTimezone : resolvedTimeZone()
-    const startDate = zone ? startInstantForWallClock(new Date(), hhmm, zone) : null
+    const startDate = zone ? startInstantForWallClock(serverNow(), hhmm, zone) : null
     const timing = startDate && zone ? buildIntraopStartTiming(startDate, zone) : null
     if (!startDate || !timing) return
     startRef.current = startDate
-    setElapsedMs(Date.now() - startDate.getTime())
+    setElapsedMs(serverNow().getTime() - startDate.getTime())
     setCaseStartTime(timing.startTime)
     await saveTiming(timing)
     setCaseInfo(promoteDraftCaseToInProgress)
@@ -193,14 +194,14 @@ export function useIntraopCaseLifecycle({
     setResumeSecsLeft(next.resumeSecsLeft)
   }
 
-  async function finaliseCase(continuedItems: string[], endTs = new Date().toISOString()) {
+  async function finaliseCase(continuedItems: string[], endTs = serverNow().toISOString()) {
     // Ending an ended case again would move its saved end to now.
     if (caseEndedAtRef.current) return
     setEndCaseOpen(false)
     const parsedEnd = new Date(endTs)
     const next = buildFinaliseCaseState(
       continuedItems,
-      Number.isNaN(parsedEnd.getTime()) ? new Date() : parsedEnd,
+      Number.isNaN(parsedEnd.getTime()) ? serverNow() : parsedEnd,
     )
     if (next.continuedItems) setContinuedPostopItems(next.continuedItems)
     const zone = isValidTimeZone(caseTimezone) ? caseTimezone : resolvedTimeZone()
@@ -233,7 +234,7 @@ export function useIntraopCaseLifecycle({
     }
     const readiness = evaluateIntraopReadiness({
       ...getReadinessInput(),
-      endedAt: new Date().toISOString(),
+      endedAt: serverNow().toISOString(),
     })
     const labels = (issues: typeof readiness.issues) => issues.map(issue =>
       INTRAOP_ISSUE_LABEL_KEYS[issue.code]
@@ -255,7 +256,7 @@ export function useIntraopCaseLifecycle({
       )
       if (!proceed) return
     }
-    const at = new Date(Math.floor(Date.now() / 60_000) * 60_000)
+    const at = new Date(Math.floor(serverNow().getTime() / 60_000) * 60_000)
     const pending = intraopAttentionItems(timeline.logRef.current, { now: at, endedAt: at })
     setEndCaseAt(at)
     if (pending.length > 0 || hasEndCaseRunningItems({ activeAgents, activeGas, activeInfusions, activeFluids })) {
@@ -297,8 +298,8 @@ export function useIntraopCaseLifecycle({
   // happen" deletes it with what depends on it, and an unconfirmed stop is
   // confirmed or withdrawn.
   async function resolveAfterEnd(id: string, action: IntraopAttentionAction) {
-    const at = endCaseAt ?? new Date()
-    const next = logAfterAttentionAnswer(timeline.logRef.current, id, action, { now: new Date(), endedAt: at })
+    const at = endCaseAt ?? serverNow()
+    const next = logAfterAttentionAnswer(timeline.logRef.current, id, action, { now: serverNow(), endedAt: at })
     if (next) await timeline.syncLog(next)
     timeline.resyncActiveRef.current()
   }

@@ -1,4 +1,5 @@
 import * as Haptics from "expo-haptics"
+import { serverNow } from "@/lib/server-clock"
 import { useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react"
 
 import type { TimetableData } from "@/components/IntraopTimetable"
@@ -121,7 +122,7 @@ export function useIntraopEventPersistence({
    * record that already breaks a rule stays editable.
    */
   function refused(before: LogEvent[], after: LogEvent[]): boolean {
-    const messageKey = timelineRefusalMessageKey(newIntraopTimelineIssues(before, after, { now: new Date() }))
+    const messageKey = timelineRefusalMessageKey(newIntraopTimelineIssues(before, after, { now: serverNow() }))
     if (!messageKey) return false
     notify(tc("timelineRefusedTitle"), tc(messageKey))
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {})
@@ -145,7 +146,7 @@ export function useIntraopEventPersistence({
       ts,
       // When it was entered, beside when it happened: a stop dated ahead of
       // its entry is asked about when its time comes (9.13.0).
-      recordedAt: new Date().toISOString(),
+      recordedAt: serverNow().toISOString(),
       syncStatus: "pending",
       ...partial,
     }
@@ -162,7 +163,7 @@ export function useIntraopEventPersistence({
       startRef.current = new Date(event.ts)
       setElapsedMs(0)
     }
-    setTimetable(eventsToTimetable(next, roundDown5Min(startRef.current), new Date(), endedAtRef?.current))
+    setTimetable(eventsToTimetable(next, roundDown5Min(startRef.current), serverNow(), endedAtRef?.current))
 
     try {
       await migrateLegacyLog(next)
@@ -192,11 +193,11 @@ export function useIntraopEventPersistence({
     const previousLog = log
     if (refused(previousLog, edited)) return false
     // Re-timed events get a new entry time; a moved stop is a new guess.
-    const newLog = stampEnteredEvents(previousLog, edited, new Date())
+    const newLog = stampEnteredEvents(previousLog, edited, serverNow())
     logRef.current = newLog
     setLog(newLog)
     if (startRef.current) {
-      setTimetable(eventsToTimetable(newLog, roundDown5Min(startRef.current), new Date(), endedAtRef?.current))
+      setTimetable(eventsToTimetable(newLog, roundDown5Min(startRef.current), serverNow(), endedAtRef?.current))
     }
     setSyncState("saving")
 
@@ -252,7 +253,7 @@ export function useIntraopEventPersistence({
     await storePendingIntraopEvents(caseId, remainingPending)
     setPendingCount(remainingPending.length)
     setLog(next)
-    if (startRef.current) setTimetable(eventsToTimetable(next, roundDown5Min(startRef.current), new Date(), endedAtRef?.current))
+    if (startRef.current) setTimetable(eventsToTimetable(next, roundDown5Min(startRef.current), serverNow(), endedAtRef?.current))
     if (sync && log.some(item => ids.has(item.id) && !item.syncStatus)) await syncLog(next)
     else setSyncState(remainingPending.length > 0 ? "failed" : "saved")
   }

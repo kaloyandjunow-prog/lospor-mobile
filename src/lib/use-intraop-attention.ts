@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react"
+import { serverNow } from "@/lib/server-clock"
 import {
   intraopAttentionItems,
   intraopResolveAttention,
@@ -27,9 +28,9 @@ export function logAfterAttentionAnswer(
 
 /** "Now" to the minute, so a stop's time arriving shows without any other change. */
 function useMinuteClock(): number {
-  const [now, setNow] = useState(() => Date.now())
+  const [now, setNow] = useState(() => serverNow().getTime())
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 30_000)
+    const timer = setInterval(() => setNow(serverNow().getTime()), 30_000)
     return () => clearInterval(timer)
   }, [])
   return Math.floor(now / 60_000) * 60_000
@@ -59,7 +60,7 @@ export function useIntraopAttention({ log, logRef, endedAtRef, syncLog, resyncAc
   const syncLogRef = useRef(syncLog)
   syncLogRef.current = syncLog
   const resolve = useCallback(async (key: string, action: IntraopAttentionAction) => {
-    const next = logAfterAttentionAnswer(logRef.current, key, action, { now: new Date(), endedAt: endedAtRef.current })
+    const next = logAfterAttentionAnswer(logRef.current, key, action, { now: serverNow(), endedAt: endedAtRef.current })
     if (!next) return
     await syncLogRef.current(next)
     resyncActiveRef.current()
