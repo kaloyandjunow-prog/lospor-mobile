@@ -56,7 +56,7 @@ export function useIntraopEventPersistence({
   caseId,
   entryTs,
   setEntryTs,
-  log,
+  log: _log,
   logRef,
   startRef,
   legacyWebLogNeedsSyncRef,
@@ -190,7 +190,10 @@ export function useIntraopEventPersistence({
 
   async function syncLog(edited: LogEvent[]): Promise<boolean> {
     seedLegacyRevision()
-    const previousLog = log
+    // The log as last written, not as last rendered: an answer or an End case
+    // step can edit right after a save, before the screen re-renders, and a
+    // diff against the rendered log re-sent the entry just saved.
+    const previousLog = logRef.current
     if (refused(previousLog, edited)) return false
     // Re-timed events get a new entry time; a moved stop is a new guess.
     const newLog = stampEnteredEvents(previousLog, edited, serverNow())
@@ -244,18 +247,25 @@ export function useIntraopEventPersistence({
   }
 
   // Deleting a start takes its changes and its stop with it (Core rule).
+  // Read from the log as last written, after the storage steps: an entry
+  // saved meanwhile, not yet rendered, was otherwise read as deleted too.
   async function removeEvent(event: LogEvent, sync = true) {
-    const ids = new Set(intraopCascadeDeleteIds(log, event.id))
+    const ids = new Set(intraopCascadeDeleteIds(logRef.current, event.id))
     ids.add(event.id)
-    const next = log.filter((item) => !ids.has(item.id))
     let remainingPending = await loadPendingIntraopEvents<LogEvent>(caseId)
     for (const id of ids) remainingPending = removePendingIntraopEvent(remainingPending, id)
     await storePendingIntraopEvents(caseId, remainingPending)
     setPendingCount(remainingPending.length)
+    const current = logRef.current
+    const next = current.filter((item) => !ids.has(item.id))
+    if (sync && current.some(item => ids.has(item.id) && !item.syncStatus)) {
+      await syncLog(next)
+      return
+    }
+    logRef.current = next
     setLog(next)
     if (startRef.current) setTimetable(eventsToTimetable(next, roundDown5Min(startRef.current), serverNow(), endedAtRef?.current))
-    if (sync && log.some(item => ids.has(item.id) && !item.syncStatus)) await syncLog(next)
-    else setSyncState(remainingPending.length > 0 ? "failed" : "saved")
+    setSyncState(remainingPending.length > 0 ? "failed" : "saved")
   }
 
   async function undoLastEvent() {

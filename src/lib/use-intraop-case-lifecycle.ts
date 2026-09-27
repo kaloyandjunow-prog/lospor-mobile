@@ -186,7 +186,7 @@ export function useIntraopCaseLifecycle({
 
   /** Opened after it ended: shown as ended, with Resume where allowed (9.12.1). */
   function restoreEndedCase(endedAt: Date, autoEnded: boolean) {
-    const next = buildReopenedEndedState(endedAt, autoEnded)
+    const next = buildReopenedEndedState(endedAt, autoEnded, serverNow().getTime())
     caseEndedAtRef.current = endedAt
     timeline.endedAtRef.current = endedAt
     setCaseEnded(true)

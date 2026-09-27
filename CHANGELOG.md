@@ -17,6 +17,25 @@
 - "Now" on the timeline follows the server's clock.
 - The chart view prints each dose at its minute in the case's time zone.
 
+### Fixed (test coverage review)
+
+- **The intraop screen stopped on opening a case** ("This device could not
+  start the app"). The save-state hook re-rendered the whole screen on every
+  autosave report, and the header's options were re-applied on each render
+  until React gave up. It now updates only when what is shown changes.
+- Deleting an entry right after saving another -- one tick, before the screen
+  re-rendered -- removed the one just saved as well; an edit in that window
+  re-sent it. Both now read the log as last written.
+- Refused changes say what they were and why, in the case's zone -- the web's
+  line, from Core.
+- Resume after reopening an ended case follows the server's clock.
+
+### Tests
+
+- The preop profile offline, follow-ups cleared with their parent,
+  suggestions accepted and rejected; the save badge store; the save-state
+  hook's re-renders; the save-then-delete race.
+
 ## [9.12.3] - 2026-09-27
 
 ### Fixed
