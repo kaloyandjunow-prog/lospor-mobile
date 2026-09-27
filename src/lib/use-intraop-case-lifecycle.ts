@@ -356,6 +356,6 @@ export function useIntraopCaseLifecycle({
     endCaseRunningItems,
     afterEndItems,
     resolveAfterEnd,
-    attention: { ...attention, clockOf, labelOf: timeline.labelOf, saveState },
+    attention: { ...attention, clockOf, labelOf: timeline.labelOf, log: timeline.log, saveState },
   }
 }

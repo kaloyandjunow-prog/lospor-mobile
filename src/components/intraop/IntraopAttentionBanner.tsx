@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from "react-native"
 import { colors } from "@/theme/colors"
-import { intraopAttentionText, type IntraopAttentionAction, type IntraopAttentionItem } from "@lospor/core/intraop-attention"
+import { intraopAttentionText, intraopRefusedEntry, type IntraopAttentionAction, type IntraopAttentionItem } from "@lospor/core/intraop-attention"
 
 import type { LogEvent } from "@/lib/intraop-log-event"
 import { usePreferences } from "@/lib/preferences-context"
@@ -14,6 +14,8 @@ export type IntraopAttentionView = {
   /** Time of day in the case's own zone. */
   clockOf: (ts: string) => string
   labelOf: (event: LogEvent) => string
+  /** The saved log: names what a refused edit or deletion was about. */
+  log?: LogEvent[]
   /** Whether each change reached the server (9.13.0). */
   saveState?: CaseSaveState
 }
@@ -42,11 +44,15 @@ export function IntraopAttentionBanner({ attention }: { attention: IntraopAttent
           <Text style={{ color: colors.danger, fontWeight: "800", fontSize: 13, marginBottom: 4 }}>
             {tc("refusedTitle")}
           </Text>
-          {refused.map(item => (
-            <Text key={`${item.eventId}-${item.at}`} style={{ color: shade("#fca5a5"), fontSize: 12, marginBottom: 2 }}>
-              {attention.clockOf(item.at)} · {item.event ? attention.labelOf(item.event as unknown as LogEvent) : item.eventId}
-            </Text>
-          ))}
+          {refused.map(item => {
+            // What it was and why, in Core's words -- the same line as the web's.
+            const entry = intraopRefusedEntry(item, language, attention.log)
+            return (
+              <Text key={`${item.eventId}-${item.at}`} style={{ color: shade("#fca5a5"), fontSize: 12, marginBottom: 2 }}>
+                {attention.clockOf(entry.at)} · {entry.text}
+              </Text>
+            )
+          })}
           <Pressable testID="intraop-refused-dismiss" onPress={() => attention.saveState?.dismissRefused()} style={{ alignSelf: "flex-start", marginTop: 6, minHeight: 36, justifyContent: "center", paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: colors.danger }}>
             <Text style={{ color: colors.danger, fontWeight: "700", fontSize: 12 }}>{tc("refusedDismiss")}</Text>
           </Pressable>
