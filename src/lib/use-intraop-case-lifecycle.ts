@@ -12,6 +12,7 @@ import { intraopEndCaseStopIds } from "@lospor/core/intraop-commands"
 import { intraopAttentionItems, intraopAttentionText, type IntraopAttentionAction } from "@lospor/core/intraop-attention"
 import { localTimeOf } from "@lospor/core/intraop-time"
 import { logAfterAttentionAnswer, useIntraopAttention } from "@/lib/use-intraop-attention"
+import { useCaseSaveState } from "@/lib/use-case-save-state"
 import { promoteDraftCaseToInProgress, type IntraopTimingOverrides } from "@/lib/intraop-timing"
 import {
   buildIntraopEndTiming,
@@ -80,6 +81,7 @@ type UseIntraopCaseLifecycleArgs = {
   getReadinessInput: () => Record<string, unknown>
   /** The saved log and its editors, for entries after the end and Resume. */
   timeline: {
+    caseId: string | null
     log: LogEvent[]
     logRef: MutableRefObject<LogEvent[]>
     syncLog: (next: LogEvent[]) => Promise<boolean>
@@ -135,6 +137,7 @@ export function useIntraopCaseLifecycle({
     syncLog: timeline.syncLog,
     resyncActiveRef: timeline.resyncActiveRef,
   })
+  const saveState = useCaseSaveState(timeline.caseId)
 
   useEffect(() => {
     if (resumeSecsLeft <= 0) return
@@ -352,6 +355,6 @@ export function useIntraopCaseLifecycle({
     endCaseRunningItems,
     afterEndItems,
     resolveAfterEnd,
-    attention: { ...attention, clockOf, labelOf: timeline.labelOf },
+    attention: { ...attention, clockOf, labelOf: timeline.labelOf, saveState },
   }
 }

@@ -1,10 +1,12 @@
-import { Text, View } from "react-native"
+import { Pressable, Text, View } from "react-native"
+import { colors } from "@/theme/colors"
 import { intraopAttentionText, type IntraopAttentionAction, type IntraopAttentionItem } from "@lospor/core/intraop-attention"
 
 import type { LogEvent } from "@/lib/intraop-log-event"
 import { usePreferences } from "@/lib/preferences-context"
 import { useShade } from "@/theme/shade"
 import { AttentionAnswers } from "./AttentionAnswers"
+import type { CaseSaveState } from "@/lib/use-case-save-state"
 
 export type IntraopAttentionView = {
   items: IntraopAttentionItem[]
@@ -12,6 +14,8 @@ export type IntraopAttentionView = {
   /** Time of day in the case's own zone. */
   clockOf: (ts: string) => string
   labelOf: (event: LogEvent) => string
+  /** Whether each change reached the server (9.13.0). */
+  saveState?: CaseSaveState
 }
 
 /**
@@ -24,15 +28,35 @@ export type IntraopAttentionView = {
 export function IntraopAttentionBanner({ attention }: { attention: IntraopAttentionView }) {
   const shade = useShade()
   const { tc, language } = usePreferences()
-  if (attention.items.length === 0) return null
+  const refused = attention.saveState?.refused ?? []
+  if (attention.items.length === 0 && refused.length === 0) return null
   return (
     <View testID="intraop-attention" style={{
       marginHorizontal: 10, marginTop: 8, marginBottom: 4, padding: 10, borderRadius: 12,
       backgroundColor: shade("#fbbf24") + "14", borderWidth: 1, borderColor: shade("#fbbf24") + "66",
     }}>
-      <Text style={{ color: shade("#fbbf24"), fontWeight: "800", fontSize: 13, marginBottom: 6 }}>
-        {tc("attentionBannerTitle")}
-      </Text>
+      {refused.length > 0 && (
+        <View testID="intraop-refused" style={{ marginBottom: attention.items.length > 0 ? 10 : 0 }}>
+          {/* Not saved, and never will be as entered: said, not lost. The entry
+              itself stays in the device's refused log. */}
+          <Text style={{ color: colors.danger, fontWeight: "800", fontSize: 13, marginBottom: 4 }}>
+            {tc("refusedTitle")}
+          </Text>
+          {refused.map(item => (
+            <Text key={`${item.eventId}-${item.at}`} style={{ color: shade("#fca5a5"), fontSize: 12, marginBottom: 2 }}>
+              {attention.clockOf(item.at)} · {item.event ? attention.labelOf(item.event as unknown as LogEvent) : item.eventId}
+            </Text>
+          ))}
+          <Pressable testID="intraop-refused-dismiss" onPress={() => attention.saveState?.dismissRefused()} style={{ alignSelf: "flex-start", marginTop: 6, minHeight: 36, justifyContent: "center", paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: colors.danger }}>
+            <Text style={{ color: colors.danger, fontWeight: "700", fontSize: 12 }}>{tc("refusedDismiss")}</Text>
+          </Pressable>
+        </View>
+      )}
+      {attention.items.length > 0 && (
+        <Text style={{ color: shade("#fbbf24"), fontWeight: "800", fontSize: 13, marginBottom: 6 }}>
+          {tc("attentionBannerTitle")}
+        </Text>
+      )}
       {attention.items.map(item => (
         <View key={item.key} style={{ marginBottom: 8 }}>
           <Text style={{ color: shade("#e2e8f0"), fontWeight: "700", fontSize: 13, marginBottom: 6 }}>

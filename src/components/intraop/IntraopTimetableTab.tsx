@@ -9,6 +9,7 @@ import { TimetableRow, type QuickAddAction } from "./TimetableRow"
 import { IntraopUndoBar } from "./IntraopUndoBar"
 import { IntraopAttentionBanner, type IntraopAttentionView } from "./IntraopAttentionBanner"
 import type { IntraopAttentionAction } from "@lospor/core/intraop-attention"
+import { CaseSaveStateContext } from "@/lib/use-case-save-state"
 
 type Props = {
   screenWidth: number
@@ -48,6 +49,8 @@ type Props = {
   /** Opens the read-only chart view. Optional so the tab still renders without it. */
   onViewChart?: () => void
 }
+
+const NO_SAVE_STATE = { queuedEventIds: [], sendingEventId: null, refused: [], queuedSections: [], dismissRefused: () => {} }
 
 export function IntraopTimetableTab({
   screenWidth,
@@ -194,6 +197,7 @@ export function IntraopTimetableTab({
       {/* A screen watching another screen's case writes nothing, so it asks nothing. */}
       {attention && !isWatching && <IntraopAttentionBanner attention={attention} />}
 
+      <CaseSaveStateContext.Provider value={attention?.saveState ?? NO_SAVE_STATE}>
       <FlatList
         ref={listRef}
         data={chartRows}
@@ -214,6 +218,7 @@ export function IntraopTimetableTab({
         }}
         renderItem={renderRow}
       />
+      </CaseSaveStateContext.Provider>
 
       <TimetableFooter
         started={started}

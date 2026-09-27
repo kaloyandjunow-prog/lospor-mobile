@@ -9,6 +9,8 @@ import type { ActiveAgent } from "@/lib/intraop-active-state"
 import type { RunningItem, RowSummary } from "@/lib/intraop-running"
 import type { IntraopAttentionAction } from "@lospor/core/intraop-attention"
 import { AttentionAnswers } from "./AttentionAnswers"
+import { eventsSaveState, type ItemSaveState } from "@lospor/core/intraop-save-state"
+import { useChartSaveState } from "@/lib/use-case-save-state"
 import type { VitalsEntry } from "@/components/IntraopTimetable"
 import { usePreferences, type ClinicalStringKey } from "@/lib/preferences-context"
 
@@ -74,7 +76,15 @@ function TimetableRowComponent({
   const shade = useShade()
   const { tc } = usePreferences()
   const t = timeAtCol(chartStart, col)
-  const { criticalParts, normalParts, drugParts, hasCritical, hasUnsynced } = summary
+  const { criticalParts, normalParts, drugParts, hasCritical } = summary
+  // From the queue itself (9.13.0): every entry in the row, every running
+  // item's start, changes and stop, and the row's lab draws.
+  const saveInput = useChartSaveState()
+  const labsQueued = (labDraws?.length ?? 0) > 0 && saveInput.queuedSections.includes("intraop")
+  const rowState: ItemSaveState | null = eventsSaveState(
+    [...rowEvents.map(event => event.id), ...running.flatMap(item => item.eventIds ?? [])],
+    saveInput,
+  ) ?? (labsQueued ? "queued" : null)
 
   // ── Expanded row ───────────────────────────────────────────
   if (isExpanded) {
@@ -161,6 +171,7 @@ function TimetableRowComponent({
                       borderLeftWidth: 4, borderLeftColor: item.color,
                     }}
                   >
+                    {(() => { const state = eventsSaveState(item.eventIds ?? [], saveInput); return state ? <SaveStateDot state={state} /> : null })()}
                     <Text style={{ color: item.color, fontSize: 13, fontWeight: "700", flex: 1 }}>
                       {item.planned ? `${tc("plannedLabel")} · ` : item.plannedStop ? `${tc("plannedStopLabel")} · ` : item.plannedChange ? `${tc("plannedChangeLabel")} · ` : ""}{item.label}
                     </Text>
@@ -296,11 +307,7 @@ function TimetableRowComponent({
           </Text>
         )}
         <LabDrawPill count={mergeRowLabDraws(labDraws).count} />
-        {hasUnsynced && (
-          <Text style={{ color: colors.warning, fontSize: 9, fontWeight: "800", lineHeight: 12 }}>
-            {tc("unsyncedShort")}
-          </Text>
-        )}
+        {rowState && <SaveStateBadge state={rowState} />}
       </View>
 
       {/* Running strips — full height, stacked from right edge inward (5px each) */}
@@ -310,6 +317,29 @@ function TimetableRowComponent({
         ))}
       </View>
     </TouchableOpacity>
+  )
+}
+
+/**
+ * Not yet saved, saving, or refused (9.13.0). A clock and words, never a
+ * dashed outline: dashes already mean planned on this chart.
+ */
+function SaveStateBadge({ state }: { state: ItemSaveState }) {
+  const { tc } = usePreferences()
+  const color = state === "refused" ? colors.danger : colors.warning
+  const label = state === "refused" ? tc("refusedShort") : state === "sending" ? tc("sendingShort") : tc("queuedShort")
+  return (
+    <Text testID={`row-save-${state}`} style={{ color, fontSize: 9, fontWeight: "800", lineHeight: 12 }}>
+      {state === "refused" ? "✕" : "◷"} {label}
+    </Text>
+  )
+}
+
+function SaveStateDot({ state }: { state: ItemSaveState }) {
+  return (
+    <Text testID={`item-save-${state}`} style={{ color: state === "refused" ? colors.danger : colors.warning, fontSize: 12, marginRight: 6 }}>
+      {state === "refused" ? "✕" : "◷"}
+    </Text>
   )
 }
 

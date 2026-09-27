@@ -36,6 +36,7 @@ export function FluidStatusTab({
   urineMl, setUrineMl,
   bloodLossMl, setBloodLossMl,
   tc,
+  provisional = false,
 }: {
   infusionTotals: FluidStatusTotalRow[]
   bolusTotals: FluidStatusTotalRow[]
@@ -51,6 +52,8 @@ export function FluidStatusTab({
   bloodLossMl: number | null
   setBloodLossMl: (value: number | null) => void
   tc: (key: ClinicalStringKey) => string
+  /** Part of the totals is not yet on the server: shown with "≈"; the numbers are unchanged. */
+  provisional?: boolean
 }) {
   const shade = useShade()
   const given: { label: string; value: number | null; color: string }[] = [
@@ -63,7 +66,7 @@ export function FluidStatusTab({
     <ScrollView style={{ flex:1 }} contentContainerStyle={{ padding:16, paddingBottom:40 }}>
       {infusionTotals.length > 0 && (
         <View style={{ marginBottom:24 }}>
-          <SectionLabel>{tc("infusionTotalsLabel")}</SectionLabel>
+          <SectionLabel>{provisional ? "≈ " : ""}{tc("infusionTotalsLabel")}</SectionLabel>
           {infusionTotals.map(row => (
             <TotalRow key={`${row.name}-${row.unit}`} row={row} />
           ))}
@@ -75,7 +78,7 @@ export function FluidStatusTab({
 
       {bolusTotals.length > 0 && (
         <View style={{ marginBottom:24 }}>
-          <SectionLabel>{tc("bolusTotalsLabel")}</SectionLabel>
+          <SectionLabel>{provisional ? "≈ " : ""}{tc("bolusTotalsLabel")}</SectionLabel>
           {bolusTotals.map(row => (
             <TotalRow key={`${row.name}-${row.unit}`} row={row} />
           ))}

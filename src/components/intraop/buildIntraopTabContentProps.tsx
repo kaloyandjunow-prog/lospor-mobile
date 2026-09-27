@@ -2,6 +2,7 @@ import type { ComponentProps, MutableRefObject } from "react"
 import { VascularTab } from "@/components/intraop/tabs/VascularTab"
 import type { IntraopTabContentHostProps } from "@/components/intraop/IntraopTabContentHost"
 import { calculateDrugTotals } from "@lospor/core/intraop-summary"
+import { totalsProvisional } from "@lospor/core/intraop-save-state"
 // Core's own totals, not the case-detail wrapper: that wrapper narrows `rate`
 // to string, while a live timetable's rate is NumericText. Core accepts both.
 import {
@@ -340,9 +341,8 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
       openPremedPicker,
     } }
 
-    // Totals are derived here rather than held in state: they are a pure
-    // function of the timetable, and this branch only runs when the tab is the
-    // one being displayed.
+    // Totals are derived, not held in state: a pure function of the timetable,
+    // computed only while this tab is shown.
     case "fluids": return { tab, content: (() => {
       const infusionRows = calcInfusionTotals(
         timetable.infusions ?? [], caseIbw, caseTbw, infusionWeightBasis, caseBsa,
@@ -367,7 +367,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
           // weight was used when the drug's own could not be (9.12.3).
           display: formatInfusionTotal(row),
         })),
-        bolusTotals: calculateDrugTotals(timetable),
+        bolusTotals: calculateDrugTotals(timetable), provisional: !!attention?.saveState && totalsProvisional(timetable, attention.saveState),
         weightNote: weightParts.length ? `† ${weightParts.join(" / ")}` : null,
         crystalloidsMl: fluidTotals.crystalloids,
         colloidsMl: fluidTotals.colloids,

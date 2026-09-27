@@ -21,6 +21,8 @@ export type RunningItem = {
   /** The row a stop entered ahead reached, not yet confirmed; the stop to answer about. */
   stopUnconfirmed?: boolean
   stopEventId?: string
+  /** The events the item came from, for its save state. */
+  eventIds?: string[]
 }
 
 function presentRunningItem(item: CoreRunningItem): RunningItem {
@@ -30,6 +32,7 @@ function presentRunningItem(item: CoreRunningItem): RunningItem {
   if (item.plannedChange) presented.plannedChange = true
   if (item.stopUnconfirmed) presented.stopUnconfirmed = true
   if (item.stopEventId) presented.stopEventId = item.stopEventId
+  if (item.eventIds?.length) presented.eventIds = item.eventIds
   return presented
 }
 
