@@ -113,7 +113,7 @@ export default function IntraopLiveScreen() {
   const openChartView = useCallback(() => {
     router.push(`/(app)/cases/timetable/${id}`)
   }, [router, id])
-  const { isWatching, takeover } = useCaseLock(id, true)
+  const { isWatching, isWatchingRef, takeover } = useCaseLock(id, true)
   const {
     tc,
     etco2Unit,
@@ -193,7 +193,7 @@ export default function IntraopLiveScreen() {
     pendingSaveCountRef,
     setSyncState,
     setSyncErrorMessage,
-    setLastSavedAt,
+    setLastSavedAt, watchingRef: isWatchingRef,
   })
 
   const enqueueEventSave = useCallback(<T,>(operation: () => Promise<T>): Promise<T> =>
@@ -238,7 +238,7 @@ export default function IntraopLiveScreen() {
     setSyncState,
     setLastSavedAt,
     setPendingCount,
-    noteVitalsRef, resyncActiveRef, endedAtRef,
+    noteVitalsRef, resyncActiveRef, endedAtRef, watchingRef: isWatchingRef,
   })
 
   // Pediatric cases remain manually chartable but must not inherit unreviewed
