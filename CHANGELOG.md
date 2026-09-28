@@ -22,6 +22,12 @@
   The chart stops at the case end: it opens with the end at the bottom of
   the screen, has no "now" row, and is no longer pulled down every five
   minutes towards a now some 500 empty rows below.
+- **Resume and autofilled vitals on the server's clock.** The resume
+  countdown of an ended case ticked on the phone's clock after opening on the
+  server's, so a phone set wrong shortened the 30-minute window or held Resume
+  past it; nothing on the server checks it. Autofilled vitals judged "now" by
+  the phone's clock too: a fast phone filled the row the now line had not
+  reached, and a slow one skipped the current row for good.
 
 ## [9.13.0] - 2026-09-28
 
