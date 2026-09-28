@@ -11,6 +11,18 @@
   fluids, agents and the gas. Rows after a planned stop, and every row of an
   ended case, show nothing running on.
 
+### Fixed
+
+- **The import review in the clinician's language.** Values the hospital
+  sends as codes read as words ("Мъж", "Години", "Да", "Локално"), and a
+  result's date is its day where it was taken, as dd.MM.yyyy in Bulgarian
+  (Core's `describeEhrReviewItem`, shared with the web).
+- **An ended case reopened later.** The header shows how long the case
+  lasted, not the time since it started ("+ 40h 42m" on a 31-minute case).
+  The chart stops at the case end: it opens with the end at the bottom of
+  the screen, has no "now" row, and is no longer pulled down every five
+  minutes towards a now some 500 empty rows below.
+
 ## [9.13.0] - 2026-09-28
 
 ### Added
