@@ -26,7 +26,6 @@ type Host = IntraopTabContentHostProps
 
 /** The host props are a union now, so pick the branch and read its content. */
 type ContentFor<T extends Host["tab"]> = Extract<Host, { tab: T }>["content"]
-
 type LogProps = ContentFor<"log">
 type TechniqueProps = ContentFor<"technique">
 type TimingProps = ContentFor<"timing">
@@ -40,8 +39,7 @@ type VascularProps = ComponentProps<typeof VascularTab>
 
 export type IntraopTabContentBuilderProps = {
   screenWidth: LogProps["screenWidth"]
-  /** Ended: nothing runs on in the chart after the end. */
-  caseEnded: boolean
+  caseEnded: boolean // ended: nothing runs on in the chart after the end
   attention?: LogProps["attention"] // Core intraop-attention, shown above the chart
   tab: Host["tab"]
   undoEv: LogProps["undoEvent"]
@@ -239,8 +237,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
       activeFluids,
       activeAgents,
       activeGas,
-      started: !!startRef.current,
-      projectRunning: !caseEnded,
+      started: !!startRef.current, projectRunning: !caseEnded,
       isWatching,
       listRef: verticalTimetableRef,
       onUndo: undoLastEvent,
