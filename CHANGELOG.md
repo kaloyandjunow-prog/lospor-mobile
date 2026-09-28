@@ -1,5 +1,16 @@
 # Changelog - LOSPOR Mobile
 
+## [9.13.1] - 2026-09-28
+
+### Added
+
+- **Running items in the rows after now.** Opening a later row of a live case
+  shows what will still be running there, dashed: tapping propofol in the
+  15:55 row opens propofol's own sheet dated to 15:55, so the change is a
+  planned change of the same infusion, not a second propofol. The same for
+  fluids, agents and the gas. Rows after a planned stop, and every row of an
+  ended case, show nothing running on.
+
 ## [9.13.0] - 2026-09-28
 
 ### Added
