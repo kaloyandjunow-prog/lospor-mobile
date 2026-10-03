@@ -12,6 +12,7 @@
 
 ### Changed
 
+- Core dependency moved to 9.13.8.
 - **Expo SDK 56 patch update.** Expo 56.0.18 → 56.0.23 with its matching
   module versions (dev client, image picker, linking, notifications, sharing,
   splash screen). The node-forge advisory in Expo's build tooling remains:
