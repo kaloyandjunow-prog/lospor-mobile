@@ -25,7 +25,7 @@ import { useVitalsEntry } from "@/lib/use-vitals-entry"
 import { COMPLICATION_GROUPS, COMPLICATION_ITEMS, COMPLICATION_TC_TITLES } from "@/lib/intraop-static-options"
 import { intraopTabForFocus, type IntraopTab } from "@/lib/intraop-tabs"
 import { newChartFluidsWithTimestamps } from "@/lib/intraop-chart-change"
-import { pediatricAgeFromPreop, type IntraopPreopSummary } from "@/lib/intraop-preop-summary"
+import { pediatricAgeFromPreop, useAllergyCheck, type IntraopPreopSummary } from "@/lib/intraop-preop-summary"
 import { useIntraopOptionSets } from "@/lib/use-intraop-option-sets"
 import { useIntraopCaseLifecycle } from "@/lib/use-intraop-case-lifecycle"
 import { useIntraopPremedication } from "@/lib/use-intraop-premedication"
@@ -243,7 +243,7 @@ export default function IntraopLiveScreen() {
 
   // Pediatric cases remain manually chartable but must not inherit unreviewed
   // adult dose, rate, concentration, fluid, gas, or equipment presets.
-  // Infusion sheets
+  const allergyCheck = useAllergyCheck(preop, tc) // infusion + drug sheets check recorded allergies (1.5.0)
   const {
     infOpen, setInfOpen, infDrug, setInfDrug, infRate, setInfRate,
     infRoute, setInfRoute, infConcentration, setInfConcentration,
@@ -252,7 +252,7 @@ export default function IntraopLiveScreen() {
     infActOpen, setInfActOpen, infActTgt, setInfActTgt, infActRate, setInfActRate,
     infActConcentration, setInfActConcentration, infActTs, setInfActTs,
     openInfusion, confirmInfusion, stopInfusion, changeRate,
-  } = useInfusionEntry(save, setEntryTs, setActiveInfusions, INFUSION_CODES, INFUSION_WEIGHT_BASIS)
+  } = useInfusionEntry(save, setEntryTs, setActiveInfusions, INFUSION_CODES, INFUSION_WEIGHT_BASIS, allergyCheck)
 
   // Drug sheet
   const {
@@ -271,7 +271,7 @@ export default function IntraopLiveScreen() {
     setInfOpen,
     DRUG_CODES,
     pediatricMode ? {} : INFUSION_QUICK_RATES,
-    pediatricMode ? {} : DRUG_DOSE_CALCS,
+    pediatricMode ? {} : DRUG_DOSE_CALCS, allergyCheck,
   )
 
   // Fluid sheet + end options
