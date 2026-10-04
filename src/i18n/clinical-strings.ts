@@ -349,6 +349,11 @@ export const CLINICAL_STRINGS = {
     ehrTakenAt:          "Taken",
     ehrProvenance:       "Reported by the hospital system, not by the patient",
     ehrGoToMode:         "Go to mode setting",
+    // What the mode switch an imported age causes will clear (9.13.9), worded
+    // to match exactly what this app’s mode switch does.
+    ehrModeSwitchToPediatric: "Adding this age switches the case to paediatric mode. Vitals already recorded are cleared and AI assistance is turned off for the case; the values you add here are kept.",
+    ehrModeSwitchToAdult:     "Adding this age switches the case to adult mode. The paediatric age, fasting times and COLDS assessment already recorded are cleared and AI assistance is turned off for the case; the values you add here are kept.",
+    ehrModeUnavailable:       "This age is paediatric and this system has no paediatric mode, so the age is not added.",
     ehrUndated:          "No date given by the hospital",
     lspNoLabResultsFound:"No laboratory results found.",
     // Shown when the unit conversion changed what the paper said, so the
@@ -1398,6 +1403,9 @@ export const CLINICAL_STRINGS = {
     ehrTakenAt:          "Взета",
     ehrProvenance:       "Съобщено от болничната система, не от пациента",
     ehrGoToMode:         "Към настройката за режим",
+    ehrModeSwitchToPediatric: "Добавянето на тази възраст превключва случая в педиатричен режим. Вече записаните витални показатели се изчистват, а помощта от ИИ за случая се изключва; стойностите, които добавяте тук, се запазват.",
+    ehrModeSwitchToAdult:     "Добавянето на тази възраст превключва случая в режим за възрастни. Вече записаните педиатрична възраст, часове на гладуване и оценка COLDS се изчистват, а помощта от ИИ за случая се изключва; стойностите, които добавяте тук, се запазват.",
+    ehrModeUnavailable:       "Тази възраст е педиатрична, а системата няма педиатричен режим, затова възрастта не се добавя.",
     ehrUndated:          "Болницата не е посочила дата",
 
     retryLabel:          "Опитайте отново",
