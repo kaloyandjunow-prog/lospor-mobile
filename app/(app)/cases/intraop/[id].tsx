@@ -23,7 +23,7 @@ import { useDrugEntry } from "@/lib/use-drug-entry"
 import { BOLUS_SCENARIOS, INFUSION_SCENARIOS } from "@lospor/core"
 import { useVitalsEntry } from "@/lib/use-vitals-entry"
 import { COMPLICATION_GROUPS, COMPLICATION_ITEMS, COMPLICATION_TC_TITLES } from "@/lib/intraop-static-options"
-import type { IntraopTab } from "@/lib/intraop-tabs"
+import { intraopTabForFocus, type IntraopTab } from "@/lib/intraop-tabs"
 import { newChartFluidsWithTimestamps } from "@/lib/intraop-chart-change"
 import { pediatricAgeFromPreop, type IntraopPreopSummary } from "@/lib/intraop-preop-summary"
 import { useIntraopOptionSets } from "@/lib/use-intraop-option-sets"
@@ -104,7 +104,7 @@ export default function IntraopLiveScreen() {
     clinicalRulesSnapshot?.preset ?? null,
     prospectiveGuidanceEnabled,
   )
-  const { id } = useLocalSearchParams<{ id: string }>()
+  const { id, focus } = useLocalSearchParams<{ id: string; focus?: string }>()
   const router  = useRouter()
   // Read-only chart view of the case so far: the same panel the finished-case
   // viewer draws, reachable mid-case. Pushed rather than shown as a modal so
@@ -139,7 +139,7 @@ export default function IntraopLiveScreen() {
   const tabRailRef  = useRef<ScrollView>(null)
   const tabLayouts  = useRef<Partial<Record<string, { x: number; width: number }>>>({})
 
-  const [tab,       setTab]       = useState<IntraopTab>("equipment")
+  const [tab,       setTab]       = useState<IntraopTab>(() => intraopTabForFocus(focus) ?? "equipment")
   // Time from the tap to the committed render of the new tab — the number the
   // clinician actually experiences, readable later on the diagnostics screen.
   const tabSwitchStartedAt = useRef<number | null>(null)
