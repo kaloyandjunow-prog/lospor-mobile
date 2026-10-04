@@ -8,6 +8,8 @@ import { apiFetch, apiJson } from "@/lib/api"
 import { notify, confirmAction } from "@/lib/notify"
 import { openPrintCase } from "@/lib/print-case"
 import { useCaseFinalize } from "@/lib/use-case-finalize"
+import { useCaseUnfinalize } from "@/lib/use-case-unfinalize"
+import { CaseReadinessCard, finaliseLabel } from "@/components/CaseReadinessCard"
 import { AppHeader } from "@/components/AppHeader"
 import { EditWindowBanner } from "@/components/EditWindowBanner"
 import { PendingCloseBanner } from "@/components/PendingCloseBanner"
@@ -32,7 +34,6 @@ export default function CaseSummaryScreen() {
   const [caseData, setCaseData] = useState<CaseData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [unfinalizing, setUnfinalizing] = useState(false)
 
   const loadCase = useCallback(async () => {
     try {
@@ -58,21 +59,7 @@ export default function CaseSummaryScreen() {
   // with web) fails closed instead.
   const canEdit = caseData?.status !== "COMPLETE" && caseIsWritable(caseData)
 
-  const handleUnfinalize = useCallback(() => {
-    void confirmAction(t("unfinalizeCase"), t("unfinalizeCaseMsg"), { destructive: true, confirmLabel: tc("actionUnfinalize"), cancelLabel: tc("cancelLabel") })
-      .then(async ok => {
-        if (!ok) return
-        setUnfinalizing(true)
-        try {
-          await apiFetch(`/api/cases/${id}/unfinalize`, { method: "POST" })
-          await loadCase()
-        } catch {
-          notify(tc("errorLabel"), t("couldNotUnfinalize"))
-        } finally {
-          setUnfinalizing(false)
-        }
-      })
-  }, [id, loadCase, t, tc])
+  const { unfinalizing, handleUnfinalize } = useCaseUnfinalize(id, t, tc, loadCase)
 
   const handleDelete = useCallback(() => {
     void confirmAction(t("deleteCaseTitle"), t("deleteCaseMsg"), { destructive: true, confirmLabel: tc("actionDelete"), cancelLabel: tc("cancelLabel") })
@@ -98,7 +85,7 @@ export default function CaseSummaryScreen() {
     }
   }, [id, language, caseData?.caseCode, tc])
 
-  const { finalizing, doFinalize } = useCaseFinalize(id, tc, setCaseData)
+  const { finalizing, doFinalize, refusal } = useCaseFinalize(id, tc, setCaseData)
 
   const handleFinalize = useCallback(() => {
     void confirmAction(tc("actionFinalise"), tc("finalisePrintPrompt"), { confirmLabel: tc("actionFinalise"), cancelLabel: tc("cancelLabel") })
@@ -281,7 +268,7 @@ export default function CaseSummaryScreen() {
           <PendingCloseBanner awaitingReviewAt={caseData.awaitingReviewAt} onExpire={handleAutoFinalize} />
         )}
 
-        {/* ── Review bar ─────────────────────────────────────────────────────── */}
+        <CaseReadinessCard caseId={id} caseData={caseData} refusal={refusal} canEdit={canEdit} />
         <View style={{
           marginBottom: 16, borderRadius: 12,
           borderWidth: 1, borderColor: withAlpha(sc, "44"),
@@ -330,7 +317,7 @@ export default function CaseSummaryScreen() {
                 }}
               >
                 <Text style={{ color: shade("#fff"), fontSize: 13, fontWeight: "800" }}>
-                  {finalizing ? tc("finalising") : tc("actionFinalise")}
+                  {finalizing ? tc("finalising") : finaliseLabel(tc("actionFinalise"), caseData, refusal)}
                 </Text>
               </TouchableOpacity>
             )}

@@ -96,7 +96,7 @@ function impact() {
 
 export default function NewCaseScreen() {
   const router = useRouter()
-  const { continue: continueId, localId: localIdParam } = useLocalSearchParams<{ continue?: string; localId?: string }>()
+  const { continue: continueId, localId: localIdParam, focus } = useLocalSearchParams<{ continue?: string; localId?: string; focus?: string }>()
   const insets = useSafeAreaInsets()
   const { preopLayout, tc, language, heightUnit, weightUnit, temperatureUnit, etco2Unit, cvpUnit, shade } = usePreferences()
   const { clinicalAi, pediatricMode: pediatricModeCapability } = useDeploymentCapabilities()
@@ -394,7 +394,7 @@ export default function NewCaseScreen() {
     blockedMessage,
     clearLocalDraft,
     reset,
-    caseIdRef, caseLoadedRef, setCaseId,
+    caseIdRef, caseLoadedRef, setCaseId, focus, jumpTo,
     setPersistedPediatricRecord,
     setBlockedIssue, setSaveError, setDraftState,
     setPreopFinalizedAt, setPreopCaseStatus,
