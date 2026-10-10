@@ -1,6 +1,6 @@
 {
   "name": "lospor-mobile",
-  "version": "9.14.4",
+  "version": "9.14.5",
   "license": "AGPL-3.0-or-later",
   "main": "expo-router/entry",
   "dependencies": {
