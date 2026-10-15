@@ -251,7 +251,7 @@ export default function NewCaseScreen() {
     apfelPONVHistory, apfelPostopOpioids, rcriInputs, stopbangInputs,
   })
   const RCRI_HINT = tc("suggestionReviewHint")
-  const asaSuggestion = suggestASAFromTags(comorbidities ?? [], bmi)
+  const asaSuggestion = suggestASAFromTags(comorbidities ?? [], pediatricMode ? null : bmi) // no BMI rule for children, as on web and the server
   const ibwResolution = useMemo(() => resolveIdealBodyWeight({
     clinicalMode: pediatricMode ? "PEDIATRIC" : "ADULT",
     heightCm,
