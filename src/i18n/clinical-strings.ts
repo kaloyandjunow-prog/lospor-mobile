@@ -212,6 +212,7 @@ export const CLINICAL_STRINGS = {
     preopGroupPEDIATRIC_RISK:     "Pediatric risk",
     preopGroupPEDIATRIC_SAFETY:   "Pediatric safety",
     preopGroupADULT_ADDITIONS:    "Adult history",
+    preopGroupSHARED_ADDITIONS:   "Additional history",
     preopGroupPEDIATRIC_ADDITIONS: "Pediatric history",
 
     // Overview mode
@@ -1298,6 +1299,7 @@ export const CLINICAL_STRINGS = {
     preopGroupPEDIATRIC_RISK:     "Педиатричен риск",
     preopGroupPEDIATRIC_SAFETY:   "Педиатрична безопасност",
     preopGroupADULT_ADDITIONS:    "Анамнеза при възрастни",
+    preopGroupSHARED_ADDITIONS:   "Допълнителна анамнеза",
     preopGroupPEDIATRIC_ADDITIONS: "Анамнеза при деца",
 
     // Overview mode
