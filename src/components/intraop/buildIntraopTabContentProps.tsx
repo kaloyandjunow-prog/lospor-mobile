@@ -55,6 +55,7 @@ export type IntraopTabContentBuilderProps = {
   activeAgents: LogProps["activeAgents"]
   activeGas: LogProps["activeGas"]
   startRef: MutableRefObject<Date | null>
+  endedAtRef: MutableRefObject<Date | null>; caseTimezone: string | null
   isWatching: LogProps["isWatching"]
   verticalTimetableRef: LogProps["listRef"]
   undoLastEvent: LogProps["onUndo"]
@@ -193,7 +194,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
     techPath, setTechPath,
     TECHNIQUE_TREE, techniques, setTechniques, saveTechniques, techniqueLabel, otherTechText,
     setOtherTechText, caseMonthYear, setCaseMonthYear, caseStartTime, setCaseStartTime,
-    caseEndTime, setCaseEndTime, caseEndNextDay, setCaseEndNextDay, timingSaving, saveTiming,
+    caseEndTime, setCaseEndTime, caseEndNextDay, setCaseEndNextDay, timingSaving, saveTiming, endedAtRef, caseTimezone,
     positions, setPositions, savePositions, fieldSaving, POSITIONS_LIST, monitoring,
     setMonitoring, saveMonitoring, MONITORING_OPTS, advMonOpen, setAdvMonOpen, awTools,
     setAwTools, awClGrade, setAwClGrade, awDevices, setAwDevices, awLmaSize, setAwLmaSize,
@@ -291,8 +292,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
       caseEndNextDay,
       setCaseEndNextDay,
       timingSaving,
-      saveTiming,
-      startRef,
+      saveTiming, startRef, endedAtRef, caseTimezone,
       tc,
     } }
 

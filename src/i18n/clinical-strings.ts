@@ -281,6 +281,8 @@ export const CLINICAL_STRINGS = {
     anesthesiaStartTime: "Anaesthesia start time",
     anesthesiaEndTime:   "Anaesthesia end time",
     caseMonthYear:       "Case month / year",
+    timingStartDate:     "Start date",
+    timingEndDate:       "End date",
     endTimeNextDay:      "Ends next day",
     duration:            "Duration",
 
@@ -1368,6 +1370,8 @@ export const CLINICAL_STRINGS = {
     anesthesiaStartTime: "Начало на анестезията",
     anesthesiaEndTime:   "Край на анестезията",
     caseMonthYear:       "Месец / година на случая",
+    timingStartDate:     "Дата на начало",
+    timingEndDate:       "Дата на край",
     endTimeNextDay:      "Приключва следващия ден",
     duration:            "Продължителност",
 
