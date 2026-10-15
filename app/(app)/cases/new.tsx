@@ -1218,7 +1218,7 @@ export default function NewCaseScreen() {
                     value={field.value}
                     onChange={(v) => field.onChange(v || undefined)}
                     emergencySurgery={!!emergencySurgery}
-                    suggestion={asaSuggestion}
+                    suggestion={asaSuggestion} bmi={pediatricMode ? null : bmi}
                     labelSuggested={tc("asaSuggested")}
                     labelSuggestedReview={tc("asaSuggestedReview")}
                     labelEmergencySuffix={tc("emergencySuffix")}
