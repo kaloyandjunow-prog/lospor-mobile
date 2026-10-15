@@ -6,7 +6,9 @@ import {
   APAGBI_FASTING_POLICY_2023,
   calculateColds,
   calculatePovoc,
-  evaluatePediatricFasting,
+  isFastingAssignmentBelowMinimum,
+  PEDIATRIC_FASTING_CATEGORIES,
+  policyFastingAssignments,
   getPediatricVitalReference,
   normalizePediatricAge,
   validateClinicalModeAge,
@@ -226,12 +228,6 @@ const COLDS_OPTIONS = {
 
 type ColdsField = keyof typeof COLDS_OPTIONS
 
-const FASTING_CATEGORIES: PediatricFastingCategory[] = [
-  "CLEAR_FLUIDS",
-  "BREAST_MILK",
-  "INFANT_FORMULA_UNDER_1_YEAR",
-  "SOLID_FOOD_OR_COW_MILK",
-]
 
 function ChoicePills({ value, options, onChange }: {
   value?: string
@@ -261,13 +257,6 @@ function fastingLabel(category: PediatricFastingCategory, labels: PediatricPreop
   if (category === "BREAST_MILK") return labels.breastMilk
   if (category === "INFANT_FORMULA_UNDER_1_YEAR") return labels.formula
   return labels.solids
-}
-
-function hoursSince(value?: string | null): number | undefined {
-  if (!value) return undefined
-  const timestamp = new Date(value).getTime()
-  if (!Number.isFinite(timestamp)) return undefined
-  return Math.max(0, Math.round((Date.now() - timestamp) / 36_000) / 100)
 }
 
 export function PediatricRiskAndCalculators({ control, setValue, tc, language, isShown = () => true }: Props & { isShown?: (field: string) => boolean }) {
@@ -360,24 +349,17 @@ export function PediatricRiskAndCalculators({ control, setValue, tc, language, i
     return labels.surgery
   }
 
-  function updateFasting(category: PediatricFastingCategory, elapsedHours?: number | null) {
+  // A nil-by-mouth assignment: each intake stops so many hours before
+  // surgery. Clearing the hours removes that intake from the assignment.
+  function assignFasting(category: PediatricFastingCategory, hoursBefore?: number | null) {
     const remaining = (fastingRows ?? []).filter(row => row.category !== category)
-    if (elapsedHours == null) {
+    if (hoursBefore == null || !Number.isFinite(hoursBefore) || hoursBefore < 0) {
       setValue("pediatricFasting", remaining, { shouldDirty: true })
       return
     }
-    const lastIntakeAt = new Date(Date.now() - elapsedHours * 3_600_000).toISOString()
-    const result = evaluatePediatricFasting({ category, lastIntakeAt, assessmentAt: new Date() })
     setValue("pediatricFasting", [
       ...remaining,
-      {
-        category,
-        lastIntakeAt,
-        status: result.status,
-        requiredHours: result.requiredHours,
-        policyId: result.policyId,
-        policyVersion: result.policyVersion,
-      },
+      { category, hoursBefore: Math.min(hoursBefore, 24), policyId: APAGBI_FASTING_POLICY_2023.id, policyVersion: APAGBI_FASTING_POLICY_2023.version },
     ], { shouldDirty: true })
   }
 
@@ -405,26 +387,35 @@ export function PediatricRiskAndCalculators({ control, setValue, tc, language, i
       </View> : null}
 
       <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 14, gap: 10 }}>
-        <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: "900" }}>{labels.fasting}</Text>
-        {FASTING_CATEGORIES.map(category => {
+        <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: "900" }}>{labels.npoTitle}</Text>
+        <Text style={{ color: colors.textMuted, fontSize: 12 }}>{labels.npoHint}</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setValue("pediatricFasting", policyFastingAssignments(), { shouldDirty: true })}
+          style={{ alignSelf: "flex-start", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: colors.primary }}
+        >
+          <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "900" }}>{labels.npoUsePolicy}</Text>
+        </Pressable>
+        {PEDIATRIC_FASTING_CATEGORIES.map(category => {
           const row = fastingByCategory.get(category)
-          const status = row?.status === "MET" ? labels.met : row?.status === "NOT_MET" ? labels.notMet : labels.unknown
-          const statusColor = row?.status === "MET" ? colors.success : row?.status === "NOT_MET" ? colors.danger : colors.textMuted
+          const minimum = APAGBI_FASTING_POLICY_2023.minimumHours[category]
           return (
-            <View key={category} style={{ gap: 5 }}>
+            <View key={category} style={{ gap: 5 }} testID={`npo-${category}`}>
               <Field label={fastingLabel(category, labels)}>
                 <ClinicalNumberInput
-                  value={hoursSince(row?.lastIntakeAt)}
-                  onChange={value => updateFasting(category, value)}
+                  value={row?.hoursBefore ?? null}
+                  onChange={value => assignFasting(category, value)}
                   min={0}
-                  max={168}
+                  max={24}
                   step={0.5}
                   precision={1}
-                  unit="h"
-                  placeholder={labels.hoursSinceIntake}
+                  unit={labels.npoHoursBefore}
+                  placeholder={String(minimum)}
                 />
               </Field>
-              {row ? <Text style={{ color: statusColor, fontSize: 11, fontWeight: "800" }}>{status} - {row.requiredHours} h</Text> : null}
+              {row && isFastingAssignmentBelowMinimum(row)
+                ? <Text style={{ color: colors.warning, fontSize: 11, fontWeight: "800" }}>{labels.npoBelowMinimum.replace("{hours}", String(minimum))}</Text>
+                : null}
             </View>
           )
         })}

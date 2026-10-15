@@ -45,15 +45,15 @@ export type PediatricPreopLabels = {
   nonAirway: string
   minorAirway: string
   majorAirway: string
-  fasting: string
-  hoursSinceIntake: string
+  npoTitle: string
+  npoHint: string
+  npoUsePolicy: string
+  npoHoursBefore: string
+  npoBelowMinimum: string
   clearFluids: string
   breastMilk: string
   formula: string
   solids: string
-  met: string
-  notMet: string
-  unknown: string
   bsa: string
   maintenanceFluid: string
   resuscitation: string
@@ -118,15 +118,15 @@ export const PEDIATRIC_PREOP_LABELS: Record<"en" | "bg", PediatricPreopLabels> =
     nonAirway: "Non-airway surgery",
     minorAirway: "Minor airway surgery",
     majorAirway: "Major airway surgery",
-    fasting: "Pediatric fasting",
-    hoursSinceIntake: "Hours since last intake",
+    npoTitle: "Nil-by-mouth assignment",
+    npoHint: "How many hours before surgery each intake stops. The times follow from the start of surgery.",
+    npoUsePolicy: "Assign APAGBI 2023 hours",
+    npoHoursBefore: "h before surgery",
+    npoBelowMinimum: "Shorter than the APAGBI minimum of {hours} h",
     clearFluids: "Clear fluids",
     breastMilk: "Breast milk",
     formula: "Infant formula under 1 year",
     solids: "Solid food or cow milk",
-    met: "Met",
-    notMet: "Not met",
-    unknown: "Unknown",
     bsa: "BSA (Mosteller)",
     maintenanceFluid: "Maintenance fluid",
     resuscitation: "Resuscitation reference",
@@ -188,15 +188,15 @@ export const PEDIATRIC_PREOP_LABELS: Record<"en" | "bg", PediatricPreopLabels> =
     nonAirway: "Операция извън дихателните пътища",
     minorAirway: "Малка операция на дихателните пътища",
     majorAirway: "Голяма операция на дихателните пътища",
-    fasting: "Предоперативно гладуване при деца",
-    hoursSinceIntake: "Часове от последния прием",
+    npoTitle: "Предписание за гладуване",
+    npoHint: "Колко часа преди операцията се спира всеки прием. Часовете се изчисляват от началото на операцията.",
+    npoUsePolicy: "Попълни часовете по APAGBI 2023",
+    npoHoursBefore: "ч преди операцията",
+    npoBelowMinimum: "По-кратко от минимума по APAGBI от {hours} ч",
     clearFluids: "Бистри течности",
     breastMilk: "Кърма",
     formula: "Мляко за кърмачета под 1 година",
     solids: "Твърда храна или краве мляко",
-    met: "Изпълнено",
-    notMet: "Не е изпълнено",
-    unknown: "Неизвестно",
     bsa: "BSA (Mosteller)",
     maintenanceFluid: "Поддържаща скорост на инфузия на течности",
     resuscitation: "Референтни стойности за ресусцитация",
