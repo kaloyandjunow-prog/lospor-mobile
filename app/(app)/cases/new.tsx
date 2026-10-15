@@ -1232,7 +1232,7 @@ export default function NewCaseScreen() {
                   <ScoreBadge label="STOP-BANG" score={stopBangScore} max={8} riskLabel={stopBangRiskLabel(stopBangScore, language)} unavailable={preopProfile.scoreAvailable("STOPBANG") ? undefined : tc("preopScoreUnavailable")} />
                 </View>{questionList("risk_scores")}<GuptaRiskCard profile={preopProfile.profile} values={preopProfile.values} onAnswer={preopProfile.answerQuestion} tc={tc} language={language} />
               </>) : (
-                <PediatricRiskAndCalculators control={control} setValue={setValue} tc={tc} language={language} caseId={caseId} isShown={preopProfile.shownField} />
+                <PediatricRiskAndCalculators control={control} setValue={setValue} tc={tc} language={language} isShown={preopProfile.shownField} />
               )}
               {clinicalAi.clinicalAdvice.enabled || clinicalAi.labImageExtraction.enabled || clinicalAi.monitorOcr.enabled ? (
                 <Controller control={control} name="aiOptIn" render={({ field }) => (

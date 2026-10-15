@@ -9,6 +9,7 @@ import {
   type IntraopPreopSummary,
 } from "@/lib/intraop-preop-summary"
 import { useShade } from "@/theme/shade"
+import { PediatricIntraopReference } from "@/components/intraop/PediatricIntraopReference"
 
 export function EquipmentTab({
   preop,
@@ -83,6 +84,8 @@ export function EquipmentTab({
             {preop?.height != null && <Text style={{ color:shade("#94a3b8"), fontSize:13 }}>{tc("heightPlaceholder")} <Text style={{ color:shade("#f8fafc"), fontWeight:"700" }}>{preop.height} cm</Text></Text>}
             {preop?.sex    != null && <Text style={{ color:shade("#94a3b8"), fontSize:13 }}>{tc("sexLabel")} <Text style={{ color:shade("#f8fafc"), fontWeight:"700" }}>{preop.sex === "MALE" ? tc("sexMale") : preop.sex === "FEMALE" ? tc("sexFemale") : preop.sex}</Text></Text>}
           </View>
+
+          {pediatricMode && preop ? <PediatricIntraopReference preop={preop} language={language} /> : null}
 
           {cats.map((cat, ci) => (
             <View key={cat.cat} style={{ marginBottom: ci < cats.length - 1 ? 16 : 0 }}>

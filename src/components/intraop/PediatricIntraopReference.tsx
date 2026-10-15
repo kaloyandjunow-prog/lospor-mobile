@@ -1,0 +1,47 @@
+import { Text, View } from "react-native"
+import { pediatricIntraopReference } from "@lospor/core/pediatric-calculators"
+import { PEDIATRIC_PREOP_LABELS } from "@/components/preop/pediatric-preop-labels"
+import type { IntraopPreopSummary } from "@/lib/intraop-preop-summary"
+import { colors, useThemeRefresh } from "@/theme/colors"
+
+const fill = (template: string, values: Record<string, string | number>) =>
+  Object.entries(values).reduce((text, [key, value]) => text.split(`{${key}}`).join(String(value)), template)
+
+/**
+ * BSA, maintenance fluid and resuscitation doses for a child, in view while
+ * the case runs (the same as web's PediatricIntraopReference). Worked out from
+ * the preop weight, height and age each time it is drawn: nothing to accept,
+ * nothing stored.
+ */
+export function PediatricIntraopReference({ preop, language }: { preop: IntraopPreopSummary; language: string }) {
+  useThemeRefresh()
+  const labels = PEDIATRIC_PREOP_LABELS[language === "bg" ? "bg" : "en"]
+  const reference = pediatricIntraopReference({
+    weightKg: preop.weight ?? null,
+    heightCm: preop.height ?? null,
+    age: preop.ageValue != null && preop.ageUnit ? { value: preop.ageValue, unit: preop.ageUnit } : null,
+  })
+  const { bsaSquareMetres, maintenance, resuscitation } = reference
+  if (bsaSquareMetres == null && !maintenance && !resuscitation) return null
+  const row = (title: string, lines: string[]) => (
+    <View key={title} style={{ gap: 2 }}>
+      <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "800" }}>{title}</Text>
+      {lines.map(line => <Text key={line} style={{ color: colors.textPrimary, fontSize: 13, fontWeight: "600" }}>{line}</Text>)}
+    </View>
+  )
+  return (
+    <View testID="pediatric-intraop-reference" style={{ backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 14, marginBottom: 16, gap: 10 }}>
+      <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: "900" }}>{labels.intraopReference}</Text>
+      {bsaSquareMetres != null ? row(labels.bsa, [`${bsaSquareMetres} m²`]) : null}
+      {maintenance ? row(labels.maintenanceFluid, [maintenance.dailyRangeMl
+        ? fill(labels.maintenanceRange, { min: maintenance.dailyRangeMl.minimum, max: maintenance.dailyRangeMl.maximum })
+        : fill(labels.maintenanceDaily, { daily: maintenance.dailyMl ?? 0, hourly: maintenance.hourlyMl ?? 0 })]) : null}
+      {resuscitation ? row(labels.resuscitation, [
+        fill(labels.shockLine, { first: resuscitation.shockJoules, escalated: resuscitation.escalatedShockJoules }),
+        fill(labels.adrenalineLine, { mcg: resuscitation.adrenalineMicrograms }),
+        fill(labels.amiodaroneLine, { first: resuscitation.amiodaroneFirstDoseMilligrams, second: resuscitation.amiodaroneSecondDoseMilligrams }),
+      ]) : null}
+      <Text style={{ color: colors.textMuted, fontSize: 10 }}>{labels.referenceSources} · {reference.ruleVersion}</Text>
+    </View>
+  )
+}

@@ -54,18 +54,20 @@ export type PediatricPreopLabels = {
   met: string
   notMet: string
   unknown: string
-  calculators: string
   bsa: string
   maintenanceFluid: string
   resuscitation: string
-  accept: string
-  accepted: string
-  saveFirst: string
-  profilesUnavailable: string
   ruleset: string
+  /** The intraop reference; {placeholders} are filled where it is drawn. */
+  intraopReference: string
+  maintenanceDaily: string
+  maintenanceRange: string
+  shockLine: string
+  adrenalineLine: string
+  amiodaroneLine: string
+  referenceSources: string
   yes: string
   no: string
-  calculationFailed: string
 }
 
 export const PEDIATRIC_PREOP_LABELS: Record<"en" | "bg", PediatricPreopLabels> = {
@@ -125,18 +127,19 @@ export const PEDIATRIC_PREOP_LABELS: Record<"en" | "bg", PediatricPreopLabels> =
     met: "Met",
     notMet: "Not met",
     unknown: "Unknown",
-    calculators: "Pediatric calculators",
     bsa: "BSA (Mosteller)",
     maintenanceFluid: "Maintenance fluid",
     resuscitation: "Resuscitation reference",
-    accept: "Accept result",
-    accepted: "Accepted",
-    saveFirst: "Save case first",
-    profilesUnavailable: "Equipment, ventilation, blood-volume, local-anaesthetic and dose suggestions remain unavailable until their clinical profiles are reviewed and approved.",
     ruleset: "Ruleset",
+    intraopReference: "Paediatric reference",
+    maintenanceDaily: "{daily} ml/day · {hourly} ml/h",
+    maintenanceRange: "{min}–{max} ml/day (newborn, by day of life)",
+    shockLine: "Shock {first} J (4 J/kg); from the 5th shock up to {escalated} J (8 J/kg, max 360 J)",
+    adrenalineLine: "Adrenaline {mcg} mcg IV/IO every 3–5 min (max 1 mg)",
+    amiodaroneLine: "Amiodarone {first} mg after the 3rd shock, {second} mg after the 5th",
+    referenceSources: "Mosteller · NICE NG29 · RCUK 2025",
     yes: "Yes",
     no: "No",
-    calculationFailed: "Could not record the accepted calculation.",
   },
   bg: {
     mode: "Клиничен режим",
@@ -194,17 +197,18 @@ export const PEDIATRIC_PREOP_LABELS: Record<"en" | "bg", PediatricPreopLabels> =
     met: "Изпълнено",
     notMet: "Не е изпълнено",
     unknown: "Неизвестно",
-    calculators: "Педиатрични калкулатори",
     bsa: "BSA (Mosteller)",
     maintenanceFluid: "Поддържаща скорост на инфузия на течности",
     resuscitation: "Референтни стойности за ресусцитация",
-    accept: "Приеми резултата",
-    accepted: "Прието",
-    saveFirst: "Първо запази случая",
-    profilesUnavailable: "Препоръките за оборудване, вентилация, кръвен обем, локални анестетици и дози на медикаменти остават недостъпни, докато клиничните им профили не бъдат прегледани и одобрени.",
     ruleset: "Версия на правилата",
+    intraopReference: "Педиатрична справка",
+    maintenanceDaily: "{daily} ml/ден · {hourly} ml/ч",
+    maintenanceRange: "{min}–{max} ml/ден (новородено, според деня от живота)",
+    shockLine: "Дефибрилация {first} J (4 J/kg); от 5-ия шок до {escalated} J (8 J/kg, макс. 360 J)",
+    adrenalineLine: "Адреналин {mcg} mcg i.v./i.o. на всеки 3–5 мин (макс. 1 mg)",
+    amiodaroneLine: "Амиодарон {first} mg след 3-ия шок, {second} mg след 5-ия",
+    referenceSources: "Mosteller · NICE NG29 · RCUK 2025",
     yes: "Да",
     no: "Не",
-    calculationFailed: "Приетото изчисление не можа да бъде записано.",
   },
 }
