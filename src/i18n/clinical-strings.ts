@@ -283,6 +283,7 @@ export const CLINICAL_STRINGS = {
     caseMonthYear:       "Case month / year",
     timingStartDate:     "Start date",
     timingEndDate:       "End date",
+    timingLongerThanDay: "Longer than 24 hours: check the end date",
     endTimeNextDay:      "Ends next day",
     duration:            "Duration",
 
@@ -1372,6 +1373,7 @@ export const CLINICAL_STRINGS = {
     caseMonthYear:       "Месец / година на случая",
     timingStartDate:     "Дата на начало",
     timingEndDate:       "Дата на край",
+    timingLongerThanDay: "По-дълго от 24 часа: проверете датата на края",
     endTimeNextDay:      "Приключва следващия ден",
     duration:            "Продължителност",
 

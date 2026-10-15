@@ -3,6 +3,7 @@ import { useState, type RefObject } from "react"
 import {
   daysBetweenDateKeys,
   durationMinutesBetween,
+  earliestEndDateKey,
   formatDateKeyShort,
   isValidTimeZone,
   localDateKey,
@@ -148,13 +149,17 @@ export function TimingTab({
           saveTiming({ endTime: caseEndTime, endDayOffset: offset })
         }}
         todayKey={todayKey}
-        min={startKey}
+        min={startRef.current && zone && caseEndTime ? earliestEndDateKey(startRef.current, caseEndTime, zone) : startKey}
         max={startKey ? shiftDateKey(startKey, 2) : null}
         language={language}
         label={tc("timingEndDate")}
         disabled={!startKey || !caseEndTime}
         testID="intraop-end-day"
       />
+
+      {storedMinutes != null && storedMinutes > 24 * 60 ? (
+        <Text testID="intraop-longer-than-day" style={{ color:shade("#fbbf24"), fontSize:12, fontWeight:"800", marginBottom:12 }}>{tc("timingLongerThanDay")}</Text>
+      ) : null}
 
       {/* Duration */}
       {durationStr ? (
