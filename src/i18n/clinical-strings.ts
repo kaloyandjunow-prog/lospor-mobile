@@ -1005,18 +1005,6 @@ export const CLINICAL_STRINGS = {
     sysCongenital:          "Congenital",
     sysOther:               "Other",
 
-    // ── Risk score labels ─────────────────────────────────────────────────────
-    osaLow:              "Low OSA risk",
-    osaIntermediate:     "Intermediate OSA",
-    osaHigh:             "High OSA risk",
-    rcriVeryLow:         "Very low (0.4%)",
-    rcriLow:             "Low (1.0%)",
-    rcriModerate:        "Moderate (2.4%)",
-    rcriHigh:            "High (≥ 5.4%)",
-    apfelLow:            "Low (< 10%)",
-    apfelModerate:       "Moderate (~40%)",
-    apfelHigh:           "High (≥ 60%)",
-
     // ── Case status ───────────────────────────────────────────────────────────
     statusDraft:         "Draft",
     statusInProgress:    "In progress",
@@ -2077,18 +2065,6 @@ export const CLINICAL_STRINGS = {
     sysObstetric:           "Акушерска",
     sysCongenital:          "Вродени заболявания",
     sysOther:               "Друго",
-
-    // ── Risk score labels ─────────────────────────────────────────────────────
-    osaLow:              "Нисък ОСА риск",
-    osaIntermediate:     "Умерен ОСА риск",
-    osaHigh:             "Висок ОСА риск",
-    rcriVeryLow:         "Много нисък (0,4%)",
-    rcriLow:             "Нисък (1,0%)",
-    rcriModerate:        "Умерен (2,4%)",
-    rcriHigh:            "Висок (≥ 5,4%)",
-    apfelLow:            "Нисък (< 10%)",
-    apfelModerate:       "Умерен (~40%)",
-    apfelHigh:           "Висок (≥ 60%)",
 
     // ── Case status ───────────────────────────────────────────────────────────
     statusDraft:         "Чернова",

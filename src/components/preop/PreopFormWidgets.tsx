@@ -13,11 +13,6 @@ import {
   type BodySystem,
 } from "@lospor/core/preop"
 import { metadataString } from "@lospor/core/option-contracts"
-import {
-  apfelRiskLabel as apfelRiskBandLabel,
-  rcriRiskLabel as rcriRiskBandLabel,
-  stopBangRiskLabel as stopBangRiskBandLabel,
-} from "@/lib/case-detail-summary"
 
 function impact() {
   hapticTick()
@@ -206,15 +201,7 @@ export function BloodGrid({ bloodType, rhFactor, onChange }: {
 // clinical word. This file used to carry its own table with the same
 // thresholds, so the preop form and the case summary could describe the same
 // score differently.
-export function rcriRiskLabel(s: number, locale: string) {
-  return rcriRiskBandLabel(s, locale).label
-}
-export function apfelRiskLabel(s: number, locale: string) {
-  return apfelRiskBandLabel(s, locale).label
-}
-export function stopBangRiskLabel(s: number, locale: string) {
-  return stopBangRiskBandLabel(s, locale).label
-}
+export { apfelRiskLabel, rcriRiskLabel, stopBangRiskLabel } from "@/lib/case-detail-summary"
 
 const BODY_SYSTEM_TC: Record<string, ClinicalStringKey> = {
   "Cardiovascular":             "sysCardiovascular",
