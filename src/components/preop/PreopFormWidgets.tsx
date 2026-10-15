@@ -276,6 +276,7 @@ export function ComorbiditiesBySystem({ items, onRemove }: { items: { label: str
 }
 
 export { ScoreBadge } from "./ScoreBadge"
+export { GuptaRiskCard } from "./GuptaRiskCard"
 
 export function MetricBadge({ label, value, unit, tone = colors.primary }: { label: string; value: string; unit: string; tone?: string }) {
   return (

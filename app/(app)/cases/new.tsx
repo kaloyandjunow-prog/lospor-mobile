@@ -75,7 +75,7 @@ import {
   ComorbiditiesBySystem,
   ManualLabPanel,
   MetricBadge,
-  ScoreBadge,
+  ScoreBadge, GuptaRiskCard,
   SegmentedSelect,
   VitalNumber,
   apfelRiskLabel,
@@ -404,7 +404,7 @@ export default function NewCaseScreen() {
   // useWatch re-renders on every field change on native and web (watch(callback) is unreliable on Expo web).
   const _allFormValues = useWatch({ control })
   const preopProfile = usePreopProfile({ caseId, pediatric: pediatricMode, values: _allFormValues as Record<string, unknown>, form: { getAnswers: () => getValues("preopAnswers") ?? [], setAnswers: answers => setValue("preopAnswers", answers, { shouldDirty: true }) } })
-  const questionList = (formSection: PreopFormSection) => <PreopQuestionList profile={preopProfile.profile} formSection={formSection} mode={preopProfile.mode} states={preopProfile.states} onAnswer={preopProfile.answerQuestion} suggestions={preopProfile.suggestions} onReviewSuggestion={preopProfile.reviewSuggestion} tc={tc} language={language} />
+  const questionList = (formSection: PreopFormSection) => <PreopQuestionList profile={preopProfile.profile} formSection={formSection} mode={preopProfile.mode} states={preopProfile.states} optionKeys={preopProfile.optionKeys} onAnswer={preopProfile.answerQuestion} suggestions={preopProfile.suggestions} onReviewSuggestion={preopProfile.reviewSuggestion} tc={tc} language={language} />
   // Previous snapshot so the effect can tell WHAT changed: a tap on a toggle/
   // pill (boolean value) saves near-instantly; typing keeps the long pause.
   const prevFormValuesRef = useRef<Record<string, unknown> | null>(null)
@@ -1225,13 +1225,13 @@ export default function NewCaseScreen() {
                   />
                 )} />
               </Field>
-              {!pediatricMode ? (
+              {!pediatricMode ? (<>
                 <View style={{ flexDirection: "row", gap: 8, marginBottom: 14 }}>
                   <ScoreBadge label="RCRI" score={rcriScore} max={6} riskLabel={rcriRiskLabel(rcriScore, language)} unavailable={preopProfile.scoreAvailable("RCRI") ? undefined : tc("preopScoreUnavailable")} />
                   <ScoreBadge label="Apfel" score={apfelScore} max={4} riskLabel={apfelRiskLabel(apfelScore, language)} unavailable={preopProfile.scoreAvailable("APFEL") ? undefined : tc("preopScoreUnavailable")} />
                   <ScoreBadge label="STOP-BANG" score={stopBangScore} max={8} riskLabel={stopBangRiskLabel(stopBangScore, language)} unavailable={preopProfile.scoreAvailable("STOPBANG") ? undefined : tc("preopScoreUnavailable")} />
-                </View>
-              ) : (
+                </View>{questionList("risk_scores")}<GuptaRiskCard profile={preopProfile.profile} values={preopProfile.values} onAnswer={preopProfile.answerQuestion} tc={tc} language={language} />
+              </>) : (
                 <PediatricRiskAndCalculators control={control} setValue={setValue} tc={tc} language={language} caseId={caseId} isShown={preopProfile.shownField} />
               )}
               {clinicalAi.clinicalAdvice.enabled || clinicalAi.labImageExtraction.enabled || clinicalAi.monitorOcr.enabled ? (

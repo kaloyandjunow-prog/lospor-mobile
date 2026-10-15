@@ -3,6 +3,7 @@ import {
   isPreopQuestionShown,
   isPreopScoreAvailable,
   PREOP_LEGACY_FIELD_BY_QUESTION,
+  preopAnswerOptionKeys,
   preopAnswerStates,
   preopProfileForMode,
   type PREOP_SCORE_INPUTS,
@@ -107,6 +108,9 @@ export function usePreopProfile({
     profile,
     mode: mode as "ADULT" | "PEDIATRIC",
     states: preopAnswerStates(values),
+    optionKeys: preopAnswerOptionKeys(values),
+    /** The form as the hook last saw it, for what is derived from it (Gupta). */
+    values,
     suggestions,
     answerQuestion,
     reviewSuggestion,
