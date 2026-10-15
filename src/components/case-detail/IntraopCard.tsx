@@ -5,6 +5,7 @@ import { weightBasisMap } from "@lospor/core/option-library"
 import { calculateMostellerBsa } from "@lospor/core/pediatric-calculators"
 import { useOptionLibrary } from "@/lib/use-option-library"
 import { parseLogEvents } from "@lospor/core/intraop-types"
+import { endDayOffsetBetween, endDayOffsetLabel, formatDateKeyLong, isValidTimeZone, localDateKey } from "@lospor/core/intraop-time"
 import { View, Text } from "react-native"
 import { colors, withAlpha, useShade } from "@/theme/colors"
 import { usePreferences, type ClinicalStringKey, type TranslationKey } from "@/lib/preferences-context"
@@ -144,9 +145,16 @@ export function IntraopCard({ intraop, preop, clinicalMode, tc, t }: { intraop: 
     .map(mode => displayClinicalCode("ventilationMode", mode, language))
     .join(" + ")
 
+  const zone = isValidTimeZone(intraop.timezone) ? intraop.timezone : null
+  const startedAt = intraop.startedAt ? new Date(intraop.startedAt) : null
+  const endedAt = intraop.endedAt ? new Date(intraop.endedAt) : null
+  const startKey = startedAt && zone && !Number.isNaN(startedAt.getTime()) ? localDateKey(startedAt, zone) : null
+  const caseDate = (startKey && formatDateKeyLong(startKey, language === "bg" ? "bg" : "en")) || intraop.monthYear || null
   let timingStr = ""
   if (intraop.startTime && intraop.endTime) {
     timingStr = `${formatTimeHHMM(intraop.startTime)} → ${formatTimeHHMM(intraop.endTime)}`
+    const later = endDayOffsetLabel(startedAt && endedAt && zone ? endDayOffsetBetween(startedAt, endedAt, zone) : null, language === "bg" ? "bg" : "en")
+    if (later) timingStr += ` (${later})`
     if (intraop.durationMinutes) timingStr += `  ·  ${formatDuration(intraop.durationMinutes)}`
   } else if (intraop.durationMinutes) {
     timingStr = formatDuration(intraop.durationMinutes)
@@ -198,7 +206,7 @@ export function IntraopCard({ intraop, preop, clinicalMode, tc, t }: { intraop: 
       )}
 
       {timingStr ? <InfoRow label={tc("summaryDuration")} value={timingStr} /> : null}
-      {intraop.monthYear ? <InfoRow label={tc("summaryDate")} value={intraop.monthYear} /> : null}
+      {caseDate ? <InfoRow label={tc("summaryDate")} value={caseDate} /> : null}
 
       <Divider />
 

@@ -50,6 +50,8 @@ export type PediatricPreopLabels = {
   npoUsePolicy: string
   npoHoursBefore: string
   npoBelowMinimum: string
+  npoStopBy: string
+  npoPreviousDay: string
   clearFluids: string
   breastMilk: string
   formula: string
@@ -123,6 +125,8 @@ export const PEDIATRIC_PREOP_LABELS: Record<"en" | "bg", PediatricPreopLabels> =
     npoUsePolicy: "Assign APAGBI 2023 hours",
     npoHoursBefore: "h before surgery",
     npoBelowMinimum: "Shorter than the APAGBI minimum of {hours} h",
+    npoStopBy: "{category}: by {time} ({hours} h before)",
+    npoPreviousDay: "the day before",
     clearFluids: "Clear fluids",
     breastMilk: "Breast milk",
     formula: "Infant formula under 1 year",
@@ -193,6 +197,8 @@ export const PEDIATRIC_PREOP_LABELS: Record<"en" | "bg", PediatricPreopLabels> =
     npoUsePolicy: "Попълни часовете по APAGBI 2023",
     npoHoursBefore: "ч преди операцията",
     npoBelowMinimum: "По-кратко от минимума по APAGBI от {hours} ч",
+    npoStopBy: "{category}: до {time} ({hours} ч преди)",
+    npoPreviousDay: "предния ден",
     clearFluids: "Бистри течности",
     breastMilk: "Кърма",
     formula: "Мляко за кърмачета под 1 година",

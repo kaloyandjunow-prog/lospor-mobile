@@ -265,7 +265,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
     } }
 
     case "equipment": return { tab, content: {
-      preop,
+      preop, surgeryStart: startRef.current, caseTimezone,
     } }
 
     case "technique": return { tab, content: {

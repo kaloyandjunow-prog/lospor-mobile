@@ -2,6 +2,7 @@ import type {
   ClinicalMode,
   PediatricAgeInput,
   PediatricAgeUnit,
+  PediatricFastingCategory,
 } from "@lospor/core/pediatric"
 
 export { useAllergyCheck } from "@/lib/use-allergy-check"
@@ -23,6 +24,8 @@ export type IntraopPreopSummary = {
   currentMedications?: { label: string; atcCode?: string }[]
   allergies?: boolean | null
   allergyDetails?: unknown
+  /** The child's nil-by-mouth assignment, read as clock times once surgery starts. */
+  pediatricFasting?: { category: PediatricFastingCategory; hoursBefore: number }[]
 }
 
 function numberOrUndefined(value: unknown): number | undefined {
@@ -54,6 +57,11 @@ export function buildIntraopPreopSummary(
     // For the allergy check when a drug is given (1.5.0).
     allergies: typeof pd.allergies === "boolean" ? pd.allergies : null,
     allergyDetails: pd.allergyDetails,
+    pediatricFasting: Array.isArray(pd.pediatricFasting)
+      ? (pd.pediatricFasting as { category?: unknown; hoursBefore?: unknown }[])
+        .filter((row): row is { category: PediatricFastingCategory; hoursBefore: number } =>
+          typeof row?.category === "string" && typeof row.hoursBefore === "number")
+      : undefined,
   }
 }
 export function pediatricAgeFromPreop(
