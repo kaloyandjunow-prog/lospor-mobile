@@ -46,7 +46,8 @@ export function AsaPicker({
 }) {
   return (
     <View style={{ gap: 8 }}>
-      {suggestion && (
+      {/* A prompt to choose, gone once a class is chosen. */}
+      {suggestion && !value && (
         <View style={{ backgroundColor: withAlpha(shade("#3b82f6"), "15"), borderRadius: 12, borderWidth: 1, borderColor: withAlpha(shade("#3b82f6"), "40"), paddingHorizontal: 12, paddingVertical: 10, gap: 4 }}>
           <Text style={{ color: shade("#60a5fa"), fontSize: 13, fontWeight: "800" }}>
             {labelSuggested} {suggestion.cls} {labelSuggestedReview}
