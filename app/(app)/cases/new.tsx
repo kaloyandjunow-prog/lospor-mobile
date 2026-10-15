@@ -1251,7 +1251,7 @@ export default function NewCaseScreen() {
               {!pediatricMode && !clinicalAi.clinicalAdvice.enabled ? (
                 <Text style={{ color: colors.textMuted, fontSize: 12, lineHeight: 18, marginBottom: 14 }}>{tc(capabilityMessageKey(clinicalAi.clinicalAdvice.reason))}</Text>
               ) : null}
-              {questionList("risk_scores")}
+              {pediatricMode ? questionList("risk_scores") : null /* adults: drawn above the Gupta card */}
             </SectionCard>
 
             <PrimaryButton label={tc("continueIntraop")} onPress={handleSubmit(onSubmit, onInvalid)} loading={saving} />
