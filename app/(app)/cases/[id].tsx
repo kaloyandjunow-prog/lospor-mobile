@@ -125,7 +125,11 @@ export default function CaseSummaryScreen() {
     metaParts.push(sx)
   }
   if (caseData?.preop?.asaScore) metaParts.push(`ASA ${caseData.preop.asaScore}`)
-  if (caseData?.intraop?.monthYear) metaParts.push(caseData.intraop.monthYear)
+  // The month as the web case page writes it ("Oct 2026"); the full date is in the intraop card.
+  if (caseData?.intraop?.monthYear) {
+    const [y, m] = caseData.intraop.monthYear.split("-").map(Number)
+    metaParts.push(y && m ? new Intl.DateTimeFormat(language === "bg" ? "bg-BG" : "en-GB", { month: "short", year: "numeric" }).format(new Date(y, m - 1, 1)) : caseData.intraop.monthYear)
+  }
 
   // ── Loading state ──────────────────────────────────────────────────────────
   if (loading) {
