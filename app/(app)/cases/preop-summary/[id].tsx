@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from "react"
 import { ScrollView, Text, TouchableOpacity, View } from "react-native"
 import { Stack, useLocalSearchParams, useRouter } from "expo-router"
-import { consentPopulationForAge, preopAgeInYears, type PreopDocumentsResponse } from "@lospor/core/preop-documents"
+import {
+  CONSENT_FALLBACK_TECHNIQUE,
+  consentPopulationForAge,
+  preopAgeInYears,
+  type ConsentTechnique,
+  type PreopDocumentsResponse,
+} from "@lospor/core/preop-documents"
 import { apiFetch, apiJson } from "@/lib/api"
 import { notify } from "@/lib/notify"
 import { openPrintCase } from "@/lib/print-case"
@@ -10,6 +16,7 @@ import { usePreferences } from "@/lib/preferences-context"
 import { PrimaryButton } from "@/components/ui"
 import { ScreenState } from "@/components/clinical-ui"
 import { PreopSummaryCard, type PreopSummaryCase } from "@/components/preop/PreopSummaryCard"
+import { ConsentTechniqueChips } from "@/components/preop/ConsentTechniqueChips"
 import { colors, useThemeRefresh } from "@/theme/colors"
 
 type SummaryData = PreopSummaryCase & { preopDocuments?: PreopDocumentsResponse | null }
@@ -30,6 +37,7 @@ export default function PreopSummaryScreen() {
   const [canWrite, setCanWrite] = useState(true)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<"print" | "start" | null>(null)
+  const [techniques, setTechniques] = useState<ConsentTechnique[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -48,6 +56,9 @@ export default function PreopSummaryScreen() {
   }, [id])
 
   const consent = data?.preopDocuments?.consentEnabled === true
+  const layout = data?.preopDocuments?.layout ?? "B"
+  // Layout C prints the techniques ticked here (general anaesthesia always).
+  const chosen = consent && layout === "C" ? techniques : []
   const chip = { paddingHorizontal: 14, paddingVertical: 11, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }
   const chipText = { color: colors.textPrimary, fontSize: 14, fontWeight: "700" as const }
 
@@ -61,15 +72,21 @@ export default function PreopSummaryScreen() {
       if (template) {
         await apiFetch(`/api/cases/${id}/consent-prints`, {
           method: "POST",
-          body: JSON.stringify({ population: template.population, version: template.version, sha256: template.sha256 }),
+          body: JSON.stringify({
+            population: template.population,
+            version: template.version,
+            sha256: template.sha256,
+            layout,
+            ...(layout === "C" ? { techniques: [CONSENT_FALLBACK_TECHNIQUE, ...chosen] } : {}),
+          }),
         }).catch(() => null)
       }
-      const ok = await openPrintCase(id, lang, data?.caseCode, { doc: "preop-summary" })
+      const ok = await openPrintCase(id, lang, data?.caseCode, { doc: "preop-summary", techniques: chosen })
       if (!ok) notify(tc("errorLabel"), tc("printFailed"))
     } finally {
       setBusy(null)
     }
-  }, [consent, data, id, lang, tc])
+  }, [chosen, consent, data, id, lang, layout, tc])
 
   const begin = useCallback(async () => {
     setBusy("start")
@@ -110,6 +127,7 @@ export default function PreopSummaryScreen() {
           ) : null}
         </View>
         {consent ? <Text style={{ color: colors.textMuted, fontSize: 12, lineHeight: 17 }}>{tc("preopSummaryConsentNote")}</Text> : null}
+        {consent && layout === "C" ? <ConsentTechniqueChips chosen={techniques} onChange={setTechniques} language={lang} tc={tc} /> : null}
 
         {loading ? <ScreenState title={tc("preopSummaryTitle")} loading /> : null}
         {!loading && !data ? <Text style={{ color: colors.warning, fontSize: 13 }}>{tc("preopSummaryOffline")}</Text> : null}

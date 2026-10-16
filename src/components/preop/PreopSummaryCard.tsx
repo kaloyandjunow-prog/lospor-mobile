@@ -1,7 +1,12 @@
 import type { ReactNode } from "react"
 import { Text, View } from "react-native"
 import { displayResearchScore } from "@lospor/core/research-scores"
-import type { PreopSummaryFinding } from "@lospor/core/preop-documents"
+import {
+  groupPreopQuestionnaire,
+  PREOP_QUESTIONNAIRE_SECTION_LABELS,
+  preopQuestionnaireAnswerText,
+  type PreopQuestionnaireItem,
+} from "@lospor/core/preop-documents"
 import { displayClinicalCode } from "@/lib/clinical-display"
 import { PEDIATRIC_PREOP_LABELS } from "@/components/preop/pediatric-preop-labels"
 import type { ClinicalStringKey } from "@/lib/preferences-context"
@@ -16,7 +21,7 @@ export type PreopSummaryCase = {
   preop: Record<string, unknown> | null
   createdBy?: Person
   user?: Person
-  preopFindings?: PreopSummaryFinding[] | null
+  preopQuestionnaire?: PreopQuestionnaireItem[] | null
 }
 
 function tags(raw: unknown): Tag[] {
@@ -53,10 +58,29 @@ function Row({ children, muted }: { children: ReactNode; muted?: boolean }) {
   return <Text style={{ color: muted ? colors.textSecondary : colors.textPrimary, fontSize: 14, fontWeight: muted ? "500" : "600", lineHeight: 20 }}>{children}</Text>
 }
 
-/**
- * The preop summary on the phone: the same content as web's sheet, as cards.
- * Findings only, as on paper: a "no" and a question never asked look the same.
- */
+/** The whole questionnaire, every answer shown: "no" too, and a dash for none. */
+function QuestionnaireBlock({ items, language, tc }: { items: readonly PreopQuestionnaireItem[]; language: "en" | "bg"; tc: (key: ClinicalStringKey) => string }) {
+  const groups = groupPreopQuestionnaire(items)
+  if (groups.length === 0) return null
+  return (
+    <Block title={tc("preopSummaryQuestionnaire")} testID="preop-summary-questionnaire">
+      <Text style={{ color: colors.textMuted, fontSize: 12, marginBottom: 4 }}>{tc("preopSummaryQuestionnaireHint")}</Text>
+      {groups.map(group => (
+        <View key={group.section} style={{ gap: 2, marginBottom: 6 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: "800", letterSpacing: 0.6, textTransform: "uppercase" }}>{PREOP_QUESTIONNAIRE_SECTION_LABELS[language][group.section]}</Text>
+          {group.rows.map(({ item, depth }) => (
+            <View key={item.stableKey} testID={`preop-summary-answer-${item.stableKey}`} style={{ flexDirection: "row", gap: 10, paddingLeft: depth ? 14 : 0 }}>
+              <Text style={{ flex: 1, color: depth ? colors.textSecondary : colors.textPrimary, fontSize: 14, lineHeight: 20 }}>{depth ? "– " : ""}{item.label[language]}</Text>
+              <Text style={{ color: item.answer === "YES" ? colors.textPrimary : colors.textSecondary, fontSize: 14, fontWeight: item.answer === "YES" ? "800" : "500" }}>{preopQuestionnaireAnswerText(item, language)}</Text>
+            </View>
+          ))}
+        </View>
+      ))}
+    </Block>
+  )
+}
+
+/** The preop summary on the phone: the same content as web's sheet, as cards. */
 export function PreopSummaryCard({ data, language, tc }: {
   data: PreopSummaryCase
   language: "en" | "bg"
@@ -65,7 +89,6 @@ export function PreopSummaryCard({ data, language, tc }: {
   useThemeRefresh()
   const p = data.preop ?? {}
   const fastingLabels = PEDIATRIC_PREOP_LABELS[language]
-  const findings = data.preopFindings ?? []
   const comorbidities = tags(p.comorbidities)
   const meds = tags(p.currentMedications)
   const allergyText = tags(p.allergyDetails).map(tag => tag.label).join(", ")
@@ -94,9 +117,6 @@ export function PreopSummaryCard({ data, language, tc }: {
     str(p.neckMobility) ? displayClinicalCode("option:NECK_MOBILITY", String(p.neckMobility), language) : null,
   ].filter((line): line is string => !!line)
 
-  const topLevel = findings.filter(finding => !finding.parentKey)
-  const childrenOf = (key: string) => findings.filter(finding => finding.parentKey === key)
-  const findingText = (finding: PreopSummaryFinding) => finding.option ? `${finding.label[language]}: ${finding.option[language]}` : finding.label[language]
   const consultant = person(data.createdBy)
   const holder = person(data.user)
 
@@ -110,15 +130,10 @@ export function PreopSummaryCard({ data, language, tc }: {
         </View>
       ) : p.allergies === false ? <Text style={{ color: colors.textMuted, fontSize: 13 }}>{tc("preopSummaryNkda")}</Text> : null}
 
-      {topLevel.length > 0 || comorbidities.length > 0 ? (
-        <Block title={tc("preopSummaryFindings")} testID="preop-summary-findings">
+      <QuestionnaireBlock items={data.preopQuestionnaire ?? []} language={language} tc={tc} />
+      {comorbidities.length > 0 ? (
+        <Block title={tc("preopSummaryConditions")} testID="preop-summary-conditions">
           {comorbidities.map((tag, index) => <Row key={`c-${index}`}>{tag.label}</Row>)}
-          {topLevel.map(finding => (
-            <View key={finding.stableKey}>
-              <Row>{findingText(finding)}</Row>
-              {childrenOf(finding.stableKey).map(child => <Row key={child.stableKey} muted>{"   – "}{findingText(child)}</Row>)}
-            </View>
-          ))}
         </Block>
       ) : null}
 

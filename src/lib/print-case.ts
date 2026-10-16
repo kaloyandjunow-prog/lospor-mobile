@@ -11,16 +11,17 @@ import { apiUrl, getToken } from "@/lib/api"
 // show an error toast — there is deliberately NO browser fallback.
 //
 // `doc: "preop-summary"` asks for the preop summary (and consent) instead,
-// A4 portrait. The browser build opens that PDF in a new tab: the API is
+// A4 portrait, with layout C's ticked techniques in `techniques`. The browser build opens that PDF in a new tab: the API is
 // same-origin there and the session cookie authorises it.
 export async function openPrintCase(
   caseId: string,
   lang?: string,
   caseCode?: string | null,
-  options: { doc?: "preop-summary" } = {},
+  options: { doc?: "preop-summary"; techniques?: readonly string[] } = {},
 ): Promise<boolean> {
   try {
-    const query = `lang=${lang === "bg" ? "bg" : "en"}${options.doc ? `&doc=${options.doc}` : ""}`
+    const techniques = options.techniques?.length ? `&techniques=${options.techniques.join(",")}` : ""
+    const query = `lang=${lang === "bg" ? "bg" : "en"}${options.doc ? `&doc=${options.doc}` : ""}${techniques}`
     const url = apiUrl(`/api/cases/${caseId}/pdf?${query}`)
     if (Platform.OS === "web" && options.doc) {
       if (typeof window === "undefined") return false
