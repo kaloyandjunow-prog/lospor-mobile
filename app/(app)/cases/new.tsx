@@ -42,7 +42,8 @@ import { autosaveDelayMs, isDiscreteTapChange } from "@/lib/preop-autosave-caden
 import { PREOP_REQUIRED_FIELD_SECTION, preopInvalidSubmitMessage, preopMissingFieldKeys } from "@/lib/preop-validation-navigation"
 import { postPreopServerCase } from "@/lib/preop-server-create"
 import { suggestASAFromTags } from "@/lib/preop-asa-suggestion"
-import { monthYearForDate } from "@/lib/intraop-timing"
+import { startIntraop } from "@/lib/start-intraop"
+import { usePreopDocumentSettings } from "@/lib/preop-documents"
 import { ClinicalSwitchRow, Field, PrimaryButton, SectionHeader, StyledInput } from "@/components/ui"
 import { ClinicalYesNoRow } from "@/components/ClinicalYesNoRow"
 import { SearchTagInput } from "@/components/SearchTagInput"
@@ -96,6 +97,7 @@ function impact() {
 
 export default function NewCaseScreen() {
   const router = useRouter()
+  const preopDocuments = usePreopDocumentSettings()
   const { continue: continueId, localId: localIdParam, focus } = useLocalSearchParams<{ continue?: string; localId?: string; focus?: string }>()
   const insets = useSafeAreaInsets()
   const { preopLayout, tc, language, heightUnit, weightUnit, temperatureUnit, etco2Unit, cvpUnit, shade } = usePreferences()
@@ -824,13 +826,9 @@ export default function NewCaseScreen() {
       }
       const missingRequired = await fetchMissingRequiredPreop(id)
       if (missingRequired.length > 0) return void notify(tc("requiredFieldsMissing"), missingRequiredPreopMessage(missingRequired, language, tc("completeBeforeProceeding")))
-      const transition = await autosaveManager.saveSection(
-        id,
-        "intraop",
-        { monthYear: monthYearForDate(new Date()) },
-        { partial: true },
-      )
-      if (!canProgressAfterSave(transition.result, { caseExistedBeforeSave: true }).canProgress) {
+      // A hospital that uses the preop summary gets it between preop and intraop.
+      if (preopDocuments.summaryEnabled) { await clearLocalDraft(); return void router.replace(`/(app)/cases/preop-summary/${id}`) }
+      if (!(await startIntraop(id))) {
         await persistLocalDraft(getValues())
         notify(
           tc("savePendingTitle"),
