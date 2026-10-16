@@ -7,6 +7,7 @@ import { useLocalSearchParams, useRouter, Stack } from "expo-router"
 import { apiFetch, apiJson } from "@/lib/api"
 import { notify, confirmAction } from "@/lib/notify"
 import { openPrintCase } from "@/lib/print-case"
+import { caseMetaParts } from "@/lib/case-meta"
 import { useCaseFinalize } from "@/lib/use-case-finalize"
 import { useCaseUnfinalize } from "@/lib/use-case-unfinalize"
 import { CaseReadinessCard, finaliseLabel } from "@/components/CaseReadinessCard"
@@ -118,18 +119,7 @@ export default function CaseSummaryScreen() {
   const diagnosisSubtitle = caseData?.preop?.diagnosesJson?.[0]?.label
     ?? caseData?.preop?.diagnosis
 
-  const metaParts: string[] = []
-  if (caseData?.preop?.ageYears != null) metaParts.push(`${caseData.preop.ageYears} ${tc("yearsShort")}`)
-  if (caseData?.preop?.sex) {
-    const sx = caseData.preop.sex === "MALE" ? tc("sexMaleShort") : caseData.preop.sex === "FEMALE" ? tc("sexFemaleShort") : caseData.preop.sex
-    metaParts.push(sx)
-  }
-  if (caseData?.preop?.asaScore) metaParts.push(`ASA ${caseData.preop.asaScore}`)
-  // The month as the web case page writes it ("Oct 2026"); the full date is in the intraop card.
-  if (caseData?.intraop?.monthYear) {
-    const [y, m] = caseData.intraop.monthYear.split("-").map(Number)
-    metaParts.push(y && m ? new Intl.DateTimeFormat(language === "bg" ? "bg-BG" : "en-GB", { month: "short", year: "numeric" }).format(new Date(y, m - 1, 1)) : caseData.intraop.monthYear)
-  }
+  const metaParts = caseMetaParts(caseData, tc, language)
 
   // ── Loading state ──────────────────────────────────────────────────────────
   if (loading) {

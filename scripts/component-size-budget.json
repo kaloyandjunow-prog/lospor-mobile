@@ -12,5 +12,5 @@
   "src/components/ClinicalNumberInput.tsx": 489,
   "src/components/intraop/tabs/AirwayTab.tsx": 177,
   "src/components/intraop/FluidSheet.test.tsx": 448,
-  "app/(app)/cases/[id].tsx": 401
+  "app/(app)/cases/[id].tsx": 395
 }
