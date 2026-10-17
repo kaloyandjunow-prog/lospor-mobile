@@ -8,6 +8,7 @@ import {
 import { usePreferences } from "@/lib/preferences-context"
 import { localizeSummaryTimetableModel } from "@/lib/clinical-display"
 import { useShade } from "@/theme/shade"
+import { BULGARIAN_NAME_SWITCH_KEYS } from "@lospor/core/display"
 
 // Read-only timetable card for the case summary — the mobile twin of the
 // printed record's intraop timetable (same projected keyEvents blob the web
@@ -34,13 +35,25 @@ export const PALETTES = {
 const VB_W = 1000
 const LBL = 54
 
-export function SummaryTimetable({ keyEvents, startISO, onPress, actionLabel }: {
+type SummaryTimetableProps = {
   keyEvents: unknown
   startISO?: string | null
   onPress?: () => void
   /** Override the tap hint (default "Open intraop ›") — e.g. "View timetable ›" for finished cases. */
   actionLabel?: string
-}) {
+}
+
+/**
+ * Redrawn from scratch when a Bulgarian-name switch changes: the drug names
+ * are worked out once per model, and the switches change them without
+ * changing the language.
+ */
+export function SummaryTimetable(props: SummaryTimetableProps) {
+  const { bulgarianNames } = usePreferences()
+  return <SummaryTimetableBody key={BULGARIAN_NAME_SWITCH_KEYS.map(key => bulgarianNames[key] ? 1 : 0).join("")} {...props} />
+}
+
+function SummaryTimetableBody({ keyEvents, startISO, onPress, actionLabel }: SummaryTimetableProps) {
   const shade = useShade()
   const { theme, tc, language } = usePreferences()
   const P = theme === "dark" ? PALETTES.dark : PALETTES.light

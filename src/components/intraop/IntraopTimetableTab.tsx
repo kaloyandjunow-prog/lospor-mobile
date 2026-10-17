@@ -3,7 +3,9 @@ import type { IntraopLabDraw } from "@lospor/core/labs"
 import { FlatList, Platform, View } from "react-native"
 import type { TimetableData, VitalsEntry } from "@/components/IntraopTimetable"
 import type { ActiveFluid, ActiveGasSettings, ActiveInfusion, LogEvent } from "@/lib/intraop-log-event"
-import { runningItemsByCol, type RunningItem, type RowSummary } from "@/lib/intraop-running"
+import { runningItemsByCol, type RunningItem, type RowSummary, type RunningNameOf } from "@/lib/intraop-running"
+import { usePreferences } from "@/lib/preferences-context"
+import { displayedCatalogName } from "@lospor/core/display"
 import { TimetableFooter } from "./TimetableFooter"
 import { TimetableRow, type QuickAddAction } from "./TimetableRow"
 import { IntraopUndoBar } from "./IntraopUndoBar"
@@ -57,6 +59,8 @@ type Props = {
 
 const NO_SAVE_STATE = { queuedEventIds: [], sendingEventId: null, refused: [], queuedSections: [], dismissRefused: () => {} }
 
+const RUNNING_CATEGORY = { agent: "INHALATIONAL_AGENT", infusion: "INTRAOP_INFUSION", fluid: "INTRAOP_FLUID" } as const
+
 export function IntraopTimetableTab({
   screenWidth,
   attention,
@@ -94,8 +98,11 @@ export function IntraopTimetableTab({
   onEndCase,
   onViewChart,
 }: Props) {
+  // Running agents, infusions and fluids by the names the reader chose (Settings → UI).
+  const { language, bulgarianNames } = usePreferences()
+  const nameOf = useCallback<RunningNameOf>((kind, name) => displayedCatalogName(RUNNING_CATEGORY[kind], name, language, bulgarianNames), [bulgarianNames, language])
   const rowDataByCol = useMemo(() => {
-    const runningByCol = runningItemsByCol(timetable, chartRows, { projectRunning })
+    const runningByCol = runningItemsByCol(timetable, chartRows, { projectRunning, nameOf })
     const data = new Map<number, {
       vital: VitalsEntry | undefined
       rowEvents: LogEvent[]
@@ -115,7 +122,7 @@ export function IntraopTimetableTab({
       })
     }
     return data
-  }, [buildSummary, chartRows, eventRows, projectRunning, timetable])
+  }, [buildSummary, chartRows, eventRows, nameOf, projectRunning, timetable])
 
   const labDrawsByCol = useMemo(() => {
     const byCol = new Map<number, IntraopLabDraw[]>()

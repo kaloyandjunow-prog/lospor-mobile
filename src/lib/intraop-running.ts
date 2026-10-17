@@ -27,8 +27,13 @@ export type RunningItem = {
   eventIds?: string[]
 }
 
-function presentRunningItem(item: CoreRunningItem): RunningItem {
-  const presented = presentRunningLabel(item)
+/** How a running agent, infusion or fluid is named in its row; the stored name by default. */
+export type RunningNameOf = (kind: "agent" | "infusion" | "fluid", name: string) => string
+
+const storedName: RunningNameOf = (_kind, name) => name
+
+function presentRunningItem(item: CoreRunningItem, nameOf: RunningNameOf = storedName): RunningItem {
+  const presented = presentRunningLabel(item, nameOf)
   if (item.planned) presented.planned = true
   if (item.plannedStop) presented.plannedStop = true
   if (item.plannedChange) presented.plannedChange = true
@@ -39,9 +44,9 @@ function presentRunningItem(item: CoreRunningItem): RunningItem {
   return presented
 }
 
-function presentRunningLabel(item: CoreRunningItem): RunningItem {
+function presentRunningLabel(item: CoreRunningItem, nameOf: RunningNameOf): RunningItem {
   if (item.kind === "agent") {
-    return { id: item.id, label: item.name, color: item.color }
+    return { id: item.id, label: nameOf("agent", item.name), color: item.color }
   }
   if (item.kind === "gas") {
     return {
@@ -53,20 +58,20 @@ function presentRunningLabel(item: CoreRunningItem): RunningItem {
   if (item.kind === "infusion") {
     return {
       id: item.id,
-      label: `${item.name} ${item.rate}`,
+      label: `${nameOf("infusion", item.name)} ${item.rate}`,
       color: item.color,
     }
   }
   if (item.fluidEntryMode === "RATE") {
     return {
       id: item.id,
-      label: `${item.name} ${item.rate} ${item.unit}`,
+      label: `${nameOf("fluid", item.name)} ${item.rate} ${item.unit}`,
       color: item.color,
     }
   }
   return {
     id: item.id,
-    label: `${item.name} ${item.volume}mL`,
+    label: `${nameOf("fluid", item.name)} ${item.volume}mL`,
     color: item.color,
   }
 }
@@ -75,7 +80,7 @@ export function runningItemsAt(
   timetable: TimetableData,
   col: number,
 ): RunningItem[] {
-  return coreRunningItemsAt(timetable, col).map(presentRunningItem)
+  return coreRunningItemsAt(timetable, col).map(item => presentRunningItem(item))
 }
 
 export function runningItemsByCol(
@@ -83,13 +88,13 @@ export function runningItemsByCol(
   cols: number[],
   // The live chart of a case not yet ended: running items also show in the
   // rows after now, where a change can be planned on them (Core, 9.13.1).
-  options: { projectRunning?: boolean } = {},
+  options: { projectRunning?: boolean; nameOf?: RunningNameOf } = {},
 ): Map<number, RunningItem[]> {
   const coreRows = runningItemsByColumn(timetable, cols, options)
   return new Map(
     [...coreRows].map(([col, items]) => [
       col,
-      items.map(presentRunningItem),
+      items.map(item => presentRunningItem(item, options.nameOf)),
     ]),
   )
 }
