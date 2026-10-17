@@ -640,6 +640,7 @@ export const CLINICAL_STRINGS = {
     dsSearchOnlyManualBadge: "Manual entry only",
     dsSearchOnlyManualNotice: "This medication is hidden from routine lists. Record it only with a clinically verified value; no dose or preparation guidance is shown.",
     dsDrugCountLabel:    "drugs",
+    dsInfusionCountLabel: "infusions",
 
     // Intraop — timing tab
     timingLocked:        "LOCKED",
@@ -1751,6 +1752,7 @@ export const CLINICAL_STRINGS = {
     dsSearchOnlyManualBadge: "Само ръчно въвеждане",
     dsSearchOnlyManualNotice: "Този медикамент е скрит от обичайните списъци. Документирайте го само с клинично проверена стойност; не се показват указания за доза или приготвяне.",
     dsDrugCountLabel:    "медикамента",
+    dsInfusionCountLabel: "инфузии",
 
     // Intraop — timing tab
     timingLocked:        "ЗАКЛЮЧЕНО",
