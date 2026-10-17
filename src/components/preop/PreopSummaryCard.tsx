@@ -6,6 +6,8 @@ import {
   PREOP_QUESTIONNAIRE_SECTION_LABELS,
   preopQuestionnaireAnswerText,
   type PreopQuestionnaireItem,
+  allergyLine,
+  titledName,
 } from "@lospor/core/preop-documents"
 import { displayClinicalCode } from "@/lib/clinical-display"
 import { PEDIATRIC_PREOP_LABELS } from "@/components/preop/pediatric-preop-labels"
@@ -43,7 +45,7 @@ function tags(raw: unknown): Tag[] {
 
 const num = (value: unknown) => typeof value === "number" && Number.isFinite(value) ? value : null
 const str = (value: unknown) => typeof value === "string" && value ? value : null
-const person = (value: Person) => value?.name ? (value.title ? `${value.title} ${value.name}` : value.name) : null
+const person = (value: Person) => titledName(value)
 
 function Block({ title, children, testID }: { title: string; children: ReactNode; testID?: string }) {
   return (
@@ -91,7 +93,6 @@ export function PreopSummaryCard({ data, language, tc }: {
   const fastingLabels = PEDIATRIC_PREOP_LABELS[language]
   const comorbidities = tags(p.comorbidities)
   const meds = tags(p.currentMedications)
-  const allergyText = tags(p.allergyDetails).map(tag => tag.label).join(", ")
   const labs = Array.isArray(p.labResults) ? (p.labResults as { test?: string; value?: string; unit?: string }[]).filter(lab => lab?.value) : []
   const fasting = Array.isArray(p.pediatricFasting) ? p.pediatricFasting as { category: string; hoursBefore: number }[] : []
 
@@ -125,7 +126,7 @@ export function PreopSummaryCard({ data, language, tc }: {
       {p.allergies === true || p.latexAllergy === true ? (
         <View testID="preop-summary-allergy" style={{ borderWidth: 2, borderColor: colors.danger, borderRadius: 14, padding: 12 }}>
           <Text style={{ color: colors.danger, fontSize: 15, fontWeight: "900" }}>
-            {tc("preopSummaryAllergy")}: {[allergyText, p.latexAllergy === true ? tc("preopSummaryLatex") : null].filter(Boolean).join(" · ")}
+            {tc("preopSummaryAllergy")}: {allergyLine(tags(p.allergyDetails).map(tag => tag.label), p.latexAllergy === true, tc("preopSummaryLatex"))}
           </Text>
         </View>
       ) : p.allergies === false ? <Text style={{ color: colors.textMuted, fontSize: 13 }}>{tc("preopSummaryNkda")}</Text> : null}
