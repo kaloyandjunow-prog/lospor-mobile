@@ -20,6 +20,7 @@ import {
 } from "@/i18n/locale"
 import { STRINGS } from "@/i18n/strings"
 import { useAuth } from "@/lib/auth-context"
+import { setServerMessageLanguage } from "@/lib/server-message"
 import {
   loadAuthenticatedLocale,
   saveAuthenticatedLocale,
@@ -109,6 +110,8 @@ export function PreferencesProvider({
 }) {
   const { state: authState } = useAuth()
   const [language, setLanguageState] = useState<AppLanguage>(initialLanguage)
+  // Messages made outside React (API errors, autosave) follow the same language.
+  useEffect(() => { setServerMessageLanguage(language) }, [language])
   const [localeReady, setLocaleReady] = useState(false)
   const [theme, setThemeState] = useState<ColorScheme>("dark")
   const [preopLayout, setPreopLayoutState] =
