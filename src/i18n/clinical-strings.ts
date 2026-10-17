@@ -1224,7 +1224,7 @@ export const CLINICAL_STRINGS = {
     apfelSection:        "Apfel анамнеза",
     apfelFemaleSex:      "Женски пол (автом.)",
     apfelNonSmoker:      "Непушач (автом.)",
-    apfelPONV:           "Анамнеза за PONV или кинетоза",
+    apfelPONV:           "Анамнеза за следоперативно гадене и повръщане (PONV) или кинетоза",
     apfelOpioids:        "Планирани следоперативни опиоиди",
 
     // STOP-BANG
@@ -1315,7 +1315,7 @@ export const CLINICAL_STRINGS = {
     guptaTitle:                   "Сърдечен риск по Gupta (MICA)",
     guptaNote:                    "Миокарден инфаркт или сърдечен арест до 30 дни. Възрастта, ASA и креатининът се вземат от формуляра.",
     guptaMissing:                 "Липсва: {inputs}",
-    guptaAge:                     "възраст на възрастен",
+    guptaAge:                     "възраст (над 18 г.)",
     guptaAsa:                     "ASA I–V",
     guptaFunctionalStatus:        "функционален статус",
     guptaProcedureType:           "вид операция",
