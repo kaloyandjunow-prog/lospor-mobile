@@ -9,6 +9,7 @@ import {
   allergyLine,
   titledName,
 } from "@lospor/core/preop-documents"
+import { plannedAnaesthesiaText } from "@lospor/core/preop-plan"
 import { displayClinicalCode } from "@/lib/clinical-display"
 import { PEDIATRIC_PREOP_LABELS } from "@/components/preop/pediatric-preop-labels"
 import type { ClinicalStringKey } from "@/lib/preferences-context"
@@ -131,6 +132,11 @@ export function PreopSummaryCard({ data, language, tc }: {
         </View>
       ) : p.allergies === false ? <Text style={{ color: colors.textMuted, fontSize: 13 }}>{tc("preopSummaryNkda")}</Text> : null}
 
+      {plannedAnaesthesiaText(p.plannedAnaesthesia, language === "bg" ? "bg" : "en") ? (
+        <Block title={tc("plannedAnaesthesia")} testID="preop-summary-planned-anaesthesia">
+          <Row>{plannedAnaesthesiaText(p.plannedAnaesthesia, language === "bg" ? "bg" : "en")}</Row>
+        </Block>
+      ) : null}
       <QuestionnaireBlock items={data.preopQuestionnaire ?? []} language={language} tc={tc} />
       {comorbidities.length > 0 ? (
         <Block title={tc("preopSummaryConditions")} testID="preop-summary-conditions">

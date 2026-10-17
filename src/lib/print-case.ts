@@ -20,7 +20,8 @@ export async function openPrintCase(
   options: { doc?: "preop-summary"; techniques?: readonly string[] } = {},
 ): Promise<boolean> {
   try {
-    const techniques = options.techniques?.length ? `&techniques=${options.techniques.join(",")}` : ""
+    // Sent even when empty, so "nothing ticked" is not read as the planned anaesthesia.
+    const techniques = options.techniques ? `&techniques=${options.techniques.join(",")}` : ""
     const query = `lang=${lang === "bg" ? "bg" : "en"}${options.doc ? `&doc=${options.doc}` : ""}${techniques}`
     const url = apiUrl(`/api/cases/${caseId}/pdf?${query}`)
     if (Platform.OS === "web" && options.doc) {

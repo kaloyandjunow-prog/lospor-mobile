@@ -39,3 +39,16 @@ describe("the preop summary on the PWA", () => {
     expect(shown).not.toContain("Questionnaire")
   })
 })
+
+describe("the planned anaesthesia, the title and latex on the PWA summary", () => {
+  it("shows the plan, the doctor's title once and latex once", () => {
+    const shown = text(render(<PreopSummaryCard language="bg" tc={tc("bg")} data={{
+      preop: { allergies: true, latexAllergy: true, allergyDetails: [{ label: "Латекс" }], plannedAnaesthesia: { techniques: ["GENERAL_TIVA"], airwayDevices: ["LMA"] } },
+      createdBy: { name: "д-р А. Николов", title: "д-р" },
+    }} />))
+    expect(shown).toContain("Планирана анестезия")
+    expect(shown).toContain("Обща анестезия: тотална интравенозна анестезия (ТИВА); Ларингеална маска (LMA)")
+    expect(shown).not.toContain("д-р д-р")
+    expect(shown).not.toContain("Латекс · Латекс")
+  })
+})

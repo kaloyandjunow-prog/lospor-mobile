@@ -9,6 +9,7 @@ import {
   type PREOP_SCORE_INPUTS,
   type PreopAssessmentProfile,
 } from "@lospor/core/preop-assessment"
+import { preopAgeInYears } from "@lospor/core/preop-documents"
 import { apiFetch, apiJson } from "./api"
 import { clinicalSyncKv } from "./clinical-sync-kv"
 import type { PreopPendingSuggestion, PreopQuestionAnswer } from "@/components/preop/PreopQuestionList"
@@ -111,6 +112,8 @@ export function usePreopProfile({
     optionKeys: preopAnswerOptionKeys(values),
     /** The form as the hook last saw it, for what is derived from it (Gupta). */
     values,
+    /** The patient's age; a question asked only from an age is left off younger patients. */
+    ageYears: preopAgeInYears(values as Parameters<typeof preopAgeInYears>[0]),
     suggestions,
     answerQuestion,
     reviewSuggestion,

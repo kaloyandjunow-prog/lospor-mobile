@@ -8,6 +8,7 @@ import {
   type ConsentTechnique,
   type PreopDocumentsResponse,
 } from "@lospor/core/preop-documents"
+import { consentTechniquesForPlan } from "@lospor/core/preop-plan"
 import { apiFetch, apiJson } from "@/lib/api"
 import { notify } from "@/lib/notify"
 import { openPrintCase } from "@/lib/print-case"
@@ -48,6 +49,8 @@ export default function PreopSummaryScreen() {
       .then(([summary, detail]) => {
         if (cancelled) return
         setData(summary)
+        // Layout C starts from the anaesthesia planned at the preop visit.
+        setTechniques(consentTechniquesForPlan(summary.preop?.plannedAnaesthesia))
         setCanWrite(detail?.capabilities?.canWrite !== false)
       })
       .catch(() => {})
@@ -81,7 +84,7 @@ export default function PreopSummaryScreen() {
           }),
         }).catch(() => null)
       }
-      const ok = await openPrintCase(id, lang, data?.caseCode, { doc: "preop-summary", techniques: chosen })
+      const ok = await openPrintCase(id, lang, data?.caseCode, { doc: "preop-summary", ...(consent && layout === "C" ? { techniques: chosen } : {}) })
       if (!ok) notify(tc("errorLabel"), tc("printFailed"))
     } finally {
       setBusy(null)
