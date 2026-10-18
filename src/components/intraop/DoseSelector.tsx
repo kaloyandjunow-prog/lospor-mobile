@@ -59,6 +59,9 @@ export type DoseSelectorProps = {
   onRouteChange?: (r: string) => void
 
   concentrationOptions?: string[]
+  /** The heading over the strengths: "Concentration" by default, "Syringe" for an infusion. */
+  concentrationLabel?: string
+  customConcentrationPlaceholder?: string
   concentration?: string
   concentrationUnit?: string
   onConcentrationChange?: (c: string | undefined) => void
@@ -83,7 +86,7 @@ export function DoseSelector({
   value, onValueChange, min, max, manualMax, step = 1, precision: precisionProp, valuePlaceholder = "Value", manualEntryOnly = false,
   units, unit, onUnitChange, unitSuffix,
   routes, route, onRouteChange,
-  concentrationOptions, concentration, concentrationUnit, onConcentrationChange,
+  concentrationOptions, concentrationLabel, customConcentrationPlaceholder, concentration, concentrationUnit, onConcentrationChange,
   customConcentration, onCustomConcentrationChange,
   formulationOptions, formulation, onFormulationChange,
   confirmLabel, onConfirm, confirmDisabled,
@@ -168,7 +171,7 @@ export function DoseSelector({
 
       {showConcentration && (
         <View style={{ marginBottom: 14 }}>
-          <Text style={{ color: shade("#64748b"), fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{tc("doseConcentration")}</Text>
+          <Text style={{ color: shade("#64748b"), fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{concentrationLabel ?? tc("doseConcentration")}</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             {visibleConcentrations.map((c, index) => (
               <TouchableOpacity
@@ -230,7 +233,7 @@ export function DoseSelector({
               testID="concentration-custom-input"
               value={customConcentration}
               onChangeText={onCustomConcentrationChange}
-              placeholder={tc("doseCustomConcentration")}
+              placeholder={customConcentrationPlaceholder ?? tc("doseCustomConcentration")}
               placeholderTextColor={shade("#475569")}
               autoFocus
               style={{ marginTop: 8, backgroundColor: shade("#111820"), color: shade("#e2e8f0"), borderRadius: 9,

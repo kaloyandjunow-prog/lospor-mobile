@@ -337,6 +337,7 @@ export function IntraopCard({ intraop, preop, clinicalMode, tc, t }: { intraop: 
           { labelKey: "summaryCrystalloid" as ClinicalStringKey, value: intraop.crystalloidsMl ?? 0, color: colors.primary },
           { labelKey: "summaryColloid" as ClinicalStringKey, value: intraop.colloidsMl ?? 0, color: shade("#38bdf8") },
           { labelKey: "summaryBlood" as ClinicalStringKey, value: intraop.bloodMl ?? 0, color: colors.danger },
+          { labelKey: "summaryInfusions" as ClinicalStringKey, value: intraop.infusionsMl ?? 0, color: shade("#a855f7") },
           { labelKey: "summaryUrineOut" as ClinicalStringKey, value: intraop.urineMl ?? 0, color: shade("#2dd4bf") },
         ]).map(item => (
           <View key={item.labelKey} style={{

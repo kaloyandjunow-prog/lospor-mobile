@@ -4,6 +4,7 @@ import { useState } from "react"
 import { provenanceFromRule } from "@lospor/core/clinical-provenance"
 import { DEFAULT_INFUSION_WEIGHT_BASIS, infusionCalculationBasis, type WeightBasisMap } from "@lospor/core/intraop-totals"
 import { uid } from "@/lib/intraop-log-event"
+import type { InfusionRecord } from "@lospor/core/infusion-entry"
 import type { DrugFormulation, ActiveInfusion } from "@/lib/intraop-log-event"
 
 type InfusionOption = { name: string; unit: string; color: string }
@@ -56,11 +57,16 @@ export function useInfusionEntry(
     setInfOpen(true)
   }
 
-  function confirmInfusion() {
+  /**
+   * Both rates are recorded (2026-10-18): `record` is what the sheet worked out
+   * from the value, the unit it was entered in and the syringe -- the dose rate,
+   * the pump rate and the weight. Without one, the box's value in the drug's unit.
+   */
+  function confirmInfusion(record?: InfusionRecord) {
     if (!infDrug || !infRate) return
     const codes = infusionCodes[infDrug.name]
     const inf: ActiveInfusion = {
-      infId: uid(), name: infDrug.name, rate: infRate, unit: infDrug.unit, color: infDrug.color,
+      infId: uid(), name: infDrug.name, rate: record ? String(record.rate) : infRate, unit: record?.unit ?? infDrug.unit, color: infDrug.color,
       concentration: infConcentration, formulation: infFormulation, route: infRoute,
       drugId: codes?.drugId, atcCode: codes?.atcCode, inn: codes?.inn,
       ...provenanceFromRule(infRule),
@@ -82,6 +88,8 @@ export function useInfusionEntry(
         clinicalPresetId: inf.clinicalPresetId, clinicalPresetVersion: inf.clinicalPresetVersion,
         clinicalPresetScope: inf.clinicalPresetScope,
         calculationBasis: infusionCalculationBasis(inf.name, weightBasis),
+        ...(record?.volumeRateMlPerHour != null ? { volumeRateMlPerHour: record.volumeRateMlPerHour } : {}),
+        ...(record?.calculationWeightKg != null ? { calculationWeightKg: record.calculationWeightKg } : {}),
       })
     })
   }
@@ -99,16 +107,20 @@ export function useInfusionEntry(
     }, options.exactTs ?? atRow(rowTs))
   }
 
-  function changeRate(inf: ActiveInfusion, rate: string, concentration?: string) {
-    setActiveInfusions(prev => prev.map(x => x.infId === inf.infId ? { ...x, rate, concentration: concentration ?? x.concentration } : x))
+  function changeRate(inf: ActiveInfusion, enteredRate: string, concentration?: string, record?: InfusionRecord) {
+    const rate = record ? String(record.rate) : enteredRate
+    const unit = record?.unit ?? inf.unit
+    setActiveInfusions(prev => prev.map(x => x.infId === inf.infId ? { ...x, rate, unit, concentration: concentration ?? x.concentration } : x))
     const atTs = infActTs
     setInfActOpen(false); setInfActTgt(null); setInfActRate(""); setInfActConcentration(undefined); setInfActTs(null)
     // Stamp the rate change at the timetable column the user was editing (infActTs)
     // so the split lands there, not at wall-clock "now". Falls back to now when
     // opened without a column context (real-time charting).
     void save({
-      type: "infusion_rate", infId: inf.infId, name: inf.name, rate, unit: inf.unit,
+      type: "infusion_rate", infId: inf.infId, name: inf.name, rate, unit,
       color: inf.color, concentration: concentration ?? inf.concentration,
+      ...(record?.volumeRateMlPerHour != null ? { volumeRateMlPerHour: record.volumeRateMlPerHour } : {}),
+      ...(record?.calculationWeightKg != null ? { calculationWeightKg: record.calculationWeightKg } : {}),
       clinicalRuleKey: inf.clinicalRuleKey, clinicalRuleVersion: inf.clinicalRuleVersion,
       clinicalRuleSourceIds: inf.clinicalRuleSourceIds,
       clinicalPresetId: inf.clinicalPresetId, clinicalPresetVersion: inf.clinicalPresetVersion,

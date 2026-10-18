@@ -13,6 +13,7 @@ import {
   type WeightBasisMap,
 } from "@lospor/core/intraop-totals"
 import { formatComplications } from "@/lib/intraop-complications"
+import { infusionVolumesByName } from "@lospor/core/infusion-volume"
 import { timeAtCol } from "@/lib/intraop-projection"
 import { buildRowSummary } from "@/lib/intraop-running"
 import { confirmAction } from "@/lib/notify"
@@ -355,23 +356,21 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
       if (tbwUsed != null) weightParts.push(`TBW ${Math.round(tbwUsed * 10) / 10} kg`)
       const bsaUsed = infusionRows.find(row => row.bsaUsed != null)?.bsaUsed
       if (bsaUsed != null) weightParts.push(`BSA ${bsaUsed} m²`)
-      // Delivered volume, not the stored `volume` string: that field is only
-      // written when a fluid is stopped, so a running crystalloid would read
-      // as 0 while it is actually going in.
-      const fluidTotals = calculateDeliveredFluidTotals(timetable.fluids)
+      // Delivered volume, not the stored `volume` (written only when a fluid stops, so a running one read 0).
+      // Infusions count in the balance by their pump rates, each drug's mL beside its amount (2026-10-18).
+      const fluidTotals = calculateDeliveredFluidTotals(timetable.fluids, new Date(), timetable.infusions ?? [])
+      const volumeByName = infusionVolumesByName(timetable.infusions ?? [])
       return {
         infusionTotals: infusionRows.map(row => ({
           ...row,
           mgTotal: infusionLocalAnaestheticMg(row.name, row.total, row.unit),
           // Per kg without a weight, both totals of a unit switch, and which
           // weight was used when the drug's own could not be (9.12.3).
-          display: formatInfusionTotal(row),
+          display: [formatInfusionTotal(row), volumeByName.get(row.name) != null ? `${volumeByName.get(row.name)} mL` : null].filter(Boolean).join(" · "),
         })),
         bolusTotals: calculateDrugTotals(timetable), provisional: !!attention?.saveState && totalsProvisional(timetable, attention.saveState),
         weightNote: weightParts.length ? `† ${weightParts.join(" / ")}` : null,
-        crystalloidsMl: fluidTotals.crystalloids,
-        colloidsMl: fluidTotals.colloids,
-        bloodMl: fluidTotals.blood,
+        crystalloidsMl: fluidTotals.crystalloids, colloidsMl: fluidTotals.colloids, bloodMl: fluidTotals.blood, infusionsMl: fluidTotals.infusions,
         urinaryCatheter: monitoring.includes("urinaryCatheter"),
         urineMl,
         setUrineMl,

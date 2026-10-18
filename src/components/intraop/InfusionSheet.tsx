@@ -20,7 +20,10 @@ import type { InfusionRuleSelection } from "@/lib/use-infusion-entry"
 import type { SearchOnlyMedicationOption } from "@/lib/hidden-clinical-options"
 import { InfusionPickerMenu, type InfusionPickerMode } from "@/components/intraop/InfusionPickerMenu"
 import { activeInfusionSurface, filterInfusionPickerResults, pediatricInfusionProfile, type ActiveInfProfile, type InfProfile, type InfusionOption, type Range } from "@/components/intraop/infusion-sheet-helpers"
-import { useVolumeRateEntry } from "@/components/intraop/use-volume-rate-entry"
+import { useInfusionRateFields } from "@/components/intraop/use-infusion-rate-fields"
+import { infusionEntryWeightKg, type InfusionRecord } from "@lospor/core/infusion-entry"
+import { formatSyringe, syringeOptions } from "@lospor/core/infusion-volume"
+import { infusionCalculationBasis, type WeightBasisMap } from "@lospor/core/intraop-totals"
 
 export function InfusionSheet({
   visible, onClose, infDrugs, searchOnlyInfusions = [], favouriteNames, scenarios, ratePresets, infDrug, setInfDrug, infRate, setInfRate, onConfirm,
@@ -28,7 +31,7 @@ export function InfusionSheet({
   infCustomConcentration, setInfCustomConcentration, infFormulation, setInfFormulation,
   infRule, setInfRule,
   ranges = {}, suggestedRates = {}, baseProfiles = {}, routeProfiles = {}, pediatricMode = false,
-  pediatricInfusionProfiles = [], patientAge = null, patientWeightKg,
+  pediatricInfusionProfiles = [], patientAge = null, patientWeightKg, patientIdealWeightKg, weightBasis,
   prospectiveGuidanceEnabled = true,
 }: {
   visible: boolean
@@ -42,7 +45,8 @@ export function InfusionSheet({
   setInfDrug: (d: InfusionOption | null) => void
   infRate: string
   setInfRate: (v: string) => void
-  onConfirm: () => void
+  /** Starts the infusion; the record carries both rates (dose and pump). */
+  onConfirm: (record?: InfusionRecord) => void
   routes?: Record<string, string[]>
   infRoute?: string
   setInfRoute?: (r: string | undefined) => void
@@ -63,6 +67,9 @@ export function InfusionSheet({
   pediatricInfusionProfiles?: readonly PediatricInfusionProfileRule[]
   patientAge?: PediatricAgeInput | null
   patientWeightKg?: number | null
+  /** Ideal weight, for an adult drug dosed on it; the pump rate uses the drug's own basis. */
+  patientIdealWeightKg?: number | null
+  weightBasis?: WeightBasisMap
   prospectiveGuidanceEnabled?: boolean
 }) {
   const { tc, language, shade } = usePreferences()
@@ -177,9 +184,14 @@ export function InfusionSheet({
     laConcentrations,
     ranges,
   })
-  // Local anaesthetic volume rates: limit follows the %, pump rate and dose read out.
-  const volume = useVolumeRateEntry({ unit: activeUnit, ...activeRange, quickValues: activeQuickValues, doseLimit: activeProfile?.doseLimit,
-    concentration: infConcentration, weightKg: patientWeightKg, rate: infRate, setRate: setInfRate })
+  // The strength (a syringe, or a % for a local anaesthetic) and the rate in any
+  // of its units; both rates are recorded (2026-10-18). A syringe may be skipped.
+  const strengths = activeConcentrations ?? (infDrug && prospectiveGuidanceEnabled && !searchOnlySelection
+    ? syringeOptions(infDrug.name, activeRoute).map(formatSyringe) : undefined)
+  const rateWeightKg = pediatricMode ? patientWeightKg : infusionEntryWeightKg({
+    basis: infDrug ? infusionCalculationBasis(infDrug.name, weightBasis) : null, idealWeightKg: patientIdealWeightKg, actualWeightKg: patientWeightKg })
+  const fields = useInfusionRateFields({ resetKey: `${infDrug?.name}|${activeRoute}`, unit: activeUnit, ...activeRange, quickValues: activeQuickValues,
+    doseLimit: activeProfile?.doseLimit, concentration: infConcentration, weightKg: rateWeightKg, rate: infRate, setRate: setInfRate })
 
   function selectInfusion(drug: InfusionOption) {
     setSearchOnlySelection(null)
@@ -324,14 +336,16 @@ export function InfusionSheet({
           ) : (
           <DoseSelector
             color={infDrug.color}
-            {...volume.selector}
+            {...fields.selector}
             valuePlaceholder={tc("dsOrTypeCustom")}
             manualEntryOnly={!prospectiveGuidanceEnabled || activeProfile?.manualEntryOnly}
             routes={activeProfile?.routes ?? routes[infDrug.name]} route={activeRoute} onRouteChange={changeRoute}
-            concentrationOptions={activeConcentrations}
-            concentrationUnit={activeProfile?.concentrationUnit}
+            concentrationOptions={strengths}
+            concentrationLabel={activeConcentrations ? undefined : tc("infusionSyringe")}
+            customConcentrationPlaceholder={activeConcentrations ? undefined : tc("infusionSyringeCustom")}
+            concentrationUnit={activeConcentrations ? activeProfile?.concentrationUnit : undefined}
             concentration={infConcentration}
-            onConcentrationChange={next => { setInfConcentration?.(next); const suggested = volume.suggestedFor(next); if (suggested) setInfRate(suggested) }}
+            onConcentrationChange={next => { setInfConcentration?.(next); const suggested = fields.suggestedFor(next); if (suggested) setInfRate(suggested) }}
             customConcentration={infCustomConcentration}
             onCustomConcentrationChange={value => {
               setInfCustomConcentration?.(value)
@@ -342,9 +356,9 @@ export function InfusionSheet({
             formulationOptions={activeProfile?.formulationOptions}
             formulation={infFormulation}
             onFormulationChange={setInfFormulation}
-            extraHint={[volume.readout, activeProfile?.advisory].filter(Boolean).join(" · ") || undefined}
-            confirmLabel={`${tc("dsStart")} ${infusionLabel(infDrug.name)} ${infRate} ${activeUnit}`}
-            onConfirm={onConfirm}
+            extraHint={[fields.readout, activeProfile?.advisory].filter(Boolean).join(" · ") || undefined}
+            confirmLabel={`${tc("dsStart")} ${infusionLabel(infDrug.name)} ${infRate} ${fields.selector.unitSuffix}`}
+            onConfirm={() => onConfirm(fields.record() ?? undefined)}
             confirmDisabled={
               !infRate
               || Number(infRate) <= 0

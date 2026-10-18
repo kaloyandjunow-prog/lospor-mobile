@@ -4,6 +4,7 @@ import type { ActiveGasSettings } from "@/lib/intraop-log-event"
 import { plannedRowTime } from "@/lib/intraop-projection"
 import { pediatricAgeFromPreop, type IntraopPreopSummary } from "@/lib/intraop-preop-summary"
 import type { ClinicalStringKey } from "@/lib/preferences-context"
+import type { WeightBasisMap } from "@lospor/core/intraop-totals"
 
 type MedicationSheetProps = Pick<
   IntraopSheetsHostProps,
@@ -21,6 +22,10 @@ type AgentProps = MedicationSheetProps["agent"]
 
 export type IntraopMedicationSheetBuilderProps = {
   tc: (key: ClinicalStringKey) => string
+  /** The case's weights and each infusion's weight basis, for the pump rate (2026-10-18). */
+  caseIbw?: number | null
+  caseTbw?: number | null
+  infusionWeightBasis?: WeightBasisMap
   prospectiveGuidanceEnabled: boolean
   activeAgent: AgentProps["activeAgent"]
   activeGas: ActiveGasSettings
@@ -398,6 +403,8 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
       pediatricInfusionProfiles,
       patientAge: pediatricAgeFromPreop(preop),
       patientWeightKg: preop?.weight ?? undefined,
+      patientIdealWeightKg: props.caseIbw ?? null,
+      weightBasis: props.infusionWeightBasis,
     },
     infusionAction: {
       visible: infActOpen,
@@ -418,6 +425,10 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
       pediatricInfusionProfiles: prospectiveGuidanceEnabled ? pediatricInfusionProfiles : [],
       patientAge: pediatricAgeFromPreop(preop),
       patientWeightKg: preop?.weight ?? undefined,
+      patientIdealWeightKg: props.caseIbw ?? null,
+      weightBasis: props.infusionWeightBasis,
+      ruleUnits: Object.fromEntries((Array.isArray(INF_DRUGS) ? INF_DRUGS : []).map(drug => [drug.name, drug.unit])),
+      prospectiveGuidanceEnabled,
     },
     fluid: {
       visible: flOpen,
