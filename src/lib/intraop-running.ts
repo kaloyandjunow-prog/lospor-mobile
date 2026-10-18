@@ -58,7 +58,8 @@ function presentRunningLabel(item: CoreRunningItem, nameOf: RunningNameOf): Runn
   if (item.kind === "infusion") {
     return {
       id: item.id,
-      label: `${nameOf("infusion", item.name)} ${item.rate}`,
+      // With its unit: "0.208" alone could be any of mL/kg/hr, mg/hr or mcg/kg/min.
+      label: [nameOf("infusion", item.name), item.rate, item.unit].filter(Boolean).join(" "),
       color: item.color,
     }
   }

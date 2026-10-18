@@ -11,6 +11,8 @@ describe("runningItemsAt", () => {
     const t = tt({ infusions: [{ id: "i1", name: "Noradrenaline", rate: "5", color: "#f00", startCol: 0, endCol: 5, rateChanges: [{ col: 2, rate: "8" }] }] })
     expect(runningItemsAt(t, 1)).toEqual([{ id: "inf-i1", label: "Noradrenaline 5", color: "#f00" }])
     expect(runningItemsAt(t, 3)).toEqual([{ id: "inf-i1", label: "Noradrenaline 8", color: "#f00" }]) // after rate change
+    const withUnit = tt({ infusions: [{ id: "i2", name: "Ropivacaine 0.2%", rate: "0.208", unit: "mL/kg/hr", color: "#a5f", startCol: 0, endCol: 5 }] })
+    expect(runningItemsAt(withUnit, 1)[0]?.label).toBe("Ropivacaine 0.2% 0.208 mL/kg/hr")
     expect(runningItemsAt(t, 6)).toEqual([]) // past endCol
   })
 
