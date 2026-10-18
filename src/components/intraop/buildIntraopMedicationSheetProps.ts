@@ -415,6 +415,9 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
       ranges: prospectiveGuidanceEnabled && !pediatricMode ? INFUSION_RANGES : {},
       routeProfiles: prospectiveGuidanceEnabled && !pediatricMode ? INFUSION_ROUTE_PROFILES : {},
       pediatricMode,
+      pediatricInfusionProfiles: prospectiveGuidanceEnabled ? pediatricInfusionProfiles : [],
+      patientAge: pediatricAgeFromPreop(preop),
+      patientWeightKg: preop?.weight ?? undefined,
     },
     fluid: {
       visible: flOpen,

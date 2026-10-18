@@ -1,4 +1,8 @@
 import { View, Text, TouchableOpacity } from "react-native"
+import { resolvePediatricInfusionProfileSurface, type PediatricInfusionProfileRule } from "@lospor/core/clinical-rules"
+import type { PediatricAgeInput } from "@lospor/core/pediatric"
+import { resolvePediatricInfusionAvailability } from "@/lib/pediatric-infusion-routes"
+import { useVolumeRateEntry } from "@/components/intraop/use-volume-rate-entry"
 import { Sheet } from "@/components/intraop/Sheet"
 import type { ActiveInfusion } from "@/lib/intraop-log-event"
 import { DoseSelector } from "@/components/intraop/DoseSelector"
@@ -17,7 +21,7 @@ type RouteProfileLite = {
 export function InfusionActionSheet({
   visible, onClose, target, ratePresets, newRate, setNewRate, onChangeRate, onStop,
   laConcentrations = {}, newConcentration, setNewConcentration, ranges = {}, routeProfiles = {},
-  pediatricMode = false, plannedAt = null,
+  pediatricMode = false, plannedAt = null, pediatricInfusionProfiles = [], patientAge = null, patientWeightKg,
 }: {
   visible: boolean
   onClose: () => void
@@ -41,6 +45,9 @@ export function InfusionActionSheet({
    * or stop is planned for then, and the sheet says so (1.4.14 appliance test).
    */
   plannedAt?: string | null
+  pediatricInfusionProfiles?: readonly PediatricInfusionProfileRule[]
+  patientAge?: PediatricAgeInput | null
+  patientWeightKg?: number | null
 }) {
   const shade = useShade()
   const { tc, language } = usePreferences()
@@ -48,19 +55,29 @@ export function InfusionActionSheet({
 
   // Resolve the per-route entry surface for the running infusion, falling back
   // to the flat per-name range and concentration when there is no route profile.
-  const prof = target?.route ? routeProfiles[target.name]?.[target.route] : undefined
+  // A child's local anaesthetic infusion keeps its rule's volume limit; any
+  // other paediatric infusion is changed by hand, as before.
+  const pediatricRule = pediatricMode && target?.route
+    ? resolvePediatricInfusionAvailability({ itemKey: target.name, age: patientAge, weightKg: patientWeightKg, profiles: pediatricInfusionProfiles }).rule
+    : null
+  const pediatricSurface = pediatricRule ? resolvePediatricInfusionProfileSurface({ rule: pediatricRule, route: target?.route }) : null
+  const volumeRule = pediatricSurface?.doseLimit ? pediatricSurface : null
+  const prof = volumeRule ?? (target?.route ? routeProfiles[target.name]?.[target.route] : undefined)
   const range: Range = prof
     ? { min: prof.min, max: prof.max, step: prof.step }
     : (target ? ranges[target.name] : undefined) ?? { min: 0, max: 100, step: 1 }
   const quickValues = prof?.quickValues ?? (target ? ratePresets[target.name]?.map(Number) : undefined)
   const concentrationOptions = prof?.concentrationOptions ?? (target ? laConcentrations[target.name] : undefined)
+  const concentration = newConcentration ?? target?.concentration
+  const volume = useVolumeRateEntry({ unit: target?.unit ?? "", ...range, quickValues, doseLimit: volumeRule?.doseLimit,
+    concentration, weightKg: patientWeightKg, rate: newRate, setRate: setNewRate })
   const at = plannedAt ? ` ${formatMessage(tc("plannedAtTime"), { time: plannedAt })}` : ""
 
   return (
     <Sheet visible={visible} onClose={onClose} title={target ? `${infusionLabel(target.name)}${plannedAt ? ` ·${at}` : ""}` : tc("trRowInfusion")}>
       {target && (
         <View style={{ gap:12 }}>
-          {pediatricMode ? (
+          {pediatricMode && !volumeRule ? (
             <Text style={{ color:shade("#fbbf24"), fontSize:12, lineHeight:17 }}>
               {tc("pediatricInfusionManual")}
             </Text>
@@ -70,14 +87,12 @@ export function InfusionActionSheet({
           </Text>
           <DoseSelector
             color={shade("#3b82f6")}
-            quickValues={quickValues}
-            value={newRate} onValueChange={setNewRate}
-            {...range}
+            {...volume.selector}
             valuePlaceholder={tc("newRate")}
-            unitSuffix={target.unit}
             concentrationOptions={concentrationOptions}
-            concentration={newConcentration ?? target.concentration}
-            onConcentrationChange={setNewConcentration}
+            concentration={concentration}
+            onConcentrationChange={next => { setNewConcentration?.(next); const suggested = volume.suggestedFor(next); if (suggested) setNewRate(suggested) }}
+            extraHint={volume.readout}
             confirmLabel={`${formatMessage(tc("changeTo"), { value: `${newRate} ${target.unit}` })}${at}`}
             onConfirm={() => onChangeRate(target, newRate, newConcentration)}
             confirmDisabled={!newRate}

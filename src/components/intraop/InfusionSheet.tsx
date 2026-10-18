@@ -19,7 +19,8 @@ import {
 import type { InfusionRuleSelection } from "@/lib/use-infusion-entry"
 import type { SearchOnlyMedicationOption } from "@/lib/hidden-clinical-options"
 import { InfusionPickerMenu, type InfusionPickerMode } from "@/components/intraop/InfusionPickerMenu"
-import { activeInfusionSurface, filterInfusionPickerResults, type ActiveInfProfile, type InfProfile, type InfusionOption, type Range } from "@/components/intraop/infusion-sheet-helpers"
+import { activeInfusionSurface, filterInfusionPickerResults, pediatricInfusionProfile, type ActiveInfProfile, type InfProfile, type InfusionOption, type Range } from "@/components/intraop/infusion-sheet-helpers"
+import { useVolumeRateEntry } from "@/components/intraop/use-volume-rate-entry"
 
 export function InfusionSheet({
   visible, onClose, infDrugs, searchOnlyInfusions = [], favouriteNames, scenarios, ratePresets, infDrug, setInfDrug, infRate, setInfRate, onConfirm,
@@ -138,26 +139,7 @@ export function InfusionSheet({
     if (pediatricMode) {
       const surface = pediatricSurfaceFor(name, route)
       if (!surface || surface.disposition === "HIDDEN") return undefined
-      return {
-        mode: surface.mode,
-        min: surface.min,
-        max: surface.max,
-        step: surface.step,
-        quickValues: surface.quickValues,
-        unit: surface.unit,
-        suggestedRate: surface.suggestedRate,
-        suggestedConcentration: surface.concentration || undefined,
-        concentrationOptions: surface.concentrationOptions,
-        concentrationUnit: surface.concentrationUnit,
-        formulationOptions: surface.formulationOptions,
-        formulation: surface.formulation,
-        advisory: surface.advisory,
-        route: surface.route,
-        routes: availabilityFor(name)?.routes ?? surface.routes,
-        manualEntryOnly: surface.manualEntryOnly,
-        disposition: surface.disposition,
-        rule: { key: surface.ruleKey, version: surface.ruleVersion, sourceIds: surface.sourceIds },
-      }
+      return pediatricInfusionProfile(surface, availabilityFor(name)?.routes)
     }
     return (route ? routeProfiles[name]?.[route] : undefined) ?? baseProfiles[name]
   }
@@ -195,6 +177,9 @@ export function InfusionSheet({
     laConcentrations,
     ranges,
   })
+  // Local anaesthetic volume rates: limit follows the %, pump rate and dose read out.
+  const volume = useVolumeRateEntry({ unit: activeUnit, ...activeRange, quickValues: activeQuickValues, doseLimit: activeProfile?.doseLimit,
+    concentration: infConcentration, weightKg: patientWeightKg, rate: infRate, setRate: setInfRate })
 
   function selectInfusion(drug: InfusionOption) {
     setSearchOnlySelection(null)
@@ -339,16 +324,14 @@ export function InfusionSheet({
           ) : (
           <DoseSelector
             color={infDrug.color}
-            quickValues={activeQuickValues}
-            value={infRate} onValueChange={setInfRate}
-            {...activeRange}
+            {...volume.selector}
             valuePlaceholder={tc("dsOrTypeCustom")}
             manualEntryOnly={!prospectiveGuidanceEnabled || activeProfile?.manualEntryOnly}
-            unitSuffix={activeUnit}
             routes={activeProfile?.routes ?? routes[infDrug.name]} route={activeRoute} onRouteChange={changeRoute}
             concentrationOptions={activeConcentrations}
             concentrationUnit={activeProfile?.concentrationUnit}
-            concentration={infConcentration} onConcentrationChange={setInfConcentration}
+            concentration={infConcentration}
+            onConcentrationChange={next => { setInfConcentration?.(next); const suggested = volume.suggestedFor(next); if (suggested) setInfRate(suggested) }}
             customConcentration={infCustomConcentration}
             onCustomConcentrationChange={value => {
               setInfCustomConcentration?.(value)
@@ -359,7 +342,7 @@ export function InfusionSheet({
             formulationOptions={activeProfile?.formulationOptions}
             formulation={infFormulation}
             onFormulationChange={setInfFormulation}
-            extraHint={activeProfile?.advisory ?? undefined}
+            extraHint={[volume.readout, activeProfile?.advisory].filter(Boolean).join(" · ") || undefined}
             confirmLabel={`${tc("dsStart")} ${infusionLabel(infDrug.name)} ${infRate} ${activeUnit}`}
             onConfirm={onConfirm}
             confirmDisabled={
