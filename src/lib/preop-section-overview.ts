@@ -31,6 +31,8 @@ export type PreopSectionOverviewText = {
   allergy: string
   smoker: string
   familyHistory: string
+  bp: string
+  hr: string
 }
 
 /** The overview's text from the clinical strings. */
@@ -44,6 +46,7 @@ export function preopOverviewText(tc: (key: ClinicalStringKey) => string): Preop
     comorbidityCount: tc("overviewComorbidityCount"), medicationCount: tc("overviewMedicationCount"),
     resultCount: tc("overviewResultCount"), allergy: tc("overviewAllergy"), smoker: tc("overviewSmoker"),
     familyHistory: tc("overviewFamilyHistory"),
+    bp: tc("vitalBpShort"), hr: tc("vitalHrShort"),
   }
 }
 
@@ -116,7 +119,7 @@ export function buildPreopSectionItems(
         required = true
         done = hasBP && hasHR && hasSpO2
         summary = values.bpSystolic != null
-          ? `BP ${values.bpSystolic}/${values.bpDiastolic ?? "?"} \u00b7 HR ${values.heartRate ?? "-"}`
+          ? `${text.bp} ${values.bpSystolic}/${values.bpDiastolic ?? "?"} \u00b7 ${text.hr} ${values.heartRate ?? "-"}`
           : text.vitalsRequired
         break
       case "airway":

@@ -4,6 +4,7 @@ import {
   buildRowSummary as buildCoreRowSummary,
   runningItemsAt as coreRunningItemsAt,
   runningItemsByColumn,
+  vitalAbbreviations,
   vitalSummaryParts,
   type RunningItem as CoreRunningItem,
 } from "@lospor/core/intraop-summary"
@@ -100,8 +101,8 @@ export function runningItemsByCol(
   )
 }
 
-export function vitalSummary(vital?: VitalsEntry): string {
-  return vitalSummaryParts(vital).join("  ")
+export function vitalSummary(vital?: VitalsEntry, language?: string): string {
+  return vitalSummaryParts(vital, language).join("  ")
 }
 
 export type RowSummary = {
@@ -116,12 +117,14 @@ export function buildRowSummary(
   vital: VitalsEntry | undefined,
   rowEvents: LogEvent[],
   labelOf: (event: LogEvent) => string,
+  language?: string,
 ): RowSummary {
-  const summary = buildCoreRowSummary(vital, rowEvents, labelOf)
+  const summary = buildCoreRowSummary(vital, rowEvents, labelOf, language)
+  const bpPrefix = `${vitalAbbreviations(language).bp} `
   return {
     criticalParts: summary.criticalParts,
     normalParts: summary.normalParts.map(part =>
-      part.startsWith("BP ") ? part.slice(3) : part,
+      part.startsWith(bpPrefix) ? part.slice(bpPrefix.length) : part,
     ),
     drugParts: summary.eventParts,
     hasCritical: summary.hasCritical,

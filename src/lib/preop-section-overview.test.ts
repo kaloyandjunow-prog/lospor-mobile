@@ -25,7 +25,7 @@ const text: PreopSectionOverviewText = {
   asaRequired: "asa required",
   age: "{age}y", sexMale: "M", sexFemale: "F", comorbidityCount: "{count} comorbidities",
   medicationCount: "{count} medications", resultCount: "{count} results",
-  allergy: "Allergy", smoker: "Smoker", familyHistory: "Family hx",
+  allergy: "Allergy", smoker: "Smoker", familyHistory: "Family hx", bp: "BP", hr: "HR",
 }
 
 describe("preop section overview", () => {

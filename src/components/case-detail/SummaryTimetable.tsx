@@ -9,6 +9,7 @@ import { usePreferences } from "@/lib/preferences-context"
 import { localizeSummaryTimetableModel } from "@/lib/clinical-display"
 import { useShade } from "@/theme/shade"
 import { BULGARIAN_NAME_SWITCH_KEYS } from "@lospor/core/display"
+import { vitalAbbreviations } from "@lospor/core/intraop-summary"
 
 // Read-only timetable card for the case summary — the mobile twin of the
 // printed record's intraop timetable (same projected keyEvents blob the web
@@ -157,8 +158,8 @@ function SummaryTimetableBody({ keyEvents, startISO, onPress, actionLabel }: Sum
           {els}
         </Svg>
         <View style={{ flexDirection: "row", gap: 12, marginTop: 6 }}>
-          <Text style={{ color: P.sbp, fontSize: 9.5 }}>▽ SBP · - - DBP</Text>
-          <Text style={{ color: P.hr, fontSize: 9.5 }}>● HR</Text>
+          <Text style={{ color: P.sbp, fontSize: 9.5 }}>▽ {vitalAbbreviations(language).sbp} · - - {vitalAbbreviations(language).dbp}</Text>
+          <Text style={{ color: P.hr, fontSize: 9.5 }}>● {vitalAbbreviations(language).hr}</Text>
           {events.length > 0 && <Text style={{ color: P.event, fontSize: 9.5 }}>┆ {events.length} {tc("summaryEvents")}</Text>}
           {drugTicks.length > 0 && <Text style={{ color: P.drug, fontSize: 9.5 }}>| {drugTicks.length} {tc("summaryDrugs")}</Text>}
           <Text style={{ color: P.faint, fontSize: 9.5, marginLeft: "auto" }}>{tc("summaryAsPrinted")}</Text>
