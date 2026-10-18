@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { ScrollView, Text, TouchableOpacity, View } from "react-native"
 import { Stack, useLocalSearchParams, useRouter } from "expo-router"
 import {
@@ -61,7 +61,7 @@ export default function PreopSummaryScreen() {
   const consent = data?.preopDocuments?.consentEnabled === true
   const layout = data?.preopDocuments?.layout ?? "B"
   // Layout C prints the techniques ticked here (general anaesthesia always).
-  const chosen = consent && layout === "C" ? techniques : []
+  const chosen = useMemo(() => consent && layout === "C" ? techniques : [], [consent, layout, techniques])
   const chip = { paddingHorizontal: 14, paddingVertical: 11, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }
   const chipText = { color: colors.textPrimary, fontSize: 14, fontWeight: "700" as const }
 
@@ -73,7 +73,7 @@ export default function PreopSummaryScreen() {
         : null
       // The sheet records which consent text it carried; the PDF itself records nothing.
       if (template) {
-        await apiFetch(`/api/cases/${id}/consent-prints`, {
+        const recorded = await apiFetch(`/api/cases/${id}/consent-prints`, {
           method: "POST",
           body: JSON.stringify({
             population: template.population,
@@ -83,6 +83,8 @@ export default function PreopSummaryScreen() {
             ...(layout === "C" ? { techniques: [CONSENT_FALLBACK_TECHNIQUE, ...chosen] } : {}),
           }),
         }).catch(() => null)
+        // Refused or offline: say so (as web), and print anyway -- the sheet is still needed.
+        if (!recorded?.ok) notify(tc("errorLabel"), tc("preopSummaryRecordFailed"))
       }
       const ok = await openPrintCase(id, lang, data?.caseCode, { doc: "preop-summary", ...(consent && layout === "C" ? { techniques: chosen } : {}) })
       if (!ok) notify(tc("errorLabel"), tc("printFailed"))

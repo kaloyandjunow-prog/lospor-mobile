@@ -114,3 +114,53 @@ describe("an adult noradrenaline infusion with a syringe", () => {
     expect(onChange).toHaveBeenLastCalledWith({ rate: 0.1, unit: "mcg/kg/min", calculationWeightKg: 70 })
   })
 })
+
+describe("a syringe typed with Other", () => {
+  const noradrenaline = { infId: "nor", name: "Norepinephrine / Noradrenaline", rate: "0.1", unit: "mcg/kg/min", route: "IV", color: "#a855f7" } as ActiveInfusion
+  const adult = {
+    target: noradrenaline, startRate: "0.1", patientWeightKg: 70, patientIdealWeightKg: 70,
+    ranges: { "Norepinephrine / Noradrenaline": { min: 0, max: 3, step: 0.01 } },
+    ruleUnits: { "Norepinephrine / Noradrenaline": "mcg/kg/min" },
+  }
+  const fieldsOf = (tree: ReturnType<typeof render>) => tree.root.findAllByType(DoseSelector)
+
+  it("is entered with sliders, prefilled from the drug's syringes, and used for both rates", () => {
+    const onChange = vi.fn()
+    const tree = render(<Sheet {...adult} onChange={onChange} />)
+    act(() => { selector(tree).props.onCustomConcentrationChange("") })
+    // The rate selector, then the amount and the volume.
+    const [, amount, volume] = fieldsOf(tree)
+    expect(amount!.props).toMatchObject({ value: "4", unitSuffix: "mg", quickValues: [1, 2, 4, 5, 10], units: ["mg", "mcg"] })
+    expect(volume!.props).toMatchObject({ value: "50", unitSuffix: "mL" })
+    act(() => { fieldsOf(tree)[1]!.props.onValueChange("8") })
+    expect(fieldsOf(tree)[0]!.props.extraHint).toBe("2.63 mL/hr on the pump")
+    act(() => { fieldsOf(tree)[0]!.props.onConfirm() })
+    expect(onChange).toHaveBeenLastCalledWith({ rate: 0.1, unit: "mcg/kg/min", volumeRateMlPerHour: 2.63, calculationWeightKg: 70 })
+  })
+
+  it("says what is wrong and holds the change back", () => {
+    const tree = render(<Sheet {...adult} />)
+    act(() => { selector(tree).props.onCustomConcentrationChange("") })
+    act(() => { fieldsOf(tree)[1]!.props.onValueChange("0") })
+    expect(JSON.stringify(tree.toJSON())).toContain("syringeErrorAmount")
+    expect(fieldsOf(tree)[0]!.props.confirmDisabled).toBe(true)
+  })
+})
+
+describe("a rate that is not a rate", () => {
+  const noradrenaline = { infId: "nor", name: "Norepinephrine / Noradrenaline", rate: "0.1", unit: "mcg/kg/min", route: "IV", color: "#a855f7" } as ActiveInfusion
+
+  it("is held back with the reason shown, empty or 0", () => {
+    for (const startRate of ["", "0"]) {
+      const tree = render(<Sheet target={noradrenaline} startRate={startRate} />)
+      expect(selector(tree).props.confirmDisabled).toBe(true)
+      expect(tree.root.findByProps({ testID: "dose-confirm-blocked" }).props.children).toBe("infusionNeedsRate")
+    }
+  })
+
+  it("says nothing once the rate is above 0", () => {
+    const tree = render(<Sheet target={noradrenaline} startRate="0.1" />)
+    expect(selector(tree).props.confirmDisabled).toBe(false)
+    expect(tree.root.findAllByProps({ testID: "dose-confirm-blocked" })).toHaveLength(0)
+  })
+})

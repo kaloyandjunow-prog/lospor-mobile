@@ -1,10 +1,11 @@
+import { useState } from "react"
 import { View, Text, TouchableOpacity } from "react-native"
+import { syringeStrengthProps } from "@/components/intraop/SyringeStrength"
 import { resolvePediatricInfusionProfileSurface, type PediatricInfusionProfileRule } from "@lospor/core/clinical-rules"
 import type { PediatricAgeInput } from "@lospor/core/pediatric"
 import { resolvePediatricInfusionAvailability } from "@/lib/pediatric-infusion-routes"
 import { useInfusionRateFields } from "@/components/intraop/use-infusion-rate-fields"
-import { infusionEntryWeightKg, type InfusionRecord } from "@lospor/core/infusion-entry"
-import { formatSyringe, parseSyringe, syringeOptions } from "@lospor/core/infusion-volume"
+import { infusionConfirmProblem, infusionEntryWeightKg, type InfusionRecord } from "@lospor/core/infusion-entry"
 import { infusionCalculationBasis, type WeightBasisMap } from "@lospor/core/intraop-totals"
 import { Sheet } from "@/components/intraop/Sheet"
 import type { ActiveInfusion } from "@/lib/intraop-log-event"
@@ -78,16 +79,16 @@ export function InfusionActionSheet({
     : (target ? ranges[target.name] : undefined) ?? { min: 0, max: 100, step: 1 }
   const quickValues = prof?.quickValues ?? (target ? ratePresets[target.name]?.map(Number) : undefined)
   const laStrengths = prof?.concentrationOptions ?? (target ? laConcentrations[target.name] : undefined)
-  // A new syringe may come with the change: the presets, and the one running if typed.
-  const running = parseSyringe(target?.concentration) ? target?.concentration : undefined
-  const syringes = target && prospectiveGuidanceEnabled
-    ? [...new Set([...(running ? [running] : []), ...syringeOptions(target.name, target.route).map(formatSyringe)])] : []
-  const concentrationOptions = laStrengths?.length ? laStrengths : syringes.length ? syringes : undefined
   const concentration = newConcentration ?? target?.concentration
   const ruleUnit = volumeRule?.unit ?? (target ? ruleUnits[target.name] : undefined) ?? target?.unit ?? ""
+  // A new syringe may come with the change: the running one, the presets, or Other.
+  const [custom, setCustom] = useState<string | undefined>(undefined)
+  const strength = syringeStrengthProps({ name: target?.name, route: target?.route, doseUnit: ruleUnit, localAnaesthetic: laStrengths,
+    offerSyringes: !!target && prospectiveGuidanceEnabled, concentration: custom !== undefined ? newConcentration : concentration,
+    customConcentration: custom, setConcentration: setNewConcentration, color: shade("#3b82f6"), syringeLabel: tc("infusionSyringe") })
   const weightKg = pediatricMode ? patientWeightKg : infusionEntryWeightKg({
     basis: target ? infusionCalculationBasis(target.name, weightBasis) : null, idealWeightKg: patientIdealWeightKg, actualWeightKg: patientWeightKg })
-  const fields = useInfusionRateFields({ resetKey: target?.infId ?? "", unit: ruleUnit, initialEntryUnit: target?.unit, ...range, quickValues,
+  const fields = useInfusionRateFields({ resetKey: target?.infId ?? "", name: target?.name, unit: ruleUnit, initialEntryUnit: target?.unit, ...range, quickValues,
     doseLimit: volumeRule?.doseLimit, concentration, weightKg, rate: newRate, setRate: setNewRate })
   const at = plannedAt ? ` ${formatMessage(tc("plannedAtTime"), { time: plannedAt })}` : ""
 
@@ -107,14 +108,15 @@ export function InfusionActionSheet({
             color={shade("#3b82f6")}
             {...fields.selector}
             valuePlaceholder={tc("newRate")}
-            concentrationOptions={concentrationOptions}
-            concentrationLabel={laStrengths?.length ? undefined : tc("infusionSyringe")}
+            {...strength.selector}
             concentration={concentration}
+            {...(laStrengths?.length ? {} : { customConcentration: custom, onCustomConcentrationChange: (value: string | undefined) => { setCustom(value); if (value !== undefined) setNewConcentration?.(undefined) } })}
             onConcentrationChange={next => { setNewConcentration?.(next); const suggested = fields.suggestedFor(next); if (suggested) setNewRate(suggested) }}
             extraHint={fields.readout}
             confirmLabel={`${formatMessage(tc("changeTo"), { value: `${newRate} ${fields.selector.unitSuffix}` })}${at}`}
             onConfirm={() => onChangeRate(target, newRate, newConcentration, fields.record() ?? undefined)}
-            confirmDisabled={!newRate}
+            confirmDisabled={!!infusionConfirmProblem({ rate: newRate }) || strength.customInvalid}
+            confirmBlockedReason={infusionConfirmProblem({ rate: newRate }) ? tc("infusionNeedsRate") : undefined}
           />
           <TouchableOpacity
             onPress={() => onStop(target)}

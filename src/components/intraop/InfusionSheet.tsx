@@ -21,9 +21,10 @@ import type { SearchOnlyMedicationOption } from "@/lib/hidden-clinical-options"
 import { InfusionPickerMenu, type InfusionPickerMode } from "@/components/intraop/InfusionPickerMenu"
 import { activeInfusionSurface, filterInfusionPickerResults, pediatricInfusionProfile, type ActiveInfProfile, type InfProfile, type InfusionOption, type Range } from "@/components/intraop/infusion-sheet-helpers"
 import { useInfusionRateFields } from "@/components/intraop/use-infusion-rate-fields"
-import { infusionEntryWeightKg, type InfusionRecord } from "@lospor/core/infusion-entry"
-import { formatSyringe, syringeOptions } from "@lospor/core/infusion-volume"
+import { infusionConfirmProblem, infusionEntryWeightKg, type InfusionRecord } from "@lospor/core/infusion-entry"
+import { syringeStrengthProps } from "@/components/intraop/SyringeStrength"
 import { infusionCalculationBasis, type WeightBasisMap } from "@lospor/core/intraop-totals"
+import { customStrengthLabel } from "@lospor/core/strength-entry"
 
 export function InfusionSheet({
   visible, onClose, infDrugs, searchOnlyInfusions = [], favouriteNames, scenarios, ratePresets, infDrug, setInfDrug, infRate, setInfRate, onConfirm,
@@ -186,12 +187,16 @@ export function InfusionSheet({
   })
   // The strength (a syringe, or a % for a local anaesthetic) and the rate in any
   // of its units; both rates are recorded (2026-10-18). A syringe may be skipped.
-  const strengths = activeConcentrations ?? (infDrug && prospectiveGuidanceEnabled && !searchOnlySelection
-    ? syringeOptions(infDrug.name, activeRoute).map(formatSyringe) : undefined)
+  const strength = syringeStrengthProps({ name: infDrug?.name, route: activeRoute, doseUnit: activeUnit, localAnaesthetic: activeConcentrations,
+    localAnaestheticUnit: activeProfile?.concentrationUnit, offerSyringes: prospectiveGuidanceEnabled && !searchOnlySelection, concentration: infConcentration,
+    customConcentration: infCustomConcentration, setConcentration: setInfConcentration, color: infDrug?.color, syringeLabel: tc("infusionSyringe") })
   const rateWeightKg = pediatricMode ? patientWeightKg : infusionEntryWeightKg({
     basis: infDrug ? infusionCalculationBasis(infDrug.name, weightBasis) : null, idealWeightKg: patientIdealWeightKg, actualWeightKg: patientWeightKg })
-  const fields = useInfusionRateFields({ resetKey: `${infDrug?.name}|${activeRoute}`, unit: activeUnit, ...activeRange, quickValues: activeQuickValues,
+  const fields = useInfusionRateFields({ resetKey: `${infDrug?.name}|${activeRoute}`, name: infDrug?.name, unit: activeUnit, ...activeRange, quickValues: activeQuickValues,
     doseLimit: activeProfile?.doseLimit, concentration: infConcentration, weightKg: rateWeightKg, rate: infRate, setRate: setInfRate })
+  // Why Start is off, said above it rather than refused in silence.
+  const blocked = infusionConfirmProblem({ rate: infRate, strengthMissing: !!activeProfile?.concentrationUnit && !infConcentration, formulationMissing: !!activeProfile?.formulationOptions?.length && !infFormulation })
+  const blockedReason = blocked ? tc(blocked === "rate" ? "infusionNeedsRate" : blocked === "strength" ? "infusionNeedsStrength" : "infusionNeedsFormulation") : undefined
 
   function selectInfusion(drug: InfusionOption) {
     setSearchOnlySelection(null)
@@ -322,7 +327,7 @@ export function InfusionSheet({
                 onRouteChange={changeRoute}
                 confirmLabel={`${tc("dsStart")} ${infusionLabel(infDrug.name)} ${infRate} ${activeUnit}`}
                 onConfirm={onConfirm}
-                confirmDisabled={!infRate || Number(infRate) <= 0}
+                confirmDisabled={!!blocked} confirmBlockedReason={blockedReason}
               />
             </>
           ) : pediatricConflict ? (
@@ -340,18 +345,13 @@ export function InfusionSheet({
             valuePlaceholder={tc("dsOrTypeCustom")}
             manualEntryOnly={!prospectiveGuidanceEnabled || activeProfile?.manualEntryOnly}
             routes={activeProfile?.routes ?? routes[infDrug.name]} route={activeRoute} onRouteChange={changeRoute}
-            concentrationOptions={strengths}
-            concentrationLabel={activeConcentrations ? undefined : tc("infusionSyringe")}
-            customConcentrationPlaceholder={activeConcentrations ? undefined : tc("infusionSyringeCustom")}
-            concentrationUnit={activeConcentrations ? activeProfile?.concentrationUnit : undefined}
+            {...strength.selector}
             concentration={infConcentration}
             onConcentrationChange={next => { setInfConcentration?.(next); const suggested = fields.suggestedFor(next); if (suggested) setInfRate(suggested) }}
             customConcentration={infCustomConcentration}
             onCustomConcentrationChange={value => {
               setInfCustomConcentration?.(value)
-              setInfConcentration?.(value?.trim()
-                ? `${value.trim()}${activeProfile?.concentrationUnit === "PERCENT" ? "%" : ""}`
-                : undefined)
+              setInfConcentration?.(customStrengthLabel(value, activeProfile?.concentrationUnit))
             }}
             formulationOptions={activeProfile?.formulationOptions}
             formulation={infFormulation}
@@ -359,13 +359,8 @@ export function InfusionSheet({
             extraHint={[fields.readout, activeProfile?.advisory].filter(Boolean).join(" · ") || undefined}
             confirmLabel={`${tc("dsStart")} ${infusionLabel(infDrug.name)} ${infRate} ${fields.selector.unitSuffix}`}
             onConfirm={() => onConfirm(fields.record() ?? undefined)}
-            confirmDisabled={
-              !infRate
-              || Number(infRate) <= 0
-              || (!!activeProfile?.concentrationUnit && !infConcentration)
-              || (!!activeProfile?.formulationOptions?.length && !infFormulation)
-              || (pediatricMode && !infRule)
-            }
+            confirmDisabled={!!blocked || (pediatricMode && !infRule) || strength.customInvalid}
+            confirmBlockedReason={blockedReason}
           />
           )}
         </ScrollView>

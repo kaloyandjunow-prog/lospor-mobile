@@ -26,6 +26,8 @@ type SelectorPart = Pick<DoseSelectorProps,
 export function useInfusionRateFields(input: {
   /** Changes when the drug or route does: the unit choice starts again. */
   resetKey: string
+  /** The drug, for the units it is charted in. */
+  name?: string
   /** The rule's unit, which the range and pills belong to. */
   unit: string
   /** The unit the box starts in, when not the rule's (a running infusion's). */
@@ -58,7 +60,7 @@ export function useInfusionRateFields(input: {
   }, [input.resetKey, startUnit, unit])
 
   const base = {
-    unit, min: input.min, max: input.max, step: input.step, quickValues: input.quickValues,
+    name: input.name, unit, min: input.min, max: input.max, step: input.step, quickValues: input.quickValues,
     doseLimit: input.doseLimit, concentration: input.concentration, weightKg: input.weightKg,
   }
   const offered = infusionEntryUnits(base)
