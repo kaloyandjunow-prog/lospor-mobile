@@ -10,8 +10,8 @@ import { useShade } from "@/theme/shade"
  * A strength typed with Other (2026-10-18): a local anaesthetic's or a fluid's
  * %, or a drug's mg/mL, entered like a dose -- one-tap values, the slider and
  * the number tapped for the keypad, prefilled -- rather than free text. A
- * number outside the drug's range says so (core customStrength) and is not
- * passed on; the keypad lets it through (to 10× the range) so it can be told.
+ * number typed outside the drug's range is brought to its nearest limit, and
+ * the keypad says so.
  * Reports the number alone, as the typed box did; empty while unusable.
  */
 export function StrengthCustomField({ name, unit, options, color, onChange }: {
@@ -42,7 +42,7 @@ export function StrengthCustomField({ name, unit, options, color, onChange }: {
           </TouchableOpacity>
         ))}
       </View>
-      <VitalStepper value={value} onChange={setValue} min={field.min} max={field.max} manualMax={field.max * 10}
+      <VitalStepper value={value} onChange={setValue} min={field.min} max={field.max}
         step={field.step} precision={precision} unit={field.unit} placeholder={tc("doseCustomConcentration")} />
       {result && "error" in result ? (
         <Text testID="strength-custom-error" accessibilityRole="alert" style={{ color: shade("#f87171"), fontSize: 12 }}>

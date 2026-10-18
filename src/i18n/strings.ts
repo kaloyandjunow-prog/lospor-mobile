@@ -430,6 +430,8 @@ export const STRINGS = {
     retry: "Retry",
     back: "Back",
     keypadClear: "Clear",
+    keypadLoweredToMax: "Lowered to the maximum, {value}.",
+    keypadRaisedToMin: "Raised to the minimum, {value}.",
 
     // next-action labels shown on case cards
     reviewCase: "Review case",
@@ -950,6 +952,8 @@ export const STRINGS = {
     retry: "Опитай отново",
     back: "Назад",
     keypadClear: "Изчисти",
+    keypadLoweredToMax: "Намалено до максимума, {value}.",
+    keypadRaisedToMin: "Увеличено до минимума, {value}.",
 
     // next-action labels shown on case cards
     reviewCase: "Преглед на случая",
