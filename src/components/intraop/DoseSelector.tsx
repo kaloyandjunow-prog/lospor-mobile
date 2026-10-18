@@ -17,6 +17,7 @@ import { usePreferences } from "@/lib/preferences-context"
 import type { DrugFormulation } from "@/lib/intraop-log-event"
 import { FeedbackPressable } from "./FeedbackPressable"
 import { StrengthCustomField } from "./StrengthCustomField"
+import { localAnaestheticFormulationLabel } from "@lospor/core/catalog"
 import { useShade } from "@/theme/shade"
 
 // One reused dose-entry block for drugs (bolus), infusions, fluids, and agents.
@@ -167,9 +168,8 @@ export function DoseSelector({
   const customConcentrationActive = customConcentration !== undefined
   const showConcentration = !!concentrationUnit || concentrationValues.length > 0
 
-  function formulationLabel(value: DrugFormulation): string {
-    return value.charAt(0) + value.slice(1).toLowerCase()
-  }
+  // Baricity by name in the reader's language (it was English in Bulgarian).
+  const formulationLabel = (value: DrugFormulation) => localAnaestheticFormulationLabel(value, language)
 
   return (
     <View>

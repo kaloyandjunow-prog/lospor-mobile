@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react"
 import { buildEventLabel, localizedClinicalEventText } from "@/lib/intraop-event-label"
-import { localizedOptions } from "@/lib/clinical-display"
+import { displayClinicalCode, localizedOptions } from "@/lib/clinical-display"
 import { usePreferences } from "@/lib/preferences-context"
 import type { LogEvent } from "@/lib/intraop-log-event"
 import { buildTechniqueTree, techniqueDisplayLabel } from "@/lib/intraop-technique"
@@ -72,7 +72,7 @@ export function useIntraopOptionSets(
   const eventLabel = useCallback((ev: LogEvent, prevVital?: LogEvent): { text: string; color: string; sub?: string } => {
     // Drugs, infusions, fluids and agents by the names the reader chose (Settings → UI).
     const shown = ev.name ? { ...ev, name: displayedEventName(ev.type, ev.name, language, bulgarianNames) } : ev
-    const built = buildEventLabel(shown, prevVital, { drugColor, clinicalEventColor })
+    const built = buildEventLabel(shown, prevVital, { drugColor, clinicalEventColor, language, drugCategoryLabel: category => displayClinicalCode("optionGroup", category, language, { label: category }) })
     const label = ev.type === "clinical_event"
       ? { ...built, text: localizedClinicalEventText(built.text, language, eventNames, writtenByApp) }
       : built

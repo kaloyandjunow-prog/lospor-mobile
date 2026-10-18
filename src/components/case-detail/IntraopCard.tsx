@@ -251,7 +251,9 @@ export function IntraopCard({ intraop, preop, clinicalMode, tc, t }: { intraop: 
               const preexisting = va.preexisting
                 ? ` (${displayClinicalCode("clinicalAttribute", "preexisting", language)})`
                 : ""
-              const lbl = `${site} ${va.size}${va.sizeUnit}${va.lumens ? ` ${va.lumens}L` : ""}${preexisting}`
+              // A line without a recorded size is named alone (it read "undefinedundefined").
+              const size = va.size != null && va.size !== "" ? ` ${va.size}${va.sizeUnit ?? ""}` : ""
+              const lbl = `${site}${size}${va.lumens ? ` ${va.lumens}L` : ""}${preexisting}`
               return <Chip key={`va-${i}`} label={lbl} color={colors.textSecondary} />
             })}
           </ChipRow>

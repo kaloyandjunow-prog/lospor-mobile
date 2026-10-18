@@ -66,7 +66,7 @@ export function EquipmentTab({
         <View style={{ backgroundColor:shade("#2a1410"), borderRadius:14, borderWidth:1, borderColor:shade("#7c2d12"),
           padding:14, marginBottom:16, gap:4 }}>
           {medicationWarnings.map(w => (
-            <Text key={w.key} style={{ color:shade("#fb923c"), fontSize:13, fontWeight:"700" }}>⚠ {w.label}</Text>
+            <Text key={w.key} style={{ color:shade("#fb923c"), fontSize:13, fontWeight:"700" }}>⚠ {language === "bg" ? w.labelBg : w.label}</Text>
           ))}
         </View>
       )}

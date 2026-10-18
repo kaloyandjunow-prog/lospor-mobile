@@ -34,7 +34,7 @@ import { deleteLocalCaseDraft, makeLocalCaseId, saveLocalCaseDraft } from "@/lib
 import { usePreopFormOpen } from "@/lib/preop-open-forms"
 import { buildPreopPayload } from "@/lib/preop-payload"
 import { preopFormSchema, type PreopFormData as FormData, type PreopFormInput as FormInput, type PreopSection } from "@/lib/preop-form-schema"
-import { buildPreopSectionItems } from "@/lib/preop-section-overview"
+import { buildPreopSectionItems, preopOverviewText } from "@/lib/preop-section-overview"
 import { localizedPreopSectionLabels } from "@/lib/preop-section-labels"
 import { valuesFromServerPreop, type ServerPreop } from "@/lib/preop-server-values"
 import { usePreopDraftLoader } from "@/lib/use-preop-draft-loader"
@@ -846,17 +846,7 @@ export default function NewCaseScreen() {
   }
 
   function computeSectionItems() {
-    return buildPreopSectionItems(getValues(), SECTION_LABELS, {
-      patientHint: tc("overviewPatientHint"),
-      diagnosisAndProcedure: tc("diagnosisAndProcedure"),
-      comorbidities: tc("overviewComorbidities"),
-      meds: tc("overviewMeds"),
-      flags: tc("overviewFlags"),
-      vitalsRequired: tc("overviewVitalsReq"),
-      mallampatiRequired: tc("overviewMallampatiReq"),
-      labsHint: tc("overviewLabsHint"),
-      asaRequired: tc("overviewASAReq"),
-    })
+    return buildPreopSectionItems(getValues(), SECTION_LABELS, preopOverviewText(tc))
   }
 
   const blockedField =

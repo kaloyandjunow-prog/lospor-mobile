@@ -229,6 +229,13 @@ export const CLINICAL_STRINGS = {
     overviewMallampatiReq:"Mallampati required",
     overviewLabsHint:    "Scan or manual entry",
     overviewASAReq:      "ASA class required",
+    overviewAge:         "{age}y",
+    overviewComorbidityCount: "{count} comorbidities",
+    overviewMedicationCount: "{count} medications",
+    overviewResultCount: "{count} results",
+    overviewAllergy:     "Allergy",
+    overviewSmoker:      "Smoker",
+    overviewFamilyHistory: "Family hx",
 
     // Dialogs
     requiredFieldsMissing:"Required fields missing",
@@ -1300,7 +1307,7 @@ export const CLINICAL_STRINGS = {
 
     // ── Risk ──────────────────────────────────────────────────────────────
     riskSectionTitle:    "Рискови скорове",
-    asaPhysicalStatus:   "ASA Physical Status",
+    asaPhysicalStatus:   "Оценка по ASA",
     asaSuggested:        "Предложен: ASA",
     asaSuggestedReview:  "— прегледайте и потвърдете",
     emergencySuffix:     "Спешна операция — ASA класът ще бъде с наставка E",
@@ -1371,6 +1378,13 @@ export const CLINICAL_STRINGS = {
     overviewMallampatiReq:"Изисква се Mallampati",
     overviewLabsHint:    "Сканиране или ръчно въвеждане",
     overviewASAReq:      "Изисква се ASA клас",
+    overviewAge:         "{age} г.",
+    overviewComorbidityCount: "Придружаващи заболявания: {count}",
+    overviewMedicationCount: "Медикаменти: {count}",
+    overviewResultCount: "Резултати: {count}",
+    overviewAllergy:     "Алергия",
+    overviewSmoker:      "Пушач",
+    overviewFamilyHistory: "Фамилна анамнеза",
 
     // Dialogs
     requiredFieldsMissing:"Незапълнени задължителни полета",
@@ -1876,7 +1890,7 @@ export const CLINICAL_STRINGS = {
 
     // ── Postop ────────────────────────────────────────────────────────────
     postopTitle:         "Следоперативно",
-    aldreteScore:        "Modified Aldrete Score",
+    aldreteScore:        "Модифицирана скала на Алдрет",
     recoveryVitals:      "Жизнени показатели при събуждане",
     dispositionLabel:    "Насочване",
     handoverChecklist:   "Контролен лист за предаване",
