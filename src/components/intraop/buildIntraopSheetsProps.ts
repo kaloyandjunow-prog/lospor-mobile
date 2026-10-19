@@ -66,6 +66,9 @@ export type IntraopSheetsBuilderProps = IntraopMedicationSheetBuilderProps & {
   startAtInput: StartAtProps["value"]
   setStartAtOpen: (open: boolean) => void
   setStartAtInput: StartAtProps["onChange"]
+  startAtDayKey: string | null
+  setStartAtDayKey: (key: string | null) => void
+  startAtTodayKey: StartAtProps["todayKey"]
   startCaseAt: StartAtProps["onStart"]
   endCaseOpen: EndCaseProps["visible"]
   setEndCaseOpen: (open: boolean) => void
@@ -97,6 +100,15 @@ export type IntraopSheetsBuilderProps = IntraopMedicationSheetBuilderProps & {
   id: string
 }
 
+/** The Start at sheet's day: today until stepped; stepping back to today clears it, so a time ahead of now means yesterday again. */
+export function startAtDayProps(dayKey: string | null, todayKey: string, setDayKey: (key: string | null) => void) {
+  return {
+    dayKey: dayKey ?? todayKey,
+    todayKey,
+    onDayChange: (key: string) => setDayKey(key === todayKey ? null : key),
+  }
+}
+
 export function buildIntraopSheetsProps(props: IntraopSheetsBuilderProps): IntraopSheetsHostProps {
   const {
     activeAgents, activeGas, slotOpen, slotTs, timeStr, slotEventSearch, slotCompExpanded,
@@ -107,6 +119,7 @@ export function buildIntraopSheetsProps(props: IntraopSheetsBuilderProps): Intra
     compOpen, setCompOpen, COMPLICATION_TC_TITLES, selectedComplications, compGroupExpanded,
     compSaving, toggleComplicationGroup, toggleComplication, setSelectedComplications,
     saveComplications, startAtOpen, startAtInput, setStartAtOpen, setStartAtInput, startCaseAt,
+    startAtDayKey, setStartAtDayKey, startAtTodayKey,
     endCaseOpen, setEndCaseOpen, endCaseRunningItems, afterEndItems, resolveAfterEnd, endCaseDecisions, setEndCaseDecisions,
     finaliseCase, premedPickOpen, premedPickPhase, PREMED_LIBRARY, premedPickCat,
     premedPickDrug, premedPickDose, premedPickRoute, setPremedPickOpen, setPremedPickCat,
@@ -166,6 +179,7 @@ export function buildIntraopSheetsProps(props: IntraopSheetsBuilderProps): Intra
       value: startAtInput,
       onClose: () => setStartAtOpen(false),
       onChange: setStartAtInput,
+      ...startAtDayProps(startAtDayKey, startAtTodayKey, setStartAtDayKey),
       onStart: startCaseAt,
     },
     endCase: {

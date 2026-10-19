@@ -385,6 +385,9 @@ export default function IntraopLiveScreen() {
     setStartAtOpen,
     startAtInput,
     setStartAtInput,
+    startAtDayKey,
+    setStartAtDayKey,
+    startAtTodayKey,
     endCaseDecisions,
     setEndCaseDecisions,
     continuedPostopItems,
@@ -683,6 +686,7 @@ export default function IntraopLiveScreen() {
             onStartAt: () => {
               const now = new Date()
               setStartAtInput(formatHHMM(now))
+              setStartAtDayKey(null)
               setStartAtOpen(true)
             },
             syncStatusStore,
@@ -765,6 +769,7 @@ export default function IntraopLiveScreen() {
           setEditDose, setEditTime, confirmEdit, compOpen, COMPLICATION_TC_TITLES,
           compGroupExpanded, compSaving, toggleComplicationGroup, toggleComplication,
           setSelectedComplications, startAtOpen, startAtInput, setStartAtOpen, setStartAtInput,
+          startAtDayKey, setStartAtDayKey, startAtTodayKey,
           startCaseAt, endCaseOpen, setEndCaseOpen, endCaseRunningItems, afterEndItems, resolveAfterEnd, endCaseDecisions,
           setEndCaseDecisions, finaliseCase, premedPickOpen, premedPickPhase, PREMED_LIBRARY,
           premedPickCat, premedPickDrug, premedPickDose, premedPickRoute, setPremedPickOpen,

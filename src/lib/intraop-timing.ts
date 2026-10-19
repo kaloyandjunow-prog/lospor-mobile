@@ -1,7 +1,10 @@
 import { hhmmFromStoredTime } from "./intraop-projection"
 import { monthYearForDate } from "@lospor/core/intraop"
 import {
+  instantFromDateKey,
+  localDateKey,
   localTimeOf,
+  startInstantForWallClock,
   type IntraopEndTiming,
   type IntraopStartTiming,
 } from "@lospor/core/intraop-time"
@@ -19,6 +22,17 @@ export type IntraopTimingOverrides = {
   startDayKey?: string
   /** Days from the start's date to the end's, when the clinician stepped it. */
   endDayOffset?: number
+}
+
+/**
+ * The start instant for a typed time, from the Time tab or the Start at sheet.
+ * Left at today (or no day), a time ahead of now means yesterday, as always; a
+ * stepped day places the time on that day. Web's applyStartWallClock does the same.
+ */
+export function startInstantForEntry(now: Date, hhmm: string, dayKey: string | null | undefined, timeZone: string): Date | null {
+  return dayKey && dayKey !== localDateKey(now, timeZone)
+    ? instantFromDateKey(dayKey, hhmm, timeZone)
+    : startInstantForWallClock(now, hhmm, timeZone)
 }
 
 // Re-exported: the stored format is core's, shared with web.
