@@ -1,16 +1,16 @@
 {
-  "app/(app)/cases/new.tsx": 1328,
+  "app/(app)/cases/new.tsx": 1312,
   "src/components/IntraopTimetable.tsx": 1074,
   "app/(app)/settings.tsx": 220,
   "app/(app)/index.tsx": 785,
   "app/(app)/cases/intraop/[id].tsx": 794,
-  "src/components/preop/PediatricPreopSections.tsx": 538,
-  "src/components/intraop/DrugSheet.tsx": 537,
+  "src/components/preop/PediatricPreopSections.tsx": 428,
+  "src/components/intraop/DrugSheet.tsx": 527,
   "app/(app)/cases/postop/[id].tsx": 636,
   "app/(auth)/register.tsx": 337,
-  "src/components/preop/PreopFormWidgets.tsx": 567,
+  "src/components/preop/PreopFormWidgets.tsx": 486,
   "src/components/ClinicalNumberInput.tsx": 489,
   "src/components/intraop/tabs/AirwayTab.tsx": 177,
   "src/components/intraop/FluidSheet.test.tsx": 448,
-  "app/(app)/cases/[id].tsx": 401
+  "app/(app)/cases/[id].tsx": 395
 }
