@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Text, View } from "react-native"
 import {
   customSyringe,
@@ -36,7 +36,10 @@ export function SyringeCustomFields({ name, route, doseUnit, color, onChange }: 
   const [volume, setVolume] = useState(fields ? String(fields.volume.prefill) : "")
   const result = customSyringe({ amount, amountUnit, volumeMl: volume, doseUnit })
   const label = "label" in result ? result.label : undefined
-  useEffect(() => { onChange(label) }, [label]) // eslint-disable-line react-hooks/exhaustive-deps -- reports the entry, not the callback
+  // Reports the entry, not the callback: the latest onChange is kept in a ref.
+  const onChangeRef = useRef(onChange)
+  useEffect(() => { onChangeRef.current = onChange })
+  useEffect(() => { onChangeRef.current(label) }, [label])
 
   if (!fields || !amountUnit) return null
   const perMl = "strength" in result ? Number((result.strength.amount / result.strength.volumeMl).toPrecision(4)) : null

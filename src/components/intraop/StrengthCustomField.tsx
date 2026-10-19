@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Text, TouchableOpacity, View } from "react-native"
 import { customStrength, customStrengthField } from "@lospor/core/strength-entry"
 import { VitalStepper } from "@/components/VitalStepper"
@@ -27,7 +27,10 @@ export function StrengthCustomField({ name, unit, options, color, onChange }: {
   const [value, setValue] = useState<number | null>(field?.prefill ?? null)
   const result = field ? customStrength(field, value) : null
   const reported = result && "value" in result ? String(result.value) : ""
-  useEffect(() => { onChange(reported) }, [reported]) // eslint-disable-line react-hooks/exhaustive-deps -- reports the entry, not the callback
+  // Reports the entry, not the callback: the latest onChange is kept in a ref.
+  const onChangeRef = useRef(onChange)
+  useEffect(() => { onChangeRef.current = onChange })
+  useEffect(() => { onChangeRef.current(reported) }, [reported])
 
   if (!field) return null
   const precision = Math.max(0, String(field.step).split(".")[1]?.length ?? 0)
