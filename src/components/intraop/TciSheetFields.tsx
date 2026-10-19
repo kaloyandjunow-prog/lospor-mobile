@@ -115,11 +115,12 @@ export function TciOrRate({ name, pediatric, patient, color, syringe, setSyringe
 
 /** What a TCI total rests on, beside the amount: the pump, the model, or why there is none. */
 export function tciTotalNote(
-  tci: { calculated: number | null; pump: number | null; unavailable?: "patient" | "model" },
+  tci: { calculated: number | null; pump: number | null; unavailable?: "patient" | "model"; pumpNeedsStrength?: true },
   unit: string,
-  tc: (key: "tciTotalPump" | "tciTotalCalculated" | "tciTotalNeedsPatient" | "tciTotalUnusable") => string,
+  tc: (key: "tciTotalPump" | "tciTotalCalculated" | "tciTotalNeedsPatient" | "tciTotalUnusable" | "tciTotalPumpNeedsStrength") => string,
 ): string {
   if (tci.pump != null) return formatMessage(tc("tciTotalPump"), { calculated: tci.calculated ?? "—", unit })
+  if (tci.pumpNeedsStrength) return tc("tciTotalPumpNeedsStrength")
   if (tci.calculated != null) return tc("tciTotalCalculated")
   return tc(tci.unavailable === "patient" ? "tciTotalNeedsPatient" : "tciTotalUnusable")
 }
@@ -153,7 +154,7 @@ export function PumpTotalField({ amountUnit, color, onChange }: {
           <Chip key={option} label={option} on={unit === option} color={color} onPress={() => { setUnit(option); report(value, option) }} />
         ))}
       </View>
-      <VitalStepper value={value} onChange={next => { setValue(next); report(next, unit) }} min={0} max={unit === "mL" ? 500 : 5000} step={unit === "mL" ? 0.1 : 1} precision={unit === "mL" ? 1 : 0} unit={unit} placeholder="-" />
+      <VitalStepper value={value} onChange={next => { setValue(next); report(next, unit) }} min={0} max={unit === "mL" ? 5000 : 100_000} step={unit === "mL" ? 0.1 : 1} precision={unit === "mL" ? 1 : 0} unit={unit} placeholder="-" />
       <Text style={{ color: shade("#64748b"), fontSize: 11 }}>{tc("tciPumpTotalHint")}</Text>
     </View>
   )

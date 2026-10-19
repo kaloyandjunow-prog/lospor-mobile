@@ -64,7 +64,8 @@ export function useInfusionEntry(
    * the pump rate and the weight. Without one, the box's value in the drug's unit.
    */
   function confirmInfusion(record?: InfusionRecord) {
-    if (!infDrug || !infRate) return
+    // A TCI start carries its target in the record; the Rate box may be empty (2026-10-19).
+    if (!infDrug || (!record && !infRate)) return
     const codes = infusionCodes[infDrug.name]
     const inf: ActiveInfusion = {
       infId: uid(), name: infDrug.name, rate: record ? String(record.rate) : infRate, unit: record?.unit ?? infDrug.unit, color: infDrug.color,

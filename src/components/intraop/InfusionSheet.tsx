@@ -343,7 +343,7 @@ export function InfusionSheet({
               {tc("pediatricInfusionConflict")}
             </Text>
           ) : (
-          <TciOrRate name={infDrug.name} pediatric={pediatricMode} patient={tciPatient} color={infDrug.color} syringe={infConcentration} setSyringe={setInfConcentration} onConfirm={onConfirm}>
+          <TciOrRate key={infDrug.name} name={infDrug.name} pediatric={pediatricMode} patient={tciPatient} color={infDrug.color} syringe={infConcentration} setSyringe={setInfConcentration} onConfirm={onConfirm}>
           <DoseSelector
             color={infDrug.color}
             {...fields.selector}
