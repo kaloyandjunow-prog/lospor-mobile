@@ -6,6 +6,7 @@ import { DEFAULT_INFUSION_WEIGHT_BASIS, infusionCalculationBasis, type WeightBas
 import { uid } from "@/lib/intraop-log-event"
 import type { InfusionRecord } from "@lospor/core/infusion-entry"
 import type { DrugFormulation, ActiveInfusion } from "@/lib/intraop-log-event"
+import type { PumpTotalUnit } from "@lospor/core/intraop-types"
 
 type InfusionOption = { name: string; unit: string; color: string }
 type CodedIdentity = { drugId?: string; atcCode?: string; inn?: string }
@@ -70,6 +71,8 @@ export function useInfusionEntry(
       concentration: infConcentration, formulation: infFormulation, route: infRoute,
       drugId: codes?.drugId, atcCode: codes?.atcCode, inn: codes?.inn,
       ...provenanceFromRule(infRule),
+      // A target-controlled infusion: the rate is its target (2026-10-18).
+      ...(record?.tci ? { tciModel: record.tci.model, tciSite: record.tci.site, tciOpioids: record.tci.opioids } : {}),
     }
     // Close the sheet synchronously; the allergy check answers at once when
     // nothing clashes. Only a given infusion is shown running and saved, so a
@@ -90,6 +93,7 @@ export function useInfusionEntry(
         calculationBasis: infusionCalculationBasis(inf.name, weightBasis),
         ...(record?.volumeRateMlPerHour != null ? { volumeRateMlPerHour: record.volumeRateMlPerHour } : {}),
         ...(record?.calculationWeightKg != null ? { calculationWeightKg: record.calculationWeightKg } : {}),
+        ...(inf.tciModel ? { tciModel: inf.tciModel, tciSite: inf.tciSite, tciOpioids: inf.tciOpioids } : {}),
       })
     })
   }
@@ -98,12 +102,14 @@ export function useInfusionEntry(
   async function stopInfusion(
     inf: ActiveInfusion,
     rowTs?: string | null,
-    options: { exactTs?: string; endCaseStop?: boolean } = {},
+    options: { exactTs?: string; endCaseStop?: boolean; pump?: { value: number; unit: PumpTotalUnit } } = {},
   ) {
     setActiveInfusions(prev => prev.filter(x => x.infId !== inf.infId))
     await save({
       type: "infusion_stop", infId: inf.infId, name: inf.name, color: inf.color,
       ...(options.endCaseStop ? { endCaseStop: true } : {}),
+      // A TCI stop may carry the pump's own total, which then counts (2026-10-18).
+      ...(options.pump ? { pumpTotal: options.pump.value, pumpTotalUnit: options.pump.unit } : {}),
     }, options.exactTs ?? atRow(rowTs))
   }
 

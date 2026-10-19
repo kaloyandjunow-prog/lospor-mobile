@@ -2,7 +2,7 @@ import type { IntraopSheetsHostProps } from "@/components/intraop/IntraopSheetsH
 import { canStartDrugAsInfusion } from "@/lib/intraop-library"
 import type { ActiveGasSettings } from "@/lib/intraop-log-event"
 import { plannedRowTime } from "@/lib/intraop-projection"
-import { pediatricAgeFromPreop, type IntraopPreopSummary } from "@/lib/intraop-preop-summary"
+import { pediatricAgeFromPreop, tciPatientFromPreop, type IntraopPreopSummary } from "@/lib/intraop-preop-summary"
 import type { ClinicalStringKey } from "@/lib/preferences-context"
 import type { WeightBasisMap } from "@lospor/core/intraop-totals"
 
@@ -165,7 +165,7 @@ export type IntraopMedicationSheetBuilderProps = {
   infActRate: InfusionActionProps["newRate"]
   setInfActRate: InfusionActionProps["setNewRate"]
   changeRate: InfusionActionProps["onChangeRate"]
-  stopInfusion: (target: Parameters<InfusionActionProps["onStop"]>[0], rowTs?: string | null) => void
+  stopInfusion: (target: Parameters<InfusionActionProps["onStop"]>[0], rowTs?: string | null, options?: { pump?: Parameters<InfusionActionProps["onStop"]>[1] }) => void
   /** The row the manage sheet was opened from (null = now); the stop is recorded there. */
   infActTs: string | null
   infActConcentration: InfusionActionProps["newConcentration"]
@@ -383,6 +383,7 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
       infRate,
       setInfRate,
       onConfirm: confirmInfusion,
+      tciPatient: tciPatientFromPreop(preop),
       routes: INFUSION_ROUTES,
       infRoute,
       setInfRoute,
@@ -414,7 +415,7 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
       newRate: infActRate,
       setNewRate: setInfActRate,
       onChangeRate: changeRate,
-      onStop: target => { stopInfusion(target, infActTs); setInfActOpen(false); setInfActTgt(null) },
+      onStop: (target, pump) => { stopInfusion(target, infActTs, { pump }); setInfActOpen(false); setInfActTgt(null) },
       plannedAt: plannedRowTime(infActTs),
       laConcentrations: prospectiveGuidanceEnabled && !pediatricMode ? INFUSION_LA_CONCENTRATIONS : {},
       newConcentration: infActConcentration,

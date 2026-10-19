@@ -1,3 +1,4 @@
+import type { TciPatient } from "@lospor/core/tci"
 import type { TimetableData, VitalsEntry } from "@/components/IntraopTimetable"
 import type { LogEvent } from "@/lib/intraop-log-event"
 import {
@@ -59,8 +60,11 @@ function presentRunningLabel(item: CoreRunningItem, nameOf: RunningNameOf): Runn
   if (item.kind === "infusion") {
     return {
       id: item.id,
-      // With its unit: "0.208" alone could be any of mL/kg/hr, mg/hr or mcg/kg/min.
-      label: [nameOf("infusion", item.name), item.rate, item.unit].filter(Boolean).join(" "),
+      // With its unit: "0.208" alone could be any of mL/kg/hr, mg/hr or mcg/kg/min. A TCI
+      // infusion shows its site and target, and the predicted value at this row (≈, 2026-10-18).
+      label: item.tci
+        ? [nameOf("infusion", item.name), item.tci.site === "PLASMA" ? "Cp" : "Ce", item.rate, item.unit, item.tci.predicted != null ? `≈${item.tci.predicted}` : null].filter(Boolean).join(" ")
+        : [nameOf("infusion", item.name), item.rate, item.unit].filter(Boolean).join(" "),
       color: item.color,
     }
   }
@@ -90,7 +94,7 @@ export function runningItemsByCol(
   cols: number[],
   // The live chart of a case not yet ended: running items also show in the
   // rows after now, where a change can be planned on them (Core, 9.13.1).
-  options: { projectRunning?: boolean; nameOf?: RunningNameOf } = {},
+  options: { projectRunning?: boolean; nameOf?: RunningNameOf; tciPatient?: TciPatient | null } = {},
 ): Map<number, RunningItem[]> {
   const coreRows = runningItemsByColumn(timetable, cols, options)
   return new Map(

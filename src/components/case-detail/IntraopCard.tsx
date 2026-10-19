@@ -11,6 +11,8 @@ import { colors, withAlpha, useShade } from "@/theme/colors"
 import { usePreferences, type ClinicalStringKey, type TranslationKey } from "@/lib/preferences-context"
 import { displayClinicalCode, displayOptionEntry, displayOptionPath } from "@/lib/clinical-display"
 import { SummaryCard, InfoRow, Chip, ChipRow, Divider } from "./CaseDetailPrimitives"
+import { tciPatientFrom } from "@lospor/core/tci"
+import { tciTotalNote } from "@/components/intraop/TciSheetFields"
 import {
   MONITOR_MAP,
   airwayToolLabel,
@@ -120,6 +122,7 @@ export function IntraopCard({ intraop, preop, clinicalMode, tc, t }: { intraop: 
   const infusionTotals = calcInfusionTotals(
     timetableInfusions, summaryIBW, summaryTBW, weightBasisMap(infusionLibrary),
     summaryBsa?.available ? summaryBsa.value.squareMetres : null,
+    tciPatientFrom(preop ?? {}),
   )
   const infWeightNote = (() => {
     const weighted = infusionTotals.filter(r => r.weightUsed != null)
@@ -290,7 +293,7 @@ export function IntraopCard({ intraop, preop, clinicalMode, tc, t }: { intraop: 
             <View key={`it-${i}`} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: withAlpha(colors.border, "66") }}>
               <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{displayClinicalCode("option:INTRAOP_INFUSION", d.name, language, { label: d.name })}</Text>
               <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: "700" }}>
-                {formatInfusionTotal(d)}
+                {formatInfusionTotal(d)}{d.tci ? ` ${tciTotalNote(d.tci, d.unit, tc)}` : ""}
                 {d.weightUsed != null ? <Text style={{ color: colors.warning, fontSize: 10 }}> ≈</Text> : null}
               </Text>
             </View>

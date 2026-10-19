@@ -1,3 +1,4 @@
+import { tciPatientFrom, type TciPatient } from "@lospor/core/tci"
 import type {
   ClinicalMode,
   PediatricAgeInput,
@@ -82,4 +83,9 @@ export function pediatricAgeFromPreop(
     return { value: preop.age, unit: "YEARS" }
   }
   return null
+}
+/** The patient a TCI model is worked out for; null when age, weight, height or sex is missing (2026-10-18). */
+export function tciPatientFromPreop(preop: IntraopPreopSummary | null | undefined): TciPatient | null {
+  if (!preop) return null
+  return tciPatientFrom({ ageYears: preop.age, ageValue: preop.ageValue, ageUnit: preop.ageUnit, weightKg: preop.weight, heightCm: preop.height, sex: preop.sex })
 }

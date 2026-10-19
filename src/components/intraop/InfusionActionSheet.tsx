@@ -9,7 +9,9 @@ import { infusionConfirmProblem, infusionEntryWeightKg, type InfusionRecord } fr
 import { infusionCalculationBasis, type WeightBasisMap } from "@lospor/core/intraop-totals"
 import { Sheet } from "@/components/intraop/Sheet"
 import type { ActiveInfusion } from "@/lib/intraop-log-event"
+import type { PumpTotalUnit } from "@lospor/core/intraop-types"
 import { DoseSelector } from "@/components/intraop/DoseSelector"
+import { PumpTotalField, tciTargetSurface } from "@/components/intraop/TciSheetFields"
 import { displayClinicalCode } from "@/lib/clinical-display"
 import { usePreferences } from "@/lib/preferences-context"
 import { formatMessage } from "@/i18n/locale"
@@ -36,7 +38,8 @@ export function InfusionActionSheet({
   setNewRate: (v: string) => void
   /** The record carries both rates (dose and pump) for the change. */
   onChangeRate: (target: ActiveInfusion, rate: string, concentration?: string, record?: InfusionRecord) => void
-  onStop: (target: ActiveInfusion) => void
+  /** With the pump total when one was entered (a TCI infusion, 2026-10-18). */
+  onStop: (target: ActiveInfusion, pump?: { value: number; unit: PumpTotalUnit }) => void
   laConcentrations?: Record<string, string[]>
   newConcentration?: string
   setNewConcentration?: (c: string | undefined) => void
@@ -91,6 +94,15 @@ export function InfusionActionSheet({
   const fields = useInfusionRateFields({ resetKey: target?.infId ?? "", name: target?.name, unit: ruleUnit, initialEntryUnit: target?.unit, ...range, quickValues,
     doseLimit: volumeRule?.doseLimit, concentration, weightKg, rate: newRate, setRate: setNewRate })
   const at = plannedAt ? ` ${formatMessage(tc("plannedAtTime"), { time: plannedAt })}` : ""
+  // A TCI infusion changes its target, in its model's range, and may record the pump's total on the stop (2026-10-18).
+  const tci = tciTargetSurface(target?.tciModel)
+  // Kept with the infusion it was entered for: the sheet is reused for the next one.
+  const [pumpEntry, setPumpEntry] = useState<{ infId: string; pump?: { value: number; unit: PumpTotalUnit } } | null>(null)
+  const pump = pumpEntry && pumpEntry.infId === target?.infId ? pumpEntry.pump : undefined
+  const tciSuffix = tci ? `${target?.tciSite === "PLASMA" ? "Cp" : "Ce"} ${tci.unit}` : ""
+  const selector = tci
+    ? { value: newRate, onValueChange: setNewRate, min: tci.min, max: tci.max, step: tci.step, quickValues: tci.quickValues, unitSuffix: tciSuffix }
+    : fields.selector
 
   return (
     <Sheet visible={visible} onClose={onClose} title={target ? `${infusionLabel(target.name)}${plannedAt ? ` ·${at}` : ""}` : tc("trRowInfusion")}>
@@ -106,20 +118,21 @@ export function InfusionActionSheet({
           </Text>
           <DoseSelector
             color={shade("#3b82f6")}
-            {...fields.selector}
-            valuePlaceholder={tc("newRate")}
+            {...selector}
+            valuePlaceholder={tc(tci ? "tciNewTarget" : "newRate")}
             {...strength.selector}
             concentration={concentration}
             {...(laStrengths?.length ? {} : { customConcentration: custom, onCustomConcentrationChange: (value: string | undefined) => { setCustom(value); if (value !== undefined) setNewConcentration?.(undefined) } })}
             onConcentrationChange={next => { setNewConcentration?.(next); const suggested = fields.suggestedFor(next); if (suggested) setNewRate(suggested) }}
-            extraHint={fields.readout}
-            confirmLabel={`${formatMessage(tc("changeTo"), { value: `${newRate} ${fields.selector.unitSuffix}` })}${at}`}
-            onConfirm={() => onChangeRate(target, newRate, newConcentration, fields.record() ?? undefined)}
+            extraHint={tci ? undefined : fields.readout}
+            confirmLabel={`${formatMessage(tc("changeTo"), { value: `${newRate} ${selector.unitSuffix}` })}${at}`}
+            onConfirm={() => onChangeRate(target, newRate, newConcentration, tci ? { rate: Number(newRate), unit: tci.unit } : fields.record() ?? undefined)}
             confirmDisabled={!!infusionConfirmProblem({ rate: newRate }) || strength.customInvalid}
             confirmBlockedReason={infusionConfirmProblem({ rate: newRate }) ? tc("infusionNeedsRate") : undefined}
           />
+          {tci ? <PumpTotalField key={target.infId} amountUnit={tci.amountUnit} color={shade("#ef4444")} onChange={next => setPumpEntry({ infId: target.infId, pump: next })} /> : null}
           <TouchableOpacity
-            onPress={() => onStop(target)}
+            onPress={() => onStop(target, pump)}
             style={{ backgroundColor:shade("#1e1414"), borderRadius:10, padding:14, alignItems:"center",
               borderWidth:1, borderColor:shade("#ef444444") }}>
             <Text style={{ color:shade("#ef4444"), fontWeight:"700" }}>{tc("trStop")} {tc("trRowInfusion").toLowerCase()}{at}</Text>

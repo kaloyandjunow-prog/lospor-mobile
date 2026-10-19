@@ -23,6 +23,8 @@ import { activeInfusionSurface, filterInfusionPickerResults, pediatricInfusionPr
 import { useInfusionRateFields } from "@/components/intraop/use-infusion-rate-fields"
 import { infusionConfirmProblem, infusionEntryWeightKg, type InfusionRecord } from "@lospor/core/infusion-entry"
 import { syringeStrengthProps } from "@/components/intraop/SyringeStrength"
+import { TciOrRate } from "@/components/intraop/TciSheetFields"
+import type { TciPatient } from "@lospor/core/tci"
 import { infusionCalculationBasis, type WeightBasisMap } from "@lospor/core/intraop-totals"
 import { customStrengthLabel } from "@lospor/core/strength-entry"
 
@@ -32,7 +34,7 @@ export function InfusionSheet({
   infCustomConcentration, setInfCustomConcentration, infFormulation, setInfFormulation,
   infRule, setInfRule,
   ranges = {}, suggestedRates = {}, baseProfiles = {}, routeProfiles = {}, pediatricMode = false,
-  pediatricInfusionProfiles = [], patientAge = null, patientWeightKg, patientIdealWeightKg, weightBasis,
+  pediatricInfusionProfiles = [], patientAge = null, patientWeightKg, patientIdealWeightKg, weightBasis, tciPatient = null,
   prospectiveGuidanceEnabled = true,
 }: {
   visible: boolean
@@ -70,6 +72,8 @@ export function InfusionSheet({
   patientWeightKg?: number | null
   /** Ideal weight, for an adult drug dosed on it; the pump rate uses the drug's own basis. */
   patientIdealWeightKg?: number | null
+  /** For a TCI infusion: age, weight, height and sex (2026-10-18). */
+  tciPatient?: TciPatient | null
   weightBasis?: WeightBasisMap
   prospectiveGuidanceEnabled?: boolean
 }) {
@@ -339,6 +343,7 @@ export function InfusionSheet({
               {tc("pediatricInfusionConflict")}
             </Text>
           ) : (
+          <TciOrRate name={infDrug.name} pediatric={pediatricMode} patient={tciPatient} color={infDrug.color} syringe={infConcentration} setSyringe={setInfConcentration} onConfirm={onConfirm}>
           <DoseSelector
             color={infDrug.color}
             {...fields.selector}
@@ -362,6 +367,7 @@ export function InfusionSheet({
             confirmDisabled={!!blocked || (pediatricMode && !infRule) || strength.customInvalid}
             confirmBlockedReason={blockedReason}
           />
+          </TciOrRate>
           )}
         </ScrollView>
       ) : (

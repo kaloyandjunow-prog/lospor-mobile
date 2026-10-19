@@ -1,3 +1,4 @@
+import type { TciPatient } from "@lospor/core/tci"
 import { useCallback, useMemo, type RefObject } from "react"
 import type { IntraopLabDraw } from "@lospor/core/labs"
 import { FlatList, Platform, View } from "react-native"
@@ -16,6 +17,8 @@ import { CaseSaveStateContext } from "@/lib/use-case-save-state"
 
 type Props = {
   screenWidth: number
+  /** For a running TCI infusion's predicted value in each row (2026-10-18). */
+  tciPatient?: TciPatient | null
   /** Questions the timeline is waiting on (Core intraop-attention). */
   attention?: IntraopAttentionView
   undoEvent: LogEvent | null
@@ -63,6 +66,7 @@ const RUNNING_CATEGORY = { agent: "INHALATIONAL_AGENT", infusion: "INTRAOP_INFUS
 
 export function IntraopTimetableTab({
   screenWidth,
+  tciPatient = null,
   attention,
   undoEvent,
   chartRows,
@@ -102,7 +106,7 @@ export function IntraopTimetableTab({
   const { language, bulgarianNames } = usePreferences()
   const nameOf = useCallback<RunningNameOf>((kind, name) => displayedCatalogName(RUNNING_CATEGORY[kind], name, language, bulgarianNames), [bulgarianNames, language])
   const rowDataByCol = useMemo(() => {
-    const runningByCol = runningItemsByCol(timetable, chartRows, { projectRunning, nameOf })
+    const runningByCol = runningItemsByCol(timetable, chartRows, { projectRunning, nameOf, tciPatient })
     const data = new Map<number, {
       vital: VitalsEntry | undefined
       rowEvents: LogEvent[]
@@ -122,7 +126,7 @@ export function IntraopTimetableTab({
       })
     }
     return data
-  }, [buildSummary, chartRows, eventRows, nameOf, projectRunning, timetable])
+  }, [buildSummary, chartRows, eventRows, nameOf, projectRunning, tciPatient, timetable])
 
   const labDrawsByCol = useMemo(() => {
     const byCol = new Map<number, IntraopLabDraw[]>()
