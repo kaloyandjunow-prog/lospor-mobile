@@ -47,7 +47,7 @@ describe("the Start at sheet on the PWA", () => {
 
 describe("the day the sheet's start lands on", () => {
   it("is today until stepped, and stepping back to today clears it", async () => {
-    const { startAtDayProps } = await import("./buildIntraopSheetsProps")
+    const { startAtDayProps } = await import("@/lib/intraop-timing")
     const setStartAtDayKey = vi.fn()
     const props = (startAtDayKey: string | null) => startAtDayProps(startAtDayKey, "2026-10-16", setStartAtDayKey)
     expect(props(null).dayKey).toBe("2026-10-16")

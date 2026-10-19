@@ -35,6 +35,15 @@ export function startInstantForEntry(now: Date, hhmm: string, dayKey: string | n
     : startInstantForWallClock(now, hhmm, timeZone)
 }
 
+/** The Start at sheet's day: today until stepped; stepping back to today clears it, so a time ahead of now means yesterday again. */
+export function startAtDayProps(dayKey: string | null, todayKey: string, setDayKey: (key: string | null) => void) {
+  return {
+    dayKey: dayKey ?? todayKey,
+    todayKey,
+    onDayChange: (key: string) => setDayKey(key === todayKey ? null : key),
+  }
+}
+
 // Re-exported: the stored format is core's, shared with web.
 export { monthYearForDate }
 

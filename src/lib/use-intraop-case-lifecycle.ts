@@ -15,7 +15,7 @@ import { localTimeOf } from "@lospor/core/intraop-time"
 import { logAfterAttentionAnswer, useIntraopAttention } from "@/lib/use-intraop-attention"
 import { useCaseSaveState } from "@/lib/use-case-save-state"
 import { useResumeCountdown } from "@/lib/use-resume-countdown"
-import { promoteDraftCaseToInProgress, startInstantForEntry, type IntraopTimingOverrides } from "@/lib/intraop-timing"
+import { promoteDraftCaseToInProgress, startAtDayProps, startInstantForEntry, type IntraopTimingOverrides } from "@/lib/intraop-timing"
 import {
   buildIntraopEndTiming,
   buildIntraopStartTiming,
@@ -336,9 +336,9 @@ export function useIntraopCaseLifecycle({
     setStartAtOpen,
     startAtInput,
     setStartAtInput,
-    startAtDayKey,
-    setStartAtDayKey,
-    startAtTodayKey,
+    startAtDay: startAtDayProps(startAtDayKey, startAtTodayKey, setStartAtDayKey),
+    /** Opens the Start at sheet at this time, on today. */
+    openStartAt: (hhmm: string) => { setStartAtInput(hhmm); setStartAtDayKey(null); setStartAtOpen(true) },
     endCaseDecisions,
     setEndCaseDecisions,
     continuedPostopItems,
