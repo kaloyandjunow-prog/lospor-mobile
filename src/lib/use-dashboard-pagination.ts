@@ -9,6 +9,8 @@ export function useDashboardPagination<CaseItem>(
   setCases: (updater: (prev: CaseItem[]) => CaseItem[]) => void,
   t: (key: TranslationKey) => string,
   timeoutMs: number,
+  /** The dashboard's filters, as query parameters (10.0.0). */
+  filterQuery = "",
 ) {
   const [counts, setCounts] = useState<DashboardServerCounts | null>(null)
   const [caseTotal, setCaseTotal] = useState<number | null>(null)
@@ -21,7 +23,7 @@ export function useDashboardPagination<CaseItem>(
     setLoadingMore(true)
     try {
       const data = await apiJson<{ cases: CaseItem[]; counts?: DashboardServerCounts; total?: number }>(
-        `/api/cases?skip=${cases.length}&take=200`,
+        `/api/cases?skip=${cases.length}&take=200${filterQuery}`,
         { timeoutMs },
       )
       setCases(prev => [...prev, ...(Array.isArray(data?.cases) ? data.cases : [])])
@@ -32,7 +34,7 @@ export function useDashboardPagination<CaseItem>(
     } finally {
       setLoadingMore(false)
     }
-  }, [cases.length, loadingMore, setCases, t, timeoutMs])
+  }, [cases.length, filterQuery, loadingMore, setCases, t, timeoutMs])
 
   return { counts, setCounts, caseTotal, setCaseTotal, loadingMore, loadMoreCases }
 }

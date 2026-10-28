@@ -47,9 +47,8 @@ jobs:
   # machine and nowhere else, so a pull request could break it and nothing
   # would say so until the release gate — after production.
   #
-  # It needs the API beside it, taken from main: a pull request here is a
-  # change to the app, tested against the API as it currently stands. Pinned
-  # combinations are the release gate's job.
+  # It needs the API beside it. Release-train pull requests use the matching
+  # release candidate; ordinary feature pull requests use API main.
   e2e-pwa:
     runs-on: ubuntu-latest
     timeout-minutes: 40
@@ -90,7 +89,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           repository: kaloyandjunow-prog/lospor-api
-          ref: main
+          ref: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/') && github.head_ref || github.event_name == 'pull_request' && (github.base_ref == 'release-9.13.5-vendor' || github.head_ref == 'release-9.13.5-vendor') && 'release-9.13.5-vendor' || 'main' }}
           path: lospor-api
       - uses: actions/setup-node@v6
         with:
