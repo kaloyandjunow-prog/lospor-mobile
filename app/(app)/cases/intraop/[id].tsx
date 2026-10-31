@@ -14,6 +14,8 @@ import { usePreferences } from "@/lib/preferences-context"
 import { emptyTimetable, type TimetableData } from "@/components/IntraopTimetable"
 import { colors } from "@/theme/colors"
 import { useCaseLock } from "@/lib/use-case-lock"
+import { useVitalQuestionContext } from "@/lib/use-intraop-automation"
+import { DefibrillationHost } from "@/components/intraop/DefibrillationHost"
 import { VASC_PREEXISTING_QUICK, vascDefaultUnit, vascSiteColor } from "@/lib/vascular-access-tree"
 import { useAgentEntry } from "@/lib/use-agent-entry"
 import { useGasSettingsEntry } from "@/lib/use-gas-settings-entry"
@@ -116,6 +118,7 @@ export default function IntraopLiveScreen() {
     router.push(`/(app)/cases/timetable/${id}`)
   }, [router, id])
   const { isWatching, isWatchingRef, takeover } = useCaseLock(id, true)
+  const vitalQuestionContext = useVitalQuestionContext(preop, isWatching) // vitals questions (10.1.0)
   const {
     tc,
     language,
@@ -304,7 +307,7 @@ export default function IntraopLiveScreen() {
     setComplicationsNotes,
     compGroupExpanded,
     compSaving,
-    addComplicationFromEvent,
+    removeLegacyComplication,
     saveComplications,
     toggleComplication,
     toggleComplicationGroup,
@@ -430,7 +433,7 @@ export default function IntraopLiveScreen() {
     activeGas,
     activeInfusions,
     activeFluids,
-    timeline: { caseId: id ?? null, log, logRef, syncLog, removeEvent, labelOf: ev => eventLabel(ev).text, endedAtRef, resyncActiveRef },
+    timeline: { caseId: id ?? null, log, logRef, syncLog, removeEvent, labelOf: ev => eventLabel(ev).text, endedAtRef, resyncActiveRef, vitals: vitalQuestionContext },
     stopAgent,
     stopGasSettings,
     stopInfusion,
@@ -651,7 +654,6 @@ export default function IntraopLiveScreen() {
     setSlotTs,
     slotTs,
     setSlotOpen,
-    addComplicationFromEvent,
   })
   const handleChartTimetableChange = (newData: TimetableData) => applyIntraopChartChange({ start: startRef.current, timetable, next: newData, onFluidStart: fluid => setActiveFluids(prev => [...prev, fluid]), save, onChange: setTimetable })
   // ─────────────────────────────── RENDER ───────────────────────────────
@@ -711,7 +713,7 @@ export default function IntraopLiveScreen() {
           vascSiteColor, VASC_TREE, vascDefaultUnit, VASC_PREEXISTING_QUICK, premedEveningText,
           setPremedEveningText, premedMorningText, setPremedMorningText, savePremedication,
           openPremedPicker, log, selectedComplications, complicationsNotes, setComplicationsNotes,
-          saveComplications, setCompOpen, eventActions, promptDelete, prevVitalFor, ttColCount,
+          saveComplications, setCompOpen, removeLegacyComplication, eventActions, promptDelete, prevVitalFor, ttColCount,
           caseIbw, caseTbw, caseBsa, infusionWeightBasis: INFUSION_WEIGHT_BASIS,
           urineMl, setUrineMl, bloodLossMl, setBloodLossMl,
           chartPage, caseEnded, resumeSecsLeft, resumeCase, setChartPage, setTtColCount,
@@ -766,6 +768,7 @@ export default function IntraopLiveScreen() {
           sheet needs only the draw list and the case id, and passing it through
           that props object would add six more names to a list that is already
           the reason this screen is hard to read. */}
+      <DefibrillationHost log={log} save={save} preop={preop} />
       {labsTs ? (
         <LabsSheet
           visible={labsOpen}

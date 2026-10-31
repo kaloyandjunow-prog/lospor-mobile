@@ -165,7 +165,7 @@ export type IntraopTabContentBuilderProps = {
   complicationsNotes: EventsProps["complicationsNotes"]
   setComplicationsNotes: EventsProps["onComplicationsNotesChange"]
   saveComplications: () => void
-  setCompOpen: (open: boolean) => void
+  removeLegacyComplication: EventsProps["onRemoveLegacyComplication"]
   eventActions: EventsProps["onEventActions"]
   promptDelete: EventsProps["onPromptDelete"]
   prevVitalFor: EventsProps["previousVitalFor"]
@@ -209,7 +209,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
     saveVascularAccesses, vascularSaving, vascSiteColor, VASC_TREE, vascDefaultUnit,
     VASC_PREEXISTING_QUICK, premedEveningText, setPremedEveningText, premedMorningText,
     setPremedMorningText, savePremedication, openPremedPicker, log, selectedComplications,
-    complicationsNotes, setComplicationsNotes, saveComplications, setCompOpen, eventActions,
+    complicationsNotes, setComplicationsNotes, saveComplications, removeLegacyComplication, eventActions,
     promptDelete, prevVitalFor,
     logEventText, logBuildSummary,
     caseIbw, caseTbw, caseBsa = null, infusionWeightBasis, urineMl, setUrineMl, bloodLossMl, setBloodLossMl,
@@ -389,7 +389,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
       complicationsNotes,
       onComplicationsNotesChange: setComplicationsNotes,
       onComplicationsNotesBlur: () => { if (formatComplications(selectedComplications, complicationsNotes) !== null) saveComplications() },
-      onOpenComplications: () => setCompOpen(true),
+      onRemoveLegacyComplication: removeLegacyComplication,
       onEventActions: eventActions,
       onPromptDelete: promptDelete,
       eventLabel,

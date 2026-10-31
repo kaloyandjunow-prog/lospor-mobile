@@ -377,6 +377,8 @@ export const STRINGS = {
     autoFillBpHrSub: "Include blood pressure and heart rate in the carry-forward",
     backgroundAutoFill: "Background auto-fill",
     backgroundAutoFillSub: "When reopening a case, backfill the gap from the last entry to the current time",
+    vitalEpisodeAutoLog: "Keep logging while out of range",
+    vitalEpisodeAutoLogSub: "After you log a complication from a vitals question, it stays logged while the readings stay out of range. Off: you are asked at every out-of-range reading.",
 
     // ── Settings — sign-out / export / delete dialogs ─────────────────────────
     signOutConfirmTitle: "Sign out",
@@ -989,6 +991,8 @@ export const STRINGS = {
     autoFillBpHrSub: "Включва АН и СЧ в пренасянето напред",
     backgroundAutoFill: "Фоново автопопълване",
     backgroundAutoFillSub: "При отваряне на случай, попълва пропуснатия период от последния запис до текущото време",
+    vitalEpisodeAutoLog: "Продължавай записа извън границите",
+    vitalEpisodeAutoLogSub: "След като запишете усложнение от въпрос за жизнените показатели, то продължава да се записва, докато отчитанията са извън границите. Изключено: питане при всяко отчитане извън границите.",
 
     // ── Settings — sign-out / export / delete dialogs ─────────────────────────
     signOutConfirmTitle: "Изход",

@@ -2,15 +2,19 @@ import { View, Text, ScrollView, TextInput, TouchableOpacity } from "react-nativ
 import { useState, type RefObject } from "react"
 import {
   daysBetweenDateKeys,
+  defaultEndDayOffset,
   durationMinutesBetween,
   earliestEndDateKey,
+  endInstantForWallClock,
   formatDateKeyShort,
   isValidTimeZone,
   localDateKey,
+  localTimeOf,
   resolvedTimeZone,
   shiftDateKey,
 } from "@lospor/core/intraop-time"
 import { DayStepper } from "@/components/DayStepper"
+import { EndCorrectionReasons } from "@/components/intraop/EndCorrectionReasons"
 import { usePreferences } from "@/lib/preferences-context"
 import type { ClinicalStringKey } from "@/lib/preferences-context"
 import type { IntraopTimingOverrides } from "@/lib/intraop-timing"
@@ -48,6 +52,22 @@ export function TimingTab({
   const startKey = startRef.current && zone ? localDateKey(startRef.current, zone) : null
   const endKey = endedAtRef?.current && zone ? localDateKey(endedAtRef.current, zone) : null
   const formatDay = (key: string) => formatDateKeyShort(key, language === "bg" ? "bg" : "en") ?? key
+  // Changing the end of a case that has ended asks why first (10.1.0).
+  const [pendingEnd, setPendingEnd] = useState<IntraopTimingOverrides | null>(null)
+  const saveEnd = (overrides: IntraopTimingOverrides) => {
+    const ended = endedAtRef?.current
+    const start = startRef.current
+    if (!ended || !start || !zone || !overrides.endTime) { saveTiming(overrides); return }
+    const offset = overrides.endDayOffset ?? defaultEndDayOffset(start, overrides.endTime, zone)
+    const next = endInstantForWallClock(start, overrides.endTime, zone, offset)
+    if (!next || next.getTime() === ended.getTime()) { saveTiming(overrides); return }
+    setPendingEnd(overrides)
+  }
+  const keepSavedEnd = () => {
+    const ended = endedAtRef?.current
+    if (ended && zone) setCaseEndTime(localTimeOf(ended, zone) ?? caseEndTime)
+    setPendingEnd(null)
+  }
   // Compute duration from caseStartTime / caseEndTime strings (HH:MM)
   let durationStr = ""
   const storedMinutes = startRef.current && endedAtRef?.current ? durationMinutesBetween(startRef.current, endedAtRef.current) : null
@@ -123,14 +143,14 @@ export function TimingTab({
           placeholderTextColor={shade("#475569")}
           value={caseEndTime}
           onChangeText={setCaseEndTime}
-          onBlur={() => saveTiming({ endTime: caseEndTime })}
+          onBlur={() => saveEnd({ endTime: caseEndTime })}
         />
         <TouchableOpacity
           onPress={() => {
             const offset = startKey ? Math.max(0, daysBetweenDateKeys(startKey, todayKey) ?? 0) : 0
             setCaseEndTime(nowHHMM)
             if ((offset > 0) !== caseEndNextDay) setCaseEndNextDay(() => offset > 0)
-            saveTiming({ endTime: nowHHMM, endDayOffset: offset })
+            saveEnd({ endTime: nowHHMM, endDayOffset: offset })
           }}
           style={{ paddingHorizontal:14, paddingVertical:12, borderRadius:10,
             backgroundColor:shade("#1e3a5f"), borderWidth:1, borderColor:shade("#3b82f644"),
@@ -146,7 +166,7 @@ export function TimingTab({
           const offset = startKey ? daysBetweenDateKeys(startKey, key) : null
           if (offset == null || offset < 0 || !caseEndTime) return
           setCaseEndNextDay(() => offset > 0)
-          saveTiming({ endTime: caseEndTime, endDayOffset: offset })
+          saveEnd({ endTime: caseEndTime, endDayOffset: offset })
         }}
         todayKey={todayKey}
         min={startRef.current && zone && caseEndTime ? earliestEndDateKey(startRef.current, caseEndTime, zone) : startKey}
@@ -156,6 +176,14 @@ export function TimingTab({
         disabled={!startKey || !caseEndTime}
         testID="intraop-end-day"
       />
+
+      {pendingEnd ? (
+        <EndCorrectionReasons
+          onChoose={reason => { saveTiming({ ...pendingEnd, endCorrectionReason: reason }); setPendingEnd(null) }}
+          onCancel={keepSavedEnd}
+          tc={tc}
+        />
+      ) : null}
 
       {storedMinutes != null && storedMinutes > 24 * 60 ? (
         <Text testID="intraop-longer-than-day" style={{ color:shade("#fbbf24"), fontSize:12, fontWeight:"800", marginBottom:12 }}>{tc("timingLongerThanDay")}</Text>

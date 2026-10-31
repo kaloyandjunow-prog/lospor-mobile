@@ -52,6 +52,8 @@ export function SettingsPreferencesView({
     intraopFavouriteInfusions: favouriteInfusions,
     setIntraopFavouriteDrugs,
     setIntraopFavouriteInfusions,
+    vitalEpisodeAutoLog,
+    setVitalEpisodeAutoLog,
   } = usePreferences()
 
   const [drugFavOpen, setDrugFavOpen] = useState(false)
@@ -238,6 +240,20 @@ export function SettingsPreferencesView({
             label={t("favouriteInfusions")}
             subtitle={favouriteInfusionLabels.length ? favouriteInfusionLabels.join(", ") : t("chooseFavouriteInfusions")}
             onPress={() => setInfFavOpen(true)}
+          />
+          {/* 10.1.0: after a yes to a vitals question, keep logging while out of range. */}
+          <SettingsRow
+            label={t("vitalEpisodeAutoLog")}
+            subtitle={t("vitalEpisodeAutoLogSub")}
+            rightElement={
+              <Switch
+                testID="setting-vital-episode-auto-log"
+                value={vitalEpisodeAutoLog}
+                onValueChange={value => { void setVitalEpisodeAutoLog(value) }}
+                trackColor={{ false: colors.border, true: colors.primarySoft }}
+                thumbColor={vitalEpisodeAutoLog ? colors.primary : colors.textMuted}
+              />
+            }
           />
           <SettingsRow
             label={t("autoFillVitals")}

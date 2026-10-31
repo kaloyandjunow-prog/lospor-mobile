@@ -33,6 +33,8 @@ type Props = {
   onToggleComplications: () => void
   onSelectEvent: (event: ClinicalEventDef, isComplication: boolean) => void
   onBrowseDrugs: () => void
+  /** A shock at the slot's time (10.1.0). */
+  onOpenDefibrillation?: () => void
   onStopAgent: (name: string) => void
   onOpenAgent: () => void
   onStopGas: () => void
@@ -54,6 +56,7 @@ export function SlotActionSheet({
   onToggleComplications,
   onSelectEvent,
   onBrowseDrugs,
+  onOpenDefibrillation,
   onStopAgent,
   onOpenAgent,
   onStopGas,
@@ -121,6 +124,14 @@ export function SlotActionSheet({
           backgroundColor:shade("#1e2d40"), borderWidth:1, borderColor:shade("#3b82f644"), marginBottom:18 }}>
         <Text style={{ color:shade("#93c5fd"), fontWeight:"700", fontSize:12 }}>{tc("sasBrowseAllDrugs")}</Text>
       </FeedbackPressable>
+
+      {onOpenDefibrillation ? (
+        <FeedbackPressable onPress={onOpenDefibrillation} testID="slot-defibrillation"
+          style={{ borderRadius:10, paddingVertical:10, alignItems:"center", marginTop:-8,
+            backgroundColor:shade("#f59e0b18"), borderWidth:1, borderColor:shade("#f59e0b55"), marginBottom:18 }}>
+          <Text style={{ color:shade("#fbbf24"), fontWeight:"700", fontSize:12 }}>{tc("defibButton")}</Text>
+        </FeedbackPressable>
+      ) : null}
 
       {isGACase && (
         <>

@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from "react-native"
 import { colors } from "@/theme/colors"
 import { intraopAttentionText, intraopRefusedEntry, type IntraopAttentionAction, type IntraopAttentionItem } from "@lospor/core/intraop-attention"
+import { vitalQuestionText } from "@lospor/core/vital-questions"
 
 import type { LogEvent } from "@/lib/intraop-log-event"
 import { usePreferences } from "@/lib/preferences-context"
@@ -18,6 +19,8 @@ export type IntraopAttentionView = {
   log?: LogEvent[]
   /** Whether each change reached the server (9.13.0). */
   saveState?: CaseSaveState
+  /** The clinician keeps logging while out of range (10.1.0): the question says when that stops. */
+  keepLogging?: boolean
 }
 
 /**
@@ -27,6 +30,20 @@ export type IntraopAttentionView = {
  * ended automatically could never be finalised. Visible without opening a
  * row; a tired clinician should not have to hunt for it.
  */
+/** Why a reading is unusual, and when automatic logging would stop (10.1.0). */
+function VitalQuestionDetail({ item, keepLogging }: { item: IntraopAttentionItem; keepLogging: boolean }) {
+  const shade = useShade()
+  const { language } = usePreferences()
+  if (!item.vital) return null
+  const text = vitalQuestionText(item.vital, language, keepLogging)
+  return (
+    <View testID={`attention-vital-detail-${item.key}`} style={{ marginTop: -2, marginBottom: 6 }}>
+      <Text style={{ color: shade("#cbd5e1"), fontSize: 12 }}>{text.detail}</Text>
+      {text.stop ? <Text style={{ color: shade("#94a3b8"), fontSize: 12, marginTop: 2 }}>{text.stop}</Text> : null}
+    </View>
+  )
+}
+
 export function IntraopAttentionBanner({ attention }: { attention: IntraopAttentionView }) {
   const shade = useShade()
   const { tc, language } = usePreferences()
@@ -69,6 +86,7 @@ export function IntraopAttentionBanner({ attention }: { attention: IntraopAttent
             {attention.clockOf(item.event.ts)} · {intraopAttentionText(item, language)}
             {item.kind === "unconfirmed_stop" ? ` — ${tc("stopUnconfirmedLabel")}` : ""}
           </Text>
+          {item.vital ? <VitalQuestionDetail item={item} keepLogging={attention.keepLogging ?? true} /> : null}
           <AttentionAnswers id={item.key} kind={item.kind} onAnswer={(key, action) => { void attention.resolve(key, action) }} />
         </View>
       ))}

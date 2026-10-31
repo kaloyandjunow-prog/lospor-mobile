@@ -309,6 +309,7 @@ export function PreferencesProvider({
     intraopFavouriteDrugs: clinicalPreferences.intraopFavouriteDrugs,
     intraopFavouriteInfusions: clinicalPreferences.intraopFavouriteInfusions,
     bulgarianNames: clinicalPreferences.bulgarianNames,
+    vitalEpisodeAutoLog: clinicalPreferences.vitalEpisodeAutoLog,
     localeReady,
     clinicalPreferencesReady,
     setLanguage,
@@ -333,6 +334,7 @@ export function PreferencesProvider({
     setIntraopFavouriteInfusions: intraopFavouriteInfusions =>
       patchClinical({ intraopFavouriteInfusions }),
     setBulgarianNames: bulgarianNames => patchClinical({ bulgarianNames }),
+    setVitalEpisodeAutoLog: vitalEpisodeAutoLog => patchClinical({ vitalEpisodeAutoLog }),
     t: key => STRINGS[language][key] ?? STRINGS.en[key],
     tc: key =>
       (CLINICAL_STRINGS[language] as ClinicalStringsMap)[key]

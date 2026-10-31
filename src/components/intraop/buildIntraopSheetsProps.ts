@@ -10,6 +10,7 @@ import { slotIsoTimestamp } from "@/lib/intraop-row-quick-add"
 import { buildPostopRoute } from "@/lib/postop-route"
 import { premedicationSheetProps } from "@/components/intraop/premedication-sheet-props"
 import type { ClinicalStringKey } from "@/lib/preferences-context"
+import { defibrillationSheet } from "@/lib/defibrillation-knob"
 
 type SlotProps = IntraopSheetsHostProps["slot"]
 type EditEventProps = IntraopSheetsHostProps["editEvent"]
@@ -48,6 +49,9 @@ export type IntraopSheetsBuilderProps = IntraopMedicationSheetBuilderProps & {
   confirmEdit: EditEventProps["onConfirm"]
   compOpen: ComplicationsProps["visible"]
   setCompOpen: (open: boolean) => void
+  /** For End at (10.1.0): the case start and its zone. */
+  startRef: { current: Date | null }
+  caseTimezone: string | null
   COMPLICATION_TC_TITLES: Record<string, ClinicalStringKey>
   selectedComplications: ComplicationsProps["selected"]
   compGroupExpanded: ComplicationsProps["expanded"]
@@ -126,6 +130,7 @@ export function buildIntraopSheetsProps(props: IntraopSheetsBuilderProps): Intra
       onToggleComplications: () => setSlotCompExpanded((value) => !value),
       onSelectEvent: openSlotEvent,
       onBrowseDrugs: () => { const ts = slotIsoTimestamp(slotTs); setSlotOpen(false); openDrug(ts) },
+      onOpenDefibrillation: () => { const ts = slotIsoTimestamp(slotTs); setSlotOpen(false); if (ts) defibrillationSheet.open(ts) },
       // Stops are recorded at the row the sheet was opened from.
       onStopAgent: name => { setSlotOpen(false); stopAgent(name, slotIsoTimestamp(slotTs)) },
       onOpenAgent: () => { const ts = slotIsoTimestamp(slotTs); setSlotOpen(false); openAgent(ts) },
@@ -174,6 +179,8 @@ export function buildIntraopSheetsProps(props: IntraopSheetsBuilderProps): Intra
       continueLabel: tc("continuePostop"),
       onDecision: (key, decision) => setEndCaseDecisions((previous) => ({ ...previous, [key]: decision })),
       onFinalize: finaliseCase,
+      startedAt: props.startRef.current,
+      timeZone: props.caseTimezone,
     },
     premedicationLibrary: premedicationSheetProps({
       open: premedPickOpen, phase: premedPickPhase, library: PREMED_LIBRARY, category: premedPickCat,

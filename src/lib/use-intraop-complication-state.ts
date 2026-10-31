@@ -1,7 +1,7 @@
 import { useState } from "react"
 import * as Haptics from "expo-haptics"
 import { notify } from "@/lib/notify"
-import { addComplicationLabel, formatComplications, toggleComplicationLabel } from "@/lib/intraop-complications"
+import { formatComplications, toggleComplicationLabel } from "@/lib/intraop-complications"
 import { usePreferences } from "@/lib/preferences-context"
 
 type PatchIntraopSection = (payload: Record<string, unknown>) => Promise<unknown>
@@ -17,11 +17,17 @@ export function useIntraopComplicationState(
   const [compGroupExpanded, setCompGroupExpanded] = useState<Record<string, boolean>>({})
   const [compSaving, setCompSaving] = useState(false)
 
-  function addComplicationFromEvent(label: string) {
-    const next = addComplicationLabel(selectedComplications, label)
-    if (!next) return
+  /**
+   * Deletes an item of the old line of text, kept on cases charted before
+   * 10.1.0. New complications are timed entries in the log and are deleted
+   * as events.
+   */
+  function removeLegacyComplication(label: string) {
+    const next = selectedComplications.filter(item => item !== label)
     setSelectedComplications(next)
-    patchIntraopSection({ complications: formatComplications(next, complicationsNotes) }).catch(() => {})
+    patchIntraopSection({ complications: formatComplications(next, complicationsNotes) }).catch(() => {
+      notify(errorLabel, tc("complicationsSaveFailed"))
+    })
   }
 
   async function saveComplications() {
@@ -55,7 +61,7 @@ export function useIntraopComplicationState(
     setComplicationsNotes,
     compGroupExpanded,
     compSaving,
-    addComplicationFromEvent,
+    removeLegacyComplication,
     saveComplications,
     toggleComplication,
     toggleComplicationGroup,

@@ -29,6 +29,7 @@ import {
 } from "@lospor/core/clinical-validation"
 import { usePreferences, type ClinicalStringKey } from "@/lib/preferences-context"
 import { useShade } from "@/theme/shade"
+import type { VitalQuestionContext } from "@lospor/core/vital-questions"
 
 const INTRAOP_ISSUE_LABEL_KEYS: Partial<Record<ClinicalIssueCode, ClinicalStringKey>> = {
   missing_start_time: "issueAnaesthesiaStart",
@@ -90,6 +91,8 @@ type UseIntraopCaseLifecycleArgs = {
     labelOf: (event: LogEvent) => string
     endedAtRef: MutableRefObject<Date | null>
     resyncActiveRef: MutableRefObject<() => void>
+    /** The vitals questions (10.1.0), when asked on this screen. */
+    vitals?: VitalQuestionContext | null
   }
 }
 
@@ -142,6 +145,7 @@ export function useIntraopCaseLifecycle({
     endedAtRef: timeline.endedAtRef,
     syncLog: timeline.syncLog,
     resyncActiveRef: timeline.resyncActiveRef,
+    vitals: timeline.vitals,
   })
   const saveState = useCaseSaveState(timeline.caseId)
 
@@ -354,6 +358,6 @@ export function useIntraopCaseLifecycle({
     endCaseRunningItems,
     afterEndItems,
     resolveAfterEnd,
-    attention: { ...attention, clockOf, labelOf: timeline.labelOf, log: timeline.log, saveState },
+    attention: { ...attention, clockOf, labelOf: timeline.labelOf, log: timeline.log, saveState, keepLogging: timeline.vitals?.keepLogging },
   }
 }

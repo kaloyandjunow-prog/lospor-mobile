@@ -38,6 +38,8 @@ export type PreferencesContextValue = {
   intraopFavouriteInfusions: string[]
   /** Which catalogues show Bulgarian names (Settings → UI). */
   bulgarianNames: BulgarianNameSwitches
+  /** After a yes to a question from the vitals, keep logging while out of range (10.1.0). */
+  vitalEpisodeAutoLog: boolean
   localeReady: boolean
   clinicalPreferencesReady: boolean
   setLanguage: (language: AppLanguage) => Promise<void>
@@ -60,6 +62,7 @@ export type PreferencesContextValue = {
   setIntraopFavouriteDrugs: (values: string[]) => Promise<void>
   setIntraopFavouriteInfusions: (values: string[]) => Promise<void>
   setBulgarianNames: (value: Partial<BulgarianNameSwitches>) => Promise<void>
+  setVitalEpisodeAutoLog: (value: boolean) => Promise<void>
   t: (key: TranslationKey) => string
   tc: (key: ClinicalStringKey) => string
 }

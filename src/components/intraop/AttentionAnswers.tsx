@@ -20,6 +20,11 @@ const ANSWERS: Record<IntraopAttentionKind, { action: IntraopAttentionAction; la
     { action: "still_running", label: "stopStillRunning", tone: "no", testId: "attention-still-running" },
     { action: "stopped", label: "stopConfirmedStopped", tone: "yes", testId: "attention-stopped" },
   ],
+  // 10.1.0: a reading outside its limits. Nothing is logged without the yes.
+  vital_deviation: [
+    { action: "not_now", label: "vitalNotNow", tone: "no", testId: "attention-vital-not-now" },
+    { action: "log_complication", label: "vitalLogIt", tone: "yes", testId: "attention-vital-log" },
+  ],
 }
 
 export function AttentionAnswers({ id, kind, onAnswer }: {
