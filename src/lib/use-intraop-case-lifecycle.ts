@@ -4,7 +4,7 @@ import { useRef, useState, type Dispatch, type MutableRefObject, type SetStateAc
 import { confirmAction, notify } from "@/lib/notify"
 import type { ActiveFluid, ActiveGasSettings, ActiveInfusion, LogEvent } from "@/lib/intraop-log-event"
 import { buildFinaliseCaseState, buildReopenedEndedState, buildResumeCaseState } from "@/lib/intraop-case-lifecycle"
-import { buildEndCaseRunningItems, hasEndCaseRunningItems, type EndCaseStopOptions } from "@/lib/intraop-end-case-items"
+import { buildEndCaseRunningItems, type EndCaseStopOptions } from "@/lib/intraop-end-case-items"
 import type { EndCaseAfterEndItem, EndCaseCleanupItem, EndCaseStopContext } from "@/components/intraop/EndCaseSheet"
 import type { RunningAgent } from "@/lib/use-intraop-running-state"
 import { formatDateHHMM } from "@/lib/intraop-projection"
@@ -255,20 +255,11 @@ export function useIntraopCaseLifecycle({
       )
       if (!proceed) return
     }
-    const at = new Date(Math.floor(serverNow().getTime() / 60_000) * 60_000)
-    const pending = intraopAttentionItems(timeline.logRef.current, { now: at, endedAt: at })
-    setEndCaseAt(at)
-    if (pending.length > 0 || hasEndCaseRunningItems({ activeAgents, activeGas, activeInfusions, activeFluids })) {
-      setEndCaseDecisions({})
-      setEndCaseOpen(true)
-    } else {
-      const confirmed = await confirmAction(
-        tc("endCaseTitle"),
-        tc("allActiveItemsClear"),
-        { confirmLabel: tc("continuePostopShort"), cancelLabel },
-      )
-      if (confirmed) await finaliseCase([])
-    }
+    // Always the sheet, even with nothing left to answer: it is where End at
+    // lives, and a case charted afterwards usually has nothing running (10.1.0).
+    setEndCaseAt(new Date(Math.floor(serverNow().getTime() / 60_000) * 60_000))
+    setEndCaseDecisions({})
+    setEndCaseOpen(true)
   }
 
   async function resumeCase() {

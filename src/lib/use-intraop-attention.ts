@@ -91,6 +91,10 @@ function useVitalEpisodeClosing(
     if (!vitals || closing.current) return
     const ops = vitalEpisodeOps(log, vitals, endedAt)
     if (isEmptyIntraopEventOps(ops)) return
+    // This runs before the screen's own effect copies the log into logRef, so
+    // on a fresh load logRef is still empty: closing onto it saved an empty
+    // chart. Bring it up to date first, as that effect is about to.
+    logRef.current = log
     closing.current = true
     void syncLogRef.current(applyIntraopEventOps(logRef.current, ops) as LogEvent[])
       .finally(() => { closing.current = false })
