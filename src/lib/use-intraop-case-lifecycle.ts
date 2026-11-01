@@ -139,6 +139,11 @@ export function useIntraopCaseLifecycle({
   // entered ahead and still unconfirmed, are answered before the case ends.
   // Which ones, and what each answer writes, is Core's (intraop-attention).
   const [endCaseAt, setEndCaseAt] = useState<Date | null>(null)
+  // The end chosen with End at (10.1.0): entries after it are answered in the
+  // sheet, before the case ends, and "happened" moves an entry to it. Null
+  // while the sheet says End now, which keeps the minute it opened at.
+  const [chosenEndTs, setChosenEndTs] = useState<string | null>(null)
+  const afterEndAt = chosenEndTs ? new Date(chosenEndTs) : endCaseAt
   const attention = useIntraopAttention({
     log: timeline.log,
     logRef: timeline.logRef,
@@ -259,6 +264,7 @@ export function useIntraopCaseLifecycle({
     // lives, and a case charted afterwards usually has nothing running (10.1.0).
     setEndCaseAt(new Date(Math.floor(serverNow().getTime() / 60_000) * 60_000))
     setEndCaseDecisions({})
+    setChosenEndTs(null)
     setEndCaseOpen(true)
   }
 
@@ -288,7 +294,7 @@ export function useIntraopCaseLifecycle({
   // happen" deletes it with what depends on it, and an unconfirmed stop is
   // confirmed or withdrawn.
   async function resolveAfterEnd(id: string, action: IntraopAttentionAction) {
-    const at = endCaseAt ?? serverNow()
+    const at = afterEndAt ?? serverNow()
     const next = logAfterAttentionAnswer(timeline.logRef.current, id, action, { now: serverNow(), endedAt: at })
     if (next) await timeline.syncLog(next)
     timeline.resyncActiveRef.current()
@@ -297,8 +303,8 @@ export function useIntraopCaseLifecycle({
   // Times in the case's own zone, never the device's.
   const clockOf = (ts: string) =>
     (isValidTimeZone(caseTimezone) ? localTimeOf(new Date(ts), caseTimezone) : null) ?? formatDateHHMM(new Date(ts))
-  const afterEndItems: EndCaseAfterEndItem[] = endCaseAt
-    ? intraopAttentionItems(timeline.log, { now: endCaseAt, endedAt: endCaseAt }).map(item => ({
+  const afterEndItems: EndCaseAfterEndItem[] = afterEndAt
+    ? intraopAttentionItems(timeline.log, { now: afterEndAt, endedAt: afterEndAt }).map(item => ({
         id: item.key,
         kind: item.kind,
         label: intraopAttentionText(item, language),
@@ -349,6 +355,7 @@ export function useIntraopCaseLifecycle({
     endCaseRunningItems,
     afterEndItems,
     resolveAfterEnd,
+    setChosenEndTs,
     attention: { ...attention, clockOf, labelOf: timeline.labelOf, log: timeline.log, saveState, keepLogging: timeline.vitals?.keepLogging },
   }
 }

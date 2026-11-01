@@ -71,6 +71,7 @@ export type IntraopSheetsBuilderProps = IntraopMedicationSheetBuilderProps & {
   endCaseRunningItems: EndCaseProps["items"]
   afterEndItems: NonNullable<EndCaseProps["afterEnd"]>
   resolveAfterEnd: NonNullable<EndCaseProps["onResolveAfterEnd"]>
+  setChosenEndTs: NonNullable<EndCaseProps["onChosenEnd"]>
   endCaseDecisions: EndCaseProps["decisions"]
   setEndCaseDecisions: (
     value: EndCaseProps["decisions"] | ((previous: EndCaseProps["decisions"]) => EndCaseProps["decisions"])
@@ -107,7 +108,7 @@ export function buildIntraopSheetsProps(props: IntraopSheetsBuilderProps): Intra
     compSaving, toggleComplicationGroup, toggleComplication, setSelectedComplications,
     saveComplications, startAtOpen, startAtInput, setStartAtOpen, setStartAtInput, startCaseAt,
     startAtDay,
-    endCaseOpen, setEndCaseOpen, endCaseRunningItems, afterEndItems, resolveAfterEnd, endCaseDecisions, setEndCaseDecisions,
+    endCaseOpen, setEndCaseOpen, endCaseRunningItems, afterEndItems, resolveAfterEnd, setChosenEndTs, endCaseDecisions, setEndCaseDecisions,
     finaliseCase, premedPickOpen, premedPickPhase, PREMED_LIBRARY, premedPickCat,
     premedPickDrug, premedPickDose, premedPickRoute, setPremedPickOpen, setPremedPickCat,
     setPremedPickDrug, setPremedPickDose, setPremedPickRoute, addSelectedPremedication,
@@ -175,6 +176,7 @@ export function buildIntraopSheetsProps(props: IntraopSheetsBuilderProps): Intra
       items: endCaseRunningItems,
       afterEnd: afterEndItems,
       onResolveAfterEnd: resolveAfterEnd,
+      onChosenEnd: setChosenEndTs,
       decisions: endCaseDecisions,
       continueLabel: tc("continuePostop"),
       onDecision: (key, decision) => setEndCaseDecisions((previous) => ({ ...previous, [key]: decision })),

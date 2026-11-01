@@ -186,4 +186,37 @@ describe("End at (10.1.0)", () => {
     await act(async () => { await byId("end-case-finalize").props.onPress() })
     expect(onFinalize).toHaveBeenCalledWith([], "2026-10-29T09:00:00.000Z")
   })
+
+  it("tells the screen the end chosen, so entries after it are asked about before ending", () => {
+    const onChosenEnd = vi.fn()
+    const tree = render(
+      <EndCaseSheet
+        visible
+        onClose={() => {}}
+        items={[]}
+        decisions={{}}
+        continueLabel="Finalise"
+        onDecision={() => {}}
+        onFinalize={() => {}}
+        startedAt={new Date("2026-10-29T07:00:00.000Z")}
+        timeZone="Europe/Sofia"
+        onChosenEnd={onChosenEnd}
+      />,
+    )
+    const byId = (id: string) => tree.root.findAll(node => node.props?.testID === id)[0]!
+    expect(onChosenEnd).toHaveBeenLastCalledWith(null)
+    act(() => { byId("end-case-mode-at").props.onPress() })
+    for (let i = 0; i < 10; i += 1) {
+      const back = tree.root.findAll(node => node.props?.accessibilityLabel === "timingEndDate: −1")[0]
+      if (!back || back.props.disabled) break
+      act(() => { back.props.onPress() })
+    }
+    act(() => { byId("end-case-at-time").props.onChangeText("11:00") })
+    expect(onChosenEnd).toHaveBeenLastCalledWith("2026-10-29T09:00:00.000Z")
+    // A time before the start is no end at all.
+    act(() => { byId("end-case-at-time").props.onChangeText("08:30") })
+    expect(onChosenEnd).toHaveBeenLastCalledWith(null)
+    act(() => { byId("end-case-mode-now").props.onPress() })
+    expect(onChosenEnd).toHaveBeenLastCalledWith(null)
+  })
 })

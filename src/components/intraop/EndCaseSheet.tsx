@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Text, TextInput, TouchableOpacity, View } from "react-native"
 import type { IntraopAttentionAction, IntraopAttentionKind } from "@lospor/core/intraop-attention"
 import type { PumpTotalUnit } from "@lospor/core/intraop-types"
@@ -56,6 +56,8 @@ type Props = {
   /** The case start and zone, for End at (10.1.0). */
   startedAt?: Date | null
   timeZone?: string | null
+  /** The end chosen with End at, or null for End now: entries after it are asked about here (10.1.0). */
+  onChosenEnd?: (endTs: string | null) => void
 }
 
 export function EndCaseSheet({
@@ -70,10 +72,14 @@ export function EndCaseSheet({
   onFinalize,
   startedAt = null,
   timeZone = null,
+  onChosenEnd,
 }: Props) {
   const shade = useShade()
   const { tc, language } = usePreferences()
   const end = useEndCaseTime(startedAt, timeZone)
+  // Entries after a chosen end are answered before the case ends, not after.
+  const chosenEnd = end.mode === "at" ? end.endTs : null
+  useEffect(() => { onChosenEnd?.(chosenEnd) }, [chosenEnd, onChosenEnd])
   const [fluidActualVolumes, setFluidActualVolumes] = useState<Record<string, string>>({})
   const [pumpTotals, setPumpTotals] = useState<Record<string, EndCaseStopContext["pump"]>>({})
   const allDecided = items.length === 0 || items.every(item => !!decisions[item.key])

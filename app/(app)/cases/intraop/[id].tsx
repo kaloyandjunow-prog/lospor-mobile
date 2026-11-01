@@ -416,7 +416,7 @@ export default function IntraopLiveScreen() {
     openEndCase,
     finaliseCase,
     resumeCase, resumeUnlimited, restoreEndedCase,
-    endCaseRunningItems, afterEndItems, resolveAfterEnd, attention,
+    endCaseRunningItems, afterEndItems, resolveAfterEnd, setChosenEndTs, attention,
   } = useIntraopCaseLifecycle({
     startRef,
     setElapsedMs,
@@ -756,7 +756,7 @@ export default function IntraopLiveScreen() {
           setEditDose, setEditTime, confirmEdit, compOpen, COMPLICATION_TC_TITLES,
           compGroupExpanded, compSaving, toggleComplicationGroup, toggleComplication,
           setSelectedComplications, startAtOpen, startAtInput, setStartAtOpen, setStartAtInput,
-          startAtDay, startCaseAt, endCaseOpen, setEndCaseOpen, endCaseRunningItems, afterEndItems, resolveAfterEnd, endCaseDecisions,
+          startAtDay, startCaseAt, endCaseOpen, setEndCaseOpen, endCaseRunningItems, afterEndItems, resolveAfterEnd, setChosenEndTs, endCaseDecisions,
           setEndCaseDecisions, finaliseCase, premedPickOpen, premedPickPhase, PREMED_LIBRARY,
           premedPickCat, premedPickDrug, premedPickDose, premedPickRoute, setPremedPickOpen,
           setPremedPickCat, setPremedPickDrug, setPremedPickDose, setPremedPickRoute,
