@@ -46,6 +46,7 @@ export function TimetableFooter({ started, isWatching, onJumpToNow, onEndCase, o
         <Text style={{ color: shade("#fb923c"), fontSize: 13, fontWeight: "800" }}>{tc("tfJumpToNow")}</Text>
       </TouchableOpacity>
       <TouchableOpacity
+        testID="timetable-end-case"
         onPress={() => { if (!isWatching) onEndCase() }}
         disabled={isWatching}
         style={{
