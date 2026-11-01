@@ -24,7 +24,7 @@ const VITAL_LABELS = {
   en: { bp: "BP", hr: "HR", spo2: "SpO₂", etco2: "EtCO₂", temp: "Temp",
         sbp: "SBP", dbp: "DBP", units: "mmHg/bpm", drugs: "Drugs", time: "Time" },
   bg: { bp: "АН", hr: "СЧ", spo2: "SpO₂", etco2: "EtCO₂", temp: "Темп",
-        sbp: "САН", dbp: "ДАН", units: "mmHg/удм", drugs: "Медикаменти", time: "Час" },
+        sbp: "Сис", dbp: "Диас", units: "mmHg/удм", drugs: "Медикаменти", time: "Час" },
 } as const
 
 export function TimetablePanelSvg({ model, drugLog, startISO, c0, c1, step, colW, theme, lang = "en" }: {

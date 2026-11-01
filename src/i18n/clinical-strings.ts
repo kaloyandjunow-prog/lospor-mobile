@@ -1417,8 +1417,8 @@ export const CLINICAL_STRINGS = {
 
     // ── Physical exam — vitals ────────────────────────────────────────────
     vitalsSectionTitle:  "Физикален преглед — Жизнени показатели",
-    sbpLabel:            "САН",
-    dbpLabel:            "ДАН",
+    sbpLabel:            "Сис",
+    dbpLabel:            "Диас",
     heartRateLabel:      "Сърдечна честота",
     arrhythmiaLabel:     "Сърдечна аритмия",
     spO2Label:           "SpO₂",
@@ -2061,8 +2061,8 @@ export const CLINICAL_STRINGS = {
 
     // Intraop — vitals sheet
     vsBloodPressure:     "Артериално налягане",
-    vsSys:               "Сист",
-    vsDia:               "Диаст",
+    vsSys:               "Сис",
+    vsDia:               "Диас",
     vsHeartRate:         "СЪРДЕЧНА ЧЕСТОТА",
     vsTemp:              "ТЕМП",
     vsSaveVitals:        "Запази витали",
