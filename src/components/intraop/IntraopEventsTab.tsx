@@ -126,7 +126,7 @@ export function IntraopEventsTab({
             <View style={{ paddingHorizontal:8, paddingVertical:3, borderRadius:8,
               backgroundColor:shade("#ef444422"), borderWidth:1, borderColor:shade("#ef444455") }}>
               <Text style={{ color:shade("#f87171"), fontSize:11, fontWeight:"700" }}>
-                {formatMessage(tc("selectedCount"), { count: complications.length })}
+                {formatMessage(tc("complicationsRecordedCount"), { count: complications.length })}
               </Text>
             </View>
           )}

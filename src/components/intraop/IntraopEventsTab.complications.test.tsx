@@ -59,4 +59,11 @@ describe("the complications list (10.1.0)", () => {
     const { tree } = tab([notNow, episode])
     expect(JSON.stringify(tree.toJSON())).not.toContain("prompt_answer")
   })
+
+  it("counts the complications as recorded, not selected", () => {
+    const { tree } = tab([episode], ["Bronchospasm"])
+    const json = JSON.stringify(tree.toJSON())
+    expect(json).toContain("complicationsRecordedCount")
+    expect(json).not.toContain("selectedCount")
+  })
 })

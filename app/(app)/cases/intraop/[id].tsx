@@ -718,7 +718,7 @@ export default function IntraopLiveScreen() {
           urineMl, setUrineMl, bloodLossMl, setBloodLossMl,
           chartPage, caseEnded, resumeSecsLeft, resumeCase, setChartPage, setTtColCount,
           handleChartTimetableChange, setEntryTs, slotOpen, slotTs, timeStr, slotEventSearch,
-          slotCompExpanded, CLINICAL_EVENT_CATS, COMPLICATION_GROUPS, COMPLICATION_ITEMS, isGACase, setSlotOpen,
+          slotCompExpanded, CLINICAL_EVENT_CATS, COMPLICATION_GROUPS, isGACase, setSlotOpen,
           setSlotEventSearch, setSlotCompExpanded, openSlotEvent, openDrug, openAgent,
           stopGasSettings, gasOpen, gasFgf, setGasOpen, setGasFgf, gasCarrierGas,
           setGasCarrierGas, gasFio2, setGasFio2, confirmGasSettings, drugOpen, setDrugOpen,
