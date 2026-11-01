@@ -1,25 +1,18 @@
-import { DEFIBRILLATION_MAX_J, DEFIBRILLATION_MIN_J, clampDefibrillationEnergy } from "@lospor/core/defibrillation"
+import { DEFIBRILLATION_KNOB_SWEEP, defibrillationEnergyAtAngle, defibrillationKnobAngle } from "@lospor/core/defibrillation"
 
 /**
- * The energy knob (10.1.0): 1 J at the left end of a 300° sweep, 360 J at the
- * right, the gap at the bottom. Angles in degrees, 0 at the top, clockwise.
+ * The energy knob (10.1.0), drawn from Core's dial mapping -- the same the
+ * web dialog uses: 1 J at the left end of the sweep, 360 J at the right, the
+ * gap at the bottom. This adds only the touch point and the drawing.
  */
-export const KNOB_SWEEP = 300
+export const KNOB_SWEEP = DEFIBRILLATION_KNOB_SWEEP
 const HALF = KNOB_SWEEP / 2
 
-export function knobAngleForEnergy(energy: number): number {
-  const share = (clampDefibrillationEnergy(energy) - DEFIBRILLATION_MIN_J) / (DEFIBRILLATION_MAX_J - DEFIBRILLATION_MIN_J)
-  return -HALF + share * KNOB_SWEEP
-}
+export const knobAngleForEnergy = defibrillationKnobAngle
 
 /** The energy at a touch point inside a knob of `size`; a touch in the gap goes to the nearer end. */
 export function knobEnergyForPoint(x: number, y: number, size: number): number {
-  const dx = x - size / 2
-  const dy = size / 2 - y
-  // The gap is centred at the bottom: its right half is nearer 360 J, its left half nearer 1 J.
-  const angle = Math.min(HALF, Math.max(-HALF, Math.atan2(dx, dy) * 180 / Math.PI))
-  const share = (angle + HALF) / KNOB_SWEEP
-  return clampDefibrillationEnergy(DEFIBRILLATION_MIN_J + share * (DEFIBRILLATION_MAX_J - DEFIBRILLATION_MIN_J))
+  return defibrillationEnergyAtAngle(Math.atan2(x - size / 2, size / 2 - y) * 180 / Math.PI)
 }
 
 /** A point on the knob's circle at an angle, for drawing. */
