@@ -594,7 +594,6 @@ export const CLINICAL_STRINGS = {
     cascadeDeleteMessage: "Its changes and its stop are deleted with it.",
     autoEndedNotice: "This case was ended automatically 48 hours after it started. Resume it if it is still running.",
     complicationsTitle:  "Complications",
-    clearAll:            "Clear all",
     eventLog:            "Event log",
     noEventsYet:         "No events recorded yet.",
     selectedCount:       "{count} selected",
@@ -1071,8 +1070,6 @@ export const CLINICAL_STRINGS = {
     monitorOther:        "Other",
     airwaySaveFailed:    "Could not save airway data.",
     complicationsSaveFailed: "Could not save complications.",
-    complicationSingular: "complication",
-    complicationPlural: "complications",
     mhUnsyncedCount: "{count} unsynced",
     mhSavedAt: "Saved {time}",
     premedicationSaveFailed: "Could not save premedication.",
@@ -1175,7 +1172,6 @@ export const CLINICAL_STRINGS = {
     // ── Common ────────────────────────────────────────────────────────────
     back:                "← Back",
     clear:               "Clear",
-    saveLabel:           "Save",
     cancelLabel:         "Cancel",
     answerYes:           "Yes",
     answerNo:            "No",
@@ -1212,14 +1208,6 @@ export const CLINICAL_STRINGS = {
     sexFemale:           "Female",
 
     // ── Intraop complication categories ──────────────────────────────────────
-    compCatCardiovascular: "Cardiovascular",
-    compCatRespiratory:    "Respiratory",
-    compCatNeurological:   "Neurological",
-    compCatMetabolic:      "Metabolic / Temperature",
-    compCatDrug:           "Drug / Pharmacological",
-    compCatHaematological: "Haematological",
-    compCatEquipment:      "Equipment / Technical",
-    compCatSurgical:       "Surgical",
 
     // ── Postop handover group titles ──────────────────────────────────────────
     hvgVitalSigns:        "Vital Signs & Monitoring",
@@ -1850,7 +1838,6 @@ export const CLINICAL_STRINGS = {
     cascadeDeleteMessage: "Промените и спирането му се изтриват заедно с него.",
     autoEndedNotice: "Случаят беше приключен автоматично 48 часа след началото. Продължете го, ако още тече.",
     complicationsTitle:  "Усложнения",
-    clearAll:            "Изчистете всички",
     eventLog:            "Дневник на събитията",
     noEventsYet:         "Все още няма записани събития.",
     selectedCount:       "Избрани: {count}",
@@ -2327,8 +2314,6 @@ export const CLINICAL_STRINGS = {
     monitorOther:        "Други",
     airwaySaveFailed:    "Данните за дихателния път не могат да бъдат запазени.",
     complicationsSaveFailed: "Усложненията не могат да бъдат запазени.",
-    complicationSingular: "усложнение",
-    complicationPlural: "усложнения",
     mhUnsyncedCount: "{count} несинхронизирани",
     mhSavedAt: "Запазено {time}",
     premedicationSaveFailed: "Премедикацията не може да бъде запазена.",
@@ -2431,7 +2416,6 @@ export const CLINICAL_STRINGS = {
     // ── Common ────────────────────────────────────────────────────────────
     back:                "← Назад",
     clear:               "Изчисти",
-    saveLabel:           "Запази",
     cancelLabel:         "Отказ",
     answerYes:           "Да",
     answerNo:            "Не",
@@ -2468,14 +2452,6 @@ export const CLINICAL_STRINGS = {
     sexFemale:           "Жена",
 
     // ── Intraop complication categories ──────────────────────────────────────
-    compCatCardiovascular: "Сърдечно-съдови",
-    compCatRespiratory:    "Дихателни",
-    compCatNeurological:   "Неврологични",
-    compCatMetabolic:      "Метаболитни / Температурни",
-    compCatDrug:           "Медикаментозни / Фармакологични",
-    compCatHaematological: "Хематологични",
-    compCatEquipment:      "Оборудване / Технически",
-    compCatSurgical:       "Хирургични",
 
     // ── Postop handover group titles ──────────────────────────────────────────
     hvgVitalSigns:        "Жизнени показатели и мониторинг",

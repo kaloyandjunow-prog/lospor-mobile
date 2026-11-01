@@ -14,7 +14,6 @@ import { defibrillationSheet } from "@/lib/defibrillation-knob"
 
 type SlotProps = IntraopSheetsHostProps["slot"]
 type EditEventProps = IntraopSheetsHostProps["editEvent"]
-type ComplicationsProps = IntraopSheetsHostProps["complications"]
 type StartAtProps = IntraopSheetsHostProps["startAt"]
 type EndCaseProps = IntraopSheetsHostProps["endCase"]
 type PremedicationLibraryProps = IntraopSheetsHostProps["premedicationLibrary"]
@@ -26,7 +25,6 @@ export type IntraopSheetsBuilderProps = IntraopMedicationSheetBuilderProps & {
   slotEventSearch: SlotProps["eventSearch"]
   slotCompExpanded: SlotProps["complicationExpanded"]
   CLINICAL_EVENT_CATS: SlotProps["eventCategories"]
-  COMPLICATION_GROUPS: ComplicationsProps["groups"]
   isGACase: SlotProps["isGACase"]
   setSlotOpen: (open: boolean) => void
   setSlotEventSearch: SlotProps["onEventSearchChange"]
@@ -46,19 +44,9 @@ export type IntraopSheetsBuilderProps = IntraopMedicationSheetBuilderProps & {
   setEditDose: EditEventProps["onDoseChange"]
   setEditTime: EditEventProps["onTimeChange"]
   confirmEdit: EditEventProps["onConfirm"]
-  compOpen: ComplicationsProps["visible"]
-  setCompOpen: (open: boolean) => void
   /** For End at (10.1.0): the case start and its zone. */
   startRef: { current: Date | null }
   caseTimezone: string | null
-  COMPLICATION_TC_TITLES: Record<string, ClinicalStringKey>
-  selectedComplications: ComplicationsProps["selected"]
-  compGroupExpanded: ComplicationsProps["expanded"]
-  compSaving: ComplicationsProps["saving"]
-  toggleComplicationGroup: ComplicationsProps["onToggleGroup"]
-  toggleComplication: ComplicationsProps["onToggleItem"]
-  setSelectedComplications: (selected: string[]) => void
-  saveComplications: ComplicationsProps["onSave"]
   startAtOpen: StartAtProps["visible"]
   startAtInput: StartAtProps["value"]
   setStartAtOpen: (open: boolean) => void
@@ -99,13 +87,11 @@ export type IntraopSheetsBuilderProps = IntraopMedicationSheetBuilderProps & {
 export function buildIntraopSheetsProps(props: IntraopSheetsBuilderProps): IntraopSheetsHostProps {
   const {
     activeAgents, activeGas, slotOpen, slotTs, timeStr, slotEventSearch, slotCompExpanded,
-    CLINICAL_EVENT_CATS, COMPLICATION_GROUPS, isGACase, setSlotOpen, setSlotEventSearch,
+    CLINICAL_EVENT_CATS, isGACase, setSlotOpen, setSlotEventSearch,
     setSlotCompExpanded, openSlotEvent, openDrug, openAgent, stopAgent, stopGasSettings,
     openGasSettings,
     editOpen, editEv, editDose, editTime, setEditOpen, setEditDose, setEditTime, confirmEdit,
-    compOpen, setCompOpen, COMPLICATION_TC_TITLES, selectedComplications, compGroupExpanded,
-    compSaving, toggleComplicationGroup, toggleComplication, setSelectedComplications,
-    saveComplications, startAtOpen, startAtInput, setStartAtOpen, setStartAtInput, startCaseAt,
+    startAtOpen, startAtInput, setStartAtOpen, setStartAtInput, startCaseAt,
     startAtDay,
     endCaseOpen, setEndCaseOpen, endCaseRunningItems, afterEndItems, resolveAfterEnd, setChosenEndTs, endCaseDecisions, setEndCaseDecisions,
     finaliseCase, premedPickOpen, premedPickPhase, PREMED_LIBRARY, premedPickCat,
@@ -146,19 +132,6 @@ export function buildIntraopSheetsProps(props: IntraopSheetsBuilderProps): Intra
       onDoseChange: setEditDose,
       onTimeChange: setEditTime,
       onConfirm: confirmEdit,
-    },
-    complications: {
-      visible: compOpen,
-      onClose: () => setCompOpen(false),
-      groups: COMPLICATION_GROUPS,
-      titleForGroup: group => COMPLICATION_TC_TITLES[group.id] ? tc(COMPLICATION_TC_TITLES[group.id]) : group.title,
-      selected: selectedComplications,
-      expanded: compGroupExpanded,
-      saving: compSaving,
-      onToggleGroup: toggleComplicationGroup,
-      onToggleItem: toggleComplication,
-      onClear: () => setSelectedComplications([]),
-      onSave: saveComplications,
     },
     startAt: {
       visible: startAtOpen,

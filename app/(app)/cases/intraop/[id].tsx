@@ -25,7 +25,7 @@ import { useDrugEntry } from "@/lib/use-drug-entry"
 import { BOLUS_SCENARIOS, INFUSION_SCENARIOS } from "@lospor/core"
 import { plannedProcedureLabel } from "@lospor/core/procedure-codes"
 import { useVitalsEntry } from "@/lib/use-vitals-entry"
-import { COMPLICATION_GROUPS, COMPLICATION_ITEMS, COMPLICATION_TC_TITLES } from "@/lib/intraop-static-options"
+import { COMPLICATION_ITEMS } from "@/lib/intraop-static-options"
 import { intraopTabForFocus, type IntraopTab } from "@/lib/intraop-tabs"
 import { applyIntraopChartChange } from "@/lib/apply-intraop-chart-change"
 import { pediatricAgeFromPreop, useAllergyCheck, type IntraopPreopSummary } from "@/lib/intraop-preop-summary"
@@ -299,18 +299,12 @@ export default function IntraopLiveScreen() {
   const { favouriteDrugs, favouriteInfusions } = useIntraopFavourites()
 
   const {
-    compOpen,
-    setCompOpen,
     selectedComplications,
     setSelectedComplications,
     complicationsNotes,
     setComplicationsNotes,
-    compGroupExpanded,
-    compSaving,
     removeLegacyComplication,
     saveComplications,
-    toggleComplication,
-    toggleComplicationGroup,
   } = useIntraopComplicationState(patchIntraopSection, tc("errorLabel"))
 
   const {
@@ -713,12 +707,12 @@ export default function IntraopLiveScreen() {
           vascSiteColor, VASC_TREE, vascDefaultUnit, VASC_PREEXISTING_QUICK, premedEveningText,
           setPremedEveningText, premedMorningText, setPremedMorningText, savePremedication,
           openPremedPicker, log, selectedComplications, complicationsNotes, setComplicationsNotes,
-          saveComplications, setCompOpen, removeLegacyComplication, eventActions, promptDelete, prevVitalFor, ttColCount,
+          saveComplications, removeLegacyComplication, eventActions, promptDelete, prevVitalFor, ttColCount,
           caseIbw, caseTbw, caseBsa, infusionWeightBasis: INFUSION_WEIGHT_BASIS,
           urineMl, setUrineMl, bloodLossMl, setBloodLossMl,
           chartPage, caseEnded, resumeSecsLeft, resumeCase, setChartPage, setTtColCount,
           handleChartTimetableChange, setEntryTs, slotOpen, slotTs, timeStr, slotEventSearch,
-          slotCompExpanded, CLINICAL_EVENT_CATS, COMPLICATION_GROUPS, isGACase, setSlotOpen,
+          slotCompExpanded, CLINICAL_EVENT_CATS, isGACase, setSlotOpen,
           setSlotEventSearch, setSlotCompExpanded, openSlotEvent, openDrug, openAgent,
           stopGasSettings, gasOpen, gasFgf, setGasOpen, setGasFgf, gasCarrierGas,
           setGasCarrierGas, gasFio2, setGasFio2, confirmGasSettings, drugOpen, setDrugOpen,
@@ -753,9 +747,8 @@ export default function IntraopLiveScreen() {
           changeFluidRate, confirmFluidEnd, agOpen,
           setAgOpen, setAgPick, setAgPercent, VOLATILE_AGENTS, agPick, confirmAgent,
           AGENT_QUICK_PERCENTS, agPercent, editOpen, editEv, editDose, editTime, setEditOpen,
-          setEditDose, setEditTime, confirmEdit, compOpen, COMPLICATION_TC_TITLES,
-          compGroupExpanded, compSaving, toggleComplicationGroup, toggleComplication,
-          setSelectedComplications, startAtOpen, startAtInput, setStartAtOpen, setStartAtInput,
+          setEditDose, setEditTime, confirmEdit,
+          startAtOpen, startAtInput, setStartAtOpen, setStartAtInput,
           startAtDay, startCaseAt, endCaseOpen, setEndCaseOpen, endCaseRunningItems, afterEndItems, resolveAfterEnd, setChosenEndTs, endCaseDecisions,
           setEndCaseDecisions, finaliseCase, premedPickOpen, premedPickPhase, PREMED_LIBRARY,
           premedPickCat, premedPickDrug, premedPickDose, premedPickRoute, setPremedPickOpen,
