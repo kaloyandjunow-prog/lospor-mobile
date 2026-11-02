@@ -1922,10 +1922,10 @@ export const CLINICAL_STRINGS = {
     awxFailed: "неуспешен",
     awxReplaced: "сменен",
     awxHistory: "Използвани устройства",
-    jetRow: "Джет",
-    jetStart: "Начало на джет",
+    jetRow: "Jet",
+    jetStart: "Начало на Jet",
     jetApply: "Приложи",
-    jetStop: "Спиране на джет",
+    jetStop: "Спиране на Jet",
     jetPressure: "Работно налягане",
     jetRate: "Честота",
     tqTitleOn: "Турникет: къде?",
@@ -2264,7 +2264,7 @@ export const CLINICAL_STRINGS = {
     ventSpontaneous:     "Спонтанна",
     ventAssisted:        "Асистирана",
     ventControlled:      "Контролирана",
-    ventJet:             "Джет вентилация",
+    ventJet:             "Jet вентилация",
     awNotesPlaceholder:  "Допълнителни бележки за дихателните пътища…",
 
     // Intraop — case ended
