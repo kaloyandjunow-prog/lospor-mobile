@@ -90,6 +90,7 @@ export type IntraopMedicationSheetBuilderProps = {
     showBis: boolean
     showTofRatio: boolean
     showCvp: boolean
+    showIbp: boolean
   }
   etco2Unit: VitalsProps["etco2Unit"]
   temperatureUnit: VitalsProps["temperatureUnit"]
@@ -127,6 +128,8 @@ export type IntraopMedicationSheetBuilderProps = {
   vBis: VitalsProps["bis"]
   vTof: VitalsProps["tofRatio"]
   vCvp: VitalsProps["cvp"]
+  vIbp: VitalsProps["ibp"]
+  setIbp: VitalsProps["onIbpChange"]
   vitalFeedback: VitalsProps["feedback"]
   setVBis: VitalsProps["onBisChange"]
   setVTof: VitalsProps["onTofRatioChange"]
@@ -229,7 +232,7 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
     vitOpen, vitMode, editingVitalId,
     vitScanBusy, vitalVisibility, etco2Unit, temperatureUnit, vSysRef, vDiaRef, vHRRef,
     vSpO2Ref, vEtco2Ref, vTempRef, vBisRef, vTofRef, vCvpRef, cvpUnit,
-    vSys, vDia, vHR, vSpO2, vEtco2, vTemp, vBis, vTof, vCvp, vitalFeedback,
+    vSys, vDia, vHR, vSpO2, vEtco2, vTemp, vBis, vTof, vCvp, vIbp, setIbp, vitalFeedback,
     setVitOpen, setEditingVitalId, scanVitalsFromCamera, setAndAdvance,
     setVSys, setVDia, setVHR, setVSpO2, setVEtco2, setVTemp,
     setVBis, setVTof, setVCvp, confirmVitals, infOpen,
@@ -328,6 +331,9 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
       showBis: vitalVisibility.showBis,
       showTofRatio: vitalVisibility.showTofRatio,
       showCvp: vitalVisibility.showCvp,
+      showIbp: vitalVisibility.showIbp,
+      ibp: vIbp,
+      onIbpChange: setIbp,
       etco2Unit,
       temperatureUnit,
       cvpUnit: cvpUnit === "cmH2O" ? "cmH₂O" : "mmHg",

@@ -32,6 +32,9 @@ import { usePreferences } from "@/lib/preferences-context"
 // the same timestamp and with the same logical ID — so this hook receives the
 // lower-level log/sync primitives (syncLog, log, logRef, setLog, startRef,
 // setTimetable, eventsToTimetable, roundDown5Min) instead of just `save`.
+export type IbpEntry = { ibpSystolic: string; ibpDiastolic: string; ibpMap: string; nibpMap: string }
+const EMPTY_IBP: IbpEntry = { ibpSystolic: "", ibpDiastolic: "", ibpMap: "", nibpMap: "" }
+
 export function useVitalsEntry(
   save: SaveIntraopEvent,
   syncLog: (newLog: LogEvent[]) => Promise<boolean>,
@@ -75,6 +78,9 @@ export function useVitalsEntry(
   const [vBis, setVBis]     = useState("")
   const [vTof, setVTof]     = useState("")
   const [vCvp, setVCvp]     = useState("")
+  // The arterial line and the cuff mean (10.2.0); systolic and diastolic above are the cuff (NIBP).
+  const [vIbp, setVIbp]     = useState<IbpEntry>(EMPTY_IBP)
+  const setIbp = (field: keyof IbpEntry, value: string) => setVIbp(current => ({ ...current, [field]: value }))
   const vitalEntry = buildVitalEntry({
     systolic: vSys,
     diastolic: vDia,
@@ -85,6 +91,7 @@ export function useVitalsEntry(
     bis: vBis,
     tofRatio: vTof,
     cvp: vCvp,
+    ...vIbp,
   }, {
     etco2: etco2ToCanonical,
     temp: tempToCanonical,
@@ -112,6 +119,10 @@ export function useVitalsEntry(
     setVBis(prefill?.bis       != null ? String(prefill.bis)       : "")
     setVTof(prefill?.tofRatio  != null ? String(prefill.tofRatio)  : "")
     setVCvp(prefill?.cvp       != null ? String(cvpDisplay(prefill.cvp)) : "")
+    setVIbp({
+      ibpSystolic: prefill?.ibpSystolic != null ? String(prefill.ibpSystolic) : "", ibpDiastolic: prefill?.ibpDiastolic != null ? String(prefill.ibpDiastolic) : "",
+      ibpMap: prefill?.ibpMap != null ? String(prefill.ibpMap) : "", nibpMap: prefill?.nibpMap != null ? String(prefill.nibpMap) : "",
+    })
     setVitOpen(true)
   }
 
@@ -186,7 +197,8 @@ export function useVitalsEntry(
       if (v.temp      != null) setVTemp(String(tempToDisplay(v.temp)))
       if (v.bis       != null) setVBis(String(v.bis))
       if (v.tofRatio  != null) setVTof(String(v.tofRatio))
-      if ([v.systolic, v.diastolic, v.heartRate, v.spO2, v.etco2, v.temp, v.bis, v.tofRatio].every((value: unknown) => value == null)) {
+      for (const field of Object.keys(EMPTY_IBP) as Array<keyof IbpEntry>) if (v[field] != null) setIbp(field, String(v[field]))
+      if ([v.systolic, v.diastolic, v.heartRate, v.spO2, v.etco2, v.temp, v.bis, v.tofRatio, v.ibpSystolic, v.ibpDiastolic, v.ibpMap, v.nibpMap].every((value: unknown) => value == null)) {
         notify(tc("noReadingsFound"), tc("noReadingsFoundMsg"))
       }
     } catch (error) {
@@ -204,7 +216,7 @@ export function useVitalsEntry(
   return {
     vitOpen, setVitOpen, vitMode, setVitMode, vitScanBusy, editingVitalId, setEditingVitalId,
     vSys, setVSys, vDia, setVDia, vHR, setVHR, vSpO2, setVSpO2, vEtco2, setVEtco2, vTemp, setVTemp,
-    vBis, setVBis, vTof, setVTof, vCvp, setVCvp,
+    vBis, setVBis, vTof, setVTof, vCvp, setVCvp, vIbp, setIbp,
     vitalFeedback, openVitals, confirmVitals, scanVitalsFromCamera, setAndAdvance,
   }
 }

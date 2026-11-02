@@ -985,7 +985,11 @@ export const CLINICAL_STRINGS = {
     vtLumenShort:        "lumen",
 
     // Intraop — vitals sheet
-    vsBloodPressure:     "Blood Pressure",
+    vsBloodPressure:     "Blood Pressure (NIBP)",
+    vsNibp:              "NIBP (cuff)",
+    vsIbp:               "IBP (arterial line)",
+    vsMap:               "MAP",
+    vsMapCuff:           "MAP (cuff)",
     vsSys:               "Sys",
     vsDia:               "Dia",
     vsHeartRate:         "HEART RATE",
@@ -2408,7 +2412,11 @@ export const CLINICAL_STRINGS = {
     vtLumenShort:        "лумена",
 
     // Intraop — vitals sheet
-    vsBloodPressure:     "Артериално налягане",
+    vsBloodPressure:     "Артериално налягане (NIBP)",
+    vsNibp:              "NIBP (маншет)",
+    vsIbp:               "IBP (артериална линия)",
+    vsMap:               "СрАН",
+    vsMapCuff:           "СрАН (маншет)",
     vsSys:               "Сис",
     vsDia:               "Диас",
     vsHeartRate:         "СЪРДЕЧНА ЧЕСТОТА",
