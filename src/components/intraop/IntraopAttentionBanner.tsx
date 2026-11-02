@@ -2,6 +2,8 @@ import { Pressable, Text, View } from "react-native"
 import { colors } from "@/theme/colors"
 import { intraopAttentionText, intraopRefusedEntry, type IntraopAttentionAction, type IntraopAttentionItem } from "@lospor/core/intraop-attention"
 import { vitalQuestionText } from "@lospor/core/vital-questions"
+import { clinicalDisplayLabel } from "@lospor/core/display"
+import type { IntraopAttentionItem as Item } from "@lospor/core/intraop-attention"
 
 import type { LogEvent } from "@/lib/intraop-log-event"
 import { usePreferences } from "@/lib/preferences-context"
@@ -11,7 +13,9 @@ import type { CaseSaveState } from "@/lib/use-case-save-state"
 
 export type IntraopAttentionView = {
   items: IntraopAttentionItem[]
-  resolve: (key: string, action: IntraopAttentionAction) => Promise<void>
+  resolve: (key: string, action: IntraopAttentionAction, choice?: string) => Promise<void>
+  /** A suggestion line's Open: its card, follow-up or reminder in a sheet (10.2.0). */
+  open?: (key: string) => void
   /** Time of day in the case's own zone. */
   clockOf: (ts: string) => string
   labelOf: (event: LogEvent) => string
@@ -42,6 +46,14 @@ function VitalQuestionDetail({ item, keepLogging }: { item: IntraopAttentionItem
       {text.stop ? <Text style={{ color: shade("#94a3b8"), fontSize: 12, marginTop: 2 }}>{text.stop}</Text> : null}
     </View>
   )
+}
+
+/** A question that offers several complications to pick from (a shock, EtCO2 near zero). */
+function choicesOf(item: Item): readonly string[] {
+  const line = item.suggestion?.item
+  if (line?.type === "reverse" && line.question.choices.length > 1) return line.question.choices
+  if (line?.type === "reading" && line.question.kind === "nearZero") return line.question.choices
+  return []
 }
 
 export function IntraopAttentionBanner({ attention }: { attention: IntraopAttentionView }) {
@@ -87,7 +99,9 @@ export function IntraopAttentionBanner({ attention }: { attention: IntraopAttent
             {item.kind === "unconfirmed_stop" ? ` — ${tc("stopUnconfirmedLabel")}` : ""}
           </Text>
           {item.vital ? <VitalQuestionDetail item={item} keepLogging={attention.keepLogging ?? true} /> : null}
-          <AttentionAnswers id={item.key} kind={item.kind} onAnswer={(key, action) => { void attention.resolve(key, action) }} />
+          <AttentionAnswers id={item.key} kind={item.kind} actions={item.actions} choices={choicesOf(item)}
+            choiceLabel={choice => clinicalDisplayLabel("complication", choice, language === "bg" ? "bg" : "en", { label: choice })}
+            onAnswer={(key, action, choice) => { if (action === "open") attention.open?.(key); else void (choice === undefined ? attention.resolve(key, action) : attention.resolve(key, action, choice)) }} />
         </View>
       ))}
     </View>

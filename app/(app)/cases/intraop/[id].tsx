@@ -14,7 +14,7 @@ import { usePreferences } from "@/lib/preferences-context"
 import { emptyTimetable, type TimetableData } from "@/components/IntraopTimetable"
 import { colors } from "@/theme/colors"
 import { useCaseLock } from "@/lib/use-case-lock"
-import { useVitalQuestionContext } from "@/lib/use-intraop-automation"
+import { useSuggestionContext, useVitalQuestionContext } from "@/lib/use-intraop-automation"
 import { DefibrillationHost } from "@/components/intraop/DefibrillationHost"
 import { VASC_PREEXISTING_QUICK, vascDefaultUnit, vascSiteColor } from "@/lib/vascular-access-tree"
 import { useAgentEntry } from "@/lib/use-agent-entry"
@@ -392,6 +392,19 @@ export default function IntraopLiveScreen() {
     startRef, endedAtRef, setCaseMonthYear,
   })
 
+  // The intraoperative suggestions (10.2.0), when any group is on and this screen holds the case.
+  const startedAtIso = startRef.current?.toISOString() ?? null
+  const endedAtIso = endedAtRef.current?.toISOString() ?? null
+  const suggestionFacts = React.useMemo(() => ({
+    idealWeightKg: caseIbw ?? null,
+    tofMonitor: monitoring.includes("tofMonitor"),
+    labs: labResults.map(lab => ({ ...lab, unit: lab.unit ?? "" })),
+    bloodLossMl: Number(bloodLossMl) > 0 ? Number(bloodLossMl) : null,
+    startedAt: startedAtIso,
+    endedAt: endedAtIso,
+  }), [caseIbw, monitoring, labResults, bloodLossMl, startedAtIso, endedAtIso])
+  const suggestionContext = useSuggestionContext(preop, suggestionFacts, isWatching)
+
   const {
     endCaseOpen,
     setEndCaseOpen,
@@ -427,7 +440,7 @@ export default function IntraopLiveScreen() {
     activeGas,
     activeInfusions,
     activeFluids,
-    timeline: { caseId: id ?? null, log, logRef, syncLog, removeEvent, labelOf: ev => eventLabel(ev).text, endedAtRef, resyncActiveRef, vitals: vitalQuestionContext },
+    timeline: { caseId: id ?? null, log, logRef, syncLog, removeEvent, labelOf: ev => eventLabel(ev).text, endedAtRef, resyncActiveRef, vitals: vitalQuestionContext, suggestions: suggestionContext },
     stopAgent,
     stopGasSettings,
     stopInfusion,

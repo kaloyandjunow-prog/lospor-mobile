@@ -310,6 +310,8 @@ export function PreferencesProvider({
     intraopFavouriteInfusions: clinicalPreferences.intraopFavouriteInfusions,
     bulgarianNames: clinicalPreferences.bulgarianNames,
     vitalEpisodeAutoLog: clinicalPreferences.vitalEpisodeAutoLog,
+    automationGroups: clinicalPreferences.automationGroups ?? {},
+    energyKnobSkin: clinicalPreferences.energyKnobSkin ?? "A",
     localeReady,
     clinicalPreferencesReady,
     setLanguage,
@@ -335,6 +337,9 @@ export function PreferencesProvider({
       patchClinical({ intraopFavouriteInfusions }),
     setBulgarianNames: bulgarianNames => patchClinical({ bulgarianNames }),
     setVitalEpisodeAutoLog: vitalEpisodeAutoLog => patchClinical({ vitalEpisodeAutoLog }),
+    // The whole set each time, so one switch never clears another.
+    setAutomationGroups: automationGroups => patchClinical({ automationGroups }),
+    setEnergyKnobSkin: energyKnobSkin => patchClinical({ energyKnobSkin }),
     t: key => STRINGS[language][key] ?? STRINGS.en[key],
     tc: key =>
       (CLINICAL_STRINGS[language] as ClinicalStringsMap)[key]

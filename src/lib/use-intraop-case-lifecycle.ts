@@ -13,6 +13,7 @@ import { intraopEndCaseStopIds } from "@lospor/core/intraop-commands"
 import { intraopAttentionItems, intraopAttentionText, type IntraopAttentionAction } from "@lospor/core/intraop-attention"
 import { localTimeOf } from "@lospor/core/intraop-time"
 import { logAfterAttentionAnswer, useIntraopAttention } from "@/lib/use-intraop-attention"
+import type { SuggestionContext } from "@lospor/core/intraop-suggestions"
 import { useCaseSaveState } from "@/lib/use-case-save-state"
 import { useResumeCountdown } from "@/lib/use-resume-countdown"
 import { promoteDraftCaseToInProgress, startAtDayProps, startInstantForEntry, type IntraopTimingOverrides } from "@/lib/intraop-timing"
@@ -93,6 +94,8 @@ type UseIntraopCaseLifecycleArgs = {
     resyncActiveRef: MutableRefObject<() => void>
     /** The vitals questions (10.1.0), when asked on this screen. */
     vitals?: VitalQuestionContext | null
+    /** The suggestions (10.2.0), when any group is on and this screen holds the case. */
+    suggestions?: Omit<SuggestionContext, "now"> | null
   }
 }
 
@@ -151,6 +154,7 @@ export function useIntraopCaseLifecycle({
     syncLog: timeline.syncLog,
     resyncActiveRef: timeline.resyncActiveRef,
     vitals: timeline.vitals,
+    suggestions: timeline.suggestions,
   })
   const saveState = useCaseSaveState(timeline.caseId)
 

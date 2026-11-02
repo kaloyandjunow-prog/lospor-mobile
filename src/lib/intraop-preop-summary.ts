@@ -30,6 +30,12 @@ export type IntraopPreopSummary = {
   pediatricFasting?: { category: PediatricFastingCategory; hoursBefore: number }[]
   /** The premedication ordered at the preop visit; the record's premedication starts from it. */
   premedicationOrders?: PremedicationOrders
+  // What the intraoperative suggestions read (10.2.0): P1 MH, P4 latex, P3 ПОГП.
+  malignantHyperthermiaHistory?: boolean | null
+  familyAnesthesiaProblems?: boolean | null
+  latexAllergy?: boolean | null
+  apfelScore?: number | null
+  apfelPONVHistory?: boolean | null
 }
 
 function numberOrUndefined(value: unknown): number | undefined {
@@ -74,6 +80,11 @@ export function buildIntraopPreopSummary(
           typeof row?.category === "string" && typeof row.hoursBefore === "number")
       : undefined,
     premedicationOrders: premedicationOrdersOf(pd.preopPremedicationOrders),
+    malignantHyperthermiaHistory: typeof pd.malignantHyperthermiaHistory === "boolean" ? pd.malignantHyperthermiaHistory : null,
+    familyAnesthesiaProblems: typeof pd.familyAnesthesiaProblems === "boolean" ? pd.familyAnesthesiaProblems : null,
+    latexAllergy: typeof pd.latexAllergy === "boolean" ? pd.latexAllergy : null,
+    apfelScore: numberOrUndefined(pd.apfelScore) ?? null,
+    apfelPONVHistory: typeof pd.apfelPONVHistory === "boolean" ? pd.apfelPONVHistory : null,
   }
 }
 export function pediatricAgeFromPreop(

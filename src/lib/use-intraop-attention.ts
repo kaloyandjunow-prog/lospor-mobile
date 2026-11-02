@@ -10,6 +10,8 @@ import {
 import { applyIntraopEventOps, isEmptyIntraopEventOps } from "@lospor/core/intraop-timetable-edit"
 import { vitalEpisodeOps, type VitalQuestionContext } from "@lospor/core/vital-questions"
 import type { LogEvent } from "@/lib/intraop-log-event"
+import type { SuggestionContext } from "@lospor/core/intraop-suggestions"
+import type { IntraopEventOps } from "@lospor/core/intraop-timetable-edit"
 
 /**
  * The log after one answer, exactly as Core writes it, or null when there is
@@ -22,8 +24,10 @@ export function logAfterAttentionAnswer(
   key: string,
   action: IntraopAttentionAction,
   context: IntraopAttentionContext,
+  /** A question with several answers: the complication picked (10.2.0). */
+  choice?: string,
 ): LogEvent[] | null {
-  const ops = intraopResolveAttention(log, key, action, context)
+  const ops = intraopResolveAttention(log, key, action, context, choice)
   return isEmptyIntraopEventOps(ops) ? null : applyIntraopEventOps(log, ops) as LogEvent[]
 }
 
@@ -39,11 +43,19 @@ function useMinuteClock(): number {
 
 export type IntraopAttention = {
   items: IntraopAttentionItem[]
-  resolve: (key: string, action: IntraopAttentionAction) => Promise<void>
+  resolve: (key: string, action: IntraopAttentionAction, choice?: string) => Promise<void>
+  /** The suggestions (10.2.0) as the screen has them now; null when none are asked. */
+  suggestions: SuggestionContext | null
+  /** Writes a card's own operations (a relabel, Done, an event) to the log. */
+  applyOps: (ops: IntraopEventOps) => Promise<void>
+  /** The suggestion line opened in its sheet, by key. */
+  opened: string | null
+  open: (key: string | null) => void
+  log: LogEvent[]
 }
 
 /** What the timeline is waiting for an answer on, live, and the answers. */
-export function useIntraopAttention({ log, logRef, endedAtRef, syncLog, resyncActiveRef, vitals = null }: {
+export function useIntraopAttention({ log, logRef, endedAtRef, syncLog, resyncActiveRef, vitals = null, suggestions: suggestionBase = null }: {
   log: LogEvent[]
   logRef: MutableRefObject<LogEvent[]>
   endedAtRef: MutableRefObject<Date | null>
@@ -51,12 +63,18 @@ export function useIntraopAttention({ log, logRef, endedAtRef, syncLog, resyncAc
   resyncActiveRef: MutableRefObject<() => void>
   /** The vitals questions (10.1.0); null when they are not asked on this screen. */
   vitals?: VitalQuestionContext | null
+  /** The suggestions (10.2.0), when any group is on and this screen holds the case. */
+  suggestions?: Omit<SuggestionContext, "now"> | null
 }): IntraopAttention {
   const minute = useMinuteClock()
   const endedAt = endedAtRef.current
+  const suggestions = useMemo<SuggestionContext | null>(
+    () => (suggestionBase ? { ...suggestionBase, now: minute } : null),
+    [suggestionBase, minute],
+  )
   const items = useMemo(
-    () => intraopAttentionItems(log, { now: minute, endedAt, vitals }),
-    [log, minute, endedAt, vitals],
+    () => intraopAttentionItems(log, { now: minute, endedAt, vitals, suggestions }),
+    [log, minute, endedAt, vitals, suggestions],
   )
   // Stable across renders, so the chart rows it is handed to are not redrawn
   // on every tick; the latest syncLog is read through a ref.
@@ -64,14 +82,49 @@ export function useIntraopAttention({ log, logRef, endedAtRef, syncLog, resyncAc
   syncLogRef.current = syncLog
   const vitalsRef = useRef(vitals)
   vitalsRef.current = vitals
-  const resolve = useCallback(async (key: string, action: IntraopAttentionAction) => {
-    const next = logAfterAttentionAnswer(logRef.current, key, action, { now: serverNow(), endedAt: endedAtRef.current, vitals: vitalsRef.current })
+  const suggestionsRef = useRef(suggestionBase)
+  suggestionsRef.current = suggestionBase
+  const resolve = useCallback(async (key: string, action: IntraopAttentionAction, choice?: string) => {
+    const base = suggestionsRef.current
+    const next = logAfterAttentionAnswer(logRef.current, key, action, {
+      now: serverNow(), endedAt: endedAtRef.current, vitals: vitalsRef.current,
+      suggestions: base ? { ...base, now: serverNow() } : null,
+    }, choice)
     if (!next) return
     await syncLogRef.current(next)
     resyncActiveRef.current()
   }, [logRef, endedAtRef, resyncActiveRef])
+  const applyOps = useCallback(async (ops: IntraopEventOps) => {
+    if (isEmptyIntraopEventOps(ops)) return
+    await syncLogRef.current(applyIntraopEventOps(logRef.current, ops) as LogEvent[])
+    resyncActiveRef.current()
+  }, [logRef, resyncActiveRef])
+  const [opened, open] = useState<string | null>(null)
+  useAutoOpenCards(items, open, suggestionBase != null)
   useVitalEpisodeClosing(log, logRef, endedAt, vitals, syncLogRef)
-  return { items, resolve }
+  return { items, resolve, suggestions, applyOps, opened, open, log }
+}
+
+/**
+ * A card opens by itself for a complication just logged on this screen (the
+ * sheet you used turns into the card); one already waiting when the screen
+ * opened stays a line in the list.
+ */
+function useAutoOpenCards(items: IntraopAttentionItem[], open: (key: string) => void, active: boolean) {
+  const seen = useRef<Set<string> | null>(null)
+  useEffect(() => {
+    const cards = items.filter(item => item.suggestion?.item.type === "card")
+    if (seen.current == null) { seen.current = new Set(cards.map(item => item.key)); return }
+    const known = seen.current
+    const fresh = cards.find(item => {
+      const line = item.suggestion!.item
+      if (line.type !== "card" || known.has(item.key)) return false
+      const recorded = Date.parse(line.complication.recordedAt ?? line.complication.ts)
+      return Number.isFinite(recorded) && serverNow().getTime() - recorded < 2 * 60_000
+    })
+    for (const item of cards) known.add(item.key)
+    if (fresh && active) open(fresh.key)
+  }, [items, open, active])
 }
 
 /**

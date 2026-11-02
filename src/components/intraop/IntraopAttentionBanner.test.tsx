@@ -21,7 +21,8 @@ const answerTestIds = {
   did_not_happen: "end-case-after-end-delete",
   not_now: "attention-vital-not-now",
   log_complication: "attention-vital-log",
-} as const
+  open: "attention-suggestion-open",
+} as const satisfies Record<import("@lospor/core/intraop-attention").IntraopAttentionAction, string>
 
 describe.each(INTRAOP_ATTENTION_SCENARIOS)("$name", scenario => {
   it("shows exactly the items Core lists, and each answer reaches Core unchanged", () => {
