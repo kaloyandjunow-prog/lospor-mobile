@@ -1,3 +1,4 @@
+import { normalizePlannedAnaesthesia } from "@lospor/core/preop-plan"
 import type { PremedicationOrders } from "@lospor/core/premedication"
 import { tciPatientFrom, type TciPatient } from "@lospor/core/tci"
 import type {
@@ -22,6 +23,8 @@ export type IntraopPreopSummary = {
   neckMobility?: string
   mouthOpeningCm?: number
   cormackLehane?: string
+  /** Technique codes planned at the preop visit (Core preop-plan). */
+  plannedTechniques?: string[]
   comorbidities?: { label: string; code?: string }[]
   currentMedications?: { label: string; atcCode?: string }[]
   allergies?: boolean | null
@@ -69,6 +72,7 @@ export function buildIntraopPreopSummary(
     neckMobility: typeof pd.neckMobility === "string" ? pd.neckMobility : undefined,
     mouthOpeningCm: numberOrUndefined(pd.mouthOpeningCm),
     cormackLehane: typeof pd.cormackLehane === "string" ? pd.cormackLehane : undefined,
+    plannedTechniques: normalizePlannedAnaesthesia(pd.plannedAnaesthesia).techniques,
     comorbidities: Array.isArray(pd.comorbidities) ? pd.comorbidities as IntraopPreopSummary["comorbidities"] : [],
     currentMedications: Array.isArray(pd.currentMedications) ? pd.currentMedications as IntraopPreopSummary["currentMedications"] : [],
     // For the allergy check when a drug is given (1.5.0).

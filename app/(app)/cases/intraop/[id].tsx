@@ -29,6 +29,10 @@ import { preopAgeDays } from "@lospor/core/vital-questions"
 import { MonitoringSmart } from "@/components/intraop/MonitoringSmart"
 import { addAirwayDevice, resolveAirwayTime, suggestedAirwayDetails } from "@lospor/core/airway-smart"
 import { toggleEquipmentFlag } from "@lospor/core/equipment-smart"
+import { parseTechniqueSides, type TechniqueSide } from "@lospor/core/technique-smart"
+import { TechniqueSmart } from "@/components/intraop/TechniqueSmart"
+import { techniqueColor } from "@/lib/intraop-technique"
+import { useRecentTechniques } from "@/lib/use-recent-techniques"
 import { MONITORING_READINGS, isRelaxant, monitoringSuggestions } from "@lospor/core/monitoring-smart"
 import { usePhoneAirwayExchange } from "@/lib/use-phone-airway-exchange"
 import { AirwayExchangeSheet } from "@/components/intraop/AirwayExchangeSheet"
@@ -161,6 +165,7 @@ export default function IntraopLiveScreen() {
     vascularScreen,
     monitoringScreen,
     equipmentScreen,
+    techniqueScreen,
   } = usePreferences()
 
   const [caseInfo, setCaseInfo] = useState<{
@@ -417,6 +422,8 @@ export default function IntraopLiveScreen() {
   const [positions,      setPositions]      = useState<string[]>([])
   const [monitoring,     setMonitoring]     = useState<string[]>([])
   const [techniques,     setTechniques]     = useState<string[]>([])
+  // The side of a block or unilateral spinal, by technique code (10.2.0).
+  const [techniqueSides, setTechniqueSides] = useState<Record<string, TechniqueSide>>({})
   const {
     timingSaving,
     fieldSaving,
@@ -665,6 +672,20 @@ export default function IntraopLiveScreen() {
     },
   } : undefined
 
+  // Smart selection for technique (10.2.0): search, the preop plan, the usual ones and the side of a block. The saved
+  // data is the list of technique codes with the side beside it; finding and sides are Core's (technique-smart).
+  const recentTechniques = useRecentTechniques()
+  const applyTechniques = (next: string[], sides: Record<string, TechniqueSide>, added: string[]) => {
+    setTechniques(next)
+    setTechniqueSides(sides)
+    recentTechniques.remember(added)
+    void saveTechniques(next, sides)
+  }
+  const techniqueSmart = techniqueScreen === "smart" && !isWatching ? (
+    <TechniqueSmart techniques={techniques} sides={techniqueSides} onChange={applyTechniques} tree={TECHNIQUE_TREE} label={techniqueLabel} color={techniqueColor}
+      planned={preop?.plannedTechniques ?? []} recents={recentTechniques.recents} />
+  ) : undefined
+
   // Technique tree navigation
   const [techPath,      setTechPath]      = useState<string[]>([])
   const [otherTechText, setOtherTechText] = useState("")
@@ -699,7 +720,10 @@ export default function IntraopLiveScreen() {
     setCaseTimezone,
     setAwTools,
     setAwDevices,
-    onIntraopRecord: airwayExchange.hydrate,
+    onIntraopRecord: record => {
+      airwayExchange.hydrate(record)
+      setTechniqueSides(parseTechniqueSides(record.techniqueSides))
+    },
     setAwLmaSize,
     setAwOralTubeSize,
     setAwOralCuffed,
@@ -860,7 +884,7 @@ export default function IntraopLiveScreen() {
           awNotes, setAwNotes, awPresentsIntubated, setAwPresentsIntubated,
           awNotApplicable, setAwNotApplicable, saveAirwaySection, awExpandedDevice, setAwExpandedDevice,
           awExpandedWasComplete, AIRWAY_TOOLS, AIRWAY_DEVICES, airwaySmart, awVentExpanded, setAwVentExpanded,
-          vascularAccesses, setVascularAccesses, saveVascularAccesses, vascularSaving, vascularSmart, monitoringSmart, equipmentSmart,
+          vascularAccesses, setVascularAccesses, saveVascularAccesses, vascularSaving, vascularSmart, monitoringSmart, equipmentSmart, techniqueSmart,
           vascSiteColor, VASC_TREE, vascDefaultUnit, VASC_PREEXISTING_QUICK, premedEveningText,
           setPremedEveningText, premedMorningText, setPremedMorningText, savePremedication,
           openPremedPicker, log, selectedComplications, complicationsNotes, setComplicationsNotes,

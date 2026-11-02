@@ -140,12 +140,13 @@ export function useIntraopSectionSaves({
     }
   }
 
-  async function saveTechniques(next: string[]) {
+  async function saveTechniques(next: string[], sides?: Record<string, string>) {
     setFieldSaving("techniques")
     try {
       const { patch, monitoring: nextMonitoring } = buildTechniqueMonitoringUpdate(monitoringOptions, monitoring, next)
       if (nextMonitoring) setMonitoring(nextMonitoring)
-      await patchIntraopSection(patch)
+      // The side of a block travels with the list it belongs to (10.2.0): the server keeps a side only for a technique that is on it.
+      await patchIntraopSection(sides ? { ...patch, techniques: next, techniqueSides: sides } : patch)
       setCaseInfo(prev => prev ? { ...prev, techniques: next } : prev)
     } catch {
       /* best-effort */

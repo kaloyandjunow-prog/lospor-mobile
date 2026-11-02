@@ -7,7 +7,7 @@ type TechniqueNode = { v: string; label: string; isOther?: boolean; children?: T
 
 export function TechniqueTab({
   techPath, setTechPath, techniqueTree, techniques, setTechniques, saveTechniques,
-  techniqueColor, techniqueLabel, otherTechText, setOtherTechText, tc,
+  techniqueColor, techniqueLabel, otherTechText, setOtherTechText, tc, smart,
 }: {
   techPath: string[]
   setTechPath: (updater: (p: string[]) => string[]) => void
@@ -20,8 +20,11 @@ export function TechniqueTab({
   otherTechText: string
   setOtherTechText: (v: string) => void
   tc: (key: ClinicalStringKey) => string
+  /** Smart selection (10.2.0). Without it this is the Legacy tab, the list you drill down through. */
+  smart?: React.ReactNode
 }) {
   const shade = useShade()
+  if (smart) return <ScrollView style={{ flex:1 }} contentContainerStyle={{ padding:14, paddingBottom:40 }}>{smart}</ScrollView>
   // Current nodes to display — drill down through techPath
   let currentNodes: TechniqueNode[] = techniqueTree
   const breadcrumbs: TechniqueNode[] = []

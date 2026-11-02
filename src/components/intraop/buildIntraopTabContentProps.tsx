@@ -158,6 +158,7 @@ export type IntraopTabContentBuilderProps = {
   vascularSmart?: VascularProps["smart"]
   monitoringSmart?: MonitoringProps["smart"]
   equipmentSmart?: EquipmentProps["smart"]
+  techniqueSmart?: TechniqueProps["smart"]
   vascSiteColor: VascularProps["vascSiteColor"]
   VASC_TREE: VascularProps["vascTree"]
   vascDefaultUnit: VascularProps["vascDefaultUnit"]
@@ -214,7 +215,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
     awNotApplicable, setAwNotApplicable, saveAirwaySection, awExpandedDevice,
     setAwExpandedDevice, awExpandedWasComplete, AIRWAY_TOOLS, AIRWAY_DEVICES, airwaySmart,
     awVentExpanded, setAwVentExpanded, vascularAccesses, setVascularAccesses,
-    saveVascularAccesses, vascularSaving, vascularSmart, monitoringSmart, equipmentSmart, vascSiteColor, VASC_TREE, vascDefaultUnit,
+    saveVascularAccesses, vascularSaving, vascularSmart, monitoringSmart, equipmentSmart, techniqueSmart, vascSiteColor, VASC_TREE, vascDefaultUnit,
     VASC_PREEXISTING_QUICK, premedEveningText, setPremedEveningText, premedMorningText,
     setPremedMorningText, savePremedication, openPremedPicker, log, selectedComplications,
     complicationsNotes, setComplicationsNotes, saveComplications, removeLegacyComplication, eventActions,
@@ -290,6 +291,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
       otherTechText,
       setOtherTechText,
       tc,
+      smart: techniqueSmart,
     } }
 
     case "timing": return { tab, content: {

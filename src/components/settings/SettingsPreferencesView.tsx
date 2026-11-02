@@ -24,6 +24,7 @@ import { AirwayScreenCard } from "./AirwayScreenCard"
 import { VascularScreenCard } from "./VascularScreenCard"
 import { MonitoringScreenCard } from "./MonitoringScreenCard"
 import { EquipmentScreenCard } from "./EquipmentScreenCard"
+import { TechniqueScreenCard } from "./TechniqueScreenCard"
 import { UiScaleRow } from "./UiScaleRow"
 
 /**
@@ -191,6 +192,7 @@ export function SettingsPreferencesView({
         <VascularScreenCard />
         <MonitoringScreenCard />
         <EquipmentScreenCard />
+        <TechniqueScreenCard />
         <View style={{ height: 12 }} />
         <AutomationGroupsCard />
 
