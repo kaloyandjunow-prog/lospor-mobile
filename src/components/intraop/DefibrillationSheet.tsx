@@ -1,16 +1,13 @@
-import { useMemo, useRef, useState } from "react"
-import { PanResponder, Pressable, Text, View } from "react-native"
-import Svg, { Circle, Path } from "react-native-svg"
+import { useRef, useState } from "react"
+import { Pressable, Text, View } from "react-native"
 import { DEFIBRILLATION_MAX_J, DEFIBRILLATION_MIN_J, clampDefibrillationEnergy, isValidDefibrillationEnergy } from "@lospor/core/defibrillation"
-import { KNOB_SWEEP, knobAngleForEnergy, knobArcPath, knobEnergyForPoint, knobPoint } from "@/lib/defibrillation-knob"
+import type { EnergyKnobSkin } from "@lospor/core/clinical-preferences"
+import { EnergyKnobView } from "./EnergyKnobView"
 import { formatMessage } from "@/i18n/locale"
 import { usePreferences } from "@/lib/preferences-context"
 import { useShade } from "@/theme/shade"
 import { Sheet } from "./Sheet"
 
-const SIZE = 220
-const CENTER = SIZE / 2
-const RADIUS = 88
 
 type Props = {
   visible: boolean
@@ -21,6 +18,8 @@ type Props = {
   prefillJoules: number | null
   onClose: () => void
   onSave: (energyJ: number, synchronized: boolean) => void
+  /** The knob's look (10.2.0); the clinician's own choice unless given. */
+  skin?: EnergyKnobSkin
 }
 
 /**
@@ -29,24 +28,16 @@ type Props = {
  * synchronised or not. Nothing is assumed: synchronisation is never
  * preselected and the sheet does not save until both are set.
  */
-export function DefibrillationSheet({ visible, timeLabel, shockNumber, prefillJoules, onClose, onSave }: Props) {
+export function DefibrillationSheet({ visible, timeLabel, shockNumber, prefillJoules, onClose, onSave, skin: skinProp }: Props) {
   const shade = useShade()
-  const { tc } = usePreferences()
+  const { tc, energyKnobSkin } = usePreferences()
+  const skin = skinProp ?? energyKnobSkin ?? "A"
   const [energy, setEnergy] = useState<number | null>(prefillJoules)
   const [synchronized, setSynchronized] = useState<boolean | null>(null)
   const energyRef = useRef(energy)
   energyRef.current = energy
 
-  const responder = useMemo(() => PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: event => setEnergy(knobEnergyForPoint(event.nativeEvent.locationX, event.nativeEvent.locationY, SIZE)),
-    onPanResponderMove: event => setEnergy(knobEnergyForPoint(event.nativeEvent.locationX, event.nativeEvent.locationY, SIZE)),
-  }), [])
-
   const step = (delta: number) => setEnergy(clampDefibrillationEnergy((energyRef.current ?? (delta > 0 ? DEFIBRILLATION_MIN_J - 1 : DEFIBRILLATION_MIN_J + 1)) + delta))
-  const angle = energy == null ? null : knobAngleForEnergy(energy)
-  const thumb = angle == null ? null : knobPoint(angle, RADIUS, CENTER)
   const ready = isValidDefibrillationEnergy(energy) && synchronized != null
   const accent = shade("#f59e0b")
 
@@ -73,20 +64,13 @@ export function DefibrillationSheet({ visible, timeLabel, shockNumber, prefillJo
   return (
     <Sheet visible={visible} onClose={onClose} title={`${tc("defibTitle")} · ${timeLabel} · ${formatMessage(tc("defibShockNumber"), { n: shockNumber })}`} full>
       <View style={{ alignItems: "center", marginBottom: 12 }}>
-        <View {...responder.panHandlers} testID="defib-knob" accessibilityLabel={tc("defibEnergy")}
-          style={{ width: SIZE, height: SIZE }}>
-          <Svg width={SIZE} height={SIZE}>
-            <Path d={knobArcPath(KNOB_SWEEP / 2, RADIUS, CENTER)} stroke={shade("#1e293b")} strokeWidth={18} strokeLinecap="round" fill="none" />
-            {angle != null ? <Path d={knobArcPath(angle, RADIUS, CENTER)} stroke={accent} strokeWidth={18} strokeLinecap="round" fill="none" /> : null}
-            {thumb ? <Circle cx={thumb.x} cy={thumb.y} r={15} fill={shade("#f8fafc")} stroke={accent} strokeWidth={4} /> : null}
-          </Svg>
-          <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
-            <Text testID="defib-readout" style={{ color: energy == null ? shade("#64748b") : shade("#f8fafc"), fontSize: 48, fontWeight: "900", fontVariant: ["tabular-nums"] }}>
-              {energy ?? "—"}
-            </Text>
-            <Text style={{ color: shade("#94a3b8"), fontSize: 14, fontWeight: "700" }}>J</Text>
-          </View>
+        <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4, paddingHorizontal: 20, paddingVertical: 4, borderRadius: 12, backgroundColor: shade("#050505"), borderWidth: 1, borderColor: shade("#262626"), marginBottom: 6 }}>
+          <Text testID="defib-readout" style={{ color: energy == null ? shade("#64748b") : shade("#fbbf24"), fontSize: 48, fontWeight: "900", fontVariant: ["tabular-nums"] }}>
+            {energy ?? "—"}
+          </Text>
+          <Text style={{ color: shade("#a16207"), fontSize: 14, fontWeight: "700" }}>J</Text>
         </View>
+        <EnergyKnobView skin={skin} energy={energy} onChange={setEnergy} label={tc("defibEnergy")} />
         <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
           {stepButton(-10, "−10")}
           {stepButton(-1, "−1")}

@@ -18,6 +18,8 @@ import { FavouritePicker } from "@/components/SettingsPickers"
 import { NotificationsCard } from "./NotificationsCard"
 import { DiagnosticsCard, type DiagState } from "./DiagnosticsCard"
 import { BulgarianNamesCard } from "./BulgarianNamesCard"
+import { AutomationGroupsCard } from "./AutomationGroupsCard"
+import { EnergyKnobSkinCard } from "./EnergyKnobSkinCard"
 import { UiScaleRow } from "./UiScaleRow"
 
 /**
@@ -179,6 +181,10 @@ export function SettingsPreferencesView({
         </Card>
         <View style={{ height: 12 }} />
         <BulgarianNamesCard />
+        <View style={{ height: 12 }} />
+        <EnergyKnobSkinCard />
+        <View style={{ height: 12 }} />
+        <AutomationGroupsCard />
 
         {/* -- Units of measurement ------------------------------------------------
             Display-only preferences — the database always stores the canonical

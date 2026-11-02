@@ -3,7 +3,7 @@ import { act } from "react-test-renderer"
 import { describe, expect, it, vi } from "vitest"
 
 vi.mock("@/lib/preferences-context", () => ({ usePreferences: () => ({ tc: (key: string) => key }) }))
-vi.mock("react-native-svg", () => ({ __esModule: true, default: () => null, Circle: () => null, Path: () => null }))
+vi.mock("react-native-svg", () => ({ __esModule: true, default: () => null, Circle: () => null, Path: () => null, Defs: () => null, G: () => null, Line: () => null, RadialGradient: () => null, Rect: () => null, Stop: () => null, Text: () => null }))
 
 import { render } from "@/test/render"
 import { DefibrillationSheet } from "./DefibrillationSheet"
