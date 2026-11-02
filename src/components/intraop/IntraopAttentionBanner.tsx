@@ -3,6 +3,8 @@ import { colors } from "@/theme/colors"
 import { intraopAttentionText, intraopRefusedEntry, type IntraopAttentionAction, type IntraopAttentionItem } from "@lospor/core/intraop-attention"
 import { vitalQuestionText } from "@lospor/core/vital-questions"
 import { clinicalDisplayLabel } from "@lospor/core/display"
+import { latexBanner, type SuggestionContext } from "@lospor/core/intraop-suggestions"
+import { automationGroupEnabled } from "@lospor/core/intraop-automation"
 import type { IntraopAttentionItem as Item } from "@lospor/core/intraop-attention"
 
 import type { LogEvent } from "@/lib/intraop-log-event"
@@ -25,6 +27,8 @@ export type IntraopAttentionView = {
   saveState?: CaseSaveState
   /** The clinician keeps logging while out of range (10.1.0): the question says when that stops. */
   keepLogging?: boolean
+  /** The suggestions (10.2.0): a latex allergy on the preop record shows a banner (P4). */
+  suggestions?: SuggestionContext | null
 }
 
 /**
@@ -60,8 +64,17 @@ export function IntraopAttentionBanner({ attention }: { attention: IntraopAttent
   const shade = useShade()
   const { tc, language } = usePreferences()
   const refused = attention.saveState?.refused ?? []
-  if (attention.items.length === 0 && refused.length === 0) return null
+  const context = attention.suggestions
+  const latex = context && automationGroupEnabled(context.settings, "reminders", context.user) ? latexBanner(context.preop, language) : null
+  const latexLine = latex ? (
+    <View testID="latex-banner" style={{ marginHorizontal: 10, marginTop: 8, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: shade("#ef4444") + "22", borderWidth: 1, borderColor: shade("#ef4444") + "66" }}>
+      <Text style={{ color: shade("#fca5a5"), fontWeight: "800", fontSize: 14 }}>⚠ {latex}</Text>
+    </View>
+  ) : null
+  if (attention.items.length === 0 && refused.length === 0) return latexLine
   return (
+    <>
+    {latexLine}
     <View testID="intraop-attention" style={{
       marginHorizontal: 10, marginTop: 8, marginBottom: 4, padding: 10, borderRadius: 12,
       backgroundColor: shade("#fbbf24") + "14", borderWidth: 1, borderColor: shade("#fbbf24") + "66",
@@ -105,5 +118,6 @@ export function IntraopAttentionBanner({ attention }: { attention: IntraopAttent
         </View>
       ))}
     </View>
+    </>
   )
 }

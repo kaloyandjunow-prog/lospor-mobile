@@ -17,7 +17,11 @@ import { useCaseLock } from "@/lib/use-case-lock"
 import { useSuggestionContext, useVitalQuestionContext } from "@/lib/use-intraop-automation"
 import { DefibrillationHost } from "@/components/intraop/DefibrillationHost"
 import { SuggestionSheetHost } from "@/components/intraop/SuggestionSheetHost"
-import { buildPhoneSuggestionSheets, tagWithSuggestion } from "@/lib/phone-suggestion-sheets"
+import { buildPhoneSuggestionSheets, phoneGateWarnings, tagWithSuggestion } from "@/lib/phone-suggestion-sheets"
+import { MH_HISTORY_WARNING, type SuggestionContext } from "@lospor/core/intraop-suggestions"
+import { confirmAction } from "@/lib/notify"
+import { autosaveManager } from "@/lib/autosave-manager"
+import { usePhoneDeathPrompt } from "@/lib/use-phone-death-prompt"
 import { defibrillationSheet } from "@/lib/defibrillation-knob"
 import type { SaveIntraopEvent } from "@/lib/intraop-stamp"
 import { VASC_PREEXISTING_QUICK, vascDefaultUnit, vascSiteColor } from "@/lib/vascular-access-tree"
@@ -256,7 +260,17 @@ export default function IntraopLiveScreen() {
   const allergyCheck = useAllergyCheck(preop, tc) // infusion + drug sheets check recorded allergies (1.5.0)
   // 10.2.0: a sheet opened from a suggestion card saves its entry with the card's tag.
   const pendingSuggestion = useRef<string | null>(null)
-  const saveTagged = useCallback<SaveIntraopEvent>((partial, ...rest) => save(tagWithSuggestion(partial, pendingSuggestion), ...rest), [save])
+  const suggestionContextRef = useRef<Omit<SuggestionContext, "now"> | null>(null)
+  // P1 and E2: an MH history before a volatile or suxamethonium, a local anaesthetic over the maximum.
+  const saveTagged = useCallback<SaveIntraopEvent>(async (partial, ...rest) => {
+    const warnings = phoneGateWarnings(suggestionContextRef.current, logRef.current, partial,
+      { mh: MH_HISTORY_WARNING[language === "bg" ? "bg" : "en"], laMax: tc("sgLaMaxExceeds") }, language, new Date().toISOString())
+    if (warnings.length > 0 && !(await confirmAction(`⚠ ${tc("sgLaMaxTitle")}`, warnings.join("\n\n"), { destructive: true, confirmLabel: tc("sgMhGive"), cancelLabel: tc("sgCancel"), labelledOnWeb: true }))) {
+      pendingSuggestion.current = null
+      return null
+    }
+    return save(tagWithSuggestion(partial, pendingSuggestion), ...rest)
+  }, [save, logRef, language, tc])
   const {
     infOpen, setInfOpen, infDrug, setInfDrug, infRate, setInfRate,
     infRoute, setInfRoute, infConcentration, setInfConcentration,
@@ -300,7 +314,7 @@ export default function IntraopLiveScreen() {
 
   // Agent sheet
   const { agOpen, setAgOpen, agPick, setAgPick, agPercent, setAgPercent, openAgent, confirmAgent, stopAgent } =
-    useAgentEntry(save, setEntryTs, activeAgents, setActiveAgents)
+    useAgentEntry(saveTagged, setEntryTs, activeAgents, setActiveAgents)
   // Gas settings sheet (FGF/carrier gas/FiO2) - event-based gas_start/gas_change/gas_stop.
   const { gasOpen, setGasOpen, gasFgf, setGasFgf, gasCarrierGas, setGasCarrierGas, gasFio2, setGasFio2, openGasSettings, confirmGasSettings, stopGasSettings } =
     useGasSettingsEntry(save, setEntryTs, activeGas, setActiveGas)
@@ -412,6 +426,7 @@ export default function IntraopLiveScreen() {
     endedAt: endedAtIso,
   }), [caseIbw, monitoring, labResults, bloodLossMl, startedAtIso, endedAtIso])
   const suggestionContext = useSuggestionContext(preop, suggestionFacts, isWatching)
+  suggestionContextRef.current = suggestionContext
 
   const {
     endCaseOpen,
@@ -468,6 +483,13 @@ export default function IntraopLiveScreen() {
         ? selectedComplications.join(", ") || complicationsNotes
         : "",
     }),
+  })
+
+  // 10.2.0: a death charted here sets the postop destination to Deceased and offers End case.
+  usePhoneDeathPrompt(log, !isWatching && caseLoaded, () => {
+    if (id) void autosaveManager.saveSection(id, "postop", { disposition: "DECEASED" }, { partial: true })
+    void confirmAction(tc("sgEndCase"), tc("sgDeathEndCase"), { confirmLabel: tc("sgEndCase"), cancelLabel: tc("vitalNotNow"), labelledOnWeb: true })
+      .then(yes => { if (yes) openEndCase() })
   })
 
   // Vitals reminder notifications (opt-in; reset on each manual vitals entry)

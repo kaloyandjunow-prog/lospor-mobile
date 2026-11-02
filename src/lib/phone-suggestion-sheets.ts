@@ -1,4 +1,5 @@
-import { convertDoseAmount } from "@lospor/core/intraop-suggestions"
+import { convertDoseAmount, localAnaestheticBudgetText, localAnaestheticCheck, mhHistoryWarning, type SuggestionContext } from "@lospor/core/intraop-suggestions"
+import { automationGroupEnabled } from "@lospor/core/intraop-automation"
 import type { LogEvent } from "@/lib/intraop-log-event"
 import type { PhoneSuggestionSheets } from "@/components/intraop/SuggestionSheetHost"
 
@@ -101,4 +102,28 @@ export function tagWithSuggestion<T extends { type: string }>(event: T, pending:
   if (!tag || !["drug", "infusion_start", "fluid_start"].includes(event.type)) return event
   pending.current = null
   return { ...event, suggestion: tag }
+}
+
+/**
+ * What an entry about to be saved needs a word on first (10.2.0, reminders
+ * group): a volatile or suxamethonium with an MH history on the preop record
+ * (P1), a local anaesthetic bolus over the patient's maximum (E2). Empty
+ * when nothing needs saying; nothing is ever blocked.
+ */
+export function phoneGateWarnings(
+  context: Omit<SuggestionContext, "now"> | null,
+  log: LogEvent[],
+  entry: { type: string; name?: string; atcCode?: string; dose?: string; unit?: string; drugRoute?: string; concentration?: string },
+  words: { mh: string; laMax: string },
+  locale: string,
+  now: string,
+): string[] {
+  if (!context || !automationGroupEnabled(context.settings, "reminders", context.user)) return []
+  const warnings: string[] = []
+  if ((entry.type === "agent_start" || entry.type === "drug") && mhHistoryWarning(context.preop, { type: entry.type as never, name: entry.name, atcCode: entry.atcCode })) warnings.push(words.mh)
+  if (entry.type === "drug" && entry.name) {
+    const check = localAnaestheticCheck(log as never, context.patient, { id: "pending", ts: now, type: "drug", name: entry.name, dose: entry.dose, unit: entry.unit, drugRoute: entry.drugRoute, concentration: entry.concentration })
+    if (check?.wouldExceed) warnings.push([words.laMax, localAnaestheticBudgetText(check, entry.name, locale)].filter(Boolean).join("\n"))
+  }
+  return warnings
 }
