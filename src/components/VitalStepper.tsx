@@ -22,7 +22,7 @@ function formatClinicalValue(value: number | undefined, precision: number) {
   return precision > 0 ? value.toFixed(precision).replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "") : String(Math.round(value))
 }
 
-export function VitalStepper({ value, onChange, min, max, manualMax = max, step = 1, precision = 0, unit, placeholder = "-", disabled = false }: {
+export function VitalStepper({ value, onChange, min, max, manualMax = max, step = 1, precision = 0, unit, placeholder = "-", disabled = false, snap, stepBy }: {
   value?: number | null
   onChange: (value: number | null) => void
   min: number
@@ -34,6 +34,10 @@ export function VitalStepper({ value, onChange, min, max, manualMax = max, step 
   unit?: string
   placeholder?: string
   disabled?: boolean
+  /** A scale whose step changes along it (10.2.0, fresh gas): where a slider position lands. */
+  snap?: (value: number) => number
+  /** And where − / + move from a value. */
+  stepBy?: (value: number, direction: 1 | -1) => number
 }) {
   const { t } = usePreferences()
   const [keypadOpen, setKeypadOpen] = useState(false)
@@ -54,11 +58,11 @@ export function VitalStepper({ value, onChange, min, max, manualMax = max, step 
     // record while the field showed empty. null is the explicit clear.
     setLimitNotice(null)
     if (next == null) { onChange(null); return }
-    onChange(clampNumber(roundToStep(next, step, precision), min, max))
-  }, [disabled, max, min, onChange, precision, step])
+    onChange(clampNumber(snap ? snap(next) : roundToStep(next, step, precision), min, max))
+  }, [disabled, max, min, onChange, precision, step, snap])
 
   function nudge(direction: -1 | 1) {
-    commit((value ?? min) + direction * step)
+    commit(stepBy ? stepBy(value ?? min, direction) : (value ?? min) + direction * step)
   }
 
   const setFromPageX = useCallback((pageX: number) => {
