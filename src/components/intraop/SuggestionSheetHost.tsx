@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react"
 import { Text, TextInput, TouchableOpacity, View } from "react-native"
 import {
   accessEventLabels,
+  dantroleneCardVials,
+  dantroleneDosesMg,
   cardAlsoLogOps,
   cardCloseOps,
   cardEventOps,
@@ -25,6 +27,7 @@ import { usePreferences } from "@/lib/preferences-context"
 import { useShade } from "@/theme/shade"
 import { colors } from "@/theme/colors"
 import { Sheet } from "./Sheet"
+import { DantroleneVials } from "./DantroleneVials"
 
 /**
  * What the phone's chart offers a suggestion (10.2.0): its own sheets,
@@ -241,6 +244,12 @@ function CardSheet({ card, complication, attention, sheets, onClose }: {
             <View key={row.id} testID={`card-row-${row.id}`} style={{ borderWidth: 1, borderColor: shade("#262626"), borderRadius: 12, padding: 10, marginBottom: 8 }}>
               {opensSheet(row) ? <TouchableOpacity testID={`card-row-open-${row.id}`} onPress={() => onRow(row)} style={{ minHeight: 44 }}>{head}</TouchableOpacity> : head}
               {body(row)}
+              {row.def.kind === "drug" && row.def.drug === "Dantrolene" && attention.suggestions ? (
+                <DantroleneVials
+                  initialPerKg={dantroleneDosesMg(attention.log as never, comp, attention.suggestions.now).length > 0 ? 1 : 2.5}
+                  viewFor={perKg => dantroleneCardVials(attention.log as never, comp, { patient: attention.suggestions!.patient, now: attention.suggestions!.now, dantroleneVialsMg: attention.suggestions!.settings.dantroleneVialsMg }, perKg)}
+                  onGive={doseMg => { onClose(); sheets.openDrug({ name: "Dantrolene", mode: "bolus", amount: doseMg, unit: "mg", suggestion: cardSuggestionTag(complication.label ?? "", row.id) }) }} />
+              ) : null}
               {inline?.row.id === row.id && inline.kind === "deepen" && (() => {
                 const targets = sheets.deepenTargets()
                 if (targets.length === 0) return <Text style={{ color: shade("#94a3b8"), fontSize: 12, marginTop: 6 }}>{tc("sgDeepenNothing")}</Text>

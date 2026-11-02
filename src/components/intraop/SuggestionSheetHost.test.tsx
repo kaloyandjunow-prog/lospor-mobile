@@ -5,6 +5,7 @@ import { parseIntraopAutomation } from "@lospor/core/intraop-automation"
 import type { SuggestionContext } from "@lospor/core/intraop-suggestions"
 
 vi.mock("@/lib/preferences-context", () => ({ usePreferences: () => ({ tc: (key: string) => key, language: "en" }) }))
+vi.mock("react-native-svg", () => ({ __esModule: true, default: () => null, SvgXml: () => null }))
 
 import { render } from "@/test/render"
 import type { LogEvent } from "@/lib/intraop-log-event"
