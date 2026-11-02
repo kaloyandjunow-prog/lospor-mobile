@@ -3,8 +3,8 @@ import { colors } from "@/theme/colors"
 import { intraopAttentionText, intraopRefusedEntry, type IntraopAttentionAction, type IntraopAttentionItem } from "@lospor/core/intraop-attention"
 import { vitalQuestionText } from "@lospor/core/vital-questions"
 import { clinicalDisplayLabel } from "@lospor/core/display"
-import { latexBanner, type SuggestionContext } from "@lospor/core/intraop-suggestions"
-import { automationGroupEnabled } from "@lospor/core/intraop-automation"
+import { latexBanner, REMINDER_IDS, type SuggestionContext } from "@lospor/core/intraop-suggestions"
+import { automationEnabled } from "@lospor/core/intraop-automation"
 import type { IntraopAttentionItem as Item } from "@lospor/core/intraop-attention"
 
 import type { LogEvent } from "@/lib/intraop-log-event"
@@ -65,7 +65,7 @@ export function IntraopAttentionBanner({ attention }: { attention: IntraopAttent
   const { tc, language } = usePreferences()
   const refused = attention.saveState?.refused ?? []
   const context = attention.suggestions
-  const latex = context && automationGroupEnabled(context.settings, "reminders", context.user) ? latexBanner(context.preop, language) : null
+  const latex = context && automationEnabled(context.settings, "reminders", REMINDER_IDS.latex, context.user) ? latexBanner(context.preop, language) : null
   const latexLine = latex ? (
     <View testID="latex-banner" style={{ marginHorizontal: 10, marginTop: 8, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: shade("#ef4444") + "22", borderWidth: 1, borderColor: shade("#ef4444") + "66" }}>
       <Text style={{ color: shade("#fca5a5"), fontWeight: "800", fontSize: 14 }}>⚠ {latex}</Text>

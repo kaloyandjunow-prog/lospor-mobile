@@ -36,6 +36,21 @@ describe("the phone's word before an entry (10.2.0)", () => {
   })
 })
 
+describe("each phone warning is its own switch (10.2.0)", () => {
+  const off = (...ids: string[]) => context({
+    settings: parseIntraopAutomation({ enabled: true, groups: { reminders: true }, disabled: ids }), preop: { mhHistory: true },
+  })
+  it("keeps the other warning when one is switched off", () => {
+    const sevo = { type: "agent_start", name: "SEVOFLURANE" }
+    expect(phoneGateWarnings(off(), [], sevo, words, "en", NOW)).toEqual(["MH!"])
+    expect(phoneGateWarnings(off("reminder:mhHistory"), [], sevo, words, "en", NOW)).toEqual([])
+    const log = [{ id: "b1", ts: "2026-11-02T10:00:00.000Z", type: "drug", name: "Bupivacaine", dose: "100", unit: "mg" }] as LogEvent[]
+    const bolus = { type: "drug", name: "Bupivacaine", dose: "50", unit: "mg" }
+    expect(phoneGateWarnings(off(), log, bolus, words, "en", NOW)).toHaveLength(1)
+    expect(phoneGateWarnings(off("reminder:localAnaestheticMax"), log, bolus, words, "en", NOW)).toEqual([])
+  })
+})
+
 describe("a death charted on the phone", () => {
   it("calls once for a death charted here, never for one already on the case or on a watching screen", () => {
     const onDeath = vi.fn()

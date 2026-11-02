@@ -1,5 +1,5 @@
-import { convertDoseAmount, localAnaestheticBudgetText, localAnaestheticCheck, mhHistoryWarning, type SuggestionContext } from "@lospor/core/intraop-suggestions"
-import { automationGroupEnabled } from "@lospor/core/intraop-automation"
+import { convertDoseAmount, localAnaestheticBudgetText, localAnaestheticCheck, mhHistoryWarning, REMINDER_IDS, type SuggestionContext } from "@lospor/core/intraop-suggestions"
+import { automationEnabled, automationGroupEnabled } from "@lospor/core/intraop-automation"
 import type { LogEvent } from "@/lib/intraop-log-event"
 import type { PhoneSuggestionSheets } from "@/components/intraop/SuggestionSheetHost"
 
@@ -120,8 +120,10 @@ export function phoneGateWarnings(
 ): string[] {
   if (!context || !automationGroupEnabled(context.settings, "reminders", context.user)) return []
   const warnings: string[] = []
-  if ((entry.type === "agent_start" || entry.type === "drug") && mhHistoryWarning(context.preop, { type: entry.type as never, name: entry.name, atcCode: entry.atcCode })) warnings.push(words.mh)
-  if (entry.type === "drug" && entry.name) {
+  const mhOn = automationEnabled(context.settings, "reminders", REMINDER_IDS.mhHistory, context.user)
+  const laOn = automationEnabled(context.settings, "reminders", REMINDER_IDS.localAnaestheticMax, context.user)
+  if (mhOn && (entry.type === "agent_start" || entry.type === "drug") && mhHistoryWarning(context.preop, { type: entry.type as never, name: entry.name, atcCode: entry.atcCode })) warnings.push(words.mh)
+  if (laOn && entry.type === "drug" && entry.name) {
     const check = localAnaestheticCheck(log as never, context.patient, { id: "pending", ts: now, type: "drug", name: entry.name, dose: entry.dose, unit: entry.unit, drugRoute: entry.drugRoute, concentration: entry.concentration })
     if (check?.wouldExceed) warnings.push([words.laMax, localAnaestheticBudgetText(check, entry.name, locale)].filter(Boolean).join("\n"))
   }
