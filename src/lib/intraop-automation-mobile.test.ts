@@ -10,8 +10,8 @@ import { endCaseInstant } from "@/lib/use-end-case-time"
 import { parseIntraopAutomationResponse } from "@/lib/use-intraop-automation"
 
 describe("the automation the phone reads", () => {
-  it("is off when the API sends nothing usable, as the demo does", () => {
-    expect(parseIntraopAutomationResponse(null)).toMatchObject({ settings: { enabled: false }, stats: null })
+  it("is the defaults when the API sends nothing usable, as the demo does: the reminders on, the questions off", () => {
+    expect(parseIntraopAutomationResponse(null)).toMatchObject({ settings: { enabled: true, groups: { reminders: true, treatmentSuggestions: false }, vitalQuestions: { enabled: false } }, stats: null })
     expect(parseIntraopAutomationResponse({ settings: { enabled: "yes" } }).settings.enabled).toBe(false)
   })
 
