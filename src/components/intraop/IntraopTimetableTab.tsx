@@ -53,6 +53,7 @@ type Props = {
   onManageInfusion: (infusion: ActiveInfusion, col?: number) => void
   onEndFluid: (fluid: ActiveFluid, col?: number) => void
   onEditGas: (col: number) => void
+  onEditJet?: (col: number) => void
   onStopAgent: (name: string, col?: number) => void
   onQuickAdd: (col: number, action: QuickAddAction) => void
   onJumpToNow: () => void
@@ -97,6 +98,7 @@ export function IntraopTimetableTab({
   onManageInfusion,
   onEndFluid,
   onEditGas,
+  onEditJet,
   onStopAgent,
   onQuickAdd,
   onJumpToNow,
@@ -183,6 +185,7 @@ export function IntraopTimetableTab({
         onManageInfusion={onManageInfusion}
         onEndFluid={onEndFluid}
         onEditGas={onEditGas}
+        onEditJet={onEditJet}
         onStopAgent={onStopAgent}
         onQuickAdd={onQuickAdd}
         onAnswerAttention={answerAttention}
@@ -203,6 +206,7 @@ export function IntraopTimetableTab({
     expandedRow,
     nowSlotPercent,
     onEditGas,
+    onEditJet,
     onEndFluid,
     onManageInfusion,
     onQuickAdd,

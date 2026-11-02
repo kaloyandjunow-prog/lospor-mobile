@@ -1,3 +1,4 @@
+import { jetSheet } from "@/lib/jet-sheet"
 import type { ComponentProps, MutableRefObject } from "react"
 import { VascularTab } from "@/components/intraop/tabs/VascularTab"
 import type { IntraopTabContentHostProps } from "@/components/intraop/IntraopTabContentHost"
@@ -251,6 +252,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
       // Stops and changes are recorded at the row they were entered in.
       onEndFluid: (fluid, col) => openFluidEnd(fluid, col != null ? timeAtCol(chartStart, col).toISOString() : null),
       onEditGas: c => { if (activeGas) openGasSettings(timeAtCol(chartStart, c).toISOString(), activeGas, "change") },
+      onEditJet: c => jetSheet.open(timeAtCol(chartStart, c).toISOString()),
       onStopAgent: (name, col) => {
         void confirmAction(
           formatMessage(tc("stopAgentQuestion"), { name }),

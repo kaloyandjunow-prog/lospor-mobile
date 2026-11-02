@@ -61,6 +61,8 @@ type TimetableRowProps = {
   onManageInfusion: (inf: ActiveInfusion, col?: number) => void
   onEndFluid: (fl: ActiveFluid, col?: number) => void
   onEditGas: (col: number) => void
+  /** A running jet's change or stop from this row (10.2.0). */
+  onEditJet?: (col: number) => void
   onStopAgent: (name: string, col?: number) => void
   onQuickAdd: (col: number, action: QuickAddAction) => void
   /** Answers an unconfirmed stop in its row; absent on a watching screen. */
@@ -71,7 +73,7 @@ function TimetableRowComponent({
   col, labDraws, onOpenLabs, chartStart, rowHeight, isNow, isQuarter, isExpanded, nowSlotPercent,
   vital, rowEvents, running, summary, labelOf,
   activeInfusions, activeFluids, activeAgents, activeGas,
-  onExpand, onCollapse, onManageInfusion, onEndFluid, onEditGas, onStopAgent, onQuickAdd, onAnswerAttention,
+  onExpand, onCollapse, onManageInfusion, onEndFluid, onEditGas, onEditJet, onStopAgent, onQuickAdd, onAnswerAttention,
 }: TimetableRowProps) {
   const shade = useShade()
   const { tc } = usePreferences()
@@ -151,12 +153,13 @@ function TimetableRowComponent({
                 const activeFl  = activeFluids.find(f => item.id === `fluid-${f.fluidId}`)
                 const runningAgent = activeAgents.find(agent => item.id === `agent-${agent.name}`)
                 const isGasItem = item.id === "gas-settings"
+                const isJetItem = item.id === "jet" || item.id.startsWith("jet-")
                 // A planned item, or the row of a planned stop, is a marker, not a control.
                 // A running item in a row after now is dashed like them, but it is a
                 // control: a change made here is dated to this row (9.13.1).
                 const marker = !!(item.planned || item.plannedStop || item.plannedChange)
                 const dashed = marker || !!item.projected
-                const canManage = !marker && !!(activeInf || activeFl || runningAgent || (isGasItem && activeGas))
+                const canManage = !marker && !!(activeInf || activeFl || runningAgent || (isGasItem && activeGas) || (isJetItem && onEditJet))
                 return (
                   <View key={item.id}>
                   <TouchableOpacity
@@ -167,6 +170,7 @@ function TimetableRowComponent({
                       if (activeInf) onManageInfusion(activeInf, col)
                       else if (activeFl) onEndFluid(activeFl, col)
                       else if (isGasItem && activeGas) onEditGas(col)
+                      else if (isJetItem) onEditJet?.(col)
                       else if (runningAgent) onStopAgent(runningAgent.name, col)
                     }}
                     style={{
@@ -183,7 +187,7 @@ function TimetableRowComponent({
                     </Text>
                     {canManage && (
                       <Text style={{ color: shade("#64748b"), fontSize: 11 }}>
-                        {activeInf ? tc("trManage") : activeFl ? tc("trEndFluid") : isGasItem ? tc("trEdit") : tc("trStop")} →
+                        {activeInf ? tc("trManage") : activeFl ? tc("trEndFluid") : isGasItem || isJetItem ? tc("trEdit") : tc("trStop")} →
                       </Text>
                     )}
                   </TouchableOpacity>
@@ -377,6 +381,7 @@ export const TimetableRow = memo(TimetableRowComponent, (prev, next) => {
     prev.onManageInfusion !== next.onManageInfusion ||
     prev.onEndFluid !== next.onEndFluid ||
     prev.onEditGas !== next.onEditGas ||
+    prev.onEditJet !== next.onEditJet ||
     prev.onStopAgent !== next.onStopAgent ||
     prev.onQuickAdd !== next.onQuickAdd ||
     prev.onAnswerAttention !== next.onAnswerAttention
