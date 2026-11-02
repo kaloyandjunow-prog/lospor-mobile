@@ -22,6 +22,10 @@ import { MH_HISTORY_WARNING, type SuggestionContext } from "@lospor/core/intraop
 import { confirmAction } from "@/lib/notify"
 import { autosaveManager } from "@/lib/autosave-manager"
 import { usePhoneDeathPrompt } from "@/lib/use-phone-death-prompt"
+import { usePhoneAirwayExchange } from "@/lib/use-phone-airway-exchange"
+import { AirwayExchangeSheet } from "@/components/intraop/AirwayExchangeSheet"
+import { cardEventOps } from "@lospor/core/intraop-suggestions"
+import { accessKindOf, replaceFailedLine, vascularLineText, type VascularLine } from "@lospor/core/vascular-access-lines"
 import { defibrillationSheet } from "@/lib/defibrillation-knob"
 import type { SaveIntraopEvent } from "@/lib/intraop-stamp"
 import { VASC_PREEXISTING_QUICK, vascDefaultUnit, vascSiteColor } from "@/lib/vascular-access-tree"
@@ -548,6 +552,21 @@ export default function IntraopLiveScreen() {
     setAwNotApplicable,
     saveAirwaySection,
   } = useIntraopAirwaySection(caseLoaded, patchIntraopSection, tc("errorLabel"))
+  // 10.2.0: the airway list -- the embedded picker, E6 and the card's Reintubate?
+  const text = (value: unknown) => (value == null || value === "" ? null : String(value))
+  const num = (value: unknown) => (typeof value === "number" ? value : value == null || value === "" ? null : Number(value))
+  const airwayExchange = usePhoneAirwayExchange({
+    log, active: caseLoaded && !isWatching,
+    legacy: () => ({ airwayDevices: awDevices, lmaSize: awLmaSize, oralTubeSize: awOralTubeSize, oralCuffed: awOralCuffed, nasalTubeSize: awNasalTubeSize,
+      nasalCuffed: awNasalCuffed, dltType: awDltType, dltSide: awDltSide, dltSize: awDltSize, endobronchialSize: awEbSize }),
+    persist: (entries, fields) => {
+      setAwDevices(Array.isArray(fields.airwayDevices) ? fields.airwayDevices as string[] : [])
+      setAwLmaSize(text(fields.lmaSize)); setAwOralTubeSize(text(fields.oralTubeSize)); setAwOralCuffed(fields.oralCuffed as boolean | null)
+      setAwNasalTubeSize(text(fields.nasalTubeSize)); setAwNasalCuffed(fields.nasalCuffed as boolean | null)
+      setAwDltType(fields.dltType as never); setAwDltSide(fields.dltSide as never); setAwDltSize(num(fields.dltSize)); setAwEbSize(num(fields.endobronchialSize))
+      void patchIntraopSection({ airwayDeviceEntries: entries })
+    },
+  })
 
   // Vascular access tab
   const [vascularAccesses, setVascularAccesses] = useState<VascularEntry[]>([])
@@ -586,6 +605,7 @@ export default function IntraopLiveScreen() {
     setCaseTimezone,
     setAwTools,
     setAwDevices,
+    onIntraopRecord: airwayExchange.hydrate,
     setAwLmaSize,
     setAwOralTubeSize,
     setAwOralCuffed,
@@ -805,6 +825,16 @@ export default function IntraopLiveScreen() {
           that props object would add six more names to a list that is already
           the reason this screen is hard to read. */}
       <DefibrillationHost log={log} save={save} preop={preop} />
+      {airwayExchange.dialog && !isWatching ? (
+        <AirwayExchangeSheet entries={airwayExchange.entries()} devices={AIRWAY_DEVICES} reason={airwayExchange.dialog.reason} at={airwayExchange.dialog.at}
+          onClose={() => airwayExchange.setDialog(null)}
+          onSave={next => {
+            const complication = airwayExchange.dialog?.complication
+            const at = airwayExchange.dialog?.at ?? new Date().toISOString()
+            airwayExchange.save(next)
+            if (complication && attention) void attention.applyOps(cardEventOps(complication as never, "Reintubation", "reintubate", at, new Date().toISOString()))
+          }} />
+      ) : null}
       {attention && !isWatching ? (
         <SuggestionSheetHost attention={attention} sheets={buildPhoneSuggestionSheets({
           pending: pendingSuggestion,
@@ -823,6 +853,17 @@ export default function IntraopLiveScreen() {
             })),
           ],
           saveEvent: event => { void save(event as never) },
+          extras: {
+            openAirway: complication => airwayExchange.setDialog({ reason: "reintubation", at: new Date().toISOString(), complication }),
+            linesOf: kind => vascularAccesses.map((line, index) => ({ line: line as unknown as VascularLine, index }))
+              .filter(({ line }) => accessKindOf(line.site) === kind)
+              .map(({ line, index }) => ({ id: String(index), label: vascularLineText(line, { failed: "", time: () => "" }), failed: line.failed === true })),
+            markLineFailed: (lineId, at) => {
+              const next = replaceFailedLine(vascularAccesses as unknown as VascularLine[], Number(lineId), at) as unknown as typeof vascularAccesses
+              setVascularAccesses(next)
+              void saveVascularAccesses(next)
+            },
+          },
           displayName: event => eventLabel(event).text || event.name || "",
         })} />
       ) : null}

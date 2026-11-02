@@ -49,6 +49,8 @@ type UseIntraopCaseLoaderArgs = {
   setCaseTimezone: Dispatch<SetStateAction<string | null>>
   setAwTools: Dispatch<SetStateAction<string[]>>
   setAwDevices: Dispatch<SetStateAction<string[]>>
+  /** The intraop record as loaded (10.2.0: the stored airway list). */
+  onIntraopRecord?: (intraop: Record<string, unknown>) => void
   setAwLmaSize: Dispatch<SetStateAction<string | null>>
   setAwOralTubeSize: Dispatch<SetStateAction<string | null>>
   setAwOralCuffed: Dispatch<SetStateAction<boolean | null>>
@@ -114,6 +116,7 @@ export function useIntraopCaseLoader({
   setCaseTimezone,
   setAwTools,
   setAwDevices,
+  onIntraopRecord,
   setAwLmaSize,
   setAwOralTubeSize,
   setAwOralCuffed,
@@ -195,6 +198,7 @@ export function useIntraopCaseLoader({
             setTechniques(hydrated.caseTechniques)
             if (hydrated.positions) setPositions(hydrated.positions)
             setMonitoring(hydrated.monitoring)
+            onIntraopRecord?.((data.intraop ?? {}) as Record<string, unknown>)
             if (hydrated.airway.tools) setAwTools(hydrated.airway.tools)
             if (hydrated.airway.devices) setAwDevices(hydrated.airway.devices)
             if (hydrated.airway.lmaSize != null) setAwLmaSize(hydrated.airway.lmaSize)
