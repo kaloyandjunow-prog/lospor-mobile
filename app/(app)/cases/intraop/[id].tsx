@@ -26,6 +26,8 @@ import { jetSheet } from "@/lib/jet-sheet"
 import { JetHost } from "@/components/intraop/JetHost"
 import { TourniquetHost } from "@/components/intraop/TourniquetHost"
 import { preopAgeDays } from "@lospor/core/vital-questions"
+import { MonitoringSmart } from "@/components/intraop/MonitoringSmart"
+import { MONITORING_READINGS, isRelaxant, monitoringSuggestions } from "@lospor/core/monitoring-smart"
 import { usePhoneAirwayExchange } from "@/lib/use-phone-airway-exchange"
 import { AirwayExchangeSheet } from "@/components/intraop/AirwayExchangeSheet"
 import { AirwaySmart } from "@/components/intraop/AirwaySmart"
@@ -155,6 +157,7 @@ export default function IntraopLiveScreen() {
     clinicalPreferencesReady,
     airwayScreen,
     vascularScreen,
+    monitoringScreen,
   } = usePreferences()
 
   const [caseInfo, setCaseInfo] = useState<{
@@ -624,6 +627,26 @@ export default function IntraopLiveScreen() {
     <VascularSmart {...vascularCase} lines={vascularLines()} onChange={applyVascularLines} techniques={techniques} timeOf={smartClock} />
   ) : undefined
 
+  // Smart selection for monitoring (10.2.0): standard in one switch, and the monitors this case calls for.
+  // What is suggested and when a reading is due is Core's (monitoring-smart); a monitor added writes the same flag.
+  const [hiddenMonitors, setHiddenMonitors] = useState<string[]>([])
+  const monitoringSuggestionList = monitoringSuggestions({
+    monitoring, techniques, airway: airwayExchange.entries(), lines: vascularLines(), hidden: hiddenMonitors,
+    relaxantAt: log.find(event => event.type === "drug" && !!event.name && isRelaxant(event.name))?.ts ?? null,
+    urinaryCatheter: false, startedAt: startRef.current?.toISOString() ?? null, now: new Date(),
+    settings: suggestionContext?.settings ?? null, user: suggestionContext?.user ?? null,
+  })
+  const lastMonitorReading = (field: string) => {
+    const key = ({ bisValue: "bis", tofRatio: "tofRatio", cvpMmHg: "cvp", etco2: "etco2", temp: "temp" } as const)[(MONITORING_READINGS[field]?.vital ?? "temp") as "bisValue" | "tofRatio" | "cvpMmHg" | "etco2" | "temp"]
+    const event = [...log].reverse().find(item => item.type === "vital" && typeof item[key] === "number")
+    return event ? { text: String(event[key]), at: event.ts } : null
+  }
+  const applyMonitoring = (next: string[]) => { setMonitoring(next); saveMonitoring(next) }
+  const monitoringSmart = monitoringScreen === "smart" && !isWatching ? (
+    <MonitoringSmart monitoring={monitoring} onChange={applyMonitoring} monitoringOpts={MONITORING_OPTS} suggestions={monitoringSuggestionList}
+      onHide={field => setHiddenMonitors(list => [...list, field])} lastReading={lastMonitorReading} onReading={() => openVitals("full")} now={() => new Date().toISOString()} />
+  ) : undefined
+
   // Technique tree navigation
   const [techPath,      setTechPath]      = useState<string[]>([])
   const [otherTechText, setOtherTechText] = useState("")
@@ -819,7 +842,7 @@ export default function IntraopLiveScreen() {
           awNotes, setAwNotes, awPresentsIntubated, setAwPresentsIntubated,
           awNotApplicable, setAwNotApplicable, saveAirwaySection, awExpandedDevice, setAwExpandedDevice,
           awExpandedWasComplete, AIRWAY_TOOLS, AIRWAY_DEVICES, airwaySmart, awVentExpanded, setAwVentExpanded,
-          vascularAccesses, setVascularAccesses, saveVascularAccesses, vascularSaving, vascularSmart,
+          vascularAccesses, setVascularAccesses, saveVascularAccesses, vascularSaving, vascularSmart, monitoringSmart,
           vascSiteColor, VASC_TREE, vascDefaultUnit, VASC_PREEXISTING_QUICK, premedEveningText,
           setPremedEveningText, premedMorningText, setPremedMorningText, savePremedication,
           openPremedPicker, log, selectedComplications, complicationsNotes, setComplicationsNotes,

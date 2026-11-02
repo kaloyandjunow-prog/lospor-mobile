@@ -314,6 +314,7 @@ export function PreferencesProvider({
     energyKnobSkin: clinicalPreferences.energyKnobSkin ?? "A",
     airwayScreen: clinicalPreferences.airwayScreen ?? "smart",
     vascularScreen: clinicalPreferences.vascularScreen ?? "smart",
+    monitoringScreen: clinicalPreferences.monitoringScreen ?? "smart",
     localeReady,
     clinicalPreferencesReady,
     setLanguage,
@@ -344,6 +345,7 @@ export function PreferencesProvider({
     setEnergyKnobSkin: energyKnobSkin => patchClinical({ energyKnobSkin }),
     setAirwayScreen: airwayScreen => patchClinical({ airwayScreen }),
     setVascularScreen: vascularScreen => patchClinical({ vascularScreen }),
+    setMonitoringScreen: monitoringScreen => patchClinical({ monitoringScreen }),
     t: key => STRINGS[language][key] ?? STRINGS.en[key],
     tc: key =>
       (CLINICAL_STRINGS[language] as ClinicalStringsMap)[key]

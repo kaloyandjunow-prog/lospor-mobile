@@ -155,6 +155,7 @@ export type IntraopTabContentBuilderProps = {
   vascularSaving: VascularProps["vascularSaving"]
   /** Smart selection for vascular access (10.2.0), when the clinician uses it. */
   vascularSmart?: VascularProps["smart"]
+  monitoringSmart?: MonitoringProps["smart"]
   vascSiteColor: VascularProps["vascSiteColor"]
   VASC_TREE: VascularProps["vascTree"]
   vascDefaultUnit: VascularProps["vascDefaultUnit"]
@@ -211,7 +212,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
     awNotApplicable, setAwNotApplicable, saveAirwaySection, awExpandedDevice,
     setAwExpandedDevice, awExpandedWasComplete, AIRWAY_TOOLS, AIRWAY_DEVICES, airwaySmart,
     awVentExpanded, setAwVentExpanded, vascularAccesses, setVascularAccesses,
-    saveVascularAccesses, vascularSaving, vascularSmart, vascSiteColor, VASC_TREE, vascDefaultUnit,
+    saveVascularAccesses, vascularSaving, vascularSmart, monitoringSmart, vascSiteColor, VASC_TREE, vascDefaultUnit,
     VASC_PREEXISTING_QUICK, premedEveningText, setPremedEveningText, premedMorningText,
     setPremedMorningText, savePremedication, openPremedPicker, log, selectedComplications,
     complicationsNotes, setComplicationsNotes, saveComplications, removeLegacyComplication, eventActions,
@@ -309,7 +310,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
 
     case "monitoring": return { tab, content: {
       monitoring, setMonitoring, saveMonitoring, fieldSaving,
-      monitoringOpts: MONITORING_OPTS, advMonOpen, setAdvMonOpen,
+      monitoringOpts: MONITORING_OPTS, advMonOpen, setAdvMonOpen, smart: monitoringSmart,
     } }
 
     case "airway": return { tab, content: {
