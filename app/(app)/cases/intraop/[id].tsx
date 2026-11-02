@@ -16,6 +16,10 @@ import { colors } from "@/theme/colors"
 import { useCaseLock } from "@/lib/use-case-lock"
 import { useSuggestionContext, useVitalQuestionContext } from "@/lib/use-intraop-automation"
 import { DefibrillationHost } from "@/components/intraop/DefibrillationHost"
+import { SuggestionSheetHost } from "@/components/intraop/SuggestionSheetHost"
+import { buildPhoneSuggestionSheets, tagWithSuggestion } from "@/lib/phone-suggestion-sheets"
+import { defibrillationSheet } from "@/lib/defibrillation-knob"
+import type { SaveIntraopEvent } from "@/lib/intraop-stamp"
 import { VASC_PREEXISTING_QUICK, vascDefaultUnit, vascSiteColor } from "@/lib/vascular-access-tree"
 import { useAgentEntry } from "@/lib/use-agent-entry"
 import { useGasSettingsEntry } from "@/lib/use-gas-settings-entry"
@@ -250,6 +254,9 @@ export default function IntraopLiveScreen() {
   // Pediatric cases remain manually chartable but must not inherit unreviewed
   // adult dose, rate, concentration, fluid, gas, or equipment presets.
   const allergyCheck = useAllergyCheck(preop, tc) // infusion + drug sheets check recorded allergies (1.5.0)
+  // 10.2.0: a sheet opened from a suggestion card saves its entry with the card's tag.
+  const pendingSuggestion = useRef<string | null>(null)
+  const saveTagged = useCallback<SaveIntraopEvent>((partial, ...rest) => save(tagWithSuggestion(partial, pendingSuggestion), ...rest), [save])
   const {
     infOpen, setInfOpen, infDrug, setInfDrug, infRate, setInfRate,
     infRoute, setInfRoute, infConcentration, setInfConcentration,
@@ -258,7 +265,7 @@ export default function IntraopLiveScreen() {
     infActOpen, setInfActOpen, infActTgt, setInfActTgt, infActRate, setInfActRate,
     infActConcentration, setInfActConcentration, infActTs, setInfActTs,
     openInfusion, confirmInfusion, stopInfusion, changeRate,
-  } = useInfusionEntry(save, setEntryTs, setActiveInfusions, INFUSION_CODES, INFUSION_WEIGHT_BASIS, allergyCheck)
+  } = useInfusionEntry(saveTagged, setEntryTs, setActiveInfusions, INFUSION_CODES, INFUSION_WEIGHT_BASIS, allergyCheck)
 
   // Drug sheet
   const {
@@ -266,9 +273,9 @@ export default function IntraopLiveScreen() {
     drugRoute, setDrugRoute, drugConcentration, setDrugConcentration,
     drugCustomConcentration, setDrugCustomConcentration, drugFormulation, setDrugFormulation,
     drugRule, applyDrugSelection,
-    openDrug, confirmDrug, startDrugAsInfusion,
+    openDrug, confirmDrug, startDrugAsInfusion, openDrugPreset,
   } = useDrugEntry(
-    save,
+    saveTagged,
     setEntryTs,
     DRUG_CATS,
     INF_DRUGS,
@@ -288,7 +295,8 @@ export default function IntraopLiveScreen() {
     flEndOpen, setFlEndOpen, flEndTarget, flEndCustom, setFlEndCustom,
     flEndRate, setFlEndRate, changeFluidRate,
     openFluid, confirmFluid, openFluidEnd, confirmFluidEnd, stopFluidDirect,
-  } = useFluidEntry(save, setEntryTs, setActiveFluids, stampFor)
+  } = useFluidEntry(saveTagged, setEntryTs, setActiveFluids, stampFor)
+  useEffect(() => { if (!drugOpen && !infOpen && !flOpen) pendingSuggestion.current = null }, [drugOpen, infOpen, flOpen])
 
   // Agent sheet
   const { agOpen, setAgOpen, agPick, setAgPick, agPercent, setAgPercent, openAgent, confirmAgent, stopAgent } =
@@ -775,6 +783,27 @@ export default function IntraopLiveScreen() {
           that props object would add six more names to a list that is already
           the reason this screen is hard to read. */}
       <DefibrillationHost log={log} save={save} preop={preop} />
+      {attention && !isWatching ? (
+        <SuggestionSheetHost attention={attention} sheets={buildPhoneSuggestionSheets({
+          pending: pendingSuggestion,
+          nowIso: () => new Date().toISOString(),
+          clockOf: attention.clockOf,
+          setEntryTs, drugCats: DRUG_CATS, openDrugPreset,
+          infusions: INF_DRUGS, setInfDrug: setInfDrug as never, setInfRate, setInfOpen,
+          fluids: FLUID_LIST, log, openFluid, setFlFluid: setFlFluid as never, setFlVol, setFlEntryMode, setFlRate,
+          openShock: () => defibrillationSheet.open(new Date().toISOString()),
+          openLab: () => openLabs(new Date().toISOString()),
+          openGas: (fio2, fgf, air) => openGasSettings(undefined, { fgf, carrierGas: air ? "air" : activeGas?.carrierGas ?? null, fio2 } as never, activeGas ? "change" : "start"),
+          deepenTargets: () => [
+            ...activeAgents.map(agent => ({ key: `agent-${agent.name}`, label: eventLabel({ id: "a", ts: "", type: "agent_start", name: agent.name } as LogEvent).text || agent.name, open: () => openAgent() })),
+            ...activeInfusions.filter(inf => ["Propofol", "Remifentanil", "Sufentanil", "Dexmedetomidine"].includes(inf.name)).map(inf => ({
+              key: `inf-${inf.infId}`, label: inf.name, open: () => { setInfActTgt(inf); setInfActRate(String(inf.rate ?? "")); setInfActOpen(true) },
+            })),
+          ],
+          saveEvent: event => { void save(event as never) },
+          displayName: event => eventLabel(event).text || event.name || "",
+        })} />
+      ) : null}
       {labsTs ? (
         <LabsSheet
           visible={labsOpen}

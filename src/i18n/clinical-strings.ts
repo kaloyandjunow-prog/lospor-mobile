@@ -546,6 +546,7 @@ export const CLINICAL_STRINGS = {
     vitalLogIt: "Log it",
     // 10.2.0: suggestions, airway exchange, jet, tourniquet, knob skins, the clinician's switches.
     suggestionOpen: "Open",
+    sgTimePlaceholder: "hh:mm",
     sgDone: "Done",
     sgMinimise: "Minimise",
     sgYes: "Yes",
@@ -1861,6 +1862,7 @@ export const CLINICAL_STRINGS = {
     vitalNotNow: "Не сега",
     vitalLogIt: "Запиши",
     suggestionOpen: "Отвори",
+    sgTimePlaceholder: "чч:мм",
     sgDone: "Готово",
     sgMinimise: "Скрий",
     sgYes: "Да",
