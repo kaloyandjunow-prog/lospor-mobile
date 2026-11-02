@@ -1,4 +1,4 @@
-import type { RefObject } from "react"
+import type { ReactNode, RefObject } from "react"
 import { View, Text, ScrollView, TouchableOpacity, TextInput } from "react-native"
 import { CL_GRADES } from "@/lib/airway-ventilation"
 import { usePreferences } from "@/lib/preferences-context"
@@ -16,7 +16,7 @@ export function AirwayTab({
   awEbSize, setAwEbSize, awVentModes, setAwVentModes, awNotes, setAwNotes,
   awPresentsIntubated, setAwPresentsIntubated, awNotApplicable, setAwNotApplicable,
   saveAirwaySection, awExpandedDevice, setAwExpandedDevice, awExpandedWasComplete,
-  airwayTools, airwayDevices, awVentExpanded, setAwVentExpanded,
+  airwayTools, airwayDevices, awVentExpanded, setAwVentExpanded, smart,
 }: {
   awTools: string[]
   setAwTools: (updater: (prev: string[]) => string[]) => void
@@ -58,6 +58,8 @@ export function AirwayTab({
   airwayDevices: Opt[]
   awVentExpanded: "assisted" | "controlled" | null
   setAwVentExpanded: (v: "assisted" | "controlled" | null) => void
+  /** Smart selection (10.2.0): stands in for the tools and the device pills; the legacy tab is untouched. */
+  smart?: ReactNode
 }) {
   const { tc, shade } = usePreferences()
 
@@ -97,6 +99,9 @@ export function AirwayTab({
         ))}
       </View>
 
+      {smart}
+      {smart ? null : (
+        <>
       {/* Tools used */}
       <Text style={{ color:shade("#94a3b8"), fontSize:10, fontWeight:"700", letterSpacing:1.2,
         textTransform:"uppercase", marginBottom:10 }}>{tc("awToolsUsed")}</Text>
@@ -114,6 +119,9 @@ export function AirwayTab({
           )
         })}
       </View>
+
+        </>
+      )}
 
       {/* Cormack-Lehane grade */}
       {(awTools.includes("DIRECT_LARY") || awTools.includes("VIDEO_LARY")) && (
@@ -134,6 +142,8 @@ export function AirwayTab({
         </>
       )}
 
+      {smart ? null : (
+        <>
       {/* Airway devices */}
       <AirwayDevicePanels
         awDevices={awDevices} setAwDevices={setAwDevices}
@@ -150,6 +160,9 @@ export function AirwayTab({
         awExpandedWasComplete={awExpandedWasComplete}
         airwayDevices={airwayDevices}
       />
+
+        </>
+      )}
 
       {/* Ventilation mode */}
       <VentilationModeSection

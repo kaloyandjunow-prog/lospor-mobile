@@ -312,6 +312,7 @@ export function PreferencesProvider({
     vitalEpisodeAutoLog: clinicalPreferences.vitalEpisodeAutoLog,
     automationGroups: clinicalPreferences.automationGroups ?? {},
     energyKnobSkin: clinicalPreferences.energyKnobSkin ?? "A",
+    airwayScreen: clinicalPreferences.airwayScreen ?? "smart",
     localeReady,
     clinicalPreferencesReady,
     setLanguage,
@@ -340,6 +341,7 @@ export function PreferencesProvider({
     // The whole set each time, so one switch never clears another.
     setAutomationGroups: automationGroups => patchClinical({ automationGroups }),
     setEnergyKnobSkin: energyKnobSkin => patchClinical({ energyKnobSkin }),
+    setAirwayScreen: airwayScreen => patchClinical({ airwayScreen }),
     t: key => STRINGS[language][key] ?? STRINGS.en[key],
     tc: key =>
       (CLINICAL_STRINGS[language] as ClinicalStringsMap)[key]

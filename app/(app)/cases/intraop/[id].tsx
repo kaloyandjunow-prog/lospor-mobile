@@ -28,6 +28,12 @@ import { TourniquetHost } from "@/components/intraop/TourniquetHost"
 import { preopAgeDays } from "@lospor/core/vital-questions"
 import { usePhoneAirwayExchange } from "@/lib/use-phone-airway-exchange"
 import { AirwayExchangeSheet } from "@/components/intraop/AirwayExchangeSheet"
+import { AirwaySmart } from "@/components/intraop/AirwaySmart"
+import { AirwaySmartPanel } from "@/components/intraop/AirwaySmartPanel"
+import { Sheet } from "@/components/intraop/Sheet"
+import { airwayToolsFromEntries } from "@lospor/core/airway-device-entries"
+import { airwayDeviceSummary } from "@lospor/core/intraop"
+import { resolvedTimeZone } from "@lospor/core/intraop-time"
 import { cardEventOps } from "@lospor/core/intraop-suggestions"
 import { accessKindOf, replaceFailedLine, vascularLineText, type VascularLine } from "@lospor/core/vascular-access-lines"
 import { defibrillationSheet } from "@/lib/defibrillation-knob"
@@ -143,6 +149,7 @@ export default function IntraopLiveScreen() {
     cvpUnit,
     defaultMonitoring,
     clinicalPreferencesReady,
+    airwayScreen,
   } = usePreferences()
 
   const [caseInfo, setCaseInfo] = useState<{
@@ -562,7 +569,7 @@ export default function IntraopLiveScreen() {
   const text = (value: unknown) => (value == null || value === "" ? null : String(value))
   const num = (value: unknown) => (typeof value === "number" ? value : value == null || value === "" ? null : Number(value))
   const airwayExchange = usePhoneAirwayExchange({
-    log, active: caseLoaded && !isWatching,
+    log, active: caseLoaded && !isWatching, smart: airwayScreen === "smart",
     legacy: () => ({ airwayDevices: awDevices, lmaSize: awLmaSize, oralTubeSize: awOralTubeSize, oralCuffed: awOralCuffed, nasalTubeSize: awNasalTubeSize,
       nasalCuffed: awNasalCuffed, dltType: awDltType, dltSide: awDltSide, dltSize: awDltSize, endobronchialSize: awEbSize }),
     persist: (entries, fields) => {
@@ -570,9 +577,27 @@ export default function IntraopLiveScreen() {
       setAwLmaSize(text(fields.lmaSize)); setAwOralTubeSize(text(fields.oralTubeSize)); setAwOralCuffed(fields.oralCuffed as boolean | null)
       setAwNasalTubeSize(text(fields.nasalTubeSize)); setAwNasalCuffed(fields.nasalCuffed as boolean | null)
       setAwDltType(fields.dltType as never); setAwDltSide(fields.dltSide as never); setAwDltSize(num(fields.dltSize)); setAwEbSize(num(fields.endobronchialSize))
-      void patchIntraopSection({ airwayDeviceEntries: entries })
+      // The tools used for any device also fill the case-level tools, for every reader that knows only that.
+      const tools = airwayToolsFromEntries(entries)
+      if (tools.length > 0) setAwTools(prev => [...new Set([...prev, ...tools])])
+      void patchIntraopSection({ airwayDeviceEntries: entries, ...(tools.length > 0 ? { airwayTools: [...new Set([...awTools, ...tools])] } : {}) })
     },
   })
+  // Smart selection (10.2.0): the Airway tab that opens on what is in place. What it offers and how
+  // it saves is Core's (airway-smart); this hands it the case and writes the result.
+  const airwayLabel = (code: string) => [...AIRWAY_DEVICES, ...AIRWAY_TOOLS].find(option => option.code === code)?.label ?? code
+  const smartCase = {
+    patient: { clinicalMode: clinicalMode as "ADULT" | "PEDIATRIC", ageYears: preop?.age ?? null, age: preop?.ageValue != null && preop.ageUnit ? { value: preop.ageValue, unit: preop.ageUnit } : null,
+      weightKg: preop?.weight ?? null, heightCm: preop?.height ?? null, sex: preop?.sex ?? null },
+    techniques, startedAt: startRef.current?.toISOString() ?? null, now: () => new Date().toISOString(), timeZone: resolvedTimeZone(),
+    difficultAirway: preop?.mallampati === "III" || preop?.mallampati === "IV", deviceLabel: airwayLabel, toolLabel: airwayLabel,
+  }
+  const smartClock = (iso: string) => attention?.clockOf?.(iso) ?? iso.slice(11, 16)
+  const airwaySmart = airwayScreen === "smart" && !isWatching ? (
+    <AirwaySmart {...smartCase} entries={airwayExchange.entries()} onChange={airwayExchange.save}
+      describe={entry => airwayDeviceSummary(entry.device, entry.details, { device: airwayLabel, attribute: code => code }) ?? airwayLabel(entry.device)}
+      timeOf={smartClock} />
+  ) : undefined
 
   // Vascular access tab
   const [vascularAccesses, setVascularAccesses] = useState<VascularEntry[]>([])
@@ -771,7 +796,7 @@ export default function IntraopLiveScreen() {
           awDltSize, setAwDltSize, awEbSize, setAwEbSize, awVentModes, setAwVentModes,
           awNotes, setAwNotes, awPresentsIntubated, setAwPresentsIntubated,
           awNotApplicable, setAwNotApplicable, saveAirwaySection, awExpandedDevice, setAwExpandedDevice,
-          awExpandedWasComplete, AIRWAY_TOOLS, AIRWAY_DEVICES, awVentExpanded, setAwVentExpanded,
+          awExpandedWasComplete, AIRWAY_TOOLS, AIRWAY_DEVICES, airwaySmart, awVentExpanded, setAwVentExpanded,
           vascularAccesses, setVascularAccesses, saveVascularAccesses, vascularSaving,
           vascSiteColor, VASC_TREE, vascDefaultUnit, VASC_PREEXISTING_QUICK, premedEveningText,
           setPremedEveningText, premedMorningText, setPremedMorningText, savePremedication,
@@ -834,6 +859,12 @@ export default function IntraopLiveScreen() {
       {!isWatching ? <JetHost log={log} save={save} clockOf={attention?.clockOf ?? (iso => iso.slice(11, 16))} /> : null}
       {!isWatching ? <TourniquetHost log={log} save={save} sex={preop?.sex} clockOf={attention?.clockOf ?? (iso => iso.slice(11, 16))}
         ageDays={preopAgeDays(preop ? { ageValue: preop.ageValue, ageUnit: preop.ageUnit, ageYears: preop.age, ageApproxDays: preop.ageApproxDays } : null)} /> : null}
+      {airwayExchange.smartOpen && !isWatching ? (
+        <Sheet visible onClose={() => airwayExchange.setSmartOpen(null)} title={airwayLabel(airwayExchange.smartOpen.device)} full allowInline={false}>
+          <AirwaySmartPanel {...smartCase} request={{ device: airwayExchange.smartOpen.device, at: airwayExchange.smartOpen.at, source: "timeline" }} entries={airwayExchange.entries()}
+            onSave={next => { airwayExchange.setSmartOpen(null); airwayExchange.save(next) }} onClose={() => airwayExchange.setSmartOpen(null)} />
+        </Sheet>
+      ) : null}
       {airwayExchange.dialog && !isWatching ? (
         <AirwayExchangeSheet entries={airwayExchange.entries()} devices={AIRWAY_DEVICES} reason={airwayExchange.dialog.reason} at={airwayExchange.dialog.at}
           onClose={() => airwayExchange.setDialog(null)}

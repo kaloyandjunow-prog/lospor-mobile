@@ -145,6 +145,8 @@ export type IntraopTabContentBuilderProps = {
   awExpandedWasComplete: AirwayProps["awExpandedWasComplete"]
   AIRWAY_TOOLS: AirwayProps["airwayTools"]
   AIRWAY_DEVICES: AirwayProps["airwayDevices"]
+  /** Smart selection (10.2.0), when the clinician uses it. */
+  airwaySmart?: AirwayProps["smart"]
   awVentExpanded: AirwayProps["awVentExpanded"]
   setAwVentExpanded: AirwayProps["setAwVentExpanded"]
   vascularAccesses: VascularProps["vascularAccesses"]
@@ -205,7 +207,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
     awDltSide, setAwDltSide, awDltSize, setAwDltSize, awEbSize, setAwEbSize, awVentModes,
     setAwVentModes, awNotes, setAwNotes, awPresentsIntubated, setAwPresentsIntubated,
     awNotApplicable, setAwNotApplicable, saveAirwaySection, awExpandedDevice,
-    setAwExpandedDevice, awExpandedWasComplete, AIRWAY_TOOLS, AIRWAY_DEVICES,
+    setAwExpandedDevice, awExpandedWasComplete, AIRWAY_TOOLS, AIRWAY_DEVICES, airwaySmart,
     awVentExpanded, setAwVentExpanded, vascularAccesses, setVascularAccesses,
     saveVascularAccesses, vascularSaving, vascSiteColor, VASC_TREE, vascDefaultUnit,
     VASC_PREEXISTING_QUICK, premedEveningText, setPremedEveningText, premedMorningText,
@@ -317,7 +319,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
       awNotes, setAwNotes, awPresentsIntubated, setAwPresentsIntubated,
       awNotApplicable, setAwNotApplicable, saveAirwaySection, awExpandedDevice, setAwExpandedDevice,
       awExpandedWasComplete, airwayTools: AIRWAY_TOOLS, airwayDevices: AIRWAY_DEVICES,
-      awVentExpanded, setAwVentExpanded,
+      awVentExpanded, setAwVentExpanded, smart: airwaySmart,
     } }
 
     case "vascular": return { tab, content: (
