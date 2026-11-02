@@ -33,6 +33,7 @@ type TechniqueProps = ContentFor<"technique">
 type TimingProps = ContentFor<"timing">
 type PositionProps = ContentFor<"position">
 type MonitoringProps = ContentFor<"monitoring">
+type EquipmentProps = ContentFor<"equipment">
 type AirwayProps = ContentFor<"airway">
 type PremedicationProps = ContentFor<"premedication">
 type EventsProps = ContentFor<"events">
@@ -156,6 +157,7 @@ export type IntraopTabContentBuilderProps = {
   /** Smart selection for vascular access (10.2.0), when the clinician uses it. */
   vascularSmart?: VascularProps["smart"]
   monitoringSmart?: MonitoringProps["smart"]
+  equipmentSmart?: EquipmentProps["smart"]
   vascSiteColor: VascularProps["vascSiteColor"]
   VASC_TREE: VascularProps["vascTree"]
   vascDefaultUnit: VascularProps["vascDefaultUnit"]
@@ -212,7 +214,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
     awNotApplicable, setAwNotApplicable, saveAirwaySection, awExpandedDevice,
     setAwExpandedDevice, awExpandedWasComplete, AIRWAY_TOOLS, AIRWAY_DEVICES, airwaySmart,
     awVentExpanded, setAwVentExpanded, vascularAccesses, setVascularAccesses,
-    saveVascularAccesses, vascularSaving, vascularSmart, monitoringSmart, vascSiteColor, VASC_TREE, vascDefaultUnit,
+    saveVascularAccesses, vascularSaving, vascularSmart, monitoringSmart, equipmentSmart, vascSiteColor, VASC_TREE, vascDefaultUnit,
     VASC_PREEXISTING_QUICK, premedEveningText, setPremedEveningText, premedMorningText,
     setPremedMorningText, savePremedication, openPremedPicker, log, selectedComplications,
     complicationsNotes, setComplicationsNotes, saveComplications, removeLegacyComplication, eventActions,
@@ -273,7 +275,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
     } }
 
     case "equipment": return { tab, content: {
-      preop, surgeryStart: startRef.current, caseTimezone,
+      preop, surgeryStart: startRef.current, caseTimezone, smart: equipmentSmart,
     } }
 
     case "technique": return { tab, content: {

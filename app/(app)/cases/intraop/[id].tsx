@@ -27,6 +27,8 @@ import { JetHost } from "@/components/intraop/JetHost"
 import { TourniquetHost } from "@/components/intraop/TourniquetHost"
 import { preopAgeDays } from "@lospor/core/vital-questions"
 import { MonitoringSmart } from "@/components/intraop/MonitoringSmart"
+import { addAirwayDevice, resolveAirwayTime, suggestedAirwayDetails } from "@lospor/core/airway-smart"
+import { toggleEquipmentFlag } from "@lospor/core/equipment-smart"
 import { MONITORING_READINGS, isRelaxant, monitoringSuggestions } from "@lospor/core/monitoring-smart"
 import { usePhoneAirwayExchange } from "@/lib/use-phone-airway-exchange"
 import { AirwayExchangeSheet } from "@/components/intraop/AirwayExchangeSheet"
@@ -158,6 +160,7 @@ export default function IntraopLiveScreen() {
     airwayScreen,
     vascularScreen,
     monitoringScreen,
+    equipmentScreen,
   } = usePreferences()
 
   const [caseInfo, setCaseInfo] = useState<{
@@ -647,6 +650,21 @@ export default function IntraopLiveScreen() {
       onHide={field => setHiddenMonitors(list => [...list, field])} lastReading={lastMonitorReading} onReading={() => openVitals("full")} now={() => new Date().toISOString()} />
   ) : undefined
 
+  // Smart selection for equipment (10.2.0): the calculator list as a set-up checklist. The tube and LMA go
+  // to the Airway record when marked in use; the catheter and NGT set their case flag (what each item does is Core's).
+  const equipmentSmart = equipmentScreen === "smart" && !isWatching ? {
+    flags: { urinaryCatheter: monitoring.includes("urinaryCatheter"), stomachTube: monitoring.includes("stomachTube") },
+    airwayInUse: airwayExchange.entries().filter(entry => entry.status === "in_use").map(entry => entry.device),
+    onFlag: (field: "urinaryCatheter" | "stomachTube") => applyMonitoring(toggleEquipmentFlag(monitoring, field)),
+    onUseAirway: (device: "ORAL_ETT" | "LMA") => {
+      const entries = airwayExchange.entries()
+      airwayExchange.save(addAirwayDevice(entries, {
+        id: `airway-${Date.now()}-${entries.length + 1}`, device, details: suggestedAirwayDetails(device, smartCase.patient),
+        insertedAt: resolveAirwayTime(entries.length === 0 ? "start" : "now", { startedAt: smartCase.startedAt, now: smartCase.now() }),
+      }))
+    },
+  } : undefined
+
   // Technique tree navigation
   const [techPath,      setTechPath]      = useState<string[]>([])
   const [otherTechText, setOtherTechText] = useState("")
@@ -842,7 +860,7 @@ export default function IntraopLiveScreen() {
           awNotes, setAwNotes, awPresentsIntubated, setAwPresentsIntubated,
           awNotApplicable, setAwNotApplicable, saveAirwaySection, awExpandedDevice, setAwExpandedDevice,
           awExpandedWasComplete, AIRWAY_TOOLS, AIRWAY_DEVICES, airwaySmart, awVentExpanded, setAwVentExpanded,
-          vascularAccesses, setVascularAccesses, saveVascularAccesses, vascularSaving, vascularSmart, monitoringSmart,
+          vascularAccesses, setVascularAccesses, saveVascularAccesses, vascularSaving, vascularSmart, monitoringSmart, equipmentSmart,
           vascSiteColor, VASC_TREE, vascDefaultUnit, VASC_PREEXISTING_QUICK, premedEveningText,
           setPremedEveningText, premedMorningText, setPremedMorningText, savePremedication,
           openPremedPicker, log, selectedComplications, complicationsNotes, setComplicationsNotes,

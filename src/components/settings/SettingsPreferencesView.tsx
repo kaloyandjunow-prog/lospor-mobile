@@ -23,6 +23,7 @@ import { EnergyKnobSkinCard } from "./EnergyKnobSkinCard"
 import { AirwayScreenCard } from "./AirwayScreenCard"
 import { VascularScreenCard } from "./VascularScreenCard"
 import { MonitoringScreenCard } from "./MonitoringScreenCard"
+import { EquipmentScreenCard } from "./EquipmentScreenCard"
 import { UiScaleRow } from "./UiScaleRow"
 
 /**
@@ -189,6 +190,7 @@ export function SettingsPreferencesView({
         <AirwayScreenCard />
         <VascularScreenCard />
         <MonitoringScreenCard />
+        <EquipmentScreenCard />
         <View style={{ height: 12 }} />
         <AutomationGroupsCard />
 

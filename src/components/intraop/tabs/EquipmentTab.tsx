@@ -11,15 +11,24 @@ import {
 import { useShade } from "@/theme/shade"
 import { PediatricIntraopReference } from "@/components/intraop/PediatricIntraopReference"
 import { BroselowChip } from "@/components/intraop/BroselowChip"
+import { EquipmentSmart } from "@/components/intraop/EquipmentSmart"
+import type { EquipmentFlagState } from "@lospor/core/equipment-smart"
 import { broselowZone } from "@lospor/core/broselow"
 
 export function EquipmentTab({
-  preop, surgeryStart, caseTimezone,
+  preop, surgeryStart, caseTimezone, smart,
 }: {
   preop: IntraopPreopSummary | null
   /** The stored start of surgery, for the nil-by-mouth clock times. */
   surgeryStart?: Date | null
   caseTimezone?: string | null
+  /** Smart selection (10.2.0): the list as a set-up checklist. Without it this is the Legacy tab. */
+  smart?: {
+    flags: EquipmentFlagState
+    airwayInUse: readonly string[]
+    onFlag: (field: "urinaryCatheter" | "stomachTube") => void
+    onUseAirway: (device: "ORAL_ETT" | "LMA") => void
+  }
 }) {
   const shade = useShade()
   const { tc, language } = usePreferences()
@@ -30,7 +39,7 @@ export function EquipmentTab({
       ? pediatricAge != null || preop.weight != null || preop.height != null
       : preop.age != null || preop.weight != null || preop.height != null
   )
-  const cats = translateEquipment(hasPreop && preop ? calcEquipment({
+  const rawCats = hasPreop && preop ? calcEquipment({
     clinicalMode: preop.clinicalMode,
     age: pediatricAge,
     ageYears: pediatricMode ? null : preop.age,
@@ -43,7 +52,8 @@ export function EquipmentTab({
       mouthOpeningCm: preop.mouthOpeningCm,
       cormackLehane: preop.cormackLehane,
     },
-  }) : [], language)
+  }) : []
+  const cats = translateEquipment(rawCats, language)
   const broselow = preop ? broselowZone({ clinicalMode: preop.clinicalMode, heightCm: preop.height, weightKg: preop.weight }) : null
   const medicationWarnings = getMedicationWarnings(preop?.currentMedications ?? [])
   // The recorded allergies in view while drugs are given, and any the drug
@@ -95,7 +105,9 @@ export function EquipmentTab({
 
           {pediatricMode && preop ? <PediatricIntraopReference preop={preop} language={language} surgeryStart={surgeryStart} timezone={caseTimezone} /> : null}
 
-          {cats.map((cat, ci) => (
+          {smart ? (
+            <EquipmentSmart raw={rawCats} shown={cats} {...smart} />
+          ) : cats.map((cat, ci) => (
             <View key={cat.cat} style={{ marginBottom: ci < cats.length - 1 ? 16 : 0 }}>
               <View style={{ flexDirection:"row", alignItems:"center", marginBottom:8, gap:8 }}>
                 <View style={{ width:3, height:14, borderRadius:2, backgroundColor: cat.color }} />

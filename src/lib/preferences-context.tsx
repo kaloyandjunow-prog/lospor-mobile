@@ -315,6 +315,7 @@ export function PreferencesProvider({
     airwayScreen: clinicalPreferences.airwayScreen ?? "smart",
     vascularScreen: clinicalPreferences.vascularScreen ?? "smart",
     monitoringScreen: clinicalPreferences.monitoringScreen ?? "smart",
+    equipmentScreen: clinicalPreferences.equipmentScreen ?? "smart",
     localeReady,
     clinicalPreferencesReady,
     setLanguage,
@@ -346,6 +347,7 @@ export function PreferencesProvider({
     setAirwayScreen: airwayScreen => patchClinical({ airwayScreen }),
     setVascularScreen: vascularScreen => patchClinical({ vascularScreen }),
     setMonitoringScreen: monitoringScreen => patchClinical({ monitoringScreen }),
+    setEquipmentScreen: equipmentScreen => patchClinical({ equipmentScreen }),
     t: key => STRINGS[language][key] ?? STRINGS.en[key],
     tc: key =>
       (CLINICAL_STRINGS[language] as ClinicalStringsMap)[key]
