@@ -21,9 +21,9 @@ export function panelSvgWidth(nCols: number, colW: number): number {
 // Vitals row labels, matching the printed record: Bulgarian uses АН / СЧ /
 // Темп. (2026-10-18); SpO₂ and EtCO₂ read the same in both languages.
 const VITAL_LABELS = {
-  en: { bp: "BP", hr: "HR", spo2: "SpO₂", etco2: "EtCO₂", temp: "Temp",
+  en: { bp: "BP", nibp: "NIBP", ibp: "IBP", hr: "HR", spo2: "SpO₂", etco2: "EtCO₂", temp: "Temp",
         sbp: "SBP", dbp: "DBP", units: "mmHg/bpm", drugs: "Drugs", time: "Time" },
-  bg: { bp: "АН", hr: "СЧ", spo2: "SpO₂", etco2: "EtCO₂", temp: "Темп",
+  bg: { bp: "АН", nibp: "NIBP", ibp: "IBP", hr: "СЧ", spo2: "SpO₂", etco2: "EtCO₂", temp: "Темп",
         sbp: "Сис", dbp: "Диас", units: "mmHg/удм", drugs: "Медикаменти", time: "Час" },
 } as const
 
@@ -54,7 +54,9 @@ export function TimetablePanelSvg({ model, drugLog, startISO, c0, c1, step, colW
 
   // Numeric grid rows present in this window
   const gridDefs: { k: string; f: (v: ProjectedVital) => string }[] = [
-    { k: VL.bp,    f: (v: ProjectedVital) => (v.systolic != null && v.diastolic != null) ? `${v.systolic}/${v.diastolic}` : (v.systolic != null ? `${v.systolic}` : "") },
+    // The cuff is called NIBP once the arterial line has readings beside it (10.2.0).
+    { k: vitals.some((v, i) => inRange(i) && v?.ibpSystolic != null) ? VL.nibp : VL.bp, f: (v: ProjectedVital) => (v.systolic != null && v.diastolic != null) ? `${v.systolic}/${v.diastolic}` : (v.systolic != null ? `${v.systolic}` : "") },
+    { k: VL.ibp,   f: (v: ProjectedVital) => (v.ibpSystolic != null && v.ibpDiastolic != null) ? `${v.ibpSystolic}/${v.ibpDiastolic}` : (v.ibpSystolic != null ? `${v.ibpSystolic}` : "") },
     { k: VL.hr,    f: (v: ProjectedVital) => v.heartRate != null ? `${v.heartRate}` : "" },
     { k: VL.spo2,  f: (v: ProjectedVital) => v.spO2 != null ? `${v.spO2}` : "" },
     { k: VL.etco2, f: (v: ProjectedVital) => v.etco2 != null ? `${v.etco2}` : "" },
