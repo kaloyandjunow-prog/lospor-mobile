@@ -22,6 +22,8 @@ import { MH_HISTORY_WARNING, type SuggestionContext } from "@lospor/core/intraop
 import { confirmAction } from "@/lib/notify"
 import { autosaveManager } from "@/lib/autosave-manager"
 import { usePhoneDeathPrompt } from "@/lib/use-phone-death-prompt"
+import { jetSheet } from "@/lib/jet-sheet"
+import { JetHost } from "@/components/intraop/JetHost"
 import { usePhoneAirwayExchange } from "@/lib/use-phone-airway-exchange"
 import { AirwayExchangeSheet } from "@/components/intraop/AirwayExchangeSheet"
 import { cardEventOps } from "@lospor/core/intraop-suggestions"
@@ -552,6 +554,8 @@ export default function IntraopLiveScreen() {
     setAwNotApplicable,
     saveAirwaySection,
   } = useIntraopAirwaySection(caseLoaded, patchIntraopSection, tc("errorLabel"))
+  // 10.2.0: Jet ticked among the ventilation modes puts a Jet button in each column's sheet.
+  useEffect(() => { jetSheet.setEnabled(awVentModes.includes("Jet")) }, [awVentModes])
   // 10.2.0: the airway list -- the embedded picker, E6 and the card's Reintubate?
   const text = (value: unknown) => (value == null || value === "" ? null : String(value))
   const num = (value: unknown) => (typeof value === "number" ? value : value == null || value === "" ? null : Number(value))
@@ -825,6 +829,7 @@ export default function IntraopLiveScreen() {
           that props object would add six more names to a list that is already
           the reason this screen is hard to read. */}
       <DefibrillationHost log={log} save={save} preop={preop} />
+      {!isWatching ? <JetHost log={log} save={save} clockOf={attention?.clockOf ?? (iso => iso.slice(11, 16))} /> : null}
       {airwayExchange.dialog && !isWatching ? (
         <AirwayExchangeSheet entries={airwayExchange.entries()} devices={AIRWAY_DEVICES} reason={airwayExchange.dialog.reason} at={airwayExchange.dialog.at}
           onClose={() => airwayExchange.setDialog(null)}

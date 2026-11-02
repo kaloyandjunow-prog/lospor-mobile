@@ -9,6 +9,8 @@ import { complicationDisplayLabel } from "@lospor/core/clinical-display"
 import { canonicalComplicationLabel, complicationGroupsBeyond } from "@lospor/core/complications"
 import { formatMessage } from "@/i18n/locale"
 import { useShade } from "@/theme/shade"
+import { jetSheet } from "@/lib/jet-sheet"
+import { useSyncExternalStore } from "react"
 
 type ClinicalEventCategory = {
   cat: string
@@ -36,6 +38,8 @@ type Props = {
   onBrowseDrugs: () => void
   /** A shock at the slot's time (10.1.0). */
   onOpenDefibrillation?: () => void
+  /** Jet ventilation at the slot's time (10.2.0); shown once Jet is ticked among the ventilation modes. */
+  onOpenJet?: () => void
   onStopAgent: (name: string) => void
   onOpenAgent: () => void
   onStopGas: () => void
@@ -57,12 +61,14 @@ export function SlotActionSheet({
   onSelectEvent,
   onBrowseDrugs,
   onOpenDefibrillation,
+  onOpenJet,
   onStopAgent,
   onOpenAgent,
   onStopGas,
   onOpenGas,
 }: Props) {
   const shade = useShade()
+  const jetOn = useSyncExternalStore(jetSheet.subscribe, jetSheet.enabled, jetSheet.enabled)
   const { tc, language } = usePreferences()
   const categoryLabel = (name: string) => displayClinicalCode("optionGroup", name, language, { label: name })
   // A complication reads as the complications catalogue names it, as in its
@@ -138,6 +144,14 @@ export function SlotActionSheet({
           style={{ borderRadius:10, paddingVertical:10, alignItems:"center", marginTop:-8,
             backgroundColor:shade("#f59e0b18"), borderWidth:1, borderColor:shade("#f59e0b55"), marginBottom:18 }}>
           <Text style={{ color:shade("#fbbf24"), fontWeight:"700", fontSize:12 }}>{tc("defibButton")}</Text>
+        </FeedbackPressable>
+      ) : null}
+
+      {onOpenJet && jetOn ? (
+        <FeedbackPressable onPress={onOpenJet} testID="slot-jet"
+          style={{ borderRadius:10, paddingVertical:10, alignItems:"center", marginTop:-8,
+            backgroundColor:shade("#14b8a618"), borderWidth:1, borderColor:shade("#14b8a655"), marginBottom:18 }}>
+          <Text style={{ color:shade("#5eead4"), fontWeight:"700", fontSize:12 }}>{tc("jetRow")}</Text>
         </FeedbackPressable>
       ) : null}
 

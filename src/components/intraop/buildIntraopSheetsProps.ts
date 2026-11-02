@@ -11,6 +11,7 @@ import { buildPostopRoute } from "@/lib/postop-route"
 import { premedicationSheetProps } from "@/components/intraop/premedication-sheet-props"
 import type { ClinicalStringKey } from "@/lib/preferences-context"
 import { defibrillationSheet } from "@/lib/defibrillation-knob"
+import { jetSheet } from "@/lib/jet-sheet"
 
 type SlotProps = IntraopSheetsHostProps["slot"]
 type EditEventProps = IntraopSheetsHostProps["editEvent"]
@@ -116,6 +117,7 @@ export function buildIntraopSheetsProps(props: IntraopSheetsBuilderProps): Intra
       onSelectEvent: openSlotEvent,
       onBrowseDrugs: () => { const ts = slotIsoTimestamp(slotTs); setSlotOpen(false); openDrug(ts) },
       onOpenDefibrillation: () => { const ts = slotIsoTimestamp(slotTs); setSlotOpen(false); if (ts) defibrillationSheet.open(ts) },
+      onOpenJet: () => { const ts = slotIsoTimestamp(slotTs); setSlotOpen(false); if (ts) jetSheet.open(ts) },
       // Stops are recorded at the row the sheet was opened from.
       onStopAgent: name => { setSlotOpen(false); stopAgent(name, slotIsoTimestamp(slotTs)) },
       onOpenAgent: () => { const ts = slotIsoTimestamp(slotTs); setSlotOpen(false); openAgent(ts) },
