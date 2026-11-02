@@ -507,6 +507,8 @@ export const CLINICAL_STRINGS = {
     ubDismiss:           "Dismiss",
     mhStartNow:          "Start now",
     mhStartAt:           "Start at…",
+    mhNibp: "NIBP",
+    mhIbp: "IBP",
     mhRetrySync:         "Retry sync",
 
     // Intraop — emergency shortcuts
@@ -1936,6 +1938,8 @@ export const CLINICAL_STRINGS = {
     ubDismiss:           "Скрий",
     mhStartNow:          "Старт сега",
     mhStartAt:           "Старт в…",
+    mhNibp: "NIBP",
+    mhIbp: "IBP",
     mhRetrySync:         "Синхронизирай отново",
 
     // Intraop — emergency shortcuts
