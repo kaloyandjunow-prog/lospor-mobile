@@ -4,7 +4,7 @@ import type { ColorScheme } from "@/theme/colors"
 import type { ClinicalStringKey } from "@/i18n/clinical-strings"
 import type { AppLanguage } from "@/i18n/locale"
 import type { STRINGS } from "@/i18n/strings"
-import type { AirwayScreen, DefaultMonitoring, EnergyKnobSkin } from "@lospor/core/clinical-preferences"
+import type { AirwayScreen, DefaultMonitoring, EnergyKnobSkin, VascularScreen } from "@lospor/core/clinical-preferences"
 import type { UserAutomationSwitches } from "@lospor/core/intraop-automation"
 import type { AutoFillVitalsPreferences } from "@lospor/core/intraop-vitals"
 import type { BulgarianNameSwitches } from "@lospor/core/display"
@@ -47,6 +47,8 @@ export type PreferencesContextValue = {
   energyKnobSkin: EnergyKnobSkin
   /** 10.2.0: Smart selection or the legacy Airway tab. */
   airwayScreen: AirwayScreen
+  /** 10.2.0: Smart selection or the legacy Vascular access tab. */
+  vascularScreen: VascularScreen
   localeReady: boolean
   clinicalPreferencesReady: boolean
   setLanguage: (language: AppLanguage) => Promise<void>
@@ -73,6 +75,7 @@ export type PreferencesContextValue = {
   setAutomationGroups: (value: UserAutomationSwitches) => Promise<void>
   setEnergyKnobSkin: (value: EnergyKnobSkin) => Promise<void>
   setAirwayScreen: (value: AirwayScreen) => Promise<void>
+  setVascularScreen: (value: VascularScreen) => Promise<void>
   t: (key: TranslationKey) => string
   tc: (key: ClinicalStringKey) => string
 }

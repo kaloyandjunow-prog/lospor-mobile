@@ -153,6 +153,8 @@ export type IntraopTabContentBuilderProps = {
   setVascularAccesses: VascularProps["setVascularAccesses"]
   saveVascularAccesses: VascularProps["saveVascularAccesses"]
   vascularSaving: VascularProps["vascularSaving"]
+  /** Smart selection for vascular access (10.2.0), when the clinician uses it. */
+  vascularSmart?: VascularProps["smart"]
   vascSiteColor: VascularProps["vascSiteColor"]
   VASC_TREE: VascularProps["vascTree"]
   vascDefaultUnit: VascularProps["vascDefaultUnit"]
@@ -209,7 +211,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
     awNotApplicable, setAwNotApplicable, saveAirwaySection, awExpandedDevice,
     setAwExpandedDevice, awExpandedWasComplete, AIRWAY_TOOLS, AIRWAY_DEVICES, airwaySmart,
     awVentExpanded, setAwVentExpanded, vascularAccesses, setVascularAccesses,
-    saveVascularAccesses, vascularSaving, vascSiteColor, VASC_TREE, vascDefaultUnit,
+    saveVascularAccesses, vascularSaving, vascularSmart, vascSiteColor, VASC_TREE, vascDefaultUnit,
     VASC_PREEXISTING_QUICK, premedEveningText, setPremedEveningText, premedMorningText,
     setPremedMorningText, savePremedication, openPremedPicker, log, selectedComplications,
     complicationsNotes, setComplicationsNotes, saveComplications, removeLegacyComplication, eventActions,
@@ -328,6 +330,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
         setVascularAccesses={setVascularAccesses}
         saveVascularAccesses={saveVascularAccesses}
         vascularSaving={vascularSaving}
+        smart={vascularSmart}
         vascSiteColor={vascSiteColor}
         vascTree={VASC_TREE}
         vascDefaultUnit={vascDefaultUnit}

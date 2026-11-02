@@ -30,6 +30,10 @@ import { usePhoneAirwayExchange } from "@/lib/use-phone-airway-exchange"
 import { AirwayExchangeSheet } from "@/components/intraop/AirwayExchangeSheet"
 import { AirwaySmart } from "@/components/intraop/AirwaySmart"
 import { AirwaySmartPanel } from "@/components/intraop/AirwaySmartPanel"
+import { displayClinicalCode } from "@/lib/clinical-display"
+import { VascularSmart } from "@/components/intraop/VascularSmart"
+import { VascularSmartPanel } from "@/components/intraop/VascularSmartPanel"
+import { usePhoneVascularEvents } from "@/lib/use-phone-vascular-smart"
 import { Sheet } from "@/components/intraop/Sheet"
 import { airwayToolsFromEntries } from "@lospor/core/airway-device-entries"
 import { airwayDeviceSummary } from "@lospor/core/intraop"
@@ -150,6 +154,7 @@ export default function IntraopLiveScreen() {
     defaultMonitoring,
     clinicalPreferencesReady,
     airwayScreen,
+    vascularScreen,
   } = usePreferences()
 
   const [caseInfo, setCaseInfo] = useState<{
@@ -601,6 +606,23 @@ export default function IntraopLiveScreen() {
 
   // Vascular access tab
   const [vascularAccesses, setVascularAccesses] = useState<VascularEntry[]>([])
+  // Smart selection for vascular access (10.2.0): the Vascular access tab that opens on what is in place.
+  // What it offers and how it saves is Core's (vascular-smart); this hands it the case and writes the result.
+  const vascularLines = () => vascularAccesses as unknown as VascularLine[]
+  const applyVascularLines = (next: VascularLine[]) => {
+    const entries = next as unknown as typeof vascularAccesses
+    setVascularAccesses(entries)
+    void saveVascularAccesses(entries)
+  }
+  const vascularEvents = usePhoneVascularEvents({ log, active: caseLoaded && !isWatching && vascularScreen === "smart", lines: vascularLines })
+  const vascularCase = {
+    patient: { clinicalMode: clinicalMode as "ADULT" | "PEDIATRIC", ageYears: preop?.age ?? null },
+    startedAt: startRef.current?.toISOString() ?? null, now: () => new Date().toISOString(), timeZone: resolvedTimeZone(),
+    siteLabel: (code: string) => displayClinicalCode("option:VASCULAR_ACCESS", code, language),
+  }
+  const vascularSmart = vascularScreen === "smart" && !isWatching ? (
+    <VascularSmart {...vascularCase} lines={vascularLines()} onChange={applyVascularLines} techniques={techniques} timeOf={smartClock} />
+  ) : undefined
 
   // Technique tree navigation
   const [techPath,      setTechPath]      = useState<string[]>([])
@@ -797,7 +819,7 @@ export default function IntraopLiveScreen() {
           awNotes, setAwNotes, awPresentsIntubated, setAwPresentsIntubated,
           awNotApplicable, setAwNotApplicable, saveAirwaySection, awExpandedDevice, setAwExpandedDevice,
           awExpandedWasComplete, AIRWAY_TOOLS, AIRWAY_DEVICES, airwaySmart, awVentExpanded, setAwVentExpanded,
-          vascularAccesses, setVascularAccesses, saveVascularAccesses, vascularSaving,
+          vascularAccesses, setVascularAccesses, saveVascularAccesses, vascularSaving, vascularSmart,
           vascSiteColor, VASC_TREE, vascDefaultUnit, VASC_PREEXISTING_QUICK, premedEveningText,
           setPremedEveningText, premedMorningText, setPremedMorningText, savePremedication,
           openPremedPicker, log, selectedComplications, complicationsNotes, setComplicationsNotes,
@@ -859,6 +881,12 @@ export default function IntraopLiveScreen() {
       {!isWatching ? <JetHost log={log} save={save} clockOf={attention?.clockOf ?? (iso => iso.slice(11, 16))} /> : null}
       {!isWatching ? <TourniquetHost log={log} save={save} sex={preop?.sex} clockOf={attention?.clockOf ?? (iso => iso.slice(11, 16))}
         ageDays={preopAgeDays(preop ? { ageValue: preop.ageValue, ageUnit: preop.ageUnit, ageYears: preop.age, ageApproxDays: preop.ageApproxDays } : null)} /> : null}
+      {vascularEvents.request && !isWatching ? (
+        <Sheet visible onClose={() => vascularEvents.setRequest(null)} title={tc(vascularEvents.request.type === "PERIPHERAL" ? "vsmPeripheral" : vascularEvents.request.type === "ARTERIAL" ? "vsmArterial" : "vsmCentral")} full allowInline={false}>
+          <VascularSmartPanel {...vascularCase} request={vascularEvents.request} lines={vascularLines()}
+            onSave={next => { vascularEvents.setRequest(null); applyVascularLines(next) }} onClose={() => vascularEvents.setRequest(null)} />
+        </Sheet>
+      ) : null}
       {airwayExchange.smartOpen && !isWatching ? (
         <Sheet visible onClose={() => airwayExchange.setSmartOpen(null)} title={airwayLabel(airwayExchange.smartOpen.device)} full allowInline={false}>
           <AirwaySmartPanel {...smartCase} request={{ device: airwayExchange.smartOpen.device, at: airwayExchange.smartOpen.at, source: "timeline" }} entries={airwayExchange.entries()}

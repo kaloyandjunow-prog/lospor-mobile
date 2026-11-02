@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { View, Text, ScrollView, TouchableOpacity, type ViewStyle } from "react-native"
 import { uid } from "@/lib/intraop-log-event"
 import { usePreferences, type ClinicalStringKey } from "@/lib/preferences-context"
@@ -25,7 +25,7 @@ function pathLabel(path: VascTreeNode[], canonical = false): string {
 
 export function VascularTab({
   vascularAccesses, setVascularAccesses, saveVascularAccesses, vascularSaving,
-  vascSiteColor, vascTree, vascDefaultUnit, vascPreexistingQuick, tc,
+  vascSiteColor, vascTree, vascDefaultUnit, vascPreexistingQuick, tc, smart,
 }: {
   vascularAccesses: VascularEntry[]
   setVascularAccesses: (next: VascularEntry[]) => void
@@ -36,6 +36,8 @@ export function VascularTab({
   vascDefaultUnit: (site: string) => string
   vascPreexistingQuick: { v: string; label: string; crumb: string }[]
   tc: (key: ClinicalStringKey) => string
+  /** Smart selection (10.2.0): when given, it stands in for the tab below; the legacy tab is untouched. */
+  smart?: ReactNode
 }) {
   const shade = useShade()
   const { language } = usePreferences()
@@ -46,6 +48,14 @@ export function VascularTab({
   const [vascDetailSize, setVascDetailSize]     = useState("")
   const [vascDetailDepth, setVascDetailDepth]   = useState("")
   const [vascDetailLumens, setVascDetailLumens] = useState("")
+
+  if (smart) {
+    return (
+      <ScrollView style={{ flex:1 }} contentContainerStyle={{ padding:16, paddingBottom:40 }}>
+        {smart}
+      </ScrollView>
+    )
+  }
 
   return (
     <ScrollView style={{ flex:1 }} contentContainerStyle={{ padding:16, paddingBottom:40 }}>
@@ -194,7 +204,7 @@ export function VascularTab({
       {/* Detail form — after leaf selected */}
       {vascPending && (() => {
         const isCentral = vascPending.v.startsWith("CVK_") || vascPending.v.startsWith("PICC_")
-        const sizePresetsG  = ["14","16","18","20","22"]
+        const sizePresetsG  = ["14","16","18","20","22","24","26"]
         const sizePresetsFr = ["4","5","6","7","8","9"]
         const presets = vascDetailUnit === "G" ? sizePresetsG : sizePresetsFr
         const isPreexisting = vascMode === "preexisting"
