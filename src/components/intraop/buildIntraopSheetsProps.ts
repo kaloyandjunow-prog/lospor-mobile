@@ -26,6 +26,7 @@ export type IntraopSheetsBuilderProps = IntraopMedicationSheetBuilderProps & {
   slotEventSearch: SlotProps["eventSearch"]
   slotCompExpanded: SlotProps["complicationExpanded"]
   likelyEvents?: SlotProps["likelyEvents"]
+  eventsScreen?: SlotProps["eventsScreen"]
   onDismissLikely?: SlotProps["onDismissLikely"]
   CLINICAL_EVENT_CATS: SlotProps["eventCategories"]
   isGACase: SlotProps["isGACase"]
@@ -89,7 +90,7 @@ export type IntraopSheetsBuilderProps = IntraopMedicationSheetBuilderProps & {
 
 export function buildIntraopSheetsProps(props: IntraopSheetsBuilderProps): IntraopSheetsHostProps {
   const {
-    activeAgents, activeGas, slotOpen, slotTs, timeStr, slotEventSearch, slotCompExpanded, likelyEvents, onDismissLikely,
+    activeAgents, activeGas, slotOpen, slotTs, timeStr, slotEventSearch, slotCompExpanded, likelyEvents, eventsScreen, onDismissLikely,
     CLINICAL_EVENT_CATS, isGACase, setSlotOpen, setSlotEventSearch,
     setSlotCompExpanded, openSlotEvent, openDrug, openAgent, stopAgent, stopGasSettings,
     openGasSettings,
@@ -110,6 +111,7 @@ export function buildIntraopSheetsProps(props: IntraopSheetsBuilderProps): Intra
       eventSearch: slotEventSearch,
       complicationExpanded: slotCompExpanded,
       likelyEvents,
+      eventsScreen,
       onDismissLikely,
       eventCategories: CLINICAL_EVENT_CATS,
       isGACase,

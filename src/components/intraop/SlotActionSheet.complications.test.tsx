@@ -25,11 +25,11 @@ import { SlotActionSheet } from "./SlotActionSheet"
  * list names them and saved under the catalogue's name, and the rest of them under the catalogue's headings (their
  * systems) inside the Complications category rather than as one long run.
  */
-function sheet(search = "", likelyEvents: Parameters<typeof SlotActionSheet>[0]["likelyEvents"] = [], onDismissLikely = vi.fn()) {
+function sheet(search = "", likelyEvents: Parameters<typeof SlotActionSheet>[0]["likelyEvents"] = [], onDismissLikely = vi.fn(), over: { eventsScreen?: "smart" | "legacy"; expanded?: boolean } = {}) {
   const onSelectEvent = vi.fn()
   const tree = render(
     <SlotActionSheet
-      visible title="12:45" eventSearch={search} complicationExpanded={false}
+      visible title="12:45" eventSearch={search} complicationExpanded={over.expanded ?? false} eventsScreen={over.eventsScreen}
       eventCategories={QUICK}
       isGACase={false} activeAgents={[]} activeGas={null as never}
       likelyEvents={likelyEvents} onDismissLikely={onDismissLikely}
@@ -133,5 +133,39 @@ describe("likely now in the slot sheet (10.2.0)", () => {
   it("leaves the likely events out while searching, and ignores one that is not in the list", () => {
     expect(sheet("inc", LIKELY).byId("event-likely")).toBeUndefined()
     expect(sheet("", [{ ...LIKELY[0]!, event: "Not an event" }]).byId("event-likely")).toBeUndefined()
+  })
+})
+
+describe("searching by the words colleagues use (10.2.0)", () => {
+  it("finds an event by a phrase, a shorthand and a Bulgarian word", () => {
+    expect(sheet("low bp").texts()).toContain("Hypotension")
+    expect(sheet("hypotens").texts()).toContain("Hypotension")
+    expect(sheet("ниско налягане").texts()).toContain("Hypotension")
+    expect(sheet("wrong drug").texts()).toContain("Medication error")
+  })
+
+  it("puts the best match first", () => {
+    const { texts } = sheet("incision")
+    expect(texts().indexOf("Incision")).toBeGreaterThanOrEqual(0)
+  })
+})
+
+describe("the Legacy event selector (Settings)", () => {
+  it("is the coloured buttons: every category open at once, nothing wrapped into a list", () => {
+    const { texts, byId } = sheet("", [], vi.fn(), { eventsScreen: "legacy" })
+    expect(byId("event-list")).toBeUndefined()
+    expect(texts()).toContain("Incision")
+    expect(texts()).toContain("Hypotension")
+  })
+
+  it("keeps the rest of the complications behind Show, as it was, and searches by the same words", () => {
+    expect(sheet("", [], vi.fn(), { eventsScreen: "legacy" }).texts()).not.toContain("Ventricular fibrillation")
+    expect(sheet("", [], vi.fn(), { eventsScreen: "legacy", expanded: true }).texts()).toContain("Ventricular fibrillation")
+    expect(sheet("low bp", [], vi.fn(), { eventsScreen: "legacy" }).texts()).toContain("Hypotension")
+  })
+
+  it("shows no likely events", () => {
+    const likely = [{ event: "Incision", from: "Positioned", probability: 0.9, gapMinutes: 5, minutesSince: 7 }]
+    expect(sheet("", likely, vi.fn(), { eventsScreen: "legacy" }).byId("event-likely")).toBeUndefined()
   })
 })

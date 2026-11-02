@@ -317,6 +317,7 @@ export function PreferencesProvider({
     monitoringScreen: clinicalPreferences.monitoringScreen ?? "smart",
     equipmentScreen: clinicalPreferences.equipmentScreen ?? "smart",
     techniqueScreen: clinicalPreferences.techniqueScreen ?? "smart",
+    eventsScreen: clinicalPreferences.eventsScreen ?? "smart",
     localeReady,
     clinicalPreferencesReady,
     setLanguage,
@@ -350,6 +351,7 @@ export function PreferencesProvider({
     setMonitoringScreen: monitoringScreen => patchClinical({ monitoringScreen }),
     setEquipmentScreen: equipmentScreen => patchClinical({ equipmentScreen }),
     setTechniqueScreen: techniqueScreen => patchClinical({ techniqueScreen }),
+    setEventsScreen: eventsScreen => patchClinical({ eventsScreen }),
     t: key => STRINGS[language][key] ?? STRINGS.en[key],
     tc: key =>
       (CLINICAL_STRINGS[language] as ClinicalStringsMap)[key]

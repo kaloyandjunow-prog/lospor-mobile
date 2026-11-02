@@ -167,6 +167,7 @@ export default function IntraopLiveScreen() {
     monitoringScreen,
     equipmentScreen,
     techniqueScreen,
+    eventsScreen,
   } = usePreferences()
 
   const [caseInfo, setCaseInfo] = useState<{
@@ -688,7 +689,7 @@ export default function IntraopLiveScreen() {
   ) : undefined
 
   // The events likely to come next (10.2.0), in the event selector: only ones not charted yet. What is likely is Core's (event-succession).
-  const likelyEvents = useLikelyEvents({ log, techniques, child: clinicalMode === "PEDIATRIC", enabled: caseLoaded && !isWatching })
+  const likelyEvents = useLikelyEvents({ log, techniques, child: clinicalMode === "PEDIATRIC", enabled: caseLoaded && !isWatching && eventsScreen === "smart" })
 
   // Technique tree navigation
   const [techPath,      setTechPath]      = useState<string[]>([])
@@ -897,7 +898,7 @@ export default function IntraopLiveScreen() {
           urineMl, setUrineMl, bloodLossMl, setBloodLossMl,
           chartPage, caseEnded, resumeSecsLeft, resumeCase, setChartPage, setTtColCount,
           handleChartTimetableChange, setEntryTs, slotOpen, slotTs, timeStr, slotEventSearch,
-          slotCompExpanded, likelyEvents: likelyEvents.likely, onDismissLikely: likelyEvents.dismiss, CLINICAL_EVENT_CATS, isGACase, setSlotOpen,
+          slotCompExpanded, likelyEvents: likelyEvents.likely, eventsScreen, onDismissLikely: likelyEvents.dismiss, CLINICAL_EVENT_CATS, isGACase, setSlotOpen,
           setSlotEventSearch, setSlotCompExpanded, openSlotEvent, openDrug, openAgent,
           stopGasSettings, gasOpen, gasFgf, setGasOpen, setGasFgf, gasCarrierGas,
           setGasCarrierGas, gasFio2, setGasFio2, confirmGasSettings, drugOpen, setDrugOpen,

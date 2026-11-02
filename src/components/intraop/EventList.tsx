@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Text, TextInput, TouchableOpacity, View } from "react-native"
 import type { LikelyEvent } from "@lospor/core/event-succession"
+import { eventSearchScore } from "@lospor/core/event-synonyms"
 import type { ClinicalEventDef } from "@/lib/intraop-types"
 import { formatMessage } from "@/i18n/locale"
 import { usePreferences } from "@/lib/preferences-context"
@@ -30,8 +31,12 @@ export function EventList({ groups, search, onSearch, onSelect, label, likely, o
   const categories = groups.filter(group => !group.key.startsWith("complications:"))
   const systems = groups.filter(group => group.key.startsWith("complications:"))
   const all = groups.flatMap(group => group.events.map(event => ({ event, group })))
-  const q = search.trim().toLowerCase()
-  const found = q ? all.filter(({ event, group }) => [event.label, label(event, group.isComplication)].some(text => text.toLowerCase().includes(q))).slice(0, 12) : []
+  const q = search.trim()
+  // By the names and by the words colleagues use, in English and Bulgarian, best match first.
+  const found = q
+    ? all.flatMap(item => { const score = eventSearchScore(q, item.event.label, [label(item.event, item.group.isComplication)]); return score == null ? [] : [{ ...item, score }] })
+      .sort((a, b) => a.score - b.score).slice(0, 12)
+    : []
   const likelyRows = likely.flatMap(item => {
     const hit = all.find(({ event, group }) => event.label === item.event && !group.isComplication)
     return hit ? [{ item, hit }] : []

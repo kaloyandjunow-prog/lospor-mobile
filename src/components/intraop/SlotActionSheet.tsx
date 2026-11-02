@@ -13,6 +13,7 @@ import { jetSheet } from "@/lib/jet-sheet"
 import { useSyncExternalStore } from "react"
 import type { LikelyEvent } from "@lospor/core/event-succession"
 import { EventList } from "./EventList"
+import { LegacyEventList } from "./LegacyEventList"
 
 type ClinicalEventCategory = {
   cat: string
@@ -38,6 +39,8 @@ type Props = {
   onToggleComplications: () => void
   /** The events likely to come next (10.2.0), none already charted. */
   likelyEvents?: readonly LikelyEvent[]
+  /** Smart selection (default) or the Legacy coloured buttons (Settings). */
+  eventsScreen?: "smart" | "legacy"
   onDismissLikely?: (event: string) => void
   onSelectEvent: (event: ClinicalEventDef, isComplication: boolean) => void
   onBrowseDrugs: () => void
@@ -55,6 +58,7 @@ export function SlotActionSheet({
   visible,
   title,
   eventSearch,
+  complicationExpanded,
   eventCategories,
   isGACase,
   activeAgents,
@@ -62,7 +66,9 @@ export function SlotActionSheet({
   onClose,
   onEventSearchChange,
   likelyEvents = [],
+  eventsScreen = "smart",
   onDismissLikely,
+  onToggleComplications,
   onSelectEvent,
   onBrowseDrugs,
   onOpenDefibrillation,
@@ -98,8 +104,13 @@ export function SlotActionSheet({
   const agentLabel = (name: string) => displayClinicalCode("option:INHALATIONAL_AGENT", name, language, { label: name })
   return (
     <Sheet visible={visible} onClose={onClose} title={title} full>
-      <EventList groups={groups} search={eventSearch} onSearch={onEventSearchChange} onSelect={onSelectEvent} label={clinicalEventLabel}
-        likely={likelyEvents} onDismissLikely={event => onDismissLikely?.(event)} />
+      {eventsScreen === "legacy" ? (
+        <LegacyEventList groups={groups} search={eventSearch} onSearch={onEventSearchChange} onSelect={onSelectEvent} label={clinicalEventLabel}
+          complicationExpanded={complicationExpanded} onToggleComplications={onToggleComplications} />
+      ) : (
+        <EventList groups={groups} search={eventSearch} onSearch={onEventSearchChange} onSelect={onSelectEvent} label={clinicalEventLabel}
+          likely={likelyEvents} onDismissLikely={event => onDismissLikely?.(event)} />
+      )}
 
       <FeedbackPressable onPress={onBrowseDrugs}
         style={{ borderRadius:10, paddingVertical:10, alignItems:"center",
