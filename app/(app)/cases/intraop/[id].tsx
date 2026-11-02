@@ -24,6 +24,8 @@ import { autosaveManager } from "@/lib/autosave-manager"
 import { usePhoneDeathPrompt } from "@/lib/use-phone-death-prompt"
 import { jetSheet } from "@/lib/jet-sheet"
 import { JetHost } from "@/components/intraop/JetHost"
+import { TourniquetHost } from "@/components/intraop/TourniquetHost"
+import { preopAgeDays } from "@lospor/core/vital-questions"
 import { usePhoneAirwayExchange } from "@/lib/use-phone-airway-exchange"
 import { AirwayExchangeSheet } from "@/components/intraop/AirwayExchangeSheet"
 import { cardEventOps } from "@lospor/core/intraop-suggestions"
@@ -830,6 +832,8 @@ export default function IntraopLiveScreen() {
           the reason this screen is hard to read. */}
       <DefibrillationHost log={log} save={save} preop={preop} />
       {!isWatching ? <JetHost log={log} save={save} clockOf={attention?.clockOf ?? (iso => iso.slice(11, 16))} /> : null}
+      {!isWatching ? <TourniquetHost log={log} save={save} sex={preop?.sex} clockOf={attention?.clockOf ?? (iso => iso.slice(11, 16))}
+        ageDays={preopAgeDays(preop ? { ageValue: preop.ageValue, ageUnit: preop.ageUnit, ageYears: preop.age, ageApproxDays: preop.ageApproxDays } : null)} /> : null}
       {airwayExchange.dialog && !isWatching ? (
         <AirwayExchangeSheet entries={airwayExchange.entries()} devices={AIRWAY_DEVICES} reason={airwayExchange.dialog.reason} at={airwayExchange.dialog.at}
           onClose={() => airwayExchange.setDialog(null)}

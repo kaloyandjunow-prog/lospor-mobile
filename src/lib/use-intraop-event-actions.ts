@@ -9,6 +9,7 @@ import { dispatchRowQuickAdd, slotIsoTimestamp, type RowQuickAddAction } from "@
 import type { LogEvent } from "@/lib/intraop-log-event"
 import { usePreferences } from "@/lib/preferences-context"
 import { formatMessage } from "@/i18n/locale"
+import { isTourniquetLabel, tourniquetSheet } from "@/lib/tourniquet-sheet"
 
 type EventLabel = (ev: LogEvent) => { text: string }
 
@@ -124,6 +125,12 @@ export function useIntraopEventActions({
     // entry. Before 10.1.0 it went to the list only, without a time.
     if (isComplication) {
       void save({ type: "complication", label: ev.label, color: "#ef4444", complicationSource: "timeline" }, ts ?? undefined)
+      setSlotOpen(false)
+      return
+    }
+    // 10.2.0: a tourniquet asks where on the body first.
+    if (ts && isTourniquetLabel(ev.label)) {
+      tourniquetSheet.open({ ts, label: ev.label, color: ev.color })
       setSlotOpen(false)
       return
     }
