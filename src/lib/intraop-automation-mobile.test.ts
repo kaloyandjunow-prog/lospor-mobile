@@ -63,3 +63,13 @@ describe("End at", () => {
     expect(endCaseInstant({ ...base, mode: "now", dayKey: "", hhmm: "" })).toEqual({ endTs: "2026-11-01T12:00:00.000Z", error: null })
   })
 })
+
+describe("what usually comes next, as the phone reads it (10.2.0)", () => {
+  const link = { context: "general", from: "Positioned", to: "Incision", count: 9, total: 10, gapMinutes: 5 }
+
+  it("keeps well-formed links and reads nothing when none were sent", () => {
+    expect(parseIntraopAutomationResponse({ settings: {}, succession: [link, { ...link, count: 99 }, "x"] }).succession).toEqual([link])
+    expect(parseIntraopAutomationResponse({ settings: {} }).succession).toEqual([])
+    expect(parseIntraopAutomationResponse(null).succession).toEqual([])
+  })
+})

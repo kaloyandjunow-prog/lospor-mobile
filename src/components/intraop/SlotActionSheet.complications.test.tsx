@@ -9,79 +9,129 @@ vi.mock("./Sheet", () => ({ Sheet: ({ children }: { children: React.ReactNode })
 vi.mock("./FeedbackPressable", () => ({ FeedbackPressable: ({ children }: { children: React.ReactNode }) => <>{children}</> }))
 
 // The quick complications as the option library serves them, codes included.
-const QUICK = [{ cat: "Complications", color: "#ef4444", isComplication: true, events: [
-  { code: "COMPLICATIONS_HYPOTENSION", label: "Hypotension", labelBg: "Хипотония", color: "#ef4444" },
-  { code: "COMPLICATIONS_DRUG_ERROR", label: "Drug error", labelBg: "Медикаментозна грешка", color: "#ef4444" },
-  { code: "COMPLICATIONS_LAST", label: "LAST", labelBg: "Системна токсичност на локалните анестетици (LAST)", color: "#ef4444" },
-] }]
+const QUICK = [
+  { cat: "Surgical", color: "#ef4444", events: [{ code: "SURGICAL_INCISION", label: "Incision", labelBg: "Оперативен разрез", color: "#ef4444" }] },
+  { cat: "Complications", color: "#ef4444", isComplication: true, events: [
+    { code: "COMPLICATIONS_HYPOTENSION", label: "Hypotension", labelBg: "Хипотония", color: "#ef4444" },
+    { code: "COMPLICATIONS_DRUG_ERROR", label: "Drug error", labelBg: "Медикаментозна грешка", color: "#ef4444" },
+    { code: "COMPLICATIONS_LAST", label: "LAST", labelBg: "Системна токсичност на локалните анестетици (LAST)", color: "#ef4444" },
+  ] },
+]
 import { render } from "@/test/render"
 import { SlotActionSheet } from "./SlotActionSheet"
 
 /**
- * The slot sheet's complications (10.1.0): named as the complications list
- * names them, saved under the catalogue's name, and "Show all" adds the rest
- * under the catalogue's headings rather than as one long run.
+ * The slot sheet's events (10.2.0): one quiet list with the categories closed, complications named as the complications
+ * list names them and saved under the catalogue's name, and the rest of them under the catalogue's headings (their
+ * systems) inside the Complications category rather than as one long run.
  */
-function sheet(expanded: boolean, search = "") {
+function sheet(search = "", likelyEvents: Parameters<typeof SlotActionSheet>[0]["likelyEvents"] = [], onDismissLikely = vi.fn()) {
   const onSelectEvent = vi.fn()
   const tree = render(
     <SlotActionSheet
-      visible title="12:45" eventSearch={search} complicationExpanded={expanded}
+      visible title="12:45" eventSearch={search} complicationExpanded={false}
       eventCategories={QUICK}
       isGACase={false} activeAgents={[]} activeGas={null as never}
+      likelyEvents={likelyEvents} onDismissLikely={onDismissLikely}
       onClose={() => {}} onEventSearchChange={() => {}} onToggleComplications={() => {}}
       onSelectEvent={onSelectEvent} onBrowseDrugs={() => {}}
       onStopAgent={() => {}} onOpenAgent={() => {}} onStopGas={() => {}} onOpenGas={() => {}}
     />,
   )
   const texts = () => tree.root.findAll(node => typeof node.type === "string" && typeof node.props.children === "string").map(node => node.props.children as string)
-  const press = (text: string) => {
+  const byId = (id: string) => tree.root.findAll(node => node.props?.testID === id)[0]
+  const pressId = (id: string) => act(() => { byId(id)!.props.onPress() })
+  const pressText = (text: string) => {
     const label = tree.root.findAll(node => typeof node.type === "string" && node.props.children === text)[0]!
     let node = label.parent
     while (node && typeof node.props.onPress !== "function") node = node.parent
     act(() => { node!.props.onPress() })
   }
-  return { texts, press, onSelectEvent }
+  return { texts, byId, pressId, pressText, onSelectEvent, onDismissLikely }
 }
 
-describe("complications in the slot sheet", () => {
-  it("are named as the complications list names them", () => {
-    const { texts } = sheet(false)
+describe("the event list in the slot sheet", () => {
+  it("opens with the categories closed and shows no event yet", () => {
+    const { texts, byId } = sheet()
+    expect(byId("event-category-Surgical")).toBeDefined()
+    expect(byId("event-category-Complications")).toBeDefined()
+    expect(texts()).not.toContain("Hypotension")
+    expect(byId("event-likely")).toBeUndefined()
+  })
+
+  it("names complications as the complications list names them", () => {
+    const { texts, pressId } = sheet()
+    pressId("event-category-Complications")
     expect(texts()).toContain("Medication error")
     expect(texts()).toContain("Local anaesthetic systemic toxicity (LAST)")
     expect(texts()).not.toContain("Drug error")
   })
 
-  it("save a short quick button under the catalogue's name", () => {
-    const { press, onSelectEvent } = sheet(false)
-    press("Local anaesthetic systemic toxicity (LAST)")
+  it("saves a complication under the catalogue's name", () => {
+    const { pressId, pressText, onSelectEvent } = sheet()
+    pressId("event-category-Complications")
+    pressText("Local anaesthetic systemic toxicity (LAST)")
     expect(onSelectEvent).toHaveBeenCalledWith(expect.objectContaining({ label: "Local anaesthetic systemic toxicity (LAST)" }), true)
   })
 
-  it("show the rest under the catalogue's headings after Show all, each once", () => {
-    const collapsed = sheet(false).texts()
-    expect(collapsed).not.toContain("Ventricular fibrillation")
-    const all = sheet(true).texts()
-    for (const heading of ["Cardiovascular", "Respiratory", "Drug / Pharmacological", "Surgical"]) expect(all).toContain(heading)
-    expect(all.indexOf("Cardiovascular")).toBeLessThan(all.indexOf("Ventricular fibrillation"))
-    expect(all.filter(text => text === "Local anaesthetic systemic toxicity (LAST)")).toHaveLength(1)
-    expect(all.filter(text => text === "Medication error")).toHaveLength(1)
-  })
-
-  it("search the headed groups too, by the reader's name", () => {
-    const { texts } = sheet(true, "ventricular")
+  it("shows the rest under the catalogue's headings, one heading open at a time", () => {
+    const { texts, pressId, byId } = sheet()
+    pressId("event-category-Complications")
+    for (const heading of ["Cardiovascular", "Respiratory", "Drug / Pharmacological", "Surgical"]) expect(texts()).toContain(heading)
+    expect(texts()).not.toContain("Ventricular fibrillation")
+    pressId("event-system-complications:cardiovascular")
     expect(texts()).toContain("Ventricular fibrillation")
-    expect(texts()).not.toContain("Hypotension")
+    pressId("event-system-complications:respiratory")
+    expect(texts()).not.toContain("Ventricular fibrillation")
+    expect(byId("event-system-complications:respiratory")).toBeDefined()
   })
 
-  it("read in Bulgarian, headings included", () => {
+  it("only one category is open at a time", () => {
+    const { texts, pressId } = sheet()
+    pressId("event-category-Complications")
+    expect(texts()).toContain("Medication error")
+    pressId("event-category-Surgical")
+    expect(texts()).not.toContain("Medication error")
+    expect(texts()).toContain("Incision")
+  })
+
+  it("searches every group at once, by the reader's name, and says when nothing matches", () => {
+    expect(sheet("ventricular").texts()).toContain("Ventricular fibrillation")
+    expect(sheet("ventricular").texts()).not.toContain("Hypotension")
+    expect(sheet("zzzz").byId("event-none")).toBeDefined()
+  })
+
+  it("reads in Bulgarian, headings included", () => {
     prefs.language = "bg"
     try {
-      const all = sheet(true).texts()
-      expect(all).toContain("Лекарствена грешка")
-      expect(all.some(text => text.startsWith("Медикаментозни"))).toBe(true)
+      const { texts, pressId } = sheet()
+      pressId("event-category-Complications")
+      expect(texts()).toContain("Лекарствена грешка")
+      expect(texts().some(text => text.startsWith("Медикаментозни"))).toBe(true)
     } finally {
       prefs.language = "en"
     }
+  })
+})
+
+describe("likely now in the slot sheet (10.2.0)", () => {
+  const LIKELY = [{ event: "Incision", from: "Positioned", probability: 0.9, gapMinutes: 5, minutesSince: 7 }]
+
+  it("shows the likely events above the categories, with why, and logs one in a tap", () => {
+    const { byId, pressId, onSelectEvent } = sheet("", LIKELY)
+    expect(byId("event-likely")).toBeDefined()
+    pressId("likely-log-Incision")
+    expect(onSelectEvent).toHaveBeenCalledWith(expect.objectContaining({ label: "Incision" }), false)
+  })
+
+  it("sets one aside with the cross", () => {
+    const { pressId, onDismissLikely } = sheet("", LIKELY)
+    pressId("likely-dismiss-Incision")
+    expect(onDismissLikely).toHaveBeenCalledWith("Incision")
+  })
+
+  it("leaves the likely events out while searching, and ignores one that is not in the list", () => {
+    expect(sheet("inc", LIKELY).byId("event-likely")).toBeUndefined()
+    expect(sheet("", [{ ...LIKELY[0]!, event: "Not an event" }]).byId("event-likely")).toBeUndefined()
   })
 })

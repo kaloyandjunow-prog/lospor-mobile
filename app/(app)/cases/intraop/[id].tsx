@@ -33,6 +33,7 @@ import { parseTechniqueSides, type TechniqueSide } from "@lospor/core/technique-
 import { TechniqueSmart } from "@/components/intraop/TechniqueSmart"
 import { techniqueColor } from "@/lib/intraop-technique"
 import { useRecentTechniques } from "@/lib/use-recent-techniques"
+import { useLikelyEvents } from "@/lib/use-likely-events"
 import { MONITORING_READINGS, isRelaxant, monitoringSuggestions } from "@lospor/core/monitoring-smart"
 import { usePhoneAirwayExchange } from "@/lib/use-phone-airway-exchange"
 import { AirwayExchangeSheet } from "@/components/intraop/AirwayExchangeSheet"
@@ -686,6 +687,9 @@ export default function IntraopLiveScreen() {
       planned={preop?.plannedTechniques ?? []} recents={recentTechniques.recents} />
   ) : undefined
 
+  // The events likely to come next (10.2.0), in the event selector: only ones not charted yet. What is likely is Core's (event-succession).
+  const likelyEvents = useLikelyEvents({ log, techniques, child: clinicalMode === "PEDIATRIC", enabled: caseLoaded && !isWatching })
+
   // Technique tree navigation
   const [techPath,      setTechPath]      = useState<string[]>([])
   const [otherTechText, setOtherTechText] = useState("")
@@ -893,7 +897,7 @@ export default function IntraopLiveScreen() {
           urineMl, setUrineMl, bloodLossMl, setBloodLossMl,
           chartPage, caseEnded, resumeSecsLeft, resumeCase, setChartPage, setTtColCount,
           handleChartTimetableChange, setEntryTs, slotOpen, slotTs, timeStr, slotEventSearch,
-          slotCompExpanded, CLINICAL_EVENT_CATS, isGACase, setSlotOpen,
+          slotCompExpanded, likelyEvents: likelyEvents.likely, onDismissLikely: likelyEvents.dismiss, CLINICAL_EVENT_CATS, isGACase, setSlotOpen,
           setSlotEventSearch, setSlotCompExpanded, openSlotEvent, openDrug, openAgent,
           stopGasSettings, gasOpen, gasFgf, setGasOpen, setGasFgf, gasCarrierGas,
           setGasCarrierGas, gasFio2, setGasFio2, confirmGasSettings, drugOpen, setDrugOpen,

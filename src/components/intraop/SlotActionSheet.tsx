@@ -1,4 +1,4 @@
-import { Text, TextInput, TouchableOpacity, View } from "react-native"
+import { Text, TouchableOpacity, View } from "react-native"
 import type { ClinicalEventDef } from "@/lib/intraop-types"
 import type { ActiveGasSettings } from "@/lib/intraop-log-event"
 import { FeedbackPressable } from "./FeedbackPressable"
@@ -11,6 +11,8 @@ import { formatMessage } from "@/i18n/locale"
 import { useShade } from "@/theme/shade"
 import { jetSheet } from "@/lib/jet-sheet"
 import { useSyncExternalStore } from "react"
+import type { LikelyEvent } from "@lospor/core/event-succession"
+import { EventList } from "./EventList"
 
 type ClinicalEventCategory = {
   cat: string
@@ -34,6 +36,9 @@ type Props = {
   onClose: () => void
   onEventSearchChange: (value: string) => void
   onToggleComplications: () => void
+  /** The events likely to come next (10.2.0), none already charted. */
+  likelyEvents?: readonly LikelyEvent[]
+  onDismissLikely?: (event: string) => void
   onSelectEvent: (event: ClinicalEventDef, isComplication: boolean) => void
   onBrowseDrugs: () => void
   /** A shock at the slot's time (10.1.0). */
@@ -50,14 +55,14 @@ export function SlotActionSheet({
   visible,
   title,
   eventSearch,
-  complicationExpanded,
   eventCategories,
   isGACase,
   activeAgents,
   activeGas,
   onClose,
   onEventSearchChange,
-  onToggleComplications,
+  likelyEvents = [],
+  onDismissLikely,
   onSelectEvent,
   onBrowseDrugs,
   onOpenDefibrillation,
@@ -84,7 +89,7 @@ export function SlotActionSheet({
     const isComplication = cat.isComplication ?? false
     const quick = { key: cat.cat, title: categoryLabel(cat.cat), color: cat.color, isComplication, toggle: isComplication,
       events: isComplication ? cat.events.map(ev => ({ ...ev, label: canonicalComplicationLabel(ev.label) })) : cat.events }
-    if (!isComplication || !complicationExpanded) return [quick]
+    if (!isComplication) return [quick]
     return [quick, ...complicationGroupsBeyond(cat.events.map(ev => ev.label)).map(group => ({
       key: `complications:${group.id}`, title: language === "bg" ? group.titleBg : group.title, color: cat.color,
       isComplication: true, toggle: false, events: group.items.map(label => ({ label, color: shade("#ef4444") }) as ClinicalEventDef),
@@ -93,45 +98,8 @@ export function SlotActionSheet({
   const agentLabel = (name: string) => displayClinicalCode("option:INHALATIONAL_AGENT", name, language, { label: name })
   return (
     <Sheet visible={visible} onClose={onClose} title={title} full>
-      <TextInput
-        style={{ backgroundColor:shade("#111820"), color:shade("#f8fafc"), borderRadius:10, paddingHorizontal:12, paddingVertical:9,
-          fontSize:13, borderWidth:1, borderColor:shade("#1e2d40"), marginBottom:12 }}
-        placeholder={tc("sasSearchEvents")}
-        placeholderTextColor={shade("#475569")}
-        value={eventSearch}
-        onChangeText={onEventSearchChange}
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
-
-      {groups.map(group => {
-        const visibleEvents = group.events.filter(ev => !eventSearch || [ev.label, clinicalEventLabel(ev, group.isComplication)].some(label => label.toLowerCase().includes(eventSearch.toLowerCase())))
-        if (visibleEvents.length === 0 && (eventSearch || !group.toggle)) return null
-        return (
-          <View key={group.key} style={{ marginBottom:14 }}>
-            <View style={{ flexDirection:"row", alignItems:"center", marginBottom:6 }}>
-              <Text style={{ color: group.color, fontSize:9, fontWeight:"800", letterSpacing:1.2,
-                textTransform:"uppercase", flex:1 }}>{group.title}</Text>
-              {group.toggle && (
-                <TouchableOpacity onPress={onToggleComplications}>
-                  <Text style={{ color:shade("#64748b"), fontSize:9, fontWeight:"700" }}>
-                    {complicationExpanded ? tc("hide") : tc("show")}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            <View style={{ flexDirection:"row", flexWrap:"wrap", gap:7 }}>
-              {visibleEvents.map(ev => (
-                <TouchableOpacity key={ev.label} onPress={() => onSelectEvent(ev, group.isComplication)}
-                  style={{ paddingHorizontal:11, paddingVertical:8, borderRadius:10,
-                    backgroundColor:ev.color+"18", borderWidth:1, borderColor:ev.color+"55" }}>
-                  <Text style={{ color:ev.color, fontSize:11, fontWeight:"700" }}>{clinicalEventLabel(ev, group.isComplication)}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )
-      })}
+      <EventList groups={groups} search={eventSearch} onSearch={onEventSearchChange} onSelect={onSelectEvent} label={clinicalEventLabel}
+        likely={likelyEvents} onDismissLikely={event => onDismissLikely?.(event)} />
 
       <FeedbackPressable onPress={onBrowseDrugs}
         style={{ borderRadius:10, paddingVertical:10, alignItems:"center",

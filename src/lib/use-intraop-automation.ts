@@ -3,6 +3,7 @@ import { AUTOMATION_GROUPS, automationGroupEnabled, DEFAULT_INTRAOP_AUTOMATION, 
 import { suggestionFactsFromPreop, type SuggestionContext } from "@lospor/core/intraop-suggestions"
 import type { LabResult } from "@lospor/core/labs"
 import { preopAgeDays, type VitalQuestionContext, type VitalStatsTable } from "@lospor/core/vital-questions"
+import { parseSuccessionLinks, type SuccessionLink } from "@lospor/core/event-succession"
 import { apiJson } from "@/lib/api"
 import type { IntraopPreopSummary } from "@/lib/intraop-preop-summary"
 import { usePreferences } from "@/lib/preferences-context"
@@ -14,7 +15,7 @@ import { usePreferences } from "@/lib/preferences-context"
  * has no Status and stays off. Kept for the session once read, so a dropped
  * connection mid-case is not the hospital switching the questions off.
  */
-type Automation = { settings: IntraopAutomationSettings; stats: VitalStatsTable | null }
+type Automation = { settings: IntraopAutomationSettings; stats: VitalStatsTable | null; succession: SuccessionLink[] }
 
 let cached: Automation | null = null
 
@@ -24,11 +25,12 @@ export function parseIntraopAutomationResponse(value: unknown): Automation {
   const stats = vitalQuestionsEnabled(settings) && typeof body.stats === "object" && body.stats !== null
     ? body.stats as VitalStatsTable
     : null
-  return { settings, stats }
+  // What usually comes next (10.2.0): the starting values and what the cases show, sent while the reminders are on.
+  return { settings, stats, succession: parseSuccessionLinks(body.succession) }
 }
 
 export function useIntraopAutomation(): Automation & { reload: () => Promise<void> } {
-  const [automation, setAutomation] = useState<Automation>(cached ?? { settings: DEFAULT_INTRAOP_AUTOMATION, stats: null })
+  const [automation, setAutomation] = useState<Automation>(cached ?? { settings: DEFAULT_INTRAOP_AUTOMATION, stats: null, succession: [] })
   const reload = useCallback(async () => {
     try {
       cached = parseIntraopAutomationResponse(await apiJson<unknown>("/api/intraop/automation"))
