@@ -636,7 +636,7 @@ export default function IntraopLiveScreen() {
   const monitoringSuggestionList = monitoringSuggestions({
     monitoring, techniques, airway: airwayExchange.entries(), lines: vascularLines(), hidden: hiddenMonitors,
     relaxantAt: log.find(event => event.type === "drug" && !!event.name && isRelaxant(event.name))?.ts ?? null,
-    urinaryCatheter: false, startedAt: startRef.current?.toISOString() ?? null, now: new Date(),
+    startedAt: startRef.current?.toISOString() ?? null, now: new Date(),
     settings: suggestionContext?.settings ?? null, user: suggestionContext?.user ?? null,
   })
   const lastMonitorReading = (field: string) => {

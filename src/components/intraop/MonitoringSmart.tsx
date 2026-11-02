@@ -10,7 +10,7 @@ type MonitoringOpt = { label: string; field: string; section: string }
 
 const REASON: Record<MonitoringReasonKey, string> = {
   airway: "msmReasonAirway", arterialLine: "msmReasonArterialLine", centralLine: "msmReasonCentralLine", relaxant: "msmReasonRelaxant",
-  tiva: "msmReasonTiva", longGeneral: "msmReasonLongGeneral", catheter: "msmReasonCatheter",
+  tiva: "msmReasonTiva", longGeneral: "msmReasonLongGeneral",
 }
 
 /**
