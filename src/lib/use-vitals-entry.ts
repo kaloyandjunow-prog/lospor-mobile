@@ -184,7 +184,9 @@ export function useVitalsEntry(
       if (v.spO2      != null) setVSpO2(String(v.spO2))
       if (v.etco2     != null) setVEtco2(String(etco2ToDisplay(v.etco2)))
       if (v.temp      != null) setVTemp(String(tempToDisplay(v.temp)))
-      if ([v.systolic, v.diastolic, v.heartRate, v.spO2, v.etco2, v.temp].every((value: unknown) => value == null)) {
+      if (v.bis       != null) setVBis(String(v.bis))
+      if (v.tofRatio  != null) setVTof(String(v.tofRatio))
+      if ([v.systolic, v.diastolic, v.heartRate, v.spO2, v.etco2, v.temp, v.bis, v.tofRatio].every((value: unknown) => value == null)) {
         notify(tc("noReadingsFound"), tc("noReadingsFoundMsg"))
       }
     } catch (error) {
