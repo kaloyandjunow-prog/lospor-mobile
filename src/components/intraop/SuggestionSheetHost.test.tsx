@@ -1,6 +1,6 @@
 import React from "react"
 import { act } from "react-test-renderer"
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { parseIntraopAutomation } from "@lospor/core/intraop-automation"
 import type { SuggestionContext } from "@lospor/core/intraop-suggestions"
 
@@ -12,6 +12,7 @@ import type { LogEvent } from "@/lib/intraop-log-event"
 import type { IntraopAttention } from "@/lib/use-intraop-attention"
 import { buildPhoneSuggestionSheets, phoneFluidFor, tagWithSuggestion } from "@/lib/phone-suggestion-sheets"
 import { SuggestionSheetHost, type PhoneSuggestionSheets } from "./SuggestionSheetHost"
+import { inlineSheet } from "./inline-sheet"
 
 const NOW = "2026-11-02T10:30:00.000Z"
 const hypotension = { id: "c1", ts: "2026-11-02T10:29:00.000Z", type: "complication", label: "Hypotension" } as LogEvent
@@ -33,6 +34,9 @@ function sheetsSpy(): PhoneSuggestionSheets & { openDrug: ReturnType<typeof vi.f
 
 const byId = (tree: ReturnType<typeof render>, id: string) => tree.root.findAll(node => node.props?.testID === id)[0]!
 
+// A row pressed in one test must not leave its controls open for the next.
+afterEach(() => { act(() => inlineSheet.release()) })
+
 describe("the suggestion card on the phone (10.2.0)", () => {
   it("shows Core's rows with the prefilled dose, and a drug row opens the drug sheet with the tag", () => {
     const sheets = sheetsSpy()
@@ -40,6 +44,21 @@ describe("the suggestion card on the phone (10.2.0)", () => {
     expect(byId(tree, "card-row-ephedrine")).toBeTruthy()
     act(() => { byId(tree, "card-row-open-ephedrine").props.onPress() })
     expect(sheets.openDrug).toHaveBeenCalledWith(expect.objectContaining({ name: "Ephedrine", amount: 10, unit: "mg", suggestion: "card:Hypotension:ephedrine" }))
+  })
+
+  it("opens the row's controls in place: the card stays, and the same row again folds them", () => {
+    const sheets = sheetsSpy()
+    const onClose = vi.fn()
+    const attention = attentionFor([hypotension], "card:c1")
+    const tree = render(<SuggestionSheetHost attention={attention} sheets={sheets} />)
+    act(() => { byId(tree, "card-row-open-ephedrine").props.onPress() })
+    expect(sheets.openDrug).toHaveBeenCalledTimes(1)
+    expect(inlineSheet.get().id).toBe("ephedrine")
+    expect(attention.open).not.toHaveBeenCalledWith(null)
+    expect(onClose).not.toHaveBeenCalled()
+    act(() => { byId(tree, "card-row-open-ephedrine").props.onPress() })
+    expect(sheets.openDrug).toHaveBeenCalledTimes(1)
+    expect(inlineSheet.get().id).toBeNull()
   })
 
   it("Not now writes the card's answer", () => {

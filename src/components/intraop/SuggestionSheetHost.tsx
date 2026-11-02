@@ -27,6 +27,8 @@ import { usePreferences } from "@/lib/preferences-context"
 import { useShade } from "@/theme/shade"
 import { colors } from "@/theme/colors"
 import { Sheet } from "./Sheet"
+import { InlineSheetSlot } from "./InlineSheetSlot"
+import { inlineSheet } from "./inline-sheet"
 import { DantroleneVials } from "./DantroleneVials"
 
 /**
@@ -112,14 +114,24 @@ function CardSheet({ card, complication, attention, sheets, onClose }: {
     return Number.isFinite(at.getTime()) ? at.toISOString() : null
   }
 
+  // The row's own controls open under it, inside the card; the same row again folds them away.
+  function openInline(id: string, open: () => void) {
+    if (inlineSheet.get().id === id) { inlineSheet.fold(); return }
+    inlineSheet.activate(id)
+    open()
+  }
+
+  // A card that closes takes its open controls with it.
+  useEffect(() => () => inlineSheet.fold(), [])
+
   function onRow(row: ResolvedRow) {
     const tag = cardSuggestionTag(complication.label ?? "", row.id)
     const prefill = row.prefill
     switch (row.def.kind) {
-      case "drug": if (prefill?.drug) { onClose(); sheets.openDrug({ name: prefill.drug, mode: "bolus", amount: prefill.amount, unit: prefill.unit, route: prefill.route, suggestion: tag }) } return
-      case "infusion": if (prefill?.drug) { onClose(); sheets.openDrug({ name: prefill.drug, mode: "infusion", amount: prefill.amount, unit: prefill.unit, suggestion: tag }) } return
-      case "fluid": onClose(); sheets.openFluid({ name: prefill?.fluid, category: prefill?.category, amount: prefill?.amount ?? null, mode: prefill?.mode, suggestion: tag }); return
-      case "gas": onClose(); sheets.openGas(row.def.fio2, row.def.fgf, !!row.def.stopNitrous); return
+      case "drug": if (prefill?.drug) openInline(row.id, () => sheets.openDrug({ name: prefill.drug!, mode: "bolus", amount: prefill.amount, unit: prefill.unit, route: prefill.route, suggestion: tag })); return
+      case "infusion": if (prefill?.drug) openInline(row.id, () => sheets.openDrug({ name: prefill.drug!, mode: "infusion", amount: prefill.amount, unit: prefill.unit, suggestion: tag })); return
+      case "fluid": openInline(row.id, () => sheets.openFluid({ name: prefill?.fluid, category: prefill?.category, amount: prefill?.amount ?? null, mode: prefill?.mode, suggestion: tag })); return
+      case "gas": { const gas = row.def; openInline(row.id, () => sheets.openGas(gas.fio2, gas.fgf, !!gas.stopNitrous)); return }
       case "shock": onClose(); sheets.openShock(); return
       case "lab": onClose(); sheets.openLab(); return
       case "airway": onClose(); sheets.openAirway?.(complication); return
@@ -186,7 +198,7 @@ function CardSheet({ card, complication, attention, sheets, onClose }: {
   const opensSheet = (row: ResolvedRow) => ["drug", "infusion", "fluid", "gas", "shock", "lab", "deepen", "access", "airway"].includes(row.kind)
 
   return (
-    <Sheet visible onClose={onClose} title={name(card.complication)} full footer={
+    <Sheet visible onClose={onClose} title={name(card.complication)} full allowInline={false} footer={
       <View style={{ flexDirection: "row", gap: 8 }}>
         <TouchableOpacity testID="suggestion-card-not-now" style={[pill("no"), { flex: 1, alignItems: "center" }]} onPress={() => { write(cardCloseOps(comp, "not_now", nowIso())); onClose() }}>
           <Text style={pillText("no")}>{tc("vitalNotNow")}</Text>
@@ -244,6 +256,7 @@ function CardSheet({ card, complication, attention, sheets, onClose }: {
             <View key={row.id} testID={`card-row-${row.id}`} style={{ borderWidth: 1, borderColor: shade("#262626"), borderRadius: 12, padding: 10, marginBottom: 8 }}>
               {opensSheet(row) ? <TouchableOpacity testID={`card-row-open-${row.id}`} onPress={() => onRow(row)} style={{ minHeight: 44 }}>{head}</TouchableOpacity> : head}
               {body(row)}
+              <InlineSheetSlot id={row.id} />
               {row.def.kind === "drug" && row.def.drug === "Dantrolene" && attention.suggestions ? (
                 <DantroleneVials
                   initialPerKg={dantroleneDosesMg(attention.log as never, comp, attention.suggestions.now).length > 0 ? 1 : 2.5}
@@ -317,7 +330,7 @@ function FollowUpSheet({ entry, attention, sheets, onClose }: {
     offers.push({ key: "neo", text: clinicalDisplayLabel("option:INTRAOP_DRUG", "Neostigmine", lang, { label: "Neostigmine" }), onPress: drug("Neostigmine") })
   }
   return (
-    <Sheet visible onClose={onClose} title={intraopAttentionText(entry, language)} footer={
+    <Sheet visible onClose={onClose} title={intraopAttentionText(entry, language)} allowInline={false} footer={
       <TouchableOpacity testID="follow-up-not-now" onPress={() => { void attention.resolve(entry.key, "not_now"); onClose() }}
         style={{ minHeight: 44, borderRadius: 10, borderWidth: 1, borderColor: shade("#ef444466"), alignItems: "center", justifyContent: "center" }}>
         <Text style={{ color: shade("#fca5a5"), fontWeight: "700" }}>{tc("vitalNotNow")}</Text>
