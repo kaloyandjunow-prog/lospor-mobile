@@ -84,24 +84,39 @@ export function useIntraopAttention({ log, logRef, endedAtRef, syncLog, resyncAc
   vitalsRef.current = vitals
   const suggestionsRef = useRef(suggestionBase)
   suggestionsRef.current = suggestionBase
+  const writeQueue = useRef(Promise.resolve())
+  const enqueue = useCallback((work: () => Promise<void> | void) => {
+    const run = writeQueue.current.then(work)
+    writeQueue.current = run.then(() => undefined, () => undefined)
+    return run
+  }, [])
   const resolve = useCallback(async (key: string, action: IntraopAttentionAction, choice?: string) => {
-    const base = suggestionsRef.current
-    const next = logAfterAttentionAnswer(logRef.current, key, action, {
-      now: serverNow(), endedAt: endedAtRef.current, vitals: vitalsRef.current,
-      suggestions: base ? { ...base, now: serverNow() } : null,
-    }, choice)
-    if (!next) return
-    await syncLogRef.current(next)
-    resyncActiveRef.current()
-  }, [logRef, endedAtRef, resyncActiveRef])
+    await enqueue(async () => {
+      const base = suggestionsRef.current
+      const next = logAfterAttentionAnswer(logRef.current, key, action, {
+        now: serverNow(), endedAt: endedAtRef.current, vitals: vitalsRef.current,
+        suggestions: base ? { ...base, now: serverNow() } : null,
+      }, choice)
+      if (!next) return
+      // The next queued action must see this local result even before the
+      // server acknowledgement causes a React render.
+      logRef.current = next
+      await syncLogRef.current(next)
+      resyncActiveRef.current()
+    })
+  }, [enqueue, endedAtRef, logRef, resyncActiveRef])
   const applyOps = useCallback(async (ops: IntraopEventOps) => {
     if (isEmptyIntraopEventOps(ops)) return
-    await syncLogRef.current(applyIntraopEventOps(logRef.current, ops) as LogEvent[])
-    resyncActiveRef.current()
-  }, [logRef, resyncActiveRef])
+    await enqueue(async () => {
+      const next = applyIntraopEventOps(logRef.current, ops) as LogEvent[]
+      logRef.current = next
+      await syncLogRef.current(next)
+      resyncActiveRef.current()
+    })
+  }, [enqueue, logRef, resyncActiveRef])
   const [opened, open] = useState<string | null>(null)
   useAutoOpenCards(items, open, suggestionBase != null)
-  useVitalEpisodeClosing(log, logRef, endedAt, vitals, syncLogRef)
+  useVitalEpisodeClosing(log, logRef, endedAtRef, vitalsRef, syncLogRef, enqueue)
   return { items, resolve, suggestions, applyOps, opened, open, log }
 }
 
@@ -135,21 +150,27 @@ function useAutoOpenCards(items: IntraopAttentionItem[], open: (key: string) => 
 function useVitalEpisodeClosing(
   log: LogEvent[],
   logRef: MutableRefObject<LogEvent[]>,
-  endedAt: Date | null,
-  vitals: VitalQuestionContext | null,
+  endedAtRef: MutableRefObject<Date | null>,
+  vitalsRef: MutableRefObject<VitalQuestionContext | null>,
   syncLogRef: MutableRefObject<(next: LogEvent[]) => Promise<boolean>>,
+  enqueue: (work: () => Promise<void> | void) => Promise<void>,
 ) {
   const closing = useRef(false)
   useEffect(() => {
-    if (!vitals || closing.current) return
-    const ops = vitalEpisodeOps(log, vitals, endedAt)
-    if (isEmptyIntraopEventOps(ops)) return
-    // This runs before the screen's own effect copies the log into logRef, so
-    // on a fresh load logRef is still empty: closing onto it saved an empty
-    // chart. Bring it up to date first, as that effect is about to.
+    if (!vitalsRef.current || closing.current) return
+    // The close operation shares the same queue as attention answers and card
+    // actions. Without that, a reading arriving beside a prompt answer could
+    // derive both writes from the same old log and lose one of them.
     logRef.current = log
     closing.current = true
-    void syncLogRef.current(applyIntraopEventOps(logRef.current, ops) as LogEvent[])
+    void enqueue(async () => {
+      const current = logRef.current
+      const ops = vitalEpisodeOps(current, vitalsRef.current, endedAtRef.current)
+      if (isEmptyIntraopEventOps(ops)) return
+      const next = applyIntraopEventOps(current, ops) as LogEvent[]
+      logRef.current = next
+      await syncLogRef.current(next)
+    })
       .finally(() => { closing.current = false })
-  }, [log, logRef, endedAt, vitals, syncLogRef])
+  }, [log, logRef, endedAtRef, vitalsRef, syncLogRef, enqueue])
 }

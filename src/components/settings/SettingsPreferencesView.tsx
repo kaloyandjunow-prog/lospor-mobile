@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { View, Text, Linking, Platform, Switch } from "react-native"
+import { View, Text, Linking, Platform } from "react-native"
 import Constants from "expo-constants"
 import { Stack, useRouter, type Href } from "expo-router"
 import { useAuth } from "@/lib/auth-context"
@@ -7,7 +7,7 @@ import { apiFetch } from "@/lib/api"
 import { notify, confirmAction } from "@/lib/notify"
 import { clearLocalClinicalCache } from "@/lib/local-clinical-cache"
 import { usePreferences } from "@/lib/preferences-context"
-import { Card, SectionHeader, SettingsRow } from "@/components/ui"
+import { BooleanSwitch, Card, SectionHeader, SettingsRow } from "@/components/ui"
 import { colors } from "@/theme/colors"
 import { AppHeader } from "@/components/AppHeader"
 import { useOptionLibrary } from "@/lib/use-option-library"
@@ -53,7 +53,7 @@ export function SettingsPreferencesView({
   const { options: drugOptions } = useOptionLibrary("INTRAOP_DRUG")
   const { options: infusionOptions } = useOptionLibrary("INTRAOP_INFUSION")
   const {
-    language, setLanguage, theme, setTheme, preopLayout, setPreopLayout, postopLayout, setPostopLayout, t, tc,
+    language, setLanguage, theme, setTheme, preopLayout, setPreopLayout, postopLayout, setPostopLayout, caseSidebar, t, tc,
     heightUnit, setHeightUnit, weightUnit, setWeightUnit, temperatureUnit, setTemperatureUnit, etco2Unit, setEtco2Unit, cvpUnit, setCvpUnit,
     autoFillVitalsPreferences,
     setAutoFillVitalsPreferences,
@@ -161,8 +161,19 @@ export function SettingsPreferencesView({
         scrollViewStyle={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 60, paddingTop: 12 }}
       >
-        {/* -- UI ----------------------------------------------------------------- */}
-        <SectionHeader title={t("uiSection")} />
+        {/* -- Profile & account -------------------------------------------------- */}
+        <SectionHeader title={t("profileAccountSection")} />
+        <Card>
+          <SettingsRow
+            label={t("viewProfile")}
+            subtitle={t("profileAccountDesc")}
+            onPress={() => router.push("/(app)/account" as Href)}
+            last
+          />
+        </Card>
+
+        {/* -- Appearance --------------------------------------------------------- */}
+        <SectionHeader title={t("appearanceSection")} />
         <Card>
           <SettingsRow
             label={t("theme")}
@@ -174,8 +185,20 @@ export function SettingsPreferencesView({
             subtitle={language === "bg" ? t("bulgarian") : t("english")}
             onPress={() => setLanguage(language === "bg" ? "en" : "bg")}
           />
-          {/* Each case screen sectioned or scrollable (10.0.0). Intraop is
-              always sectioned on the phone: its chart is the cockpit. */}
+          <UiScaleRow />
+        </Card>
+        <View style={{ height: 12 }} />
+        <BulgarianNamesCard />
+        <View style={{ height: 12 }} />
+        <EnergyKnobSkinCard />
+        <SectionHeader title={t("smartFunctionsSection")} />
+        <Text style={{ color: colors.textMuted, fontSize: 11, lineHeight: 16, marginTop: -4, marginBottom: 10 }}>
+          {t("smartFunctionsDesc")}
+        </Text>
+        <Card>
+          {/* Case screens can be sectioned or scrollable. Keep these choices
+              with the account-wide smart section controls so layout and SPS
+              settings are found together. */}
           <SettingsRow
             label={t("preopLayout")}
             subtitle={preopLayout === "sections" ? t("preopLayoutSections") : t("preopLayoutScroll")}
@@ -185,19 +208,12 @@ export function SettingsPreferencesView({
             label={t("postopLayout")}
             subtitle={postopLayout === "sections" ? t("preopLayoutSections") : t("preopLayoutScroll")}
             onPress={() => setPostopLayout(postopLayout === "sections" ? "scroll" : "sections")}
-            last
           />
-          <UiScaleRow />
-        </Card>
-        <View style={{ height: 12 }} />
-        <BulgarianNamesCard />
-        <View style={{ height: 12 }} />
-        <EnergyKnobSkinCard />
-        <SectionHeader title={tc("interfaceScreensSection")} />
-        <Card>
-          <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 2 }}>
-            <Text style={{ color: colors.textMuted, fontSize: 11, lineHeight: 16 }}>{tc("screenChoiceAccountWide")}</Text>
-          </View>
+          <SettingsRow
+            label={t("caseSidebarLayout")}
+            subtitle={caseSidebar ? t("caseSidebarEnabled") : t("caseSidebarDisabled")}
+            rightElement={<Text style={{ color: colors.textMuted, fontSize: 11 }}>{t("webOnly")}</Text>}
+          />
           <AirwayScreenCard compact />
           <VascularScreenCard compact />
           <MonitoringScreenCard compact />
@@ -247,8 +263,8 @@ export function SettingsPreferencesView({
           />
         </Card>
 
-        {/* -- Automation --------------------------------------------------------- */}
-        <SectionHeader title={t("intraoperative")} />
+        {/* -- Clinical defaults -------------------------------------------------- */}
+        <SectionHeader title={t("clinicalDefaultsSection")} />
         <Card>
           <SettingsRow
             label={t("defaultMonitoring")}
@@ -276,7 +292,7 @@ export function SettingsPreferencesView({
             label={t("vitalEpisodeAutoLog")}
             subtitle={t("vitalEpisodeAutoLogSub")}
             rightElement={
-              <Switch
+              <BooleanSwitch
                 testID="setting-vital-episode-auto-log"
                 value={vitalEpisodeAutoLog}
                 onValueChange={value => { void setVitalEpisodeAutoLog(value) }}
@@ -290,7 +306,7 @@ export function SettingsPreferencesView({
             subtitle={t("autoFillVitalsSub")}
             last={!autoFillVitals}
             rightElement={
-              <Switch
+              <BooleanSwitch
                 value={autoFillVitals}
                 onValueChange={setAutoFillVitals}
                 trackColor={{ false: colors.border, true: colors.primarySoft }}
@@ -304,7 +320,7 @@ export function SettingsPreferencesView({
                 label={t("autoFillBpHr")}
                 subtitle={t("autoFillBpHrSub")}
                 rightElement={
-                  <Switch
+                  <BooleanSwitch
                     value={autoFillBP}
                     onValueChange={setAutoFillBP}
                     trackColor={{ false: colors.border, true: colors.primarySoft }}
@@ -317,7 +333,7 @@ export function SettingsPreferencesView({
                 subtitle={t("backgroundAutoFillSub")}
                 last
                 rightElement={
-                  <Switch
+                  <BooleanSwitch
                     value={autoFillBg}
                     onValueChange={setAutoFillBg}
                     trackColor={{ false: colors.border, true: colors.primarySoft }}

@@ -28,6 +28,8 @@ export type PreferencesContextValue = {
   preopLayout: "sections" | "scroll"
   /** The postop screen's own (10.0.0); it followed the preop one before. */
   postopLayout: "sections" | "scroll"
+  /** Account-wide web/tablet shell choice; mobile displays it but does not apply the sidebar. */
+  caseSidebar: boolean
   heightUnit: HeightUnit
   weightUnit: WeightUnit
   temperatureUnit: TemperatureUnit

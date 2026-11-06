@@ -96,6 +96,10 @@ export function PreferencesProvider({
 
   const applyClinicalPreferences = useCallback((value: ClinicalPreferences) => {
     clinicalRef.current = value
+    // Layout is account-wide. Keep the legacy mobile names as a compatibility
+    // view of the canonical Core values while older screens still consume them.
+    setPreopLayoutState(value.caseLayout.preop === "tabs" ? "sections" : "scroll")
+    setPostopLayoutState(value.caseLayout.postop === "tabs" ? "sections" : "scroll")
     // Before the redraw, so every name drawn with these preferences follows the switches.
     setBulgarianNameSwitches(value.bulgarianNames)
     setClinicalPreferences(value)
@@ -283,15 +287,17 @@ export function PreferencesProvider({
     await SecureStore.setItemAsync(THEME_KEY, value)
   }
 
-  async function setPreopLayout(value: "sections" | "scroll") {
+  const setPreopLayout = useCallback(async (value: "sections" | "scroll") => {
     setPreopLayoutState(value)
     await SecureStore.setItemAsync(PREOP_LAYOUT_KEY, value)
-  }
+    await patchClinical({ caseLayout: { preop: value === "sections" ? "tabs" : "scroll" } })
+  }, [patchClinical])
 
-  async function setPostopLayout(value: "sections" | "scroll") {
+  const setPostopLayout = useCallback(async (value: "sections" | "scroll") => {
     setPostopLayoutState(value)
     await SecureStore.setItemAsync(POSTOP_LAYOUT_KEY, value)
-  }
+    await patchClinical({ caseLayout: { postop: value === "sections" ? "tabs" : "scroll" } })
+  }, [patchClinical])
 
   const value = useMemo<PreferencesContextValue>(() => ({
     language,
@@ -299,6 +305,7 @@ export function PreferencesProvider({
     shade: (hex: string) => shadeFor(theme, hex),
     preopLayout,
     postopLayout,
+    caseSidebar: clinicalPreferences.caseLayout.sidebar,
     heightUnit: clinicalPreferences.units.height,
     weightUnit: clinicalPreferences.units.weight,
     temperatureUnit: clinicalPreferences.units.temperature,
@@ -376,6 +383,8 @@ export function PreferencesProvider({
     selectLoginLanguage,
     setLanguage,
     theme,
+    setPreopLayout,
+    setPostopLayout,
   ])
 
   return (

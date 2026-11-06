@@ -26,6 +26,21 @@ type Automation = {
   unavailable: boolean
 }
 
+// All intraoperative hooks on the PWA consume one account-wide policy read.
+// Without a shared in-flight request, the case screen, vitals hook and
+// suggestion hook could observe different responses while Status was changing
+// the policy, which looked like an automation collision even though the API
+// had one account-wide value.
+let loading: Promise<Automation> | null = null
+
+async function fetchIntraopAutomation(): Promise<Automation> {
+  if (loading) return loading
+  loading = apiJson<unknown>("/api/intraop/automation")
+    .then(value => parseIntraopAutomationResponse(value))
+    .finally(() => { loading = null })
+  return loading
+}
+
 export function parseIntraopAutomationResponse(value: unknown): Automation {
   const body = typeof value === "object" && value !== null ? value as Record<string, unknown> : {}
   const settings = parseIntraopAutomation(body.settings)
@@ -57,7 +72,7 @@ export function useIntraopAutomation(): Automation & { reload: () => Promise<voi
       return
     }
     try {
-      setAutomation(parseIntraopAutomationResponse(await apiJson<unknown>("/api/intraop/automation")))
+      setAutomation(await fetchIntraopAutomation())
     } catch {
       // A previously successful policy remains safe to use mid-case, but the
       // initial render must never silently fall back to Core's shared demo default.
@@ -96,6 +111,7 @@ export type SuggestionCaseFacts = {
   techniqueSides?: Record<string, "LEFT" | "RIGHT" | "BOTH">
   airwayDevices?: readonly string[]
   airwayDeviceEntries?: readonly Record<string, unknown>[]
+  presentsIntubated?: boolean
   timeZone?: string | null
 }
 
@@ -107,7 +123,7 @@ export type SuggestionCaseFacts = {
 export function useSuggestionContext(preop: IntraopPreopSummary | null, facts: SuggestionCaseFacts, isWatching: boolean): Omit<SuggestionContext, "now"> | null {
   const { settings, ready } = useIntraopAutomation()
   const { vitalEpisodeAutoLog, automationGroups, automationLines } = usePreferences()
-  const { idealWeightKg, tofMonitor, labs, bloodLossMl, startedAt, endedAt, techniques, techniqueSides, airwayDevices, airwayDeviceEntries, timeZone } = facts
+  const { idealWeightKg, tofMonitor, labs, bloodLossMl, startedAt, endedAt, techniques, techniqueSides, airwayDevices, airwayDeviceEntries, presentsIntubated, timeZone } = facts
   const user = useMemo(() => ({ ...automationGroups, automationLines }), [automationGroups, automationLines])
   const base = useMemo(() => suggestionFactsFromPreop(preop ? {
     ageValue: preop.ageValue, ageUnit: preop.ageUnit, ageYears: preop.age, ageApproxDays: preop.ageApproxDays,
@@ -122,7 +138,7 @@ export function useSuggestionContext(preop: IntraopPreopSummary | null, facts: S
       settings, user, patient: base.patient, preop: base.preop,
       tofMonitor: tofMonitor === true, keepLogging: vitalEpisodeAutoLog,
       labs: labs ?? [], bloodLossMl: bloodLossMl ?? null, startedAt: startedAt ?? null, endedAt: endedAt ?? null,
-      techniques: techniques ?? [], techniqueSides, airwayDevices, airwayDeviceEntries, timeZone: timeZone ?? null,
+      techniques: techniques ?? [], techniqueSides, airwayDevices, airwayDeviceEntries, presentsIntubated, timeZone: timeZone ?? null,
     }
-  }, [ready, isWatching, settings, user, base, tofMonitor, vitalEpisodeAutoLog, labs, bloodLossMl, startedAt, endedAt, techniques, techniqueSides, airwayDevices, airwayDeviceEntries, timeZone])
+  }, [ready, isWatching, settings, user, base, tofMonitor, vitalEpisodeAutoLog, labs, bloodLossMl, startedAt, endedAt, techniques, techniqueSides, airwayDevices, airwayDeviceEntries, presentsIntubated, timeZone])
 }

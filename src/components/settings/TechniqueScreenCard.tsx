@@ -18,7 +18,6 @@ export function TechniqueScreenCard({ compact = false }: { compact?: boolean }) 
       onChange={value => { void setTechniqueScreen(value as TechniqueScreen) }}
       testPrefix="technique-screen"
       compact={compact}
-      scopeLabel={compact ? tc("screenChoiceAccountWide") : undefined}
       selectedLabel={compact ? tc("screenChoiceSelected") : undefined}
     />
   )

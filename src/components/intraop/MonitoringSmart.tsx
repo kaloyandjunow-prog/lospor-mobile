@@ -26,7 +26,7 @@ export function MonitoringSmart({
   onChange: (next: string[]) => void
   monitoringOpts: readonly MonitoringOpt[]
   suggestions: readonly MonitoringSuggestion[]
-  onHide: (field: string) => void
+  onHide: (suggestion: MonitoringSuggestion) => void
   /** The last reading charted for a monitor: its text and when it was taken. */
   lastReading: (field: string) => { text: string; at: string } | null
   /** Opens the vitals entry for this monitor's reading. */
@@ -98,7 +98,7 @@ export function MonitoringSmart({
           <TouchableOpacity testID={`monitoring-add-${item.field}`} onPress={() => toggle(item.field)} style={[side, { borderColor: shade("#a67cff"), backgroundColor: shade("#a67cff") + "26" }]}>
             <Text style={{ color: shade("#c4b0ff"), fontWeight: "800" }}>{tc("msmAdd")}</Text>
           </TouchableOpacity>
-          <TouchableOpacity testID={`monitoring-hide-${item.field}`} accessibilityLabel={tc("msmHide")} onPress={() => onHide(item.field)} style={[side, { borderColor: shade("#334155") }]}>
+          <TouchableOpacity testID={`monitoring-hide-${item.field}`} accessibilityLabel={tc("msmHide")} onPress={() => onHide(item)} style={[side, { borderColor: shade("#334155") }]}>
             <Text style={{ color: shade("#94a3b8"), fontWeight: "800", fontSize: 11 }}>{tc("msmHide")}</Text>
           </TouchableOpacity>
         </View>

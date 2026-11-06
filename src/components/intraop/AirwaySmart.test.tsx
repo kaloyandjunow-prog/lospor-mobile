@@ -47,7 +47,10 @@ describe("Smart selection, the Airway tab on the phone (10.2.0)", () => {
     act(() => { byId(tree, "airway-smart-add")!.props.onPress() })
     const next = onChange.mock.calls[0]![0] as AirwayDeviceEntry[]
     expect(next[0]).toMatchObject({ device: "ORAL_ETT", details: { oralTubeSize: 8, oralCuffed: true }, insertedAt: START, instruments: ["BOUGIE"], status: "in_use" })
-    expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({ label: "Intubated", ts: START, intraopPatch: expect.objectContaining({ airwayDeviceEntries: expect.any(Array) }) }))
+    const event = onEvent.mock.calls[0]![0]
+    expect(event).toMatchObject({ label: "Intubated", ts: START, intraopPatch: expect.objectContaining({ airwayDeviceEntries: expect.any(Array) }) })
+    expect(next[0]!.sourceEventId).toBe(event.id)
+    expect(event.id).toEqual(expect.any(String))
   })
 
   it("takes a picked size and the time now", () => {
@@ -57,6 +60,28 @@ describe("Smart selection, the Airway tab on the phone (10.2.0)", () => {
     act(() => { byId(tree, "airway-smart-time-now")!.props.onPress() })
     act(() => { byId(tree, "airway-smart-add")!.props.onPress() })
     expect((onChange.mock.calls[0]![0] as AirwayDeviceEntry[])[0]).toMatchObject({ details: { oralTubeSize: 7.5, oralCuffed: true }, insertedAt: NOW })
+  })
+
+  it("does not silently use now when the anesthesia start is missing", () => {
+    const { tree, onChange } = setup({ startedAt: null })
+    act(() => { byId(tree, "airway-smart-card-ORAL_ETT")!.props.onPress() })
+    expect(present(tree, "airway-smart-time-missing")).toBe(true)
+    expect(byId(tree, "airway-smart-add")!.props.disabled).toBe(true)
+    act(() => { byId(tree, "airway-smart-time-now")!.props.onPress() })
+    act(() => { byId(tree, "airway-smart-add")!.props.onPress() })
+    expect(onChange).toHaveBeenCalledTimes(1)
+  })
+
+  it("requires an exchange reason before adding a second active primary airway", () => {
+    const first: AirwayDeviceEntry = { id: "a1", device: "ORAL_ETT", details: { oralTubeSize: 8, oralCuffed: true }, insertedAt: START, status: "in_use" }
+    const onEvent = vi.fn()
+    const { tree } = setup({ entries: [first], onEvent })
+    act(() => { byId(tree, "airway-smart-card-LMA")!.props.onPress() })
+    expect(present(tree, "airway-smart-active-conflict")).toBe(true)
+    expect(byId(tree, "airway-smart-add")!.props.disabled).toBe(true)
+    act(() => { byId(tree, "airway-smart-why-planned")!.props.onPress() })
+    act(() => { byId(tree, "airway-smart-add")!.props.onPress() })
+    expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({ label: "Airway exchange", ts: START }))
   })
 
   it("Reintubate keeps both tubes: the first failed, the second in use", () => {
@@ -70,13 +95,13 @@ describe("Smart selection, the Airway tab on the phone (10.2.0)", () => {
     expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({ label: "Reintubation", ts: NOW, intraopPatch: expect.objectContaining({ airwayDeviceEntries: expect.any(Array) }) }))
   })
 
-  it("calls a second tracheal tube reintubation even when chosen directly", () => {
+  it("does not call a failed first attempt a reintubation when chosen directly", () => {
     const first: AirwayDeviceEntry = { id: "a1", device: "ORAL_ETT", details: { oralTubeSize: 8, oralCuffed: true }, insertedAt: START, status: "failed" }
     const onEvent = vi.fn()
     const { tree } = setup({ entries: [first], onEvent })
     act(() => { byId(tree, "airway-smart-card-ORAL_ETT")!.props.onPress() })
     act(() => { byId(tree, "airway-smart-add")!.props.onPress() })
-    expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({ label: "Reintubation", ts: START, intraopPatch: expect.objectContaining({ airwayDeviceEntries: expect.any(Array) }) }))
+    expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({ label: "Intubated", ts: START, intraopPatch: expect.objectContaining({ airwayDeviceEntries: expect.any(Array) }) }))
   })
 
   it("says so when nothing is in place yet, and leads with what keeps the airway open for sedation", () => {

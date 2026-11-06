@@ -1,10 +1,10 @@
 import { Fragment } from "react"
-import { Pressable, Switch, Text } from "react-native"
+import { Pressable, Text } from "react-native"
 import { AUTOMATION_GROUPS, personalAutomationDefaultEnabled, vitalQuestionsEnabled, type UserAutomationSwitch } from "@lospor/core/intraop-automation"
 import { AUTOMATIONS, successionAutomationDef } from "@lospor/core/intraop-suggestions"
 import { usePreferences, type ClinicalStringKey } from "@/lib/preferences-context"
 import { useIntraopAutomation } from "@/lib/use-intraop-automation"
-import { Card, SettingsRow } from "@/components/ui"
+import { BooleanSwitch, Card, SettingsRow } from "@/components/ui"
 import { colors } from "@/theme/colors"
 
 const KEYS: Record<UserAutomationSwitch, [ClinicalStringKey, ClinicalStringKey]> = {
@@ -18,7 +18,7 @@ const KEYS: Record<UserAutomationSwitch, [ClinicalStringKey, ClinicalStringKey]>
 }
 
 /**
- * The intraoperative suggestions a clinician keeps (10.2.0). Only what the
+ * The SPS automations a clinician keeps (10.2.0). Only what the
  * hospital switched on in Status is listed; each is on until turned off here.
  * The whole set is saved each time, so one switch never clears another.
  */
@@ -53,7 +53,7 @@ export function AutomationGroupsCard() {
         return (
           <SettingsRow key={key} label={tc(KEYS[key][0])} subtitle={tc(KEYS[key][1])} last={index === offered.length - 1 && offeredLines.length === 0}
             rightElement={
-              <Switch testID={`setting-automation-${key}`} value={on}
+              <BooleanSwitch testID={`setting-automation-${key}`} value={on}
                 onValueChange={value => { void setAutomationGroups({ ...automationGroups, [key]: value }) }}
                 trackColor={{ false: colors.border, true: colors.primarySoft }} thumbColor={on ? colors.primary : colors.textMuted} />
             } />
@@ -70,7 +70,7 @@ export function AutomationGroupsCard() {
             {vitalHeader && <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1, marginTop: 12, marginBottom: 4 }}>{tc("agVitalLinesTitle")}</Text>}
             <SettingsRow label={labelOf(line)} subtitle={detailOf(line)} last={index === offeredLines.length - 1}
               rightElement={
-                <Switch testID={`setting-automation-line-${line.id}`} value={on}
+                <BooleanSwitch testID={`setting-automation-line-${line.id}`} value={on}
                   onValueChange={value => { void setAutomationLines({ ...automationLineOverrides, [line.id]: value }) }}
                   trackColor={{ false: colors.border, true: colors.primarySoft }} thumbColor={on ? colors.primary : colors.textMuted} />
               } />

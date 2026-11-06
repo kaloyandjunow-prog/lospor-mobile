@@ -32,7 +32,7 @@ export function EquipmentTab({
     prepared: Readonly<Record<string, boolean>>
     onFlag: (field: "urinaryCatheter" | "stomachTube") => void
     onPreparedChange: (key: string, value: boolean) => void
-    onUseAirway: (device: "ORAL_ETT" | "LMA") => void
+    onUseAirway: (device: "ORAL_ETT" | "LMA") => boolean
   }
 }) {
   const shade = useShade()

@@ -18,7 +18,6 @@ export function EventsScreenCard({ compact = false }: { compact?: boolean }) {
       onChange={value => { void setEventsScreen(value as EventsScreen) }}
       testPrefix="events-screen"
       compact={compact}
-      scopeLabel={compact ? tc("screenChoiceAccountWide") : undefined}
       selectedLabel={compact ? tc("screenChoiceSelected") : undefined}
     />
   )

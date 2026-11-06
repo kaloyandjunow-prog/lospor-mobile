@@ -22,18 +22,20 @@ const ICON_NAME: Record<string, keyof typeof Ionicons.glyphMap> = {
   new:      "add",
 }
 
-function HeaderButton({ kind, onPress, active = false }: { kind: "home" | "new" | "settings" | "search"; onPress: () => void; active?: boolean }) {
+function HeaderButton({ kind, onPress, active = false, testID }: { kind: "home" | "new" | "settings" | "search"; onPress: () => void; active?: boolean; testID?: string }) {
   const { t } = usePreferences()
   const label = kind === "new" ? t("newCase") : kind === "home" ? t("dashboard") : kind === "search" ? t("searchPlaceholderShort") : t("settings")
   const iconColor = active ? colors.primary : colors.textSecondary
   return (
     <Pressable
+      testID={testID}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
       style={{
         width: 38,
         height: 38,
+        flexShrink: 0,
         borderRadius: 999,
         alignItems: "center",
         justifyContent: "center",
@@ -63,7 +65,7 @@ export function AppHeader({ eyebrow = "LOSPOR", title, showNewCase = true, compa
             {title}
           </Text>
         </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <View testID="app-header-actions" style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 0 }}>
           {onBack ? (
             <Pressable
               onPress={onBack}
@@ -79,11 +81,11 @@ export function AppHeader({ eyebrow = "LOSPOR", title, showNewCase = true, compa
               <Ionicons name="chevron-back" size={20} color={colors.textSecondary} />
             </Pressable>
           ) : (
-            <HeaderButton kind="home" onPress={() => router.replace("/(app)")} />
+            <HeaderButton kind="home" testID="app-header-home" onPress={() => router.replace("/(app)")} />
           )}
           {onSearch ? <HeaderButton kind="search" onPress={onSearch} /> : null}
           {showNewCase ? <HeaderButton kind="new" active onPress={() => router.push("/(app)/cases/new")} /> : null}
-          <HeaderButton kind="settings" onPress={() => router.push("/(app)/settings")} />
+          <HeaderButton kind="settings" testID="app-header-settings" onPress={() => router.push("/(app)/settings")} />
         </View>
       </View>
       {!compact ? <OfflineLibraryBanner /> : null}

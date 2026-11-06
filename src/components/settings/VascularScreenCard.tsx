@@ -18,7 +18,6 @@ export function VascularScreenCard({ compact = false }: { compact?: boolean }) {
       onChange={value => { void setVascularScreen(value as VascularScreen) }}
       testPrefix="vascular-screen"
       compact={compact}
-      scopeLabel={compact ? tc("screenChoiceAccountWide") : undefined}
       selectedLabel={compact ? tc("screenChoiceSelected") : undefined}
     />
   )

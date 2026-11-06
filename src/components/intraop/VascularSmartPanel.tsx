@@ -66,6 +66,12 @@ export function VascularSmartPanel({
   const [picked, setPicked] = useState<string>(() => clock(request.at ?? now()))
   const fill = (key: "vsmFromTimeline" | "vsmStart" | "vsmNow", iso: string | null | undefined) => tc(key).replace("{time}", clock(iso))
   const replaced = request.replacesIndex != null ? lines[request.replacesIndex] : null
+  const pickedInstant = timeZone && /^\d{1,2}:\d{2}$/.test(picked)
+    ? instantFromLocalTime(new Date(startedAt ?? now()), picked, timeZone)?.toISOString() ?? null
+    : null
+  const timeMissing = origin === "here" && ((choice === "start" && startedAt == null)
+    || (choice === "timeline" && !request.at)
+    || (choice === "pick" && !pickedInstant))
 
   function chooseOrigin(next: "here" | "ward") {
     setOrigin(next)
@@ -73,15 +79,21 @@ export function VascularSmartPanel({
   }
 
   function save() {
-    const pickedInstant = timeZone && /^\d{1,2}:\d{2}$/.test(picked) ? instantFromLocalTime(new Date(startedAt ?? now()), picked, timeZone)?.toISOString() ?? null : null
+    // A timeline event must be updated atomically with its structured line.
+    if (request.source === "timeline" && !request.eventId) return
     const at = resolveVascularTime(choice, { startedAt, now: now(), picked: choice === "timeline" ? request.at ?? null : pickedInstant })
+    const eventLabel = at && (request.source !== "timeline" || request.eventId)
+      ? vascularClinicalEvent(request.type, site) || request.eventLabel || "IV line in"
+      : null
+    const eventId = eventLabel ? (request.eventId ?? clinicalRecordId("vascular-event", at!)) : undefined
     const next = addVascularLine(lines, {
       id: clinicalRecordId("vascular", at ?? now()), type: request.type, site,
       size, depthCm: depth, lumens: request.type === "CENTRAL" ? lumens : undefined,
       origin, insertedAt: at, replacesIndex: request.replacesIndex ?? null,
+      ...(eventId ? { sourceEventId: eventId } : {}),
     })
-    const event = at && (request.source !== "timeline" || request.eventId)
-      ? { ...(request.eventId ? { id: request.eventId } : {}), label: vascularClinicalEvent(request.type, site) || request.eventLabel || "IV line in", ts: at, intraopPatch: { vascularAccesses: next } }
+    const event = eventLabel && eventId
+      ? { id: eventId, label: eventLabel, ts: at!, intraopPatch: { vascularAccesses: next } }
       : undefined
     onSave(next, event)
   }
@@ -156,8 +168,9 @@ export function VascularSmartPanel({
         ) : null}
       </View>
 
-      <TouchableOpacity testID="vascular-smart-add" onPress={save} style={{ minHeight: 52, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: shade("#a67cff") }}>
-        <Text style={{ color: shade("#12082b"), fontWeight: "800", fontSize: 15 }}>{tc("vsmAdd")}</Text>
+      {timeMissing ? <Text testID="vascular-smart-time-missing" style={{ color: shade("#fde68a"), backgroundColor: shade("#3b2f12"), borderRadius: 8, padding: 8, fontSize: 12, marginBottom: 8 }}>{tc("vsmTimeMissing")}</Text> : null}
+      <TouchableOpacity testID="vascular-smart-add" disabled={timeMissing} onPress={save} style={{ minHeight: 52, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: shade(timeMissing ? "#262626" : "#a67cff") }}>
+        <Text style={{ color: shade(timeMissing ? "#64748b" : "#12082b"), fontWeight: "800", fontSize: 15 }}>{tc("vsmAdd")}</Text>
       </TouchableOpacity>
     </View>
   )

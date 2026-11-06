@@ -18,7 +18,6 @@ export function MonitoringScreenCard({ compact = false }: { compact?: boolean })
       onChange={value => { void setMonitoringScreen(value as MonitoringScreen) }}
       testPrefix="monitoring-screen"
       compact={compact}
-      scopeLabel={compact ? tc("screenChoiceAccountWide") : undefined}
       selectedLabel={compact ? tc("screenChoiceSelected") : undefined}
     />
   )

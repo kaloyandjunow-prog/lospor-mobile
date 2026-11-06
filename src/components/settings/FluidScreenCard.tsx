@@ -15,7 +15,6 @@ export function FluidScreenCard({ compact = false }: { compact?: boolean }) {
       onChange={value => { void setFluidsScreen(value as FluidsScreen) }}
       testPrefix="fluids-screen"
       compact={compact}
-      scopeLabel={compact ? tc("screenChoiceAccountWide") : undefined}
       selectedLabel={compact ? tc("screenChoiceSelected") : undefined}
     />
   )

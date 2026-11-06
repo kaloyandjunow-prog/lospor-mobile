@@ -18,7 +18,6 @@ export function AirwayScreenCard({ compact = false }: { compact?: boolean }) {
       onChange={value => { void setAirwayScreen(value as AirwayScreen) }}
       testPrefix="airway-screen"
       compact={compact}
-      scopeLabel={compact ? tc("screenChoiceAccountWide") : undefined}
       selectedLabel={compact ? tc("screenChoiceSelected") : undefined}
     />
   )

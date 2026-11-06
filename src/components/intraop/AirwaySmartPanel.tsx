@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { Text, TextInput, TouchableOpacity, View } from "react-native"
-import { airwayDevicesInUse, type AirwayDeviceEntry, type AirwayExchangeReason } from "@lospor/core/airway-device-entries"
+import { airwayPrimaryConflict, airwayDevicesInUse, hasActiveTrachealTube, type AirwayDeviceEntry, type AirwayExchangeReason } from "@lospor/core/airway-device-entries"
 import {
   addAirwayDevice,
   airwayAsks,
@@ -67,22 +67,34 @@ export function AirwaySmartPanel({
   const clock = (iso: string | null | undefined) => (iso && timeZone ? localTimeOf(new Date(iso), timeZone) : null) ?? iso?.slice(11, 16) ?? ""
   const [picked, setPicked] = useState<string>(() => clock(request.at ?? now()))
   const fill = (key: "asmFromTimeline" | "asmStart" | "asmNow", iso: string | null | undefined) => tc(key).replace("{time}", clock(iso))
+  const conflict = request.replaces ? null : airwayPrimaryConflict(entries, request.device)
+  const replacementId = request.replaces?.id ?? conflict?.id ?? null
+  const pickedInstant = timeZone && /^\d{1,2}:\d{2}$/.test(picked)
+    ? instantFromLocalTime(new Date(startedAt ?? now()), picked, timeZone)?.toISOString() ?? null
+    : null
+  const timeMissing = (choice === "start" && startedAt == null)
+    || (choice === "timeline" && !request.at)
+    || (choice === "pick" && !pickedInstant)
 
   function save() {
-    if (request.replaces && !reason) return
-    const pickedInstant = timeZone && /^\d{1,2}:\d{2}$/.test(picked) ? instantFromLocalTime(new Date(startedAt ?? now()), picked, timeZone)?.toISOString() ?? null : null
+    if (replacementId && !reason) return
     const at = resolveAirwayTime(choice, { startedAt, now: now(), picked: choice === "timeline" ? request.at ?? null : pickedInstant })
+    if (!at) return
+    const priorTrachealTube = hasActiveTrachealTube(entries)
+    const eventLabel = request.source === "timeline"
+      ? replacementId
+        ? airwayClinicalEvent(request.device, { replaces: true, priorTrachealTube })
+        : request.eventLabel ?? null
+      : airwayClinicalEvent(request.device, { replaces: !!replacementId, priorTrachealTube })
+    const eventId = eventLabel ? (request.eventId ?? clinicalRecordId("airway-event", at)) : undefined
     const kept = Object.fromEntries(asks.filter(ask => details[ask.field] !== undefined && details[ask.field] !== "").map(ask => [ask.field, details[ask.field]]))
     const next = addAirwayDevice(entries, {
       id: clinicalRecordId("airway", at), device: request.device, details: kept, insertedAt: at, instruments: how,
-      replaces: request.replaces ? { id: request.replaces.id, reason: reason ?? request.replaces.reason } : null,
+      ...(eventId ? { sourceEventId: eventId } : {}),
+      replaces: replacementId ? { id: replacementId, reason: reason ?? request.replaces?.reason ?? "planned" } : null,
     })
-    const priorTrachealTube = entries.some(entry => entry.device === "ORAL_ETT" || entry.device === "NASAL_ETT")
-    const eventLabel = request.source === "timeline"
-      ? request.eventLabel ?? null
-      : airwayClinicalEvent(request.device, { replaces: !!request.replaces, priorTrachealTube })
     onSave(next, eventLabel
-      ? { ...(request.eventId ? { id: request.eventId } : {}), label: eventLabel, ts: at, intraopPatch: airwayRecordFields(next) }
+      ? { id: eventId, label: eventLabel, ts: at, intraopPatch: airwayRecordFields(next) }
       : undefined)
   }
 
@@ -93,7 +105,7 @@ export function AirwaySmartPanel({
   const pillText = (on: boolean) => ({ color: on ? shade("#e9ddff") : shade("#e2e8f0"), fontWeight: "700" as const, fontSize: 14 })
   const label = (text: string) => <Text style={{ color: shade("#94a3b8"), fontSize: 10, fontWeight: "700", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 6 }}>{text}</Text>
   const row = { flexDirection: "row" as const, flexWrap: "wrap" as const, gap: 6, marginBottom: 12 }
-  const replaced = request.replaces ? airwayDevicesInUse(entries).find(entry => entry.id === request.replaces!.id) : null
+  const replaced = replacementId ? airwayDevicesInUse(entries).find(entry => entry.id === replacementId) : null
   const sizeLabel = (field: string) => (field === "dltType" ? tc("awDltType") : field === "dltSide" ? tc("awDltSide") : tc("asmSize"))
 
   return (
@@ -103,8 +115,11 @@ export function AirwaySmartPanel({
         <TouchableOpacity testID="airway-smart-close" onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}><Text style={{ color: shade("#94a3b8"), fontSize: 20 }}>✕</Text></TouchableOpacity>
       </View>
 
-      {request.replaces ? (
+      {(request.replaces || conflict) ? (
         <View>
+          {conflict ? <Text testID="airway-smart-active-conflict" style={{ color: shade("#fde68a"), backgroundColor: shade("#3b2f12"), borderRadius: 8, padding: 8, fontSize: 12, marginBottom: 8 }}>
+            {tc("asmActivePrimaryConflict").replace("{device}", deviceLabel(conflict.device))}
+          </Text> : null}
           {label(tc("awxWhy"))}
           <View style={row}>{WHY.map(([value, key]) => (
             <TouchableOpacity key={value} testID={`airway-smart-why-${value}`} style={pill(reason === value)} onPress={() => setReason(value)}><Text style={pillText(reason === value)}>{tc(key)}</Text></TouchableOpacity>
@@ -157,9 +172,12 @@ export function AirwaySmartPanel({
         ) : null}
       </View>
 
-      <TouchableOpacity testID="airway-smart-add" disabled={!!request.replaces && !reason} onPress={save}
-        style={{ minHeight: 52, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: request.replaces && !reason ? shade("#262626") : shade("#a67cff") }}>
-        <Text style={{ color: request.replaces && !reason ? shade("#64748b") : shade("#12082b"), fontWeight: "800", fontSize: 15 }}>{tc("asmAdd")}</Text>
+      {timeMissing ? <Text testID="airway-smart-time-missing" style={{ color: shade("#fde68a"), backgroundColor: shade("#3b2f12"), borderRadius: 8, padding: 8, fontSize: 12, marginBottom: 8 }}>
+        {tc("asmTimeMissing")}
+      </Text> : null}
+      <TouchableOpacity testID="airway-smart-add" disabled={(!!replacementId && !reason) || timeMissing} onPress={save}
+        style={{ minHeight: 52, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: ((replacementId && !reason) || timeMissing) ? shade("#262626") : shade("#a67cff") }}>
+        <Text style={{ color: ((replacementId && !reason) || timeMissing) ? shade("#64748b") : shade("#12082b"), fontWeight: "800", fontSize: 15 }}>{tc("asmAdd")}</Text>
       </TouchableOpacity>
     </View>
   )

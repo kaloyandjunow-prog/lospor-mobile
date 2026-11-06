@@ -33,7 +33,7 @@ export type IntraopPreopSummary = {
   pediatricFasting?: { category: PediatricFastingCategory; hoursBefore: number }[]
   /** The premedication ordered at the preop visit; the record's premedication starts from it. */
   premedicationOrders?: PremedicationOrders
-  // What the intraoperative suggestions read (10.2.0): P1 MH, P4 latex, P3 ПОГП.
+  // What SPS reads (10.2.0): P1 MH, P4 latex, P3 ПОГП.
   malignantHyperthermiaHistory?: boolean | null
   familyAnesthesiaProblems?: boolean | null
   latexAllergy?: boolean | null

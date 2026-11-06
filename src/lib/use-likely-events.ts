@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { likelyNext, successionContext, successionDismissedIds, SUCCESSION_ANSWER_KIND, SUCCESSION_DISMISS_ANSWER, type LikelyEvent, type SuccessionStructuredRecords } from "@lospor/core/event-succession"
+import { successionDismissalEventId } from "@lospor/core/intraop-automation-actions"
 import { useIntraopAutomation } from "@/lib/use-intraop-automation"
 import { usePreferences } from "@/lib/preferences-context"
 import type { SaveIntraopEvent } from "@/lib/intraop-stamp"
@@ -21,6 +22,7 @@ export function useLikelyEvents({ log, structured, techniques, child, enabled, s
   const { automationGroups, automationLines } = usePreferences()
   const user = useMemo(() => ({ ...automationGroups, automationLines }), [automationGroups, automationLines])
   const [now, setNow] = useState(() => Date.now())
+  const dismissalInFlight = useRef(new Set<string>())
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 30_000)
     return () => clearInterval(timer)
@@ -37,7 +39,9 @@ export function useLikelyEvents({ log, structured, techniques, child, enabled, s
     likely,
     dismiss: suggestionId => {
       if (!save || !suggestionId.startsWith("succession:")) return
-      void save({ type: "prompt_answer", answerKind: SUCCESSION_ANSWER_KIND, answerFor: suggestionId, answer: SUCCESSION_DISMISS_ANSWER, suggestion: suggestionId })
+      if (dismissalInFlight.current.has(suggestionId)) return
+      dismissalInFlight.current.add(suggestionId)
+      void save({ id: successionDismissalEventId(suggestionId), type: "prompt_answer", answerKind: SUCCESSION_ANSWER_KIND, answerFor: suggestionId, answer: SUCCESSION_DISMISS_ANSWER, suggestion: suggestionId })
     },
   }
 }

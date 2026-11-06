@@ -78,14 +78,17 @@ describe("Smart selection, the Vascular access tab on the phone (10.2.0)", () =>
 
   it("collapses a selected kind when tapped again and charts CVC in on confirmation", () => {
     const onEvent = vi.fn()
-    const { tree } = setup({ onEvent })
+    const { tree, onChange } = setup({ onEvent })
     press(tree, "vascular-smart-card-CENTRAL")
     expect(present(tree, "vascular-smart-panel")).toBe(true)
     press(tree, "vascular-smart-card-CENTRAL")
     expect(present(tree, "vascular-smart-panel")).toBe(false)
     press(tree, "vascular-smart-card-CENTRAL")
     press(tree, "vascular-smart-add")
-    expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({ label: "CVC in", ts: START, intraopPatch: expect.objectContaining({ vascularAccesses: expect.any(Array) }) }))
+    const event = onEvent.mock.calls[0]![0]
+    expect(event).toMatchObject({ label: "CVC in", ts: START, intraopPatch: expect.objectContaining({ vascularAccesses: expect.any(Array) }) })
+    expect((onChange.mock.calls[0]![0] as VascularLine[])[0]!.sourceEventId).toBe(event.id)
+    expect(event.id).toEqual(expect.any(String))
   })
 
   it("adds a second line and keeps both when one fails: the first struck through, the second in place", () => {
@@ -116,21 +119,21 @@ describe("Smart selection, the Vascular access tab on the phone (10.2.0)", () =>
 describe("Smart selection for vascular access opens from the timeline on the phone", () => {
   it("opens the panel for IV line in, once, with that time, and not for the legacy tab", () => {
     let api: ReturnType<typeof usePhoneVascularEvents> | null = null
-    function Probe({ log, active }: { log: LogEvent[]; active: boolean }) {
-      api = usePhoneVascularEvents({ log, active, lines: () => [] })
+    function Probe({ log, active, smart }: { log: LogEvent[]; active: boolean; smart: boolean }) {
+      api = usePhoneVascularEvents({ log, active, smart, lines: () => [] })
       return null
     }
-    const tree = render(<Probe log={[]} active />)
+    const tree = render(<Probe log={[]} active smart />)
     const at = new Date().toISOString()
     const event = { id: "e1", ts: at, type: "clinical_event", label: "CVC in", recordedAt: at } as LogEvent
-    act(() => { tree.update(<Probe log={[event]} active />) })
+    act(() => { tree.update(<Probe log={[event]} active smart />) })
     expect(api!.request).toMatchObject({ type: "CENTRAL", centralType: "CVK", at, source: "timeline" })
     act(() => { api!.setRequest(null) })
-    act(() => { tree.update(<Probe log={[event]} active />) })
+    act(() => { tree.update(<Probe log={[event]} active smart />) })
     expect(api!.request).toBeNull()
 
-    const legacy = render(<Probe log={[]} active={false} />)
-    act(() => { legacy.update(<Probe log={[{ ...event, id: "e2" }]} active={false} />) })
+    const legacy = render(<Probe log={[]} active={false} smart={false} />)
+    act(() => { legacy.update(<Probe log={[{ ...event, id: "e2" }]} active={false} smart={false} />) })
     expect(api!.request).toBeNull()
   })
 })

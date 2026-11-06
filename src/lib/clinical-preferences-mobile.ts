@@ -5,6 +5,7 @@ import {
   combineClinicalPreferencesPatches,
   mergeClinicalPreferences,
   normalizeClinicalPreferences,
+  parseClinicalPreferencesPatch,
   type ClinicalPreferences,
   type ClinicalPreferencesPatch,
 } from "@lospor/core/clinical-preferences"
@@ -20,10 +21,15 @@ const LEGACY_KEYS = {
   autoFillVitals: "intraop_autofill_vitals",
   autoFillBP: "intraop_autofill_bp",
   autoFillBg: "intraop_autofill_bg",
+  preopLayout: "lospor_preop_layout",
+  postopLayout: "lospor_postop_layout",
 } as const
+
+let serverPreferencesRevision: number | null = null
 
 type UserPreferencesResponse = {
   preferences?: unknown
+  preferencesRevision?: unknown
 }
 
 function parsePendingPatch(
@@ -67,7 +73,11 @@ async function currentAccountId(): Promise<string | null> {
   return typeof id === "string" && id ? id : null
 }
 
-type StoredSnapshot = { owner: string | null; preferences: ClinicalPreferences }
+type StoredSnapshot = {
+  owner: string | null
+  preferences: ClinicalPreferences
+  patch: ClinicalPreferencesPatch
+}
 
 function parseSnapshot(value: string | null): StoredSnapshot | null {
   if (!value) return null
@@ -78,51 +88,45 @@ function parseSnapshot(value: string | null): StoredSnapshot | null {
       return {
         owner: typeof record.owner === "string" ? record.owner : null,
         preferences: normalizeClinicalPreferences(record.preferences),
+        patch: parseClinicalPreferencesPatch(record.preferences),
       }
     }
     // Written before snapshots carried an owner. There is no way to tell whose
     // it is, so it is treated as belonging to nobody and discarded rather than
     // adopted — the server copy is authoritative and restores it on next sync.
-    return { owner: null, preferences: normalizeClinicalPreferences(parsed) }
+    return {
+      owner: null,
+      preferences: normalizeClinicalPreferences(parsed),
+      patch: parseClinicalPreferencesPatch(parsed),
+    }
   } catch {
     return null
   }
 }
 
-async function readLegacyPreferences(): Promise<ClinicalPreferences> {
-  const [
-    height,
-    weight,
-    temperature,
-    etco2,
-    autoFillVitals,
-    autoFillBP,
-    autoFillBg,
-  ] = await Promise.all([
-    SecureStore.getItemAsync(LEGACY_KEYS.height),
-    SecureStore.getItemAsync(LEGACY_KEYS.weight),
-    SecureStore.getItemAsync(LEGACY_KEYS.temperature),
-    SecureStore.getItemAsync(LEGACY_KEYS.etco2),
-    SecureStore.getItemAsync(LEGACY_KEYS.autoFillVitals),
-    SecureStore.getItemAsync(LEGACY_KEYS.autoFillBP),
-    SecureStore.getItemAsync(LEGACY_KEYS.autoFillBg),
-  ])
-  return normalizeClinicalPreferences({
-    heightUnit: height,
-    weightUnit: weight,
-    temperatureUnit: temperature,
-    etco2Unit: etco2,
-    autoFillVitals: autoFillVitals === "on",
-    autoFillBP: autoFillBP === "on",
-    autoFillBg: autoFillBg === "on",
-  })
+async function clearLegacyPreferenceKeys(): Promise<void> {
+  await Promise.all(
+    Object.values(LEGACY_KEYS).map(key =>
+      SecureStore.deleteItemAsync(key).catch(() => {})),
+  )
 }
 
 export async function readMobileClinicalPreferences(): Promise<ClinicalPreferences> {
+  return normalizeClinicalPreferences(await readMobileStoredPatch())
+}
+
+async function readMobileStoredPatch(): Promise<ClinicalPreferencesPatch> {
   const snapshot = parseSnapshot(
     await SecureStore.getItemAsync(SNAPSHOT_KEY).catch(() => null),
   )
-  if (!snapshot) return readLegacyPreferences()
+  if (!snapshot) {
+    // These keys predate owner-stamped snapshots and cannot safely be
+    // attributed after a sign-out or token expiry. The server account is the
+    // authority; discard the unowned device copy rather than leaking it into
+    // the next account during the first sync.
+    await clearLegacyPreferenceKeys()
+    return {}
+  }
 
   const account = await currentAccountId()
   if (snapshot.owner === null || snapshot.owner !== account) {
@@ -130,18 +134,19 @@ export async function readMobileClinicalPreferences(): Promise<ClinicalPreferenc
     // it — including the legacy per-setting keys, which are just as unowned —
     // and start from defaults until the server copy arrives.
     await clearMobileClinicalPreferences()
-    return normalizeClinicalPreferences({})
+    return {}
   }
-  return snapshot.preferences
+  await clearLegacyPreferenceKeys()
+  return snapshot.patch
 }
 
 /** Removes every device copy of the signed-in account's preferences. */
 export async function clearMobileClinicalPreferences(): Promise<void> {
+  serverPreferencesRevision = null
   await Promise.all([
     SecureStore.deleteItemAsync(SNAPSHOT_KEY).catch(() => {}),
     SecureStore.deleteItemAsync(DIRTY_KEY).catch(() => {}),
-    ...Object.values(LEGACY_KEYS).map(key =>
-      SecureStore.deleteItemAsync(key).catch(() => {})),
+    clearLegacyPreferenceKeys(),
   ])
 }
 
@@ -171,17 +176,41 @@ export async function writeMobileClinicalPreferences(
       LEGACY_KEYS.autoFillBg,
       normalized.autoFillVitals.backfillOnReopen ? "on" : "off",
     ),
+    SecureStore.setItemAsync(
+      LEGACY_KEYS.preopLayout,
+      normalized.caseLayout.preop === "tabs" ? "sections" : "scroll",
+    ),
+    SecureStore.setItemAsync(
+      LEGACY_KEYS.postopLayout,
+      normalized.caseLayout.postop === "tabs" ? "sections" : "scroll",
+    ),
   ])
 }
 
 async function pushPreferences(
   preferences: ClinicalPreferences | ClinicalPreferencesPatch,
+  retryOnConflict = true,
 ): Promise<boolean> {
   try {
     const response = await apiFetch("/api/user", {
       method: "PATCH",
-      body: JSON.stringify({ preferences }),
+      body: JSON.stringify({
+        preferences,
+        ...(serverPreferencesRevision != null
+          ? { preferencesRevision: serverPreferencesRevision }
+          : {}),
+      }),
     })
+    const data = await response.json().catch(() => null) as { preferencesRevision?: unknown } | null
+    if (typeof data?.preferencesRevision === "number"
+      && Number.isInteger(data.preferencesRevision)
+      && data.preferencesRevision >= 0) {
+      serverPreferencesRevision = data.preferencesRevision
+    }
+    if (response.status === 409 && retryOnConflict
+      && typeof data?.preferencesRevision === "number") {
+      return pushPreferences(preferences, false)
+    }
     if (!response.ok) return false
     await SecureStore.deleteItemAsync(DIRTY_KEY).catch(() => {})
     return true
@@ -191,24 +220,26 @@ async function pushPreferences(
 }
 
 export async function syncMobileClinicalPreferences(): Promise<ClinicalPreferences> {
-  const local = await readMobileClinicalPreferences()
+  const localPatch = await readMobileStoredPatch()
+  const local = normalizeClinicalPreferences(localPatch)
   const dirtyRaw = await SecureStore.getItemAsync(DIRTY_KEY).catch(() => null)
   const pending = parsePendingPatch(dirtyRaw)
   try {
     const server = await apiJson<UserPreferencesResponse>("/api/user")
-    const merged = dirtyRaw === "true"
+    if (typeof server.preferencesRevision === "number"
+      && Number.isInteger(server.preferencesRevision)
+      && server.preferencesRevision >= 0) {
+      serverPreferencesRevision = server.preferencesRevision
+    }
+    const localIntent = dirtyRaw === "true" ? localPatch : pending
+    const merged = localIntent
       ? applyClinicalPreferencesPatch(
-          mergeClinicalPreferences(server.preferences, local),
-          local,
+          mergeClinicalPreferences(server.preferences, {}),
+          localIntent,
         )
-      : pending
-        ? applyClinicalPreferencesPatch(
-            mergeClinicalPreferences(server.preferences, local),
-            pending,
-          )
-      : mergeClinicalPreferences(server.preferences, local)
+      : mergeClinicalPreferences(server.preferences, {})
     await writeMobileClinicalPreferences(merged)
-    if (!await pushPreferences(pending ?? merged)) {
+    if (localIntent && !await pushPreferences(pending ?? localPatch, dirtyRaw !== "true")) {
       if (!dirtyRaw) await writePendingPatch(merged)
     }
     return merged
@@ -224,7 +255,7 @@ export async function patchMobileClinicalPreferences(
   const next = applyClinicalPreferencesPatch(current, patch)
   await writeMobileClinicalPreferences(next)
   await writePendingPatch(patch)
-  if (await pushPreferences(next)) {
+  if (await pushPreferences(patch)) {
     await SecureStore.deleteItemAsync(DIRTY_KEY).catch(() => {})
   }
   return next

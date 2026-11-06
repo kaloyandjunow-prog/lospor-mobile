@@ -30,11 +30,11 @@ describe("mobile clinical preference synchronization", () => {
   beforeEach(() => {
     secureStore.values.clear()
     vi.clearAllMocks()
-    api.apiFetch.mockResolvedValue({ ok: true })
+    api.apiFetch.mockResolvedValue({ ok: true, json: async () => ({}) })
     api.apiJson.mockResolvedValue({ preferences: {} })
   })
 
-  it("imports existing device-only settings", async () => {
+  it("discards existing device-only settings without an owner", async () => {
     secureStore.values.set("lospor_height_unit", "in")
     secureStore.values.set("intraop_autofill_vitals", "on")
     secureStore.values.set("intraop_autofill_bp", "on")
@@ -44,11 +44,12 @@ describe("mobile clinical preference synchronization", () => {
     )
     const preferences = await readMobileClinicalPreferences()
 
-    expect(preferences.units.height).toBe("in")
+    expect(preferences.units.height).toBe(DEFAULT_CLINICAL_PREFERENCES.units.height)
     expect(preferences.autoFillVitals).toMatchObject({
-      enabled: true,
-      includeBloodPressure: true,
+      enabled: DEFAULT_CLINICAL_PREFERENCES.autoFillVitals.enabled,
+      includeBloodPressure: DEFAULT_CLINICAL_PREFERENCES.autoFillVitals.includeBloodPressure,
     })
+    expect(secureStore.values.has("lospor_height_unit")).toBe(false)
   })
 
   it("keeps an offline edit and retries it at the next sync", async () => {
@@ -69,7 +70,7 @@ describe("mobile clinical preference synchronization", () => {
     api.apiJson.mockResolvedValue({
       preferences: { units: { height: "cm", weight: "lb" } },
     })
-    api.apiFetch.mockResolvedValue({ ok: true })
+    api.apiFetch.mockResolvedValue({ ok: true, json: async () => ({}) })
     const synced = await syncMobileClinicalPreferences()
 
     expect(synced.units).toMatchObject({ height: "in", weight: "lb" })
@@ -107,7 +108,7 @@ describe("a device snapshot belongs to one account", () => {
   beforeEach(() => {
     secureStore.values.clear()
     vi.clearAllMocks()
-    api.apiFetch.mockResolvedValue({ ok: true })
+    api.apiFetch.mockResolvedValue({ ok: true, json: async () => ({}) })
     api.getToken.mockResolvedValue("token-for-user-a")
     api.decodeTokenPayload.mockImplementation((token: string | null) =>
       token ? { sub: token.replace("token-for-", "") } : null)
