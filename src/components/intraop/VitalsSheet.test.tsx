@@ -134,6 +134,7 @@ describe("VitalsSheet arterial line (10.2.0)", () => {
     const off = renderWithPreferences(<VitalsSheet {...props()} />)
     expect(byId(off, "vitals-ibp")).toBeUndefined()
     expect(byId(off, "vitals-nibp-map")).toBeTruthy()
+    expect(byId(off, "vitals-nibp-map")!.props.placeholder).toBe("(MAP)")
     const sheetProps = props()
     sheetProps.showIbp = true
     const on = renderWithPreferences(<VitalsSheet {...sheetProps} />)

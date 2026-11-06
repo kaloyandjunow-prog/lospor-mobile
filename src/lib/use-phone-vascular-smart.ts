@@ -26,7 +26,7 @@ export function usePhoneVascularEvents({ log, active, lines }: {
       && !lines().some(line => line.insertedAt === event.ts)
       && Date.now() - Date.parse(event.recordedAt ?? event.ts) < 2 * 60_000)
     for (const event of events) known.add(event.id)
-    if (fresh?.label) setRequest({ ...VASCULAR_EVENT_TYPE[fresh.label]!, at: fresh.ts, source: "timeline" })
+    if (fresh?.label) setRequest({ ...VASCULAR_EVENT_TYPE[fresh.label]!, at: fresh.ts, source: "timeline", eventId: fresh.id, eventLabel: fresh.label })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [log, active])
   return { request, setRequest }

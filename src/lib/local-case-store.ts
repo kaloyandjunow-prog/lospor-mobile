@@ -19,9 +19,21 @@ function draftPath(id: string): string {
 
 export type LocalCaseDraft = {
   localId: string
+  /** Added when the draft is created after account-scoped storage is active. */
+  ownerId?: string
   serverCaseId?: string
   formValues: Record<string, unknown>
   createdAt: string
+}
+
+let activeOwnerId: string | null = null
+
+export function setLocalCaseStoreOwner(ownerId: string | null): void {
+  activeOwnerId = ownerId
+}
+
+function belongsToActiveOwner(draft: LocalCaseDraft): boolean {
+  return activeOwnerId === null || draft.ownerId === activeOwnerId
 }
 
 let webDbPromise: Promise<IDBDatabase> | null = null
@@ -92,16 +104,6 @@ async function allWebDrafts(): Promise<LocalCaseDraft[]> {
   )
 }
 
-async function clearWebDrafts(): Promise<number> {
-  const database = await webDatabase()
-  const countTransaction = database.transaction(WEB_STORE, "readonly")
-  const count = await requestResult(countTransaction.objectStore(WEB_STORE).count())
-  const clearTransaction = database.transaction(WEB_STORE, "readwrite")
-  clearTransaction.objectStore(WEB_STORE).clear()
-  await transactionDone(clearTransaction)
-  return count
-}
-
 export function makeLocalCaseId(): string {
   return `local_${randomHex(12)}`
 }
@@ -121,6 +123,7 @@ export async function saveLocalCaseDraft(
 ): Promise<boolean> {
   const draft: LocalCaseDraft = {
     localId,
+    ...(activeOwnerId ? { ownerId: activeOwnerId } : {}),
     ...(serverCaseId ? { serverCaseId } : {}),
     formValues,
     createdAt: new Date().toISOString(),
@@ -140,12 +143,14 @@ export async function saveLocalCaseDraft(
 
 export async function loadLocalCaseDraft(localId: string): Promise<LocalCaseDraft | null> {
   try {
-    if (Platform.OS === "web") return loadWebDraft(localId)
-    const path = draftPath(localId)
-    const info = await FileSystem.getInfoAsync(path)
-    if (!info.exists) return null
-    const raw = await FileSystem.readAsStringAsync(path)
-    return raw ? (JSON.parse(raw) as LocalCaseDraft) : null
+    const draft = Platform.OS === "web" ? await loadWebDraft(localId) : await (async () => {
+      const path = draftPath(localId)
+      const info = await FileSystem.getInfoAsync(path)
+      if (!info.exists) return null
+      const raw = await FileSystem.readAsStringAsync(path)
+      return raw ? (JSON.parse(raw) as LocalCaseDraft) : null
+    })()
+    return draft && belongsToActiveOwner(draft) ? draft : null
   } catch {
     return null
   }
@@ -176,7 +181,7 @@ async function listNativeDraftIds(): Promise<string[]> {
 export async function getAllLocalCaseDrafts(): Promise<LocalCaseDraft[]> {
   if (Platform.OS === "web") {
     try {
-      return await allWebDrafts()
+      return (await allWebDrafts()).filter(belongsToActiveOwner)
     } catch {
       return []
     }
@@ -189,14 +194,19 @@ export async function getAllLocalCaseDrafts(): Promise<LocalCaseDraft[]> {
 export async function clearAllLocalCaseDrafts(): Promise<number> {
   if (Platform.OS === "web") {
     try {
-      return await clearWebDrafts()
+      const drafts = await allWebDrafts()
+      const owned = drafts.filter(belongsToActiveOwner)
+      await Promise.all(owned.map(draft => deleteWebDraft(draft.localId)))
+      return owned.length
     } catch {
       return 0
     }
   }
-  const ids = await listNativeDraftIds()
+  const allIds = await listNativeDraftIds()
+  const ownedIds: string[] = []
+  for (const id of allIds) if (await loadLocalCaseDraft(id)) ownedIds.push(id)
   await Promise.all(
-    ids.map(id => FileSystem.deleteAsync(draftPath(id), { idempotent: true }).catch(() => {})),
+    ownedIds.map(id => FileSystem.deleteAsync(draftPath(id), { idempotent: true }).catch(() => {})),
   )
-  return ids.length
+  return ownedIds.length
 }

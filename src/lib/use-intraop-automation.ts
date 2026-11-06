@@ -5,19 +5,26 @@ import type { LabResult } from "@lospor/core/labs"
 import { preopAgeDays, type VitalQuestionContext, type VitalStatsTable } from "@lospor/core/vital-questions"
 import { parseSuccessionLinks, type SuccessionLink } from "@lospor/core/event-succession"
 import { apiJson } from "@/lib/api"
+import { useAuth } from "@/lib/auth-context"
 import type { IntraopPreopSummary } from "@/lib/intraop-preop-summary"
 import { usePreferences } from "@/lib/preferences-context"
 
 /**
  * Intraoperative automation (10.1.0): what the hospital switched on in
  * Status, and the reading counts the vitals questions are measured against.
- * Off, or offline before the first read, nothing is asked -- the public demo
- * has no Status and stays off. Kept for the session once read, so a dropped
+ * Until the first policy read, nothing is asked rather than silently using
+ * Core's shared defaults. Kept for the session once read, so a dropped
  * connection mid-case is not the hospital switching the questions off.
  */
-type Automation = { settings: IntraopAutomationSettings; stats: VitalStatsTable | null; succession: SuccessionLink[] }
-
-let cached: Automation | null = null
+type Automation = {
+  settings: IntraopAutomationSettings
+  stats: VitalStatsTable | null
+  succession: SuccessionLink[]
+  /** A policy has been read from the API for this session (or from a prior successful read). */
+  ready: boolean
+  /** The first policy read failed; do not silently run the shared defaults. */
+  unavailable: boolean
+}
 
 export function parseIntraopAutomationResponse(value: unknown): Automation {
   const body = typeof value === "object" && value !== null ? value as Record<string, unknown> : {}
@@ -26,19 +33,37 @@ export function parseIntraopAutomationResponse(value: unknown): Automation {
     ? body.stats as VitalStatsTable
     : null
   // What usually comes next (10.2.0): the starting values and what the cases show, sent while the reminders are on.
-  return { settings, stats, succession: parseSuccessionLinks(body.succession) }
+  return { settings, stats, succession: parseSuccessionLinks(body.succession), ready: true, unavailable: false }
 }
 
 export function useIntraopAutomation(): Automation & { reload: () => Promise<void> } {
-  const [automation, setAutomation] = useState<Automation>(cached ?? { settings: DEFAULT_INTRAOP_AUTOMATION, stats: null, succession: [] })
+  const { state: authState } = useAuth()
+  const [automation, setAutomation] = useState<Automation>({
+    settings: DEFAULT_INTRAOP_AUTOMATION,
+    stats: null,
+    succession: [],
+    ready: false,
+    unavailable: false,
+  })
   const reload = useCallback(async () => {
-    try {
-      cached = parseIntraopAutomationResponse(await apiJson<unknown>("/api/intraop/automation"))
-      setAutomation(cached)
-    } catch {
-      // Keep what was last read.
+    if (authState !== "authenticated") {
+      setAutomation({
+        settings: DEFAULT_INTRAOP_AUTOMATION,
+        stats: null,
+        succession: [],
+        ready: false,
+        unavailable: false,
+      })
+      return
     }
-  }, [])
+    try {
+      setAutomation(parseIntraopAutomationResponse(await apiJson<unknown>("/api/intraop/automation")))
+    } catch {
+      // A previously successful policy remains safe to use mid-case, but the
+      // initial render must never silently fall back to Core's shared demo default.
+      setAutomation(current => ({ ...current, unavailable: true }))
+    }
+  }, [authState])
   useEffect(() => { void reload() }, [reload])
   return { ...automation, reload }
 }
@@ -49,13 +74,14 @@ export function useIntraopAutomation(): Automation & { reload: () => Promise<voi
  * another screen (watching mode) -- the screen that holds the case asks.
  */
 export function useVitalQuestionContext(preop: IntraopPreopSummary | null, isWatching: boolean): VitalQuestionContext | null {
-  const { settings, stats } = useIntraopAutomation()
-  const { vitalEpisodeAutoLog, automationGroups } = usePreferences()
+  const { settings, stats, ready } = useIntraopAutomation()
+  const { vitalEpisodeAutoLog, automationGroups, automationLines } = usePreferences()
+  const user = useMemo(() => ({ ...automationGroups, automationLines }), [automationGroups, automationLines])
   const ageDays = preopAgeDays(preop ? { ageValue: preop.ageValue, ageUnit: preop.ageUnit, ageYears: preop.age, ageApproxDays: preop.ageApproxDays } : null)
   return useMemo(() => {
-    if (isWatching || !vitalQuestionsEnabled(settings, automationGroups) || ageDays == null) return null
-    return { settings, stats, ageDays, keepLogging: vitalEpisodeAutoLog }
-  }, [isWatching, settings, stats, ageDays, vitalEpisodeAutoLog, automationGroups])
+    if (ready === false || isWatching || !vitalQuestionsEnabled(settings, user) || ageDays == null) return null
+    return { settings, user, stats, ageDays, keepLogging: vitalEpisodeAutoLog }
+  }, [ready, isWatching, settings, stats, ageDays, vitalEpisodeAutoLog, user])
 }
 
 /** What the screen knows of the case beyond the preop record. */
@@ -66,6 +92,11 @@ export type SuggestionCaseFacts = {
   bloodLossMl?: number | null
   startedAt?: string | null
   endedAt?: string | null
+  techniques?: readonly string[]
+  techniqueSides?: Record<string, "LEFT" | "RIGHT" | "BOTH">
+  airwayDevices?: readonly string[]
+  airwayDeviceEntries?: readonly Record<string, unknown>[]
+  timeZone?: string | null
 }
 
 /**
@@ -74,9 +105,10 @@ export type SuggestionCaseFacts = {
  * on another screen. "now" is left to the attention hook, which ticks.
  */
 export function useSuggestionContext(preop: IntraopPreopSummary | null, facts: SuggestionCaseFacts, isWatching: boolean): Omit<SuggestionContext, "now"> | null {
-  const { settings } = useIntraopAutomation()
-  const { vitalEpisodeAutoLog, automationGroups } = usePreferences()
-  const { idealWeightKg, tofMonitor, labs, bloodLossMl, startedAt, endedAt } = facts
+  const { settings, ready } = useIntraopAutomation()
+  const { vitalEpisodeAutoLog, automationGroups, automationLines } = usePreferences()
+  const { idealWeightKg, tofMonitor, labs, bloodLossMl, startedAt, endedAt, techniques, techniqueSides, airwayDevices, airwayDeviceEntries, timeZone } = facts
+  const user = useMemo(() => ({ ...automationGroups, automationLines }), [automationGroups, automationLines])
   const base = useMemo(() => suggestionFactsFromPreop(preop ? {
     ageValue: preop.ageValue, ageUnit: preop.ageUnit, ageYears: preop.age, ageApproxDays: preop.ageApproxDays,
     weightKg: preop.weight, sex: preop.sex,
@@ -85,11 +117,12 @@ export function useSuggestionContext(preop: IntraopPreopSummary | null, facts: S
     comorbidities: preop.comorbidities, currentMedications: preop.currentMedications,
   } : null, idealWeightKg), [preop, idealWeightKg])
   return useMemo(() => {
-    if (isWatching || !AUTOMATION_GROUPS.some(group => automationGroupEnabled(settings, group, automationGroups))) return null
+    if (ready === false || isWatching || !AUTOMATION_GROUPS.some(group => automationGroupEnabled(settings, group, user))) return null
     return {
-      settings, user: automationGroups, patient: base.patient, preop: base.preop,
+      settings, user, patient: base.patient, preop: base.preop,
       tofMonitor: tofMonitor === true, keepLogging: vitalEpisodeAutoLog,
       labs: labs ?? [], bloodLossMl: bloodLossMl ?? null, startedAt: startedAt ?? null, endedAt: endedAt ?? null,
+      techniques: techniques ?? [], techniqueSides, airwayDevices, airwayDeviceEntries, timeZone: timeZone ?? null,
     }
-  }, [isWatching, settings, automationGroups, base, tofMonitor, vitalEpisodeAutoLog, labs, bloodLossMl, startedAt, endedAt])
+  }, [ready, isWatching, settings, user, base, tofMonitor, vitalEpisodeAutoLog, labs, bloodLossMl, startedAt, endedAt, techniques, techniqueSides, airwayDevices, airwayDeviceEntries, timeZone])
 }

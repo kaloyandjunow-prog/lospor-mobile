@@ -1,11 +1,13 @@
 import { useState, type ReactNode } from "react"
-import { View, Text, ScrollView, TouchableOpacity, type ViewStyle } from "react-native"
+import { View, Text, TouchableOpacity, type ViewStyle } from "react-native"
 import { uid } from "@/lib/intraop-log-event"
 import { usePreferences, type ClinicalStringKey } from "@/lib/preferences-context"
 import { displayClinicalCode } from "@/lib/clinical-display"
 import type { VascTreeNode } from "@/lib/vascular-access-tree"
 import { formatMessage } from "@/i18n/locale"
 import { useShade } from "@/theme/shade"
+import { useIntraopHeaderScroll } from "../IntraopHeaderCollapse"
+import { OverflowCueScrollView } from "../OverflowCueScrollView"
 
 type VascularEntry = { id: string; site: string; siteLabel: string; size: string; sizeUnit: string; depthCm: string; lumens?: string; preexisting?: boolean }
 
@@ -41,6 +43,7 @@ export function VascularTab({
 }) {
   const shade = useShade()
   const { language } = usePreferences()
+  const { onScroll, scrollEventThrottle } = useIntraopHeaderScroll()
   const [vascMode, setVascMode]           = useState<null | "add" | "preexisting">(null)
   const [vascTreePath, setVascTreePath]   = useState<VascTreeNode[]>([])
   const [vascPending, setVascPending]     = useState<{ v: string; label: string; displayCrumb: string; canonicalCrumb: string } | null>(null)
@@ -51,14 +54,14 @@ export function VascularTab({
 
   if (smart) {
     return (
-      <ScrollView style={{ flex:1 }} contentContainerStyle={{ padding:16, paddingBottom:40 }}>
+      <OverflowCueScrollView style={{ flex:1 }} scrollViewStyle={{ flex:1 }} contentContainerStyle={{ padding:16, paddingBottom:40 }} onScroll={onScroll} scrollEventThrottle={scrollEventThrottle}>
         {smart}
-      </ScrollView>
+      </OverflowCueScrollView>
     )
   }
 
   return (
-    <ScrollView style={{ flex:1 }} contentContainerStyle={{ padding:16, paddingBottom:40 }}>
+    <OverflowCueScrollView style={{ flex:1 }} scrollViewStyle={{ flex:1 }} contentContainerStyle={{ padding:16, paddingBottom:40 }} onScroll={onScroll} scrollEventThrottle={scrollEventThrottle}>
       {/* Existing accesses — pills */}
       <View style={{ flexDirection:"row", flexWrap:"wrap", gap:8, marginBottom:12 }}>
         {vascularAccesses.map((acc, idx) => {
@@ -227,7 +230,7 @@ export function VascularTab({
             <Text style={{ color:shade("#64748b"), fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>
               {formatMessage(tc("vtSize"), { unit: vascDetailUnit })}
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom:12 }}>
+            <OverflowCueScrollView horizontal edgeColor={shade("#0d1520")} cueColor={shade("#93c5fd")} style={{ marginBottom:12 }}>
               <View style={{ flexDirection:"row", gap:6 }}>
                 {presets.map(p => (
                   <TouchableOpacity key={p} onPress={() => setVascDetailSize(p)}
@@ -238,11 +241,11 @@ export function VascularTab({
                   </TouchableOpacity>
                 ))}
               </View>
-            </ScrollView>
+            </OverflowCueScrollView>
             {isCentral && (
               <>
                 <Text style={{ color:shade("#64748b"), fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{tc("vtDepthFromSkin")}</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom:12 }}>
+                <OverflowCueScrollView horizontal edgeColor={shade("#0d1520")} cueColor={shade("#93c5fd")} style={{ marginBottom:12 }}>
                   <View style={{ flexDirection:"row", gap:6 }}>
                     {["2","4","6","8","10","12","14","16","18","20","22","24"].map(d => (
                       <TouchableOpacity key={d} onPress={() => setVascDetailDepth(d)}
@@ -253,7 +256,7 @@ export function VascularTab({
                       </TouchableOpacity>
                     ))}
                   </View>
-                </ScrollView>
+                </OverflowCueScrollView>
                 <Text style={{ color:shade("#64748b"), fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{tc("vtLumens")}</Text>
                 <View style={{ flexDirection:"row", gap:8, marginBottom:12 }}>
                   {["1","2","3","4+"].map(l => (
@@ -303,6 +306,6 @@ export function VascularTab({
       {vascularSaving && (
         <Text style={{ color:shade("#64748b"), fontSize:11, textAlign:"center", marginTop:12 }}>{tc("draftSaving")}</Text>
       )}
-    </ScrollView>
+    </OverflowCueScrollView>
   )
 }

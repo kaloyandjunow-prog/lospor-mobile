@@ -4,7 +4,7 @@ import type { VascularLine } from "@lospor/core/vascular-access-lines"
 import { suggestedArterialGauge, suggestedPeripheralGauge, vascularChoices, vascularTypeOfSite, type VascularPatient, type VascularType } from "@lospor/core/vascular-smart"
 import { usePreferences } from "@/lib/preferences-context"
 import { useShade } from "@/theme/shade"
-import { VascularSmartPanel, type VascularSmartRequest } from "./VascularSmartPanel"
+import { VascularSmartPanel, type VascularClinicalEvent, type VascularSmartRequest } from "./VascularSmartPanel"
 
 /**
  * The Vascular access tab, Smart selection (10.2.0), on the phone: what is in place first (who placed
@@ -13,10 +13,12 @@ import { VascularSmartPanel, type VascularSmartRequest } from "./VascularSmartPa
  * sizes and the saving are Core's (vascular-smart), as on the web.
  */
 export function VascularSmart({
-  lines, onChange, patient, techniques, startedAt, now, timeZone, siteLabel, timeOf,
+  lines, onChange, onEvent, onAtomicSave, patient, techniques, startedAt, now, timeZone, siteLabel, timeOf,
 }: {
   lines: readonly VascularLine[]
   onChange: (next: VascularLine[]) => void
+  onEvent?: (event: VascularClinicalEvent) => void
+  onAtomicSave?: (next: VascularLine[], event: VascularClinicalEvent) => void
   patient: VascularPatient
   techniques: readonly string[]
   startedAt: string | null
@@ -35,6 +37,10 @@ export function VascularSmart({
   const typeName = (type: VascularType, site?: string) => type === "CENTRAL" ? (site?.startsWith("PICC") ? tc("vsmPicc") : tc("vsmCentral")) : tc(type === "PERIPHERAL" ? "vsmPeripheral" : "vsmArterial")
   const eyebrow = (text: string) => <Text style={{ color: shade("#94a3b8"), fontSize: 10, fontWeight: "700", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 8 }}>{text}</Text>
   const small = { minHeight: 36, paddingHorizontal: 12, borderRadius: 18, borderWidth: 1, borderColor: shade("#334155"), justifyContent: "center" as const }
+  const toggleType = (type: VascularType) => {
+    const selected = request?.type === type && request.replacesIndex == null && !request.ward
+    setRequest(selected ? null : { type, source: "tab" })
+  }
 
   return (
     <View testID="vascular-smart" style={{ marginBottom: 20 }}>
@@ -73,27 +79,41 @@ export function VascularSmart({
         const hint = type === "PERIPHERAL" ? `${suggestedPeripheralGauge(patient)}G` : type === "ARTERIAL" ? `${suggestedArterialGauge(patient)}G` : ""
         const on = request?.type === type && request.replacesIndex == null && !request.ward
         return (
-          <TouchableOpacity key={type} testID={`vascular-smart-card-${type}`} accessibilityState={{ selected: on }} onPress={() => setRequest({ type, source: "tab" })}
+          <TouchableOpacity key={type} testID={`vascular-smart-card-${type}`} accessibilityState={{ selected: on }} onPress={() => toggleType(type)}
             style={{ flex: 1, minHeight: 76, borderRadius: 14, borderWidth: 2, alignItems: "center", justifyContent: "center", padding: 6, borderColor: on ? shade("#a67cff") : shade("#2a3140"), backgroundColor: on ? shade("#a67cff") + "26" : shade("#171c26") }}>
             <Text style={{ color: shade("#f8fafc"), fontWeight: "800", fontSize: 15, textAlign: "center" }}>{typeName(type)}</Text>
             {hint ? <Text style={{ color: shade("#94a3b8"), fontSize: 11 }}>{hint} {tc("vsmSuggested")}</Text> : null}
           </TouchableOpacity>
         )
       })}</View>
+      {request && !request.ward && choices.main.includes(request.type) ? (
+        <VascularSmartPanel key={`main-${request.type}-${request.replacesIndex ?? ""}`} request={request} lines={lines} patient={patient}
+          startedAt={startedAt} now={now} timeZone={timeZone} siteLabel={siteLabel}
+          onSave={(next, event) => {
+            setRequest(null)
+            if (event && onAtomicSave) onAtomicSave(next, event)
+            else { onChange(next); if (event) onEvent?.(event) }
+          }} onClose={() => setRequest(null)} />
+      ) : null}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
         {choices.other.length > 0 ? (showOther ? choices.other.map(type => (
-          <TouchableOpacity key={type} testID={`vascular-smart-other-${type}`} style={[small, { minHeight: 44 }]} onPress={() => setRequest({ type, source: "tab" })}><Text style={{ color: shade("#e2e8f0"), fontWeight: "700" }}>{typeName(type)}</Text></TouchableOpacity>
+          <TouchableOpacity key={type} testID={`vascular-smart-other-${type}`} style={[small, { minHeight: 44 }]} onPress={() => toggleType(type)}><Text style={{ color: shade("#e2e8f0"), fontWeight: "700" }}>{typeName(type)}</Text></TouchableOpacity>
         )) : (
           <TouchableOpacity testID="vascular-smart-more" style={[small, { minHeight: 44, borderColor: "transparent" }]} onPress={() => setShowOther(true)}><Text style={{ color: shade("#a67cff"), fontWeight: "800" }}>{tc("vsmMoreTypes")}</Text></TouchableOpacity>
         )) : null}
-        <TouchableOpacity testID="vascular-smart-ward" style={[small, { minHeight: 44, borderStyle: "dashed", borderColor: shade("#fbbf24") }]} onPress={() => setRequest({ type: "PERIPHERAL", source: "tab", ward: true })}>
-          <Text style={{ color: shade("#fbbf24"), fontWeight: "700" }}>{tc("vsmAlreadyOnArrival")}</Text>
+        <TouchableOpacity testID="vascular-smart-ward" style={[small, { minHeight: 44, borderStyle: "dashed", borderColor: shade("#fbbf24") }]} onPress={() => setRequest(request?.ward ? null : { type: "PERIPHERAL", source: "tab", ward: true })}>
+          <Text style={{ color: shade("#fbbf24"), fontWeight: "700" }}>{typeName("PERIPHERAL")} · {tc("vsmAlreadyOnArrival")}</Text>
         </TouchableOpacity>
       </View>
 
-      {request ? (
+      {request && (request.ward || !choices.main.includes(request.type)) ? (
         <VascularSmartPanel key={`${request.type}-${request.replacesIndex ?? ""}-${request.ward ? "w" : ""}`} request={request} lines={lines} patient={patient}
-          startedAt={startedAt} now={now} timeZone={timeZone} siteLabel={siteLabel} onSave={next => { setRequest(null); onChange(next) }} onClose={() => setRequest(null)} />
+          startedAt={startedAt} now={now} timeZone={timeZone} siteLabel={siteLabel}
+          onSave={(next, event) => {
+            setRequest(null)
+            if (event && onAtomicSave) onAtomicSave(next, event)
+            else { onChange(next); if (event) onEvent?.(event) }
+          }} onClose={() => setRequest(null)} />
       ) : null}
     </View>
   )

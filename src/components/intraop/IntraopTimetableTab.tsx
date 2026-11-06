@@ -15,6 +15,7 @@ import { plannedRowTime } from "@/lib/intraop-projection"
 import { IntraopAttentionBanner, type IntraopAttentionView } from "./IntraopAttentionBanner"
 import type { IntraopAttentionAction } from "@lospor/core/intraop-attention"
 import { CaseSaveStateContext } from "@/lib/use-case-save-state"
+import { useIntraopHeaderScroll } from "./IntraopHeaderCollapse"
 
 type Props = {
   screenWidth: number
@@ -107,6 +108,7 @@ export function IntraopTimetableTab({
 }: Props) {
   // Running agents, infusions and fluids by the names the reader chose (Settings → UI).
   const { language, bulgarianNames } = usePreferences()
+  const { onScroll, scrollEventThrottle } = useIntraopHeaderScroll()
   const nameOf = useCallback<RunningNameOf>((kind, name) => displayedCatalogName(RUNNING_CATEGORY[kind], name, language, bulgarianNames), [bulgarianNames, language])
   // Infusions in the colours in use, the hospital's own included (10.0.0).
   const drugColors = useCurrentDrugColors()
@@ -252,6 +254,8 @@ export function IntraopTimetableTab({
         updateCellsBatchingPeriod={50}
         windowSize={7}
         removeClippedSubviews={Platform.OS !== "web"}
+        onScroll={onScroll}
+        scrollEventThrottle={scrollEventThrottle}
         onScrollToIndexFailed={info => {
           const wait = new Promise(resolve => setTimeout(resolve, 100))
           wait.then(() => {

@@ -14,7 +14,7 @@ const episode = {
 } as LogEvent
 const notNow = { id: "p1", type: "prompt_answer", ts: "2026-11-01T09:30:00.000Z", answerFor: "r", answerKind: "tachycardia", answer: "not_now" } as LogEvent
 
-function tab(log: LogEvent[], selectedComplications: string[] = []) {
+function tab(log: LogEvent[], selectedComplications: string[] = [], eventLogScreen: "smart" | "legacy" = "smart") {
   const onPromptDelete = vi.fn()
   const onRemoveLegacyComplication = vi.fn()
   const tree = render(
@@ -29,6 +29,7 @@ function tab(log: LogEvent[], selectedComplications: string[] = []) {
       onPromptDelete={onPromptDelete}
       eventLabel={event => ({ text: String(event.label ?? event.type), color: "#fff" })}
       previousVitalFor={() => undefined}
+      eventLogScreen={eventLogScreen}
     />,
   )
   return { tree, onPromptDelete, onRemoveLegacyComplication }
@@ -65,5 +66,16 @@ describe("the complications list (10.1.0)", () => {
     const json = JSON.stringify(tree.toJSON())
     expect(json).toContain("complicationsRecordedCount")
     expect(json).not.toContain("selectedCount")
+  })
+
+  it("adds filters to the Timeline stream and keeps the old list as Legacy", () => {
+    const clinical = { id: "e1", type: "clinical_event", ts: "2026-11-01T09:00:00.000Z", label: "Intubated" } as LogEvent
+    const vital = { id: "v1", type: "vital", ts: "2026-11-01T09:05:00.000Z", hr: 70 } as LogEvent
+    const smart = tab([clinical, vital]).tree
+    expect(smart.root.findAll(node => node.props?.testID === "event-log-filter-vitals").length).toBeGreaterThan(0)
+    act(() => { smart.root.findAll(node => node.props?.testID === "event-log-filter-vitals")[0]!.props.onPress() })
+    expect(smart.root.findAll(node => node.props?.testID === "event-log-filter-vitals")[0]!.props.accessibilityState.selected).toBe(true)
+    const legacy = tab([clinical], [], "legacy").tree
+    expect(legacy.root.findAll(node => typeof node.props?.testID === "string" && node.props.testID.startsWith("event-log-filter-"))).toHaveLength(0)
   })
 })

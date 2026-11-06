@@ -13,7 +13,7 @@ describe("the phone summary after a reintubation and a failed line (10.2.0)", ()
       ],
     }), "en")
     expect(text).toMatch(/7\.5.*failed 10:42 \+ .*8/)
-    expect(formatAirway(intraop({ airwayDeviceEntries: [{ id: "a", device: "ORAL_ETT", details: {}, status: "replaced", endedAt: "2026-11-02T08:42:00.000Z" }, { id: "b", device: "LMA", details: { lmaSize: 4 }, status: "in_use" }] }), "bg")).toContain("сменен 10:42")
+    expect(formatAirway(intraop({ airwayDeviceEntries: [{ id: "a", device: "ORAL_ETT", details: {}, status: "replaced", endedAt: "2026-11-02T08:42:00.000Z" }, { id: "b", device: "LMA", details: { lmaSize: 4 }, status: "in_use" }] }), "bg")).toContain("подмяна 10:42")
   })
 
   it("reads an older case from its old fields", () => {
@@ -22,7 +22,7 @@ describe("the phone summary after a reintubation and a failed line (10.2.0)", ()
 
   it("marks a failed line with its time, and a working one not at all", () => {
     expect(failedLineSuffix({ failed: true, failedAt: "2026-11-02T08:42:00.000Z" }, intraop({}), "en")).toBe(" · failed 10:42")
-    expect(failedLineSuffix({ failed: true, failedAt: "2026-11-02T08:42:00.000Z" }, intraop({}), "bg")).toBe(" · неуспешен 10:42")
+    expect(failedLineSuffix({ failed: true, failedAt: "2026-11-02T08:42:00.000Z" }, intraop({}), "bg")).toBe(" · неуспешен опит 10:42")
     expect(failedLineSuffix({ failed: true }, intraop({}), "en")).toBe(" · failed")
     expect(failedLineSuffix({}, intraop({}), "en")).toBe("")
   })

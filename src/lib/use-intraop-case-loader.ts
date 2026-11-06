@@ -200,7 +200,10 @@ export function useIntraopCaseLoader({
             setTechniques(hydrated.caseTechniques)
             if (hydrated.positions) setPositions(hydrated.positions)
             setMonitoring(hydrated.monitoring)
-            onIntraopRecordRef.current?.((data.intraop ?? {}) as Record<string, unknown>)
+            // Use the visible snapshot (server plus the durable local outbox)
+            // so Smart Equipment preparation and airway changes do not jump
+            // backwards while offline or while a queued patch is flushing.
+            onIntraopRecordRef.current?.((visibleData.intraop ?? {}) as Record<string, unknown>)
             if (hydrated.airway.tools) setAwTools(hydrated.airway.tools)
             if (hydrated.airway.devices) setAwDevices(hydrated.airway.devices)
             if (hydrated.airway.lmaSize != null) setAwLmaSize(hydrated.airway.lmaSize)

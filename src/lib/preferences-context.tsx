@@ -311,6 +311,7 @@ export function PreferencesProvider({
     bulgarianNames: clinicalPreferences.bulgarianNames,
     vitalEpisodeAutoLog: clinicalPreferences.vitalEpisodeAutoLog,
     automationGroups: clinicalPreferences.automationGroups ?? {},
+    automationLines: clinicalPreferences.automationLines ?? {},
     energyKnobSkin: clinicalPreferences.energyKnobSkin ?? "A",
     airwayScreen: clinicalPreferences.airwayScreen ?? "smart",
     vascularScreen: clinicalPreferences.vascularScreen ?? "smart",
@@ -318,6 +319,8 @@ export function PreferencesProvider({
     equipmentScreen: clinicalPreferences.equipmentScreen ?? "smart",
     techniqueScreen: clinicalPreferences.techniqueScreen ?? "smart",
     eventsScreen: clinicalPreferences.eventsScreen ?? "smart",
+    fluidsScreen: clinicalPreferences.fluidsScreen ?? "smart",
+    eventLogScreen: clinicalPreferences.eventLogScreen ?? "smart",
     localeReady,
     clinicalPreferencesReady,
     setLanguage,
@@ -345,6 +348,7 @@ export function PreferencesProvider({
     setVitalEpisodeAutoLog: vitalEpisodeAutoLog => patchClinical({ vitalEpisodeAutoLog }),
     // The whole set each time, so one switch never clears another.
     setAutomationGroups: automationGroups => patchClinical({ automationGroups }),
+    setAutomationLines: automationLines => patchClinical({ automationLines }),
     setEnergyKnobSkin: energyKnobSkin => patchClinical({ energyKnobSkin }),
     setAirwayScreen: airwayScreen => patchClinical({ airwayScreen }),
     setVascularScreen: vascularScreen => patchClinical({ vascularScreen }),
@@ -352,6 +356,8 @@ export function PreferencesProvider({
     setEquipmentScreen: equipmentScreen => patchClinical({ equipmentScreen }),
     setTechniqueScreen: techniqueScreen => patchClinical({ techniqueScreen }),
     setEventsScreen: eventsScreen => patchClinical({ eventsScreen }),
+    setFluidsScreen: fluidsScreen => patchClinical({ fluidsScreen }),
+    setEventLogScreen: eventLogScreen => patchClinical({ eventLogScreen }),
     t: key => STRINGS[language][key] ?? STRINGS.en[key],
     tc: key =>
       (CLINICAL_STRINGS[language] as ClinicalStringsMap)[key]

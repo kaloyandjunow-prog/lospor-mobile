@@ -1,10 +1,12 @@
 import type { ReactNode, RefObject } from "react"
-import { View, Text, ScrollView, TouchableOpacity, TextInput } from "react-native"
+import { Alert, View, Text, TouchableOpacity, TextInput } from "react-native"
 import { CL_GRADES } from "@/lib/airway-ventilation"
 import { usePreferences } from "@/lib/preferences-context"
 import { airwayAbsentReason } from "@lospor/core/intraop"
 import { AirwayDevicePanels } from "./AirwayDevicePanels"
 import { VentilationModeSection } from "./VentilationModeSection"
+import { useIntraopHeaderScroll } from "../IntraopHeaderCollapse"
+import { OverflowCueScrollView } from "../OverflowCueScrollView"
 
 type Opt = { code: string; label: string }
 
@@ -16,7 +18,7 @@ export function AirwayTab({
   awEbSize, setAwEbSize, awVentModes, setAwVentModes, awNotes, setAwNotes,
   awPresentsIntubated, setAwPresentsIntubated, awNotApplicable, setAwNotApplicable,
   saveAirwaySection, awExpandedDevice, setAwExpandedDevice, awExpandedWasComplete,
-  airwayTools, airwayDevices, awVentExpanded, setAwVentExpanded, smart,
+  airwayTools, airwayDevices, awVentExpanded, setAwVentExpanded, smart, onAirwayInterventionSelected, onNoAirwayInterventionSelected,
 }: {
   awTools: string[]
   setAwTools: (updater: (prev: string[]) => string[]) => void
@@ -60,11 +62,14 @@ export function AirwayTab({
   setAwVentExpanded: (v: "assisted" | "controlled" | null) => void
   /** Smart selection (10.2.0): stands in for the tools and the device pills; the legacy tab is untouched. */
   smart?: ReactNode
+  onAirwayInterventionSelected: () => void
+  onNoAirwayInterventionSelected: () => void
 }) {
   const { tc, shade } = usePreferences()
+  const { onScroll, scrollEventThrottle } = useIntraopHeaderScroll()
 
   return (
-    <ScrollView style={{ flex:1 }} contentContainerStyle={{ padding:16, paddingBottom:40 }}>
+    <OverflowCueScrollView style={{ flex:1 }} scrollViewStyle={{ flex:1 }} contentContainerStyle={{ padding:16, paddingBottom:40 }} onScroll={onScroll} scrollEventThrottle={scrollEventThrottle}>
       {/* Why there is no airway device of this team's own. First, because both
           answers change what the rest of this tab means, and finding that out
           after scrolling through tools and devices is the wrong order.
@@ -85,8 +90,19 @@ export function AirwayTab({
                 option.key === "presents" ? "presentsIntubated" : "airwayNotApplicable",
                 { presentsIntubated: awPresentsIntubated, airwayNotApplicable: awNotApplicable },
               )
-              setAwPresentsIntubated(() => next.presentsIntubated)
-              setAwNotApplicable(() => next.airwayNotApplicable)
+              const apply = () => {
+                setAwPresentsIntubated(() => next.presentsIntubated)
+                setAwNotApplicable(() => next.airwayNotApplicable)
+                if (next.airwayNotApplicable) onNoAirwayInterventionSelected()
+              }
+              if (next.airwayNotApplicable && (awDevices.length > 0 || awTools.length > 0)) {
+                Alert.alert(tc("awClearTitle"), tc("awClearMessage"), [
+                  { text: tc("cancelLabel"), style: "cancel" },
+                  { text: tc("awClearConfirm"), style: "destructive", onPress: apply },
+                ])
+                return
+              }
+              apply()
             }}
             style={{ paddingHorizontal:14, paddingVertical:10, borderRadius:12,
               backgroundColor: option.on ? shade("#3f2d1a") : shade("#111111"),
@@ -110,6 +126,7 @@ export function AirwayTab({
           const sel = awTools.includes(tool.code)
           return (
             <TouchableOpacity key={tool.code} onPress={() => {
+              if (!sel) onAirwayInterventionSelected()
               setAwTools(prev => sel ? prev.filter(x => x !== tool.code) : [...prev, tool.code])
             }} style={{ paddingHorizontal:14, paddingVertical:10, borderRadius:12,
               backgroundColor: sel ? shade("#1e3a5f") : shade("#111111"),
@@ -158,7 +175,7 @@ export function AirwayTab({
         awEbSize={awEbSize} setAwEbSize={setAwEbSize}
         awExpandedDevice={awExpandedDevice} setAwExpandedDevice={setAwExpandedDevice}
         awExpandedWasComplete={awExpandedWasComplete}
-        airwayDevices={airwayDevices}
+        airwayDevices={airwayDevices} onAirwayInterventionSelected={onAirwayInterventionSelected}
       />
 
         </>
@@ -184,6 +201,6 @@ export function AirwayTab({
         onBlur={saveAirwaySection}
       />
 
-    </ScrollView>
+    </OverflowCueScrollView>
   )
 }

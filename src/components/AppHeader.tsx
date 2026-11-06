@@ -10,6 +10,7 @@ type Props = {
   eyebrow?: string
   title: string
   showNewCase?: boolean
+  compact?: boolean
   onSearch?: () => void
   onBack?: () => void
 }
@@ -46,19 +47,19 @@ function HeaderButton({ kind, onPress, active = false }: { kind: "home" | "new" 
   )
 }
 
-export function AppHeader({ eyebrow = "LOSPOR", title, showNewCase = true, onSearch, onBack }: Props) {
+export function AppHeader({ eyebrow = "LOSPOR", title, showNewCase = true, compact = false, onSearch, onBack }: Props) {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { t } = usePreferences()
 
   return (
-    <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 10, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: withAlpha(colors.border, "88"), backgroundColor: colors.background }}>
+    <View style={{ paddingHorizontal: compact ? 16 : 20, paddingTop: insets.top + (compact ? 4 : 10), paddingBottom: compact ? 6 : 12, borderBottomWidth: 1, borderBottomColor: withAlpha(colors.border, "88"), backgroundColor: colors.background }}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={{ color: colors.textSecondary, fontSize: 17, fontWeight: "900", letterSpacing: 0 }} numberOfLines={1}>
+          <Text style={{ color: colors.textSecondary, fontSize: compact ? 14 : 17, fontWeight: "900", letterSpacing: 0 }} numberOfLines={1}>
             {eyebrow}
           </Text>
-          <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: "800", marginTop: 2 }} numberOfLines={1}>
+          <Text style={{ color: colors.textMuted, fontSize: compact ? 10 : 12, fontWeight: "800", marginTop: 2 }} numberOfLines={1}>
             {title}
           </Text>
         </View>
@@ -85,7 +86,7 @@ export function AppHeader({ eyebrow = "LOSPOR", title, showNewCase = true, onSea
           <HeaderButton kind="settings" onPress={() => router.push("/(app)/settings")} />
         </View>
       </View>
-      <OfflineLibraryBanner />
+      {!compact ? <OfflineLibraryBanner /> : null}
     </View>
   )
 }

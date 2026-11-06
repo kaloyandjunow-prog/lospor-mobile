@@ -31,22 +31,23 @@ function setup(overrides: Partial<Parameters<typeof AirwaySmart>[0]> = {}) {
 }
 
 describe("Smart selection, the Airway tab on the phone (10.2.0)", () => {
-  it("leads with the tube, the LMA and the mask for general anaesthesia, and keeps the rest behind More devices", () => {
+  it("leads with the tube, the LMA and the mask, with the other devices behind one disclosure", () => {
     const { tree } = setup()
     for (const device of ["ORAL_ETT", "LMA", "FACE_MASK"]) expect(present(tree, `airway-smart-card-${device}`)).toBe(true)
-    expect(present(tree, "airway-smart-other-NASAL_ETT")).toBe(false)
     act(() => { byId(tree, "airway-smart-more")!.props.onPress() })
     for (const device of ["NASAL_ETT", "DOUBLE_LUMEN_TUBE", "ENDOBRONCHIAL_TUBE", "SURGICAL_AIRWAY", "OPA", "NPA"]) expect(present(tree, `airway-smart-other-${device}`)).toBe(true)
   })
 
   it("opens the panel with this patient's size and cuff and adds the tube at the start of anaesthesia, with its tools", () => {
-    const { tree, onChange } = setup()
+    const onEvent = vi.fn()
+    const { tree, onChange } = setup({ onEvent })
     act(() => { byId(tree, "airway-smart-card-ORAL_ETT")!.props.onPress() })
     expect(present(tree, "airway-smart-panel")).toBe(true)
     act(() => { byId(tree, "airway-smart-how-BOUGIE")!.props.onPress() })
     act(() => { byId(tree, "airway-smart-add")!.props.onPress() })
     const next = onChange.mock.calls[0]![0] as AirwayDeviceEntry[]
     expect(next[0]).toMatchObject({ device: "ORAL_ETT", details: { oralTubeSize: 8, oralCuffed: true }, insertedAt: START, instruments: ["BOUGIE"], status: "in_use" })
+    expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({ label: "Intubated", ts: START, intraopPatch: expect.objectContaining({ airwayDeviceEntries: expect.any(Array) }) }))
   })
 
   it("takes a picked size and the time now", () => {
@@ -60,11 +61,22 @@ describe("Smart selection, the Airway tab on the phone (10.2.0)", () => {
 
   it("Reintubate keeps both tubes: the first failed, the second in use", () => {
     const first: AirwayDeviceEntry = { id: "a1", device: "ORAL_ETT", details: { oralTubeSize: 8, oralCuffed: true }, insertedAt: START, status: "in_use" }
-    const { tree, onChange } = setup({ entries: [first] })
+    const onEvent = vi.fn()
+    const { tree, onChange } = setup({ entries: [first], onEvent })
     act(() => { byId(tree, "airway-smart-reintubate-a1")!.props.onPress() })
     act(() => { byId(tree, "airway-smart-add")!.props.onPress() })
     const next = onChange.mock.calls[0]![0] as AirwayDeviceEntry[]
     expect(next.map(entry => entry.status)).toEqual(["failed", "in_use"])
+    expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({ label: "Reintubation", ts: NOW, intraopPatch: expect.objectContaining({ airwayDeviceEntries: expect.any(Array) }) }))
+  })
+
+  it("calls a second tracheal tube reintubation even when chosen directly", () => {
+    const first: AirwayDeviceEntry = { id: "a1", device: "ORAL_ETT", details: { oralTubeSize: 8, oralCuffed: true }, insertedAt: START, status: "failed" }
+    const onEvent = vi.fn()
+    const { tree } = setup({ entries: [first], onEvent })
+    act(() => { byId(tree, "airway-smart-card-ORAL_ETT")!.props.onPress() })
+    act(() => { byId(tree, "airway-smart-add")!.props.onPress() })
+    expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({ label: "Reintubation", ts: START, intraopPatch: expect.objectContaining({ airwayDeviceEntries: expect.any(Array) }) }))
   })
 
   it("says so when nothing is in place yet, and leads with what keeps the airway open for sedation", () => {
@@ -86,7 +98,7 @@ describe("Smart selection opens from the timeline on the phone", () => {
     const at = new Date().toISOString()
     const event = { id: "e1", ts: at, type: "clinical_event", label: "LMA in", recordedAt: at } as LogEvent
     act(() => { tree.update(<Probe log={[event]} smart />) })
-    expect(api!.smartOpen).toEqual({ device: "LMA", at })
+    expect(api!.smartOpen).toMatchObject({ device: "LMA", at, eventId: "e1", eventLabel: "LMA in" })
     act(() => { api!.setSmartOpen(null) })
     act(() => { tree.update(<Probe log={[event]} smart />) })
     expect(api!.smartOpen).toBeNull()

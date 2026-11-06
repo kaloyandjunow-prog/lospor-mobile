@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ActivityIndicator, Animated, FlatList, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native"
+import { ActivityIndicator, Animated, FlatList, RefreshControl, Text, TouchableOpacity, View } from "react-native"
 import { Stack, useRouter, type Href } from "expo-router"
 import { ApiError, apiFetch, apiJson } from "@/lib/api"
 import { notify } from "@/lib/notify"
@@ -28,6 +28,7 @@ import { dashboardMenuActions } from "@/lib/case-actions"
 import { plannedProcedureLabel } from "@lospor/core/procedure-codes"
 import { DashboardCaseMenu } from "@/components/dashboard/DashboardCaseMenu"
 import { DashboardSheets } from "@/components/dashboard/DashboardSheets"
+import { OverflowCueScrollView } from "@/components/intraop/OverflowCueScrollView"
 
 type CaseItem = {
   id: string
@@ -619,11 +620,19 @@ export default function DashboardScreen() {
                 t={t}
               />
 
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 20 }} style={{ marginBottom: 14 }}>
+              <OverflowCueScrollView
+                horizontal
+                edgeColor={colors.background}
+                cueColor={colors.textSecondary}
+                startLabel={language === "bg" ? "Към предишните филтри" : "Scroll filters left"}
+                endLabel={language === "bg" ? "Към следващите филтри" : "Scroll filters right"}
+                style={{ width: "100%", marginBottom: 14 }}
+                contentContainerStyle={{ gap: 8, paddingRight: 20 }}
+              >
                 {FILTER_TABS.map((tab) => (
                   <WorkflowPill key={tab} label={`${t(FILTER_TAB_LABEL_KEYS[tab])} ${tabCounts[tab]}`} selected={activeTab === tab} onPress={() => setActiveTab(tab)} />
                 ))}
-              </ScrollView>
+              </OverflowCueScrollView>
 
               {/* The theatre and anaesthesiologist filters (10.0.0). */}
               <View testID="dashboard-filters" style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>

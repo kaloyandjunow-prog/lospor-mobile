@@ -30,6 +30,7 @@ import { Sheet } from "./Sheet"
 import { InlineSheetSlot } from "./InlineSheetSlot"
 import { inlineSheet } from "./inline-sheet"
 import { DantroleneVials } from "./DantroleneVials"
+import { ContextLinkSheet } from "./ContextLinkSheet"
 
 /**
  * What the phone's chart offers a suggestion (10.2.0): its own sheets,
@@ -76,6 +77,9 @@ export function SuggestionSheetHost({ attention, sheets }: { attention: IntraopA
   const close = () => open(null)
   if (card) return <CardSheet key={opened} card={card.card} complication={card.complication} attention={attention} sheets={sheets} onClose={close} />
   if (!entry?.suggestion) return null
+  if (entry.suggestion.item.type === "context") {
+    return <ContextLinkSheet key={opened} entry={entry} attention={attention} sheets={sheets} onClose={close} />
+  }
   return <FollowUpSheet entry={entry} attention={attention} sheets={sheets} onClose={close} />
 }
 

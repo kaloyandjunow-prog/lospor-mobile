@@ -38,6 +38,7 @@ export function MonitoringSmart({
   const [more, setMore] = useState(false)
   const name = (field: string) => displayClinicalCode("option:MONITORING", field, language, { label: monitoringOpts.find(item => item.field === field)?.label ?? field })
   const extras = monitoring.filter(field => !STANDARD_MONITORING.includes(field))
+  const availableCount = monitoringOpts.filter(item => !monitoring.includes(item.field)).length
   const standard = standardMonitoringOn(monitoring)
   const toggle = (field: string) => onChange(monitoring.includes(field) ? monitoring.filter(item => item !== field) : [...monitoring, field])
   const eyebrow = (text: string) => <Text style={{ color: shade("#94a3b8"), fontSize: 10, fontWeight: "700", letterSpacing: 1.2, textTransform: "uppercase", marginTop: 16, marginBottom: 8 }}>{text}</Text>
@@ -79,7 +80,7 @@ export function MonitoringSmart({
               </TouchableOpacity>
             ) : null}
             <TouchableOpacity testID={`monitoring-off-${field}`} accessibilityLabel={tc("msmTurnOff")} onPress={() => toggle(field)} style={[side, { borderColor: shade("#334155") }]}>
-              <Text style={{ color: shade("#94a3b8"), fontWeight: "800" }}>✕</Text>
+              <Text style={{ color: shade("#94a3b8"), fontWeight: "800", fontSize: 11 }}>{tc("msmTurnOff")}</Text>
             </TouchableOpacity>
           </View>
         )
@@ -98,13 +99,13 @@ export function MonitoringSmart({
             <Text style={{ color: shade("#c4b0ff"), fontWeight: "800" }}>{tc("msmAdd")}</Text>
           </TouchableOpacity>
           <TouchableOpacity testID={`monitoring-hide-${item.field}`} accessibilityLabel={tc("msmHide")} onPress={() => onHide(item.field)} style={[side, { borderColor: shade("#334155") }]}>
-            <Text style={{ color: shade("#94a3b8"), fontWeight: "800" }}>✕</Text>
+            <Text style={{ color: shade("#94a3b8"), fontWeight: "800", fontSize: 11 }}>{tc("msmHide")}</Text>
           </TouchableOpacity>
         </View>
       ))}
 
       <TouchableOpacity testID="monitoring-more" onPress={() => setMore(value => !value)} style={{ minHeight: 48, borderRadius: 12, borderWidth: 1, borderColor: shade("#334155"), alignItems: "center", justifyContent: "center", marginTop: 6, marginBottom: more ? 14 : 0 }}>
-        <Text style={{ color: shade("#a67cff"), fontWeight: "800" }}>{more ? tc("msmFewer") : tc("msmMore")}</Text>
+        <Text style={{ color: shade("#a67cff"), fontWeight: "800" }}>{more ? tc("msmFewer") : tc("msmMore").replace("{count}", String(availableCount))}</Text>
       </TouchableOpacity>
       {more ? <MonitoringGroups monitoring={monitoring} onToggle={toggle} monitoringOpts={monitoringOpts} /> : null}
     </View>

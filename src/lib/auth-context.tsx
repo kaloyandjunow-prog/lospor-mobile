@@ -3,12 +3,15 @@ import type { AppLanguage } from "@/i18n/locale"
 import {
   clearToken,
   getToken,
+  getAuthenticatedAccountId,
   hasAuthenticatedSession,
   login as apiLogin,
   completeAdministratorMfa as apiCompleteAdministratorMfa,
   logout as apiLogout,
   onAuthExpired,
 } from "./api"
+import { setClinicalSyncOwner } from "./clinical-sync-kv"
+import { setLocalCaseStoreOwner } from "./local-case-store"
 import type {
   AdministratorMfaChallenge,
   AdministratorMfaCompletion,
@@ -29,7 +32,7 @@ type AuthContextValue = {
     challenge: AdministratorMfaChallenge,
     code: string,
   ) => Promise<AdministratorMfaCompletion>
-  finishAdministratorMfaLogin: () => void
+  finishAdministratorMfaLogin: () => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -46,6 +49,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // destroy them the way an explicit sign-out is.
     const unsubscribe = onAuthExpired(() => {
       setState("unauthenticated")
+      setClinicalSyncOwner(null)
+      setLocalCaseStoreOwner(null)
       void import("./clinical-preferences-mobile")
         .then(({ clearMobileClinicalPreferences }) => clearMobileClinicalPreferences())
         .catch(() => {})
@@ -62,6 +67,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setState("unauthenticated")
         return
       }
+      const accountId = await getAuthenticatedAccountId()
+      if (!accountId) {
+        setClinicalSyncOwner(null)
+        setLocalCaseStoreOwner(null)
+        setState("unauthenticated")
+        return
+      }
+      setClinicalSyncOwner(accountId)
+      setLocalCaseStoreOwner(accountId)
       setState("authenticated")
     })
     return unsubscribe
@@ -74,7 +88,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   ) {
     try {
       const result = await apiLogin(credential, password, locale)
-      if (result.kind === "authenticated") setState("authenticated")
+      if (result.kind === "authenticated") {
+        const accountId = await getAuthenticatedAccountId()
+        if (!accountId) throw new Error("Could not establish the signed-in account")
+        setClinicalSyncOwner(accountId)
+        setLocalCaseStoreOwner(accountId)
+        setState("authenticated")
+      }
       return result
     } catch (error) {
       // Includes the stable CLINICAL_APP_FORBIDDEN response used by
@@ -93,12 +113,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return apiCompleteAdministratorMfa(challenge, code)
   }
 
-  function finishAdministratorMfaLogin() {
+  async function finishAdministratorMfaLogin() {
+    const accountId = await getAuthenticatedAccountId()
+    if (!accountId) throw new Error("Could not establish the signed-in account")
+    setClinicalSyncOwner(accountId)
+    setLocalCaseStoreOwner(accountId)
     setState("authenticated")
   }
 
   async function logout() {
     await apiLogout()
+    setClinicalSyncOwner(null)
+    setLocalCaseStoreOwner(null)
     // Native apiLogout clears the token even when its best-effort revocation is
     // offline. PWA apiLogout throws unless the server confirms cookie expiry;
     // in that case this line is intentionally not reached and the UI must not

@@ -888,7 +888,7 @@ export const STRINGS = {
     heightLabel: "Ръст",
     weightLabel: "Тегло",
     caseReminders: "Напомняния за случай",
-    vitalsReminderInterval: "Интервал за напомняне за витали",
+    vitalsReminderInterval: "Интервал за напомняне за жизнените показатели",
     tapToChangeReminder: "Докоснете, за да промените честотата на напомнянията",
     sendTestNotification: "Изпрати тестово известие",
     checkNotificationsAllowed: "Проверете дали известията са разрешени на това устройство",
@@ -985,8 +985,8 @@ export const STRINGS = {
 
     // ── Settings — intraoperative automation ──────────────────────────────────
     intraoperative: "Интраоперативно",
-    autoFillVitals: "Автоматично попълване на витали",
-    autoFillVitalsSub: "Пренася EtCO₂, температура и SpO₂ напред при движение по тайм-таблицата",
+    autoFillVitals: "Автоматично попълване на жизнените показатели",
+    autoFillVitalsSub: "Пренася EtCO₂, температура и SpO₂ напред при движение по времевата линия",
     autoFillBpHr: "Включи и АН, и СЧ",
     autoFillBpHrSub: "Включва АН и СЧ в пренасянето напред",
     backgroundAutoFill: "Фоново автопопълване",
@@ -1120,7 +1120,7 @@ export const STRINGS = {
     indDesflurane: "Десфлуран",
     indCrystalloid: "Кристалоиди mL/kg/h",
     indTransfused: "С кръвопреливане",
-    indHypotension: "Хипотония: случаи · медиана минути",
+    indHypotension: "Хипотенсия: случаи · медиана минути",
     indDesaturation: "Десатурация",
     indHypothermia: "Хипотермия",
     indComplicationsPer100: "Усложнения на 100",

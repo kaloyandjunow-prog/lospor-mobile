@@ -22,6 +22,7 @@ const answerTestIds = {
   not_now: "attention-vital-not-now",
   log_complication: "attention-vital-log",
   open: "attention-suggestion-open",
+  dismiss: "attention-suggestion-dismiss",
 } as const satisfies Record<import("@lospor/core/intraop-attention").IntraopAttentionAction, string>
 
 describe.each(INTRAOP_ATTENTION_SCENARIOS)("$name", scenario => {

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { View, Linking, Platform, ScrollView, Switch } from "react-native"
+import { View, Text, Linking, Platform, Switch } from "react-native"
 import Constants from "expo-constants"
 import { Stack, useRouter, type Href } from "expo-router"
 import { useAuth } from "@/lib/auth-context"
@@ -26,7 +26,10 @@ import { MonitoringScreenCard } from "./MonitoringScreenCard"
 import { EquipmentScreenCard } from "./EquipmentScreenCard"
 import { TechniqueScreenCard } from "./TechniqueScreenCard"
 import { EventsScreenCard } from "./EventsScreenCard"
+import { FluidScreenCard } from "./FluidScreenCard"
+import { EventLogScreenCard } from "./EventLogScreenCard"
 import { UiScaleRow } from "./UiScaleRow"
+import { OverflowCueScrollView } from "@/components/intraop/OverflowCueScrollView"
 
 /**
  * Split out of settings.tsx: theme/units/automation/notifications/privacy/
@@ -153,8 +156,9 @@ export function SettingsPreferencesView({
       <Stack.Screen options={{ headerShown: false }} />
       <AppHeader eyebrow="LOSPOR" title={t("settings")} showNewCase={false} onBack={onBack} />
 
-      <ScrollView
+      <OverflowCueScrollView
         style={{ flex: 1 }}
+        scrollViewStyle={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 60, paddingTop: 12 }}
       >
         {/* -- UI ----------------------------------------------------------------- */}
@@ -189,12 +193,20 @@ export function SettingsPreferencesView({
         <BulgarianNamesCard />
         <View style={{ height: 12 }} />
         <EnergyKnobSkinCard />
-        <AirwayScreenCard />
-        <VascularScreenCard />
-        <MonitoringScreenCard />
-        <EquipmentScreenCard />
-        <TechniqueScreenCard />
-        <EventsScreenCard />
+        <SectionHeader title={tc("interfaceScreensSection")} />
+        <Card>
+          <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 2 }}>
+            <Text style={{ color: colors.textMuted, fontSize: 11, lineHeight: 16 }}>{tc("screenChoiceAccountWide")}</Text>
+          </View>
+          <AirwayScreenCard compact />
+          <VascularScreenCard compact />
+          <MonitoringScreenCard compact />
+          <EquipmentScreenCard compact />
+          <TechniqueScreenCard compact />
+          <EventsScreenCard compact />
+          <FluidScreenCard compact />
+          <EventLogScreenCard compact />
+        </Card>
         <View style={{ height: 12 }} />
         <AutomationGroupsCard />
 
@@ -363,7 +375,7 @@ export function SettingsPreferencesView({
         </Card>
 
         <DiagnosticsCard diag={diag} refreshDiagnostics={refreshDiagnostics} retryQueuedSaves={retryQueuedSaves} />
-      </ScrollView>
+      </OverflowCueScrollView>
       <FavouritePicker
         visible={drugFavOpen}
         title={t("favouriteBolusDrugs")}

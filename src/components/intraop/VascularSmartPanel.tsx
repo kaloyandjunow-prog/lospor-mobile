@@ -7,12 +7,14 @@ import {
   resolveVascularTime,
   suggestedArterialGauge,
   suggestedPeripheralGauge,
+  vascularClinicalEvent,
   vascularAsks,
   type VascularPatient,
   type VascularTimeChoice,
   type VascularType,
 } from "@lospor/core/vascular-smart"
 import { instantFromLocalTime, localTimeOf } from "@lospor/core/intraop-time"
+import { clinicalRecordId } from "@lospor/core/clinical-record-id"
 import { usePreferences } from "@/lib/preferences-context"
 import { useShade } from "@/theme/shade"
 
@@ -28,9 +30,13 @@ export type VascularSmartRequest = {
   centralType?: "CVK" | "PICC"
   at?: string | null
   source: "tab" | "timeline"
+  eventId?: string
+  eventLabel?: string
   ward?: boolean
   replacesIndex?: number | null
 }
+
+export type VascularClinicalEvent = { id?: string; label: string; ts: string; intraopPatch?: Record<string, unknown> }
 
 export function VascularSmartPanel({
   request, lines, patient, startedAt, now, timeZone, siteLabel, onSave, onClose,
@@ -42,7 +48,7 @@ export function VascularSmartPanel({
   now: () => string
   timeZone: string | null
   siteLabel: (code: string) => string
-  onSave: (next: VascularLine[]) => void
+  onSave: (next: VascularLine[], event?: VascularClinicalEvent) => void
   onClose: () => void
 }) {
   const shade = useShade()
@@ -69,11 +75,15 @@ export function VascularSmartPanel({
   function save() {
     const pickedInstant = timeZone && /^\d{1,2}:\d{2}$/.test(picked) ? instantFromLocalTime(new Date(startedAt ?? now()), picked, timeZone)?.toISOString() ?? null : null
     const at = resolveVascularTime(choice, { startedAt, now: now(), picked: choice === "timeline" ? request.at ?? null : pickedInstant })
-    onSave(addVascularLine(lines, {
-      id: `vascular-${Date.parse(at ?? now())}-${lines.length + 1}`, type: request.type, site,
+    const next = addVascularLine(lines, {
+      id: clinicalRecordId("vascular", at ?? now()), type: request.type, site,
       size, depthCm: depth, lumens: request.type === "CENTRAL" ? lumens : undefined,
       origin, insertedAt: at, replacesIndex: request.replacesIndex ?? null,
-    }))
+    })
+    const event = at && (request.source !== "timeline" || request.eventId)
+      ? { ...(request.eventId ? { id: request.eventId } : {}), label: vascularClinicalEvent(request.type, site) || request.eventLabel || "IV line in", ts: at, intraopPatch: { vascularAccesses: next } }
+      : undefined
+    onSave(next, event)
   }
 
   const pill = (on: boolean) => ({

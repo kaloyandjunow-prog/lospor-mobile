@@ -20,7 +20,10 @@ const tree: Node[] = [
 ]
 const names = new Map<string, string>()
 ;(function walk(nodes: readonly Node[]) { for (const node of nodes) { names.set(node.v, node.label); if (node.children) walk(node.children) } })(tree)
-const label = (code: string) => names.get(code) ?? code
+const label = (code: string) => ({
+  GENERAL_BALANCED: "General Anaesthesia · Balanced (inhaled + IV)",
+  BLOCK_TAP: "Regional Anaesthesia · TAP block",
+}[code] ?? names.get(code) ?? code)
 
 const byId = (t: ReturnType<typeof render>, id: string) => t.root.findAll(node => node.props?.testID === id)[0]
 const present = (t: ReturnType<typeof render>, id: string) => byId(t, id) !== undefined
@@ -88,6 +91,20 @@ describe("Smart selection, the Technique tab on the phone (10.2.0)", () => {
     const { tr, onChange } = setup({ recents: ["SPINAL_SINGLE_LUMBAR", "BLOCK_TAP"] })
     press(tr, "technique-recent-BLOCK_TAP")
     expect(onChange).toHaveBeenCalledWith(["GENERAL_BALANCED", "BLOCK_TAP"], {}, ["BLOCK_TAP"])
+  })
+
+  it("keeps usual-technique pills to the leaf name because the breadcrumb has the path", () => {
+    const { tr } = setup({ recents: ["GENERAL_BALANCED"] })
+    const pill = byId(tr, "technique-recent-GENERAL_BALANCED")
+    expect(pill.findAll(node => node.props?.children === "Balanced (inhaled + IV)").length).toBeGreaterThan(0)
+    expect(pill.findAll(node => node.props?.children === "General Anaesthesia · Balanced (inhaled + IV)").length).toBe(0)
+  })
+
+  it("keeps browse groups to their local label when the full path is available to assistive technology", () => {
+    const tr = render(<TechniqueSmart techniques={[]} sides={{}} onChange={vi.fn()} tree={tree}
+      label={code => `Full path for ${code}`} color={() => "#3b82f6"} planned={[]} recents={[]} />)
+    expect(tr.root.findAll(node => node.props?.children === "General Anaesthesia").length).toBeGreaterThan(0)
+    expect(tr.root.findAll(node => node.props?.children === "Full path for GENERAL").length).toBe(0)
   })
 
   it("opens the full list in place under a group and picks a leaf", () => {

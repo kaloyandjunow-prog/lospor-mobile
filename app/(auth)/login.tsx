@@ -83,7 +83,7 @@ export default function LoginScreen() {
 
   async function finishMfaLogin() {
     await completeLoginLocaleSync()
-    finishAdministratorMfaLogin()
+    await finishAdministratorMfaLogin()
   }
 
   const authenticationReady = authentication.status !== "INVALID_CONTRACT"

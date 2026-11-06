@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity } from "react-native"
 import type { ClinicalStringKey } from "@/lib/preferences-context"
 import { INTRAOP_TAB_KEYS, type IntraopTab } from "@/lib/intraop-tabs"
 import { useShade } from "@/theme/shade"
+import { OverflowCueScrollView } from "./OverflowCueScrollView"
 
 // Horizontal tab rail for the intraop screen. Presentational — markup moved
 // verbatim from cases/intraop/[id].tsx. The parent owns the centering effect
@@ -18,7 +19,14 @@ function IntraopTabBarComponent({ tab, onSelect, tc, screenWidth, railRef, layou
   const shade = useShade()
   return (
     <View style={{ backgroundColor:shade("#0a0f1a"), borderBottomWidth:1, borderBottomColor:shade("#1e2d40") }}>
-      <ScrollView ref={railRef} horizontal showsHorizontalScrollIndicator={false}
+      <OverflowCueScrollView
+        testID="intraop-tab-rail"
+        horizontal
+        scrollRef={railRef}
+        edgeColor={shade("#0a0f1a")}
+        cueColor={shade("#cbd5e1")}
+        startLabel={tc("tabScrollPrevious")}
+        endLabel={tc("tabScrollNext")}
         contentContainerStyle={{ flexDirection:"row", paddingHorizontal:Math.max(0, screenWidth / 2 - 48) }}>
         {INTRAOP_TAB_KEYS.map(t => {
           const label = t === "equipment" ? tc("tabEquipment")
@@ -45,7 +53,7 @@ function IntraopTabBarComponent({ tab, onSelect, tc, screenWidth, railRef, layou
           </TouchableOpacity>
           )
         })}
-      </ScrollView>
+      </OverflowCueScrollView>
     </View>
   )
 }

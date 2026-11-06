@@ -5,11 +5,17 @@ import { buildAirwaySectionPatch, isAirwayDeviceComplete, syncAirwayDeviceSelect
 import { usePreferences } from "@/lib/preferences-context"
 
 type PatchIntraopSection = (payload: Record<string, unknown>) => Promise<unknown>
+type AirwayDeviceConfirmed = (
+  device: string,
+  previousDevices: readonly string[],
+  airwayPatch: Record<string, unknown>,
+) => boolean | void
 
 export function useIntraopAirwaySection(
   caseLoaded: boolean,
   patchIntraopSection: PatchIntraopSection,
   errorLabel: string,
+  onAirwayDeviceConfirmed?: AirwayDeviceConfirmed,
 ) {
   const { tc } = usePreferences()
   const [awTools, setAwTools] = useState<string[]>([])
@@ -77,11 +83,31 @@ export function useIntraopAirwaySection(
   // re-send all ~20 airway fields on every open of the intraop screen, because
   // a new `tc` or callback looked like an edit.
   const savedAirwayKeyRef = useRef<string | null>(null)
+  const previousDevicesRef = useRef<string[] | null>(null)
+
+  // Legacy airway devices predate the Smart picker, but they represent the
+  // same clinical facts. Keep the last persisted list as the baseline. The
+  // clinical event and this section patch are submitted together from
+  // saveAirwaySection; firing an event from an effect made the two writes race
+  // and left the PWA with a local retry / 409 conflict.
+  useEffect(() => {
+    if (!caseLoaded) {
+      previousDevicesRef.current = null
+      return
+    }
+    if (previousDevicesRef.current === null) previousDevicesRef.current = awDevices
+  }, [awDevices, caseLoaded])
 
   const saveAirwaySection = useCallback(async () => {
     setAirwaySectionSaving(true)
     try {
-      await patchIntraopSection(airwayPatch)
+      const previous = previousDevicesRef.current ?? []
+      const added = awDevices.find(device => !previous.includes(device))
+      const handledAtomically = added != null && onAirwayDeviceConfirmed
+        ? onAirwayDeviceConfirmed(added, previous, airwayPatch) === true
+        : false
+      if (!handledAtomically) await patchIntraopSection(airwayPatch)
+      previousDevicesRef.current = [...awDevices]
       savedAirwayKeyRef.current = JSON.stringify(airwayPatch)
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
     } catch {
@@ -89,7 +115,7 @@ export function useIntraopAirwaySection(
     } finally {
       setAirwaySectionSaving(false)
     }
-  }, [airwayPatch, errorLabel, patchIntraopSection, tc])
+  }, [airwayPatch, awDevices, errorLabel, onAirwayDeviceConfirmed, patchIntraopSection, tc])
 
   const saveAirwayRef = useRef(saveAirwaySection)
   useEffect(() => { saveAirwayRef.current = saveAirwaySection }, [saveAirwaySection])

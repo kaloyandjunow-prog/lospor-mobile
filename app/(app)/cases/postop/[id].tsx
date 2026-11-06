@@ -50,6 +50,7 @@ import { aldreteFromServerPostop } from "@/lib/postop-aldrete-hydration"
 import { aldreteCriteria, stewardCriteria } from "@/lib/postop-aldrete-criteria"
 import { PostopVitalsAndScore } from "@/components/postop/PostopVitalsAndScore"
 import { PostopPainDisposition } from "@/components/postop/PostopPainDisposition"
+import { OverflowCueScrollView } from "@/components/intraop/OverflowCueScrollView"
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -484,7 +485,7 @@ export default function PostopFormScreen() {
       >
         {/* The sections, as a strip: a red dot where a field needed to finalise is empty. */}
         <View style={{ borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.background }}>
-          <ScrollView ref={stripRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 8 }}>
+          <OverflowCueScrollView horizontal scrollRef={stripRef} edgeColor={colors.background} cueColor={colors.textSecondary} startLabel="Scroll sections left" endLabel="Scroll sections right" contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 8 }}>
             {sectionList.map(section => {
               const isActive = pager.active === section.key
               return (
@@ -512,7 +513,7 @@ export default function PostopFormScreen() {
                 </Pressable>
               )
             })}
-          </ScrollView>
+          </OverflowCueScrollView>
         </View>
         <View style={{ flex: 1 }} {...pager.panHandlers}>
         <ScrollView ref={focusScroll.ref} style={{ paddingHorizontal: 20, paddingTop: 2 }} contentContainerStyle={{ paddingBottom: 80 }} keyboardShouldPersistTaps="handled" scrollEventThrottle={64} onScroll={event => followScroll(event.nativeEvent.contentOffset.y)}>

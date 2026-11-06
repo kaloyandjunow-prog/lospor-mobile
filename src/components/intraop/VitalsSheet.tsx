@@ -185,8 +185,8 @@ export function VitalsSheet({
         <View style={{ flex:1, minWidth:0 }}>
           <TextInput
             style={{ backgroundColor:shade("#111111"), color:shade("#ef4444"), borderRadius:12,
-              padding: Platform.OS === "web" ? 10 : 14,
-              fontSize: Platform.OS === "web" ? 20 : 30,
+              padding: Platform.OS === "web" ? 10 : 12,
+              fontSize: Platform.OS === "web" ? 18 : 22,
               fontWeight:"700", borderWidth:1, borderColor:feedback.errors.systolic ? shade("#f87171") : shade("#ef444444"), textAlign:"center" }}
             placeholder={tc("vsSys")}
             placeholderTextColor={shade("#3e3e3e")}
@@ -197,12 +197,11 @@ export function VitalsSheet({
           />
           {renderFeedback("systolic")}
         </View>
-        <Text style={{ color:shade("#475569"), fontSize: Platform.OS === "web" ? 20 : 28, alignSelf:"center", fontWeight:"200" }}>/</Text>
         <View style={{ flex:1, minWidth:0 }}>
           <TextInput
             style={{ backgroundColor:shade("#111111"), color:shade("#f87171"), borderRadius:12,
-              padding: Platform.OS === "web" ? 10 : 14,
-              fontSize: Platform.OS === "web" ? 20 : 30,
+              padding: Platform.OS === "web" ? 10 : 12,
+              fontSize: Platform.OS === "web" ? 18 : 22,
               fontWeight:"700", borderWidth:1, borderColor:feedback.errors.diastolic ? shade("#f87171") : shade("#ef444433"), textAlign:"center" }}
             placeholder={tc("vsDia")}
             placeholderTextColor={shade("#3e3e3e")}
@@ -212,6 +211,14 @@ export function VitalsSheet({
             onChangeText={onDiastolicChange}
           />
           {renderFeedback("diastolic")}
+        </View>
+        <View style={{ flex:1, minWidth:0 }}>
+          <TextInput testID="vitals-nibp-map" style={{ backgroundColor:shade("#111111"), color:shade("#f87171"), borderRadius:12,
+            padding: Platform.OS === "web" ? 10 : 12,
+            fontSize: Platform.OS === "web" ? 18 : 22,
+            fontWeight:"700", borderWidth:1, borderColor:feedback.errors.nibpMap ? shade("#f87171") : shade("#f8717144"), textAlign:"center" }}
+            placeholder={tc("vsMapInlinePlaceholder")} placeholderTextColor={shade("#3e3e3e")} keyboardType="number-pad" value={ibp.nibpMap} onChangeText={value => onIbpChange("nibpMap", value)} />
+          {renderFeedback("nibpMap")}
         </View>
       </View>
 
@@ -243,17 +250,6 @@ export function VitalsSheet({
           </View>
         </View>
       ) : null}
-      <View style={{ flexDirection:"row", gap:10, marginBottom:18 }}>
-            <View style={{ flex:1, minWidth:0 }}>
-              <Text style={{ color:shade("#f87171"), fontSize:11, fontWeight:"700", marginBottom:6 }}>{tc("vsMapCuff")}</Text>
-              <TextInput testID="vitals-nibp-map" style={{ backgroundColor:shade("#111111"), color:shade("#f87171"), borderRadius:10, padding: Platform.OS === "web" ? 8 : 10,
-                fontSize: Platform.OS === "web" ? 16 : 20, fontWeight:"700", borderWidth:1, borderColor:feedback.errors.nibpMap ? shade("#f87171") : shade("#f8717144"), textAlign:"center" }}
-                placeholder="-" placeholderTextColor={shade("#3e3e3e")} keyboardType="number-pad" value={ibp.nibpMap} onChangeText={value => onIbpChange("nibpMap", value)} />
-              {renderFeedback("nibpMap")}
-            </View>
-        <View style={{ flex:2 }} />
-      </View>
-
       {showExtendedFields && (
         <>
           <View style={{ flexDirection:"row", gap:10, marginBottom:14 }}>

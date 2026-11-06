@@ -228,7 +228,7 @@ export function calcInfusionTotals(
 }
 
 /** A failed or replaced device or line, in the reader's language (10.2.0). */
-const STATE_WORDS = { en: { failed: "failed", replaced: "replaced" }, bg: { failed: "неуспешен", replaced: "сменен" } } as const
+const STATE_WORDS = { en: { failed: "failed", replaced: "replaced" }, bg: { failed: "неуспешен опит", replaced: "подмяна" } } as const
 
 function caseClock(intraop: { timezone?: string | null } | null | undefined) {
   return (iso: string) => (intraop?.timezone ? localTimeOf(new Date(iso), intraop.timezone) : null) ?? iso.slice(11, 16)

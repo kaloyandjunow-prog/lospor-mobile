@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Text, TextInput, TouchableOpacity, View } from "react-native"
-import type { LikelyEvent } from "@lospor/core/event-succession"
+import { successionAutomationId, type LikelyEvent } from "@lospor/core/event-succession"
 import { eventSearchScore } from "@lospor/core/event-synonyms"
 import type { ClinicalEventDef } from "@/lib/intraop-types"
 import { formatMessage } from "@/i18n/locale"
@@ -19,10 +19,10 @@ export function EventList({ groups, search, onSearch, onSelect, label, likely, o
   groups: readonly EventGroup[]
   search: string
   onSearch: (value: string) => void
-  onSelect: (event: ClinicalEventDef, isComplication: boolean) => void
+  onSelect: (event: ClinicalEventDef, isComplication: boolean, suggestion?: string) => void
   label: (event: ClinicalEventDef, isComplication: boolean) => string
   likely: readonly LikelyEvent[]
-  onDismissLikely: (event: string) => void
+  onDismissLikely: (suggestionId: string) => void
 }) {
   const shade = useShade()
   const { tc } = usePreferences()
@@ -78,10 +78,10 @@ export function EventList({ groups, search, onSearch, onSelect, label, likely, o
                       <Text style={{ color: shade("#f8fafc"), fontSize: 15, fontWeight: "700" }}>{label(hit.event, false)}</Text>
                       <Text style={{ color: shade("#fbbf24"), fontSize: 12, fontWeight: "600" }}>{formatMessage(tc("evlUsually"), { from: item.from, percent: Math.round(item.probability * 100) })}</Text>
                     </View>
-                    <TouchableOpacity testID={`likely-dismiss-${item.event}`} accessibilityLabel={tc("evlDismiss")} onPress={() => onDismissLikely(item.event)} style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" }}>
-                      <Text style={{ color: shade("#94a3b8"), fontSize: 16, fontWeight: "700" }}>✕</Text>
+                    <TouchableOpacity testID={`likely-dismiss-${item.event}`} accessibilityLabel={tc("evlDismiss")} onPress={() => onDismissLikely(successionAutomationId(item.from, item.event))} style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" }}>
+                      <Text style={{ color: shade("#94a3b8"), fontSize: 12, fontWeight: "800" }}>{tc("evlDismiss")}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity testID={`likely-log-${item.event}`} onPress={() => onSelect(hit.event, false)}
+                    <TouchableOpacity testID={`likely-log-${item.event}`} onPress={() => onSelect(hit.event, false, successionAutomationId(item.from, item.event))}
                       style={{ minHeight: 44, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1, borderColor: shade("#a67cff"), backgroundColor: shade("#a67cff") + "26", justifyContent: "center" }}>
                       <Text style={{ color: shade("#c4b0ff"), fontWeight: "800", fontSize: 13 }}>{tc("evlLog")}</Text>
                     </TouchableOpacity>

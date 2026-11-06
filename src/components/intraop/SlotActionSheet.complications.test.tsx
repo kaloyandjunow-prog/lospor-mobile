@@ -12,7 +12,7 @@ vi.mock("./FeedbackPressable", () => ({ FeedbackPressable: ({ children }: { chil
 const QUICK = [
   { cat: "Surgical", color: "#ef4444", events: [{ code: "SURGICAL_INCISION", label: "Incision", labelBg: "Оперативен разрез", color: "#ef4444" }] },
   { cat: "Complications", color: "#ef4444", isComplication: true, events: [
-    { code: "COMPLICATIONS_HYPOTENSION", label: "Hypotension", labelBg: "Хипотония", color: "#ef4444" },
+    { code: "COMPLICATIONS_HYPOTENSION", label: "Hypotension", labelBg: "Хипотенсия", color: "#ef4444" },
     { code: "COMPLICATIONS_DRUG_ERROR", label: "Drug error", labelBg: "Медикаментозна грешка", color: "#ef4444" },
     { code: "COMPLICATIONS_LAST", label: "LAST", labelBg: "Системна токсичност на локалните анестетици (LAST)", color: "#ef4444" },
   ] },
@@ -121,13 +121,13 @@ describe("likely now in the slot sheet (10.2.0)", () => {
     const { byId, pressId, onSelectEvent } = sheet("", LIKELY)
     expect(byId("event-likely")).toBeDefined()
     pressId("likely-log-Incision")
-    expect(onSelectEvent).toHaveBeenCalledWith(expect.objectContaining({ label: "Incision" }), false)
+    expect(onSelectEvent).toHaveBeenCalledWith(expect.objectContaining({ label: "Incision" }), false, "succession:Positioned>Incision")
   })
 
   it("sets one aside with the cross", () => {
     const { pressId, onDismissLikely } = sheet("", LIKELY)
     pressId("likely-dismiss-Incision")
-    expect(onDismissLikely).toHaveBeenCalledWith("Incision")
+    expect(onDismissLikely).toHaveBeenCalledWith("succession:Positioned>Incision")
   })
 
   it("leaves the likely events out while searching, and ignores one that is not in the list", () => {

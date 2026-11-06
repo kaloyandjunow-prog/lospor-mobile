@@ -4,6 +4,7 @@ import { hapticConfirm, hapticKey, hapticTick } from "@/lib/haptic"
 import { resolveNumberEntry, type ClinicalNumberChange } from "@/lib/clinical-number-entry"
 import { colors, withAlpha } from "@/theme/colors"
 import { usePreferences } from "@/lib/preferences-context"
+import { OverflowCueScrollView } from "@/components/intraop/OverflowCueScrollView"
 import { parseClinicalNumber } from "@/lib/clinical-number"
 import { HoldRepeatPressable } from "./HoldRepeatPressable"
 export { parseClinicalNumber } from "@/lib/clinical-number"
@@ -246,7 +247,7 @@ export function ClinicalNumberInput({
       {label ? <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: "800" }}>{label}</Text> : null}
 
       {quickValues.length > 0 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+        <OverflowCueScrollView horizontal edgeColor={colors.background} cueColor={colors.textSecondary} startLabel="Scroll choices left" endLabel="Scroll choices right" contentContainerStyle={{ gap: 8 }}>
           {quickValues.map((quick) => {
             const selected = value === quick
             return (
@@ -268,7 +269,7 @@ export function ClinicalNumberInput({
               </Pressable>
             )
           })}
-        </ScrollView>
+        </OverflowCueScrollView>
       ) : null}
 
       <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>

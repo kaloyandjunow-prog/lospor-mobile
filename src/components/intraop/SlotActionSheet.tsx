@@ -41,8 +41,8 @@ type Props = {
   likelyEvents?: readonly LikelyEvent[]
   /** Smart selection (default) or the Legacy coloured buttons (Settings). */
   eventsScreen?: "smart" | "legacy"
-  onDismissLikely?: (event: string) => void
-  onSelectEvent: (event: ClinicalEventDef, isComplication: boolean) => void
+  onDismissLikely?: (suggestionId: string) => void
+  onSelectEvent: (event: ClinicalEventDef, isComplication: boolean, suggestion?: string) => void
   onBrowseDrugs: () => void
   /** A shock at the slot's time (10.1.0). */
   onOpenDefibrillation?: () => void

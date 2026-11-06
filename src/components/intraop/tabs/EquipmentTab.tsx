@@ -1,4 +1,4 @@
-import { View, Text, ScrollView } from "react-native"
+import { View, Text } from "react-native"
 import { calcEquipment } from "@/lib/equipment-calculator"
 import { getMedicationWarnings } from "@/lib/risk-derivation"
 import { allergyRecords, uncheckedAllergies } from "@lospor/core/allergy-drug-check"
@@ -13,7 +13,10 @@ import { PediatricIntraopReference } from "@/components/intraop/PediatricIntraop
 import { BroselowChip } from "@/components/intraop/BroselowChip"
 import { EquipmentSmart } from "@/components/intraop/EquipmentSmart"
 import type { EquipmentFlagState } from "@lospor/core/equipment-smart"
+import type { AirwayDeviceEntry } from "@lospor/core/airway-device-entries"
 import { broselowZone } from "@lospor/core/broselow"
+import { useIntraopHeaderScroll } from "../IntraopHeaderCollapse"
+import { OverflowCueScrollView } from "../OverflowCueScrollView"
 
 export function EquipmentTab({
   preop, surgeryStart, caseTimezone, smart,
@@ -22,16 +25,19 @@ export function EquipmentTab({
   /** The stored start of surgery, for the nil-by-mouth clock times. */
   surgeryStart?: Date | null
   caseTimezone?: string | null
-  /** Smart selection (10.2.0): the list as a set-up checklist. Without it this is the Legacy tab. */
+  /** Smart selection (10.2.0): recorded clinical state plus a persisted preparation reference. */
   smart?: {
     flags: EquipmentFlagState
-    airwayInUse: readonly string[]
+    airwayEntries: readonly AirwayDeviceEntry[]
+    prepared: Readonly<Record<string, boolean>>
     onFlag: (field: "urinaryCatheter" | "stomachTube") => void
+    onPreparedChange: (key: string, value: boolean) => void
     onUseAirway: (device: "ORAL_ETT" | "LMA") => void
   }
 }) {
   const shade = useShade()
   const { tc, language } = usePreferences()
+  const { onScroll, scrollEventThrottle } = useIntraopHeaderScroll()
   const pediatricMode = preop?.clinicalMode === "PEDIATRIC"
   const pediatricAge = pediatricAgeFromPreop(preop)
   const hasPreop = !!preop && (
@@ -61,7 +67,7 @@ export function EquipmentTab({
   const allergies = allergyRecords(preop)
   const unchecked = uncheckedAllergies(allergies)
   return (
-    <ScrollView style={{ flex:1 }} contentContainerStyle={{ padding:16, paddingBottom:40 }}>
+    <OverflowCueScrollView style={{ flex:1 }} scrollViewStyle={{ flex:1 }} contentContainerStyle={{ padding:16, paddingBottom:40 }} onScroll={onScroll} scrollEventThrottle={scrollEventThrottle}>
       {allergies.length > 0 && (
         <View style={{ backgroundColor:shade("#1e1010"), borderRadius:14, borderWidth:1, borderColor:shade("#7f1d1d"),
           padding:14, marginBottom:16, gap:4 }}>
@@ -142,6 +148,6 @@ export function EquipmentTab({
           ))}
         </>
       )}
-    </ScrollView>
+    </OverflowCueScrollView>
   )
 }

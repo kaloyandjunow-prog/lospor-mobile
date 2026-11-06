@@ -118,7 +118,7 @@ export function useIntraopEventActions({
     })
   }
 
-  function openSlotEvent(ev: { label: string; color: string }, isComplication = false) {
+  function openSlotEvent(ev: { label: string; color: string }, isComplication = false, suggestion?: string) {
     const ts = slotIsoTimestamp(slotTs)
     // A complication is one timed entry (10.1.0): on the timeline at the time
     // tapped, and in the complications list and the event log from that same
@@ -134,7 +134,7 @@ export function useIntraopEventActions({
       setSlotOpen(false)
       return
     }
-    save({ type: "clinical_event", label: ev.label, color: ev.color }, ts ?? undefined)
+    save({ type: "clinical_event", label: ev.label, color: ev.color, ...(suggestion ? { suggestion } : {}) }, ts ?? undefined)
     setSlotOpen(false)
   }
 

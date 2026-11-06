@@ -34,6 +34,8 @@ describe("clinical sync file storage", () => {
     Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true })
     Platform.OS = "web"
     const { clinicalSyncKv } = await import("./clinical-sync-kv")
+    const { setClinicalSyncOwner } = await import("./clinical-sync-kv")
+    setClinicalSyncOwner("test-user")
 
     await clinicalSyncKv.set("pwa-patch", JSON.stringify({ positions: ["SUPINE"] }))
 
@@ -44,6 +46,8 @@ describe("clinical sync file storage", () => {
 
   it("stores clinical payloads larger than SecureStore's practical limit", async () => {
     const { clinicalSyncKv } = await import("./clinical-sync-kv")
+    const { setClinicalSyncOwner } = await import("./clinical-sync-kv")
+    setClinicalSyncOwner("test-user")
     const value = JSON.stringify({ report: "x".repeat(10_000) })
 
     await clinicalSyncKv.set("large-clinical-patch", value)
@@ -52,7 +56,7 @@ describe("clinical sync file storage", () => {
     expect(secureValues.has("large-clinical-patch")).toBe(false)
   })
 
-  it("migrates an existing SecureStore outbox without dropping its patch", async () => {
+  it("migrates legacy SecureStore data without exposing it to a signed-in account", async () => {
     const key = outboxPatchKey("case-legacy", "intraop")
     const stored = JSON.stringify({
       payload: { positions: ["SUPINE"], techniques: ["GENERAL_INHALATIONAL"] },
@@ -64,11 +68,12 @@ describe("clinical sync file storage", () => {
     )
     secureValues.set(key, stored)
 
-    const { clinicalSyncKv } = await import("./clinical-sync-kv")
+    const { clinicalSyncKv, setClinicalSyncOwner } = await import("./clinical-sync-kv")
+    setClinicalSyncOwner("test-user")
     const keys = await clinicalSyncKv.keys?.("lospor_patchq_")
 
-    expect(keys).toContain(key)
-    expect(await clinicalSyncKv.get(key)).toBe(stored)
+    expect(keys).not.toContain(key)
+    expect(await clinicalSyncKv.get(key)).toBeNull()
     expect(secureValues.has(key)).toBe(false)
     expect(secureValues.has(OUTBOX_INDEX_KEY)).toBe(false)
   })

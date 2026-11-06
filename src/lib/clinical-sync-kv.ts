@@ -18,6 +18,20 @@ import {
 const DIR = `${FileSystem.documentDirectory}clinical-sync/`
 const SUFFIX = ".json"
 const WEB_PREFIX = "lospor_clinical_sync:"
+const OWNER_PREFIX = "lospor_clinical_account:"
+
+// Queued clinical data is usable only after AuthProvider has selected the
+// account that owns it.  Legacy unscoped keys remain on disk for recovery but
+// are deliberately invisible once an account is active.
+let activeOwnerId: string | null = null
+
+export function setClinicalSyncOwner(ownerId: string | null): void {
+  activeOwnerId = ownerId
+}
+
+function scopedKey(key: string): string | null {
+  return activeOwnerId ? `${OWNER_PREFIX}${encodeURIComponent(activeOwnerId)}:${key}` : null
+}
 
 let ensureDirPromise: Promise<void> | null = null
 let migrationPromise: Promise<void> | null = null
@@ -211,31 +225,39 @@ async function migrationComplete(): Promise<boolean> {
  */
 export const clinicalSyncKv: KVAdapter = {
   async get(key) {
+    const storageKey = scopedKey(key)
+    if (!storageKey) return null
     const migrated = await migrationComplete()
-    const fileValue = await readFile(key)
+    const fileValue = await readFile(storageKey)
     if (fileValue !== null) return fileValue
-    return migrated ? null : migrateValue(key)
+    return migrated ? null : migrateValue(storageKey)
   },
   async set(key, value) {
+    const storageKey = scopedKey(key)
+    if (!storageKey) throw new Error("Clinical sync account is not selected")
     const migrated = await migrationComplete()
-    await writeFile(key, value)
-    if (!migrated) await SecureStore.deleteItemAsync(key).catch(() => {})
+    await writeFile(storageKey, value)
+    if (!migrated) await SecureStore.deleteItemAsync(storageKey).catch(() => {})
   },
   async delete(key) {
+    const storageKey = scopedKey(key)
+    if (!storageKey) return
     const migrated = await migrationComplete()
-    await deleteFile(key)
-    if (!migrated) await SecureStore.deleteItemAsync(key).catch(() => {})
+    await deleteFile(storageKey)
+    if (!migrated) await SecureStore.deleteItemAsync(storageKey).catch(() => {})
   },
   async keys(prefix) {
+    if (!activeOwnerId) return []
     await migrationComplete()
+    const ownerPrefix = `${OWNER_PREFIX}${encodeURIComponent(activeOwnerId)}:`
     if (Platform.OS === "web") {
       const storage = browserStorage()
       if (!storage) return []
       const keys: string[] = []
       for (let index = 0; index < storage.length; index++) {
         const key = storage.key(index)
-        if (key?.startsWith(WEB_PREFIX)) {
-          const clinicalKey = key.slice(WEB_PREFIX.length)
+        if (key?.startsWith(`${WEB_PREFIX}${ownerPrefix}`)) {
+          const clinicalKey = key.slice(WEB_PREFIX.length + ownerPrefix.length)
           if (clinicalKey.startsWith(prefix)) keys.push(clinicalKey)
         }
       }
@@ -245,6 +267,8 @@ export const clinicalSyncKv: KVAdapter = {
     const files = await FileSystem.readDirectoryAsync(DIR)
     return files
       .map(keyFromFile)
-      .filter((key): key is string => key !== null && key.startsWith(prefix))
+      .filter((key): key is string => key !== null && key.startsWith(ownerPrefix))
+      .map(key => key.slice(ownerPrefix.length))
+      .filter(key => key.startsWith(prefix))
   },
 }

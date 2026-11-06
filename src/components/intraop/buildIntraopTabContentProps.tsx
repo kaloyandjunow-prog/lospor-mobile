@@ -139,6 +139,8 @@ export type IntraopTabContentBuilderProps = {
   setAwPresentsIntubated: AirwayProps["setAwPresentsIntubated"]
   awNotApplicable: AirwayProps["awNotApplicable"]
   setAwNotApplicable: AirwayProps["setAwNotApplicable"]
+  onAirwayInterventionSelected: AirwayProps["onAirwayInterventionSelected"]
+  onNoAirwayInterventionSelected: AirwayProps["onNoAirwayInterventionSelected"]
   setAwNotes: AirwayProps["setAwNotes"]
   saveAirwaySection: AirwayProps["saveAirwaySection"]
   awExpandedDevice: AirwayProps["awExpandedDevice"]
@@ -192,6 +194,8 @@ export type IntraopTabContentBuilderProps = {
   setUrineMl: FluidsProps["setUrineMl"]
   bloodLossMl: FluidsProps["bloodLossMl"]
   setBloodLossMl: FluidsProps["setBloodLossMl"]
+  fluidsScreen?: FluidsProps["screen"]
+  eventLogScreen?: EventsProps["eventLogScreen"]
 }
 
 export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps): IntraopTabContentHostProps {
@@ -212,7 +216,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
     setAwNasalTubeSize, awNasalCuffed, setAwNasalCuffed, awDltType, setAwDltType,
     awDltSide, setAwDltSide, awDltSize, setAwDltSize, awEbSize, setAwEbSize, awVentModes,
     setAwVentModes, awNotes, setAwNotes, awPresentsIntubated, setAwPresentsIntubated,
-    awNotApplicable, setAwNotApplicable, saveAirwaySection, awExpandedDevice,
+    awNotApplicable, setAwNotApplicable, onAirwayInterventionSelected, onNoAirwayInterventionSelected, saveAirwaySection, awExpandedDevice,
     setAwExpandedDevice, awExpandedWasComplete, AIRWAY_TOOLS, AIRWAY_DEVICES, airwaySmart,
     awVentExpanded, setAwVentExpanded, vascularAccesses, setVascularAccesses,
     saveVascularAccesses, vascularSaving, vascularSmart, monitoringSmart, equipmentSmart, techniqueSmart, vascSiteColor, VASC_TREE, vascDefaultUnit,
@@ -221,7 +225,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
     complicationsNotes, setComplicationsNotes, saveComplications, removeLegacyComplication, eventActions,
     promptDelete, prevVitalFor,
     logEventText, logBuildSummary,
-    caseIbw, caseTbw, caseBsa = null, infusionWeightBasis, urineMl, setUrineMl, bloodLossMl, setBloodLossMl,
+    caseIbw, caseTbw, caseBsa = null, infusionWeightBasis, urineMl, setUrineMl, bloodLossMl, setBloodLossMl, fluidsScreen, eventLogScreen,
   } = props
 
   // One case per tab, and only the active one runs. Building all eleven groups
@@ -326,7 +330,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
       awNotes, setAwNotes, awPresentsIntubated, setAwPresentsIntubated,
       awNotApplicable, setAwNotApplicable, saveAirwaySection, awExpandedDevice, setAwExpandedDevice,
       awExpandedWasComplete, airwayTools: AIRWAY_TOOLS, airwayDevices: AIRWAY_DEVICES,
-      awVentExpanded, setAwVentExpanded, smart: airwaySmart,
+      awVentExpanded, setAwVentExpanded, smart: airwaySmart, onAirwayInterventionSelected, onNoAirwayInterventionSelected,
     } }
 
     case "vascular": return { tab, content: (
@@ -389,6 +393,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
         setUrineMl,
         bloodLossMl,
         setBloodLossMl,
+        screen: fluidsScreen ?? "smart",
         tc,
       }
     })() }
@@ -406,6 +411,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
       onPromptDelete: promptDelete,
       eventLabel,
       previousVitalFor: prevVitalFor,
+      eventLogScreen: eventLogScreen ?? "smart",
     } }
   }
 }

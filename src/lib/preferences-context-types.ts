@@ -4,7 +4,7 @@ import type { ColorScheme } from "@/theme/colors"
 import type { ClinicalStringKey } from "@/i18n/clinical-strings"
 import type { AppLanguage } from "@/i18n/locale"
 import type { STRINGS } from "@/i18n/strings"
-import type { AirwayScreen, DefaultMonitoring, EnergyKnobSkin, EquipmentScreen, EventsScreen, MonitoringScreen, TechniqueScreen, VascularScreen } from "@lospor/core/clinical-preferences"
+import type { AirwayScreen, DefaultMonitoring, EnergyKnobSkin, EquipmentScreen, EventLogScreen, EventsScreen, FluidsScreen, MonitoringScreen, TechniqueScreen, VascularScreen } from "@lospor/core/clinical-preferences"
 import type { UserAutomationSwitches } from "@lospor/core/intraop-automation"
 import type { AutoFillVitalsPreferences } from "@lospor/core/intraop-vitals"
 import type { BulgarianNameSwitches } from "@lospor/core/display"
@@ -43,6 +43,8 @@ export type PreferencesContextValue = {
   vitalEpisodeAutoLog: boolean
   /** 10.2.0: the suggestion groups this clinician turned off (only false is stored). */
   automationGroups: UserAutomationSwitches
+  /** Explicit per-automation overrides; context links are off until enabled. */
+  automationLines: Record<string, boolean>
   /** 10.2.0: the shock energy knob's look. */
   energyKnobSkin: EnergyKnobSkin
   /** 10.2.0: Smart selection or the legacy Airway tab. */
@@ -53,6 +55,8 @@ export type PreferencesContextValue = {
   equipmentScreen: EquipmentScreen
   techniqueScreen: TechniqueScreen
   eventsScreen: EventsScreen
+  fluidsScreen: FluidsScreen
+  eventLogScreen: EventLogScreen
   localeReady: boolean
   clinicalPreferencesReady: boolean
   setLanguage: (language: AppLanguage) => Promise<void>
@@ -77,6 +81,7 @@ export type PreferencesContextValue = {
   setBulgarianNames: (value: Partial<BulgarianNameSwitches>) => Promise<void>
   setVitalEpisodeAutoLog: (value: boolean) => Promise<void>
   setAutomationGroups: (value: UserAutomationSwitches) => Promise<void>
+  setAutomationLines: (value: Record<string, boolean>) => Promise<void>
   setEnergyKnobSkin: (value: EnergyKnobSkin) => Promise<void>
   setAirwayScreen: (value: AirwayScreen) => Promise<void>
   setVascularScreen: (value: VascularScreen) => Promise<void>
@@ -84,6 +89,8 @@ export type PreferencesContextValue = {
   setEquipmentScreen: (value: EquipmentScreen) => Promise<void>
   setTechniqueScreen: (value: TechniqueScreen) => Promise<void>
   setEventsScreen: (value: EventsScreen) => Promise<void>
+  setFluidsScreen: (value: FluidsScreen) => Promise<void>
+  setEventLogScreen: (value: EventLogScreen) => Promise<void>
   t: (key: TranslationKey) => string
   tc: (key: ClinicalStringKey) => string
 }

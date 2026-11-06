@@ -1,7 +1,9 @@
 import React from "react"
-import { View, Text, ScrollView, TouchableOpacity, TextInput } from "react-native"
+import { View, Text, TouchableOpacity, TextInput } from "react-native"
 import type { ClinicalStringKey } from "@/lib/preferences-context"
 import { useShade } from "@/theme/shade"
+import { useIntraopHeaderScroll } from "../IntraopHeaderCollapse"
+import { OverflowCueScrollView } from "../OverflowCueScrollView"
 
 type TechniqueNode = { v: string; label: string; isOther?: boolean; children?: TechniqueNode[] }
 
@@ -24,7 +26,8 @@ export function TechniqueTab({
   smart?: React.ReactNode
 }) {
   const shade = useShade()
-  if (smart) return <ScrollView style={{ flex:1 }} contentContainerStyle={{ padding:14, paddingBottom:40 }}>{smart}</ScrollView>
+  const { onScroll, scrollEventThrottle } = useIntraopHeaderScroll()
+  if (smart) return <OverflowCueScrollView style={{ flex:1 }} scrollViewStyle={{ flex:1 }} contentContainerStyle={{ padding:14, paddingBottom:40 }} onScroll={onScroll} scrollEventThrottle={scrollEventThrottle}>{smart}</OverflowCueScrollView>
   // Current nodes to display — drill down through techPath
   let currentNodes: TechniqueNode[] = techniqueTree
   const breadcrumbs: TechniqueNode[] = []
@@ -85,7 +88,7 @@ export function TechniqueTab({
         </View>
       )}
 
-      <ScrollView style={{ flex:1 }} contentContainerStyle={{ padding:14, paddingBottom:40 }}>
+      <OverflowCueScrollView style={{ flex:1 }} scrollViewStyle={{ flex:1 }} contentContainerStyle={{ padding:14, paddingBottom:40 }} onScroll={onScroll} scrollEventThrottle={scrollEventThrottle}>
         {/* Back button */}
         {techPath.length > 0 && !showOtherInput && (
           <TouchableOpacity onPress={() => setTechPath(p => p.slice(0, -1))}
@@ -174,7 +177,7 @@ export function TechniqueTab({
             })}
           </View>
         )}
-      </ScrollView>
+      </OverflowCueScrollView>
       {/* Gas settings (FGF/carrier gas/FiO2) moved to its own timetable row —
           see the Gas Settings vertical lane, gated by the same GA-technique
           visibility this tab used to gate the old static fields with. */}

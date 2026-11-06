@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import { Text, TextInput, TouchableOpacity, View } from "react-native"
 import { AIRWAY_DEVICE_REQUIRED_FIELDS } from "@lospor/core/intraop"
 import { airwayDevicesInUse, replaceAirwayDevice, type AirwayDeviceEntry, type AirwayExchangeReason } from "@lospor/core/airway-device-entries"
+import { clinicalRecordId } from "@lospor/core/clinical-record-id"
 import { usePreferences } from "@/lib/preferences-context"
 import { useShade } from "@/theme/shade"
 import { Sheet } from "./Sheet"
@@ -44,7 +45,7 @@ export function AirwayExchangeSheet({ entries, devices, reason: fixedReason, at,
   function save() {
     if (!device || !reason) return
     const kept = Object.fromEntries(fields.filter(field => details[field] !== undefined && details[field] !== "").map(field => [field, details[field]]))
-    onSave(replaceAirwayDevice(entries, outId, { id: `airway-${Date.parse(at)}-${entries.length + 1}`, device, details: kept, insertedAt: at }, reason))
+    onSave(replaceAirwayDevice(entries, outId, { id: clinicalRecordId("airway", at), device, details: kept, insertedAt: at }, reason))
   }
 
   return (

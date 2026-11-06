@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TextInput, TouchableOpacity } from "react-native"
+import { View, Text, TextInput, TouchableOpacity } from "react-native"
 import { useState, type RefObject } from "react"
 import {
   daysBetweenDateKeys,
@@ -19,6 +19,8 @@ import { usePreferences } from "@/lib/preferences-context"
 import type { ClinicalStringKey } from "@/lib/preferences-context"
 import type { IntraopTimingOverrides } from "@/lib/intraop-timing"
 import { useShade } from "@/theme/shade"
+import { useIntraopHeaderScroll } from "../IntraopHeaderCollapse"
+import { OverflowCueScrollView } from "../OverflowCueScrollView"
 
 export function TimingTab({
   caseStartTime, setCaseStartTime, caseEndTime, setCaseEndTime,
@@ -42,6 +44,7 @@ export function TimingTab({
 }) {
   const shade = useShade()
   const { language } = usePreferences()
+  const { onScroll, scrollEventThrottle } = useIntraopHeaderScroll()
   // Dates in the case's zone. Left at "Today", a typed start keeps the old
   // rule (a time ahead of now means yesterday); a stepped date places it on
   // that date. The end follows the start, the next day when its clock time
@@ -90,7 +93,7 @@ export function TimingTab({
   }
   const nowHHMM = `${String(new Date().getHours()).padStart(2,"0")}:${String(new Date().getMinutes()).padStart(2,"0")}`
   return (
-    <ScrollView style={{ flex:1 }} contentContainerStyle={{ padding:16, paddingBottom:40 }}>
+    <OverflowCueScrollView style={{ flex:1 }} scrollViewStyle={{ flex:1 }} contentContainerStyle={{ padding:16, paddingBottom:40 }} onScroll={onScroll} scrollEventThrottle={scrollEventThrottle}>
 
       {/* Start time */}
       <Text style={{ color:shade("#94a3b8"), fontSize:10, fontWeight:"700", letterSpacing:1.2,
@@ -202,6 +205,6 @@ export function TimingTab({
       {timingSaving && (
         <Text style={{ color:shade("#64748b"), fontSize:11, textAlign:"center", marginTop:12 }}>{tc("draftSaving")}</Text>
       )}
-    </ScrollView>
+    </OverflowCueScrollView>
   )
 }

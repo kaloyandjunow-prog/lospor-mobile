@@ -1,7 +1,8 @@
 import React, { useEffect } from "react"
-import { View, Text, Modal, TouchableOpacity, ScrollView, Pressable, KeyboardAvoidingView, Platform, useWindowDimensions } from "react-native"
+import { View, Text, Modal, TouchableOpacity, Pressable, KeyboardAvoidingView, Platform, useWindowDimensions } from "react-native"
 import { useShade } from "@/theme/shade"
 import { inlineSheet, useInlineSheetId } from "./inline-sheet"
+import { OverflowCueScrollView } from "./OverflowCueScrollView"
 
 export function Sheet({ visible, onClose, title, children, footer, full, allowInline = true }: {
   visible: boolean; onClose: () => void; title: string
@@ -49,15 +50,15 @@ export function Sheet({ visible, onClose, title, children, footer, full, allowIn
               <Text style={{ color:shade("#94a3b8"), fontSize:20 }}>✕</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView
+          <OverflowCueScrollView
             testID="sheet-scroll"
             style={{ flexShrink: 1 }}
+            scrollViewStyle={{ flexShrink: 1 }}
             contentContainerStyle={footer ? { paddingBottom: 12 } : undefined}
-            showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
             {children}
-          </ScrollView>
+          </OverflowCueScrollView>
           {footer ? <View testID="sheet-footer">{footer}</View> : null}
         </View>
       </KeyboardAvoidingView>

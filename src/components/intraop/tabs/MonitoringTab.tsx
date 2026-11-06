@@ -1,8 +1,10 @@
-import { ScrollView, Text } from "react-native"
+import { Text } from "react-native"
 import type { ReactNode } from "react"
 import { usePreferences } from "@/lib/preferences-context"
 import { useShade } from "@/theme/shade"
 import { MonitoringGroups } from "../MonitoringGroups"
+import { useIntraopHeaderScroll } from "../IntraopHeaderCollapse"
+import { OverflowCueScrollView } from "../OverflowCueScrollView"
 
 type MonitoringOpt = { label: string; field: string; section: string }
 
@@ -24,15 +26,16 @@ export function MonitoringTab({
 }) {
   const shade = useShade()
   const { tc } = usePreferences()
+  const { onScroll, scrollEventThrottle } = useIntraopHeaderScroll()
   const toggle = (field: string) => {
     const next = monitoring.includes(field) ? monitoring.filter(item => item !== field) : [...monitoring, field]
     setMonitoring(next)
     saveMonitoring(next)
   }
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+    <OverflowCueScrollView style={{ flex: 1 }} scrollViewStyle={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }} onScroll={onScroll} scrollEventThrottle={scrollEventThrottle}>
       {fieldSaving === "monitoring" ? <Text style={{ color: shade("#94a3b8"), fontSize: 11, marginBottom: 8 }}>{tc("draftSaving")}</Text> : null}
       {smart ?? <MonitoringGroups monitoring={monitoring} onToggle={toggle} monitoringOpts={monitoringOpts} />}
-    </ScrollView>
+    </OverflowCueScrollView>
   )
 }
