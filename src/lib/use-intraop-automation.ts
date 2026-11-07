@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AUTOMATION_GROUPS, automationGroupEnabled, DEFAULT_INTRAOP_AUTOMATION, parseIntraopAutomation, vitalQuestionsEnabled, type IntraopAutomationSettings } from "@lospor/core/intraop-automation"
 import { suggestionFactsFromPreop, type SuggestionContext } from "@lospor/core/intraop-suggestions"
 import type { LabResult } from "@lospor/core/labs"
@@ -31,14 +31,17 @@ type Automation = {
 // suggestion hook could observe different responses while Status was changing
 // the policy, which looked like an automation collision even though the API
 // had one account-wide value.
-let loading: Promise<Automation> | null = null
+let loading: { accountId: string; promise: Promise<Automation> } | null = null
 
-async function fetchIntraopAutomation(): Promise<Automation> {
-  if (loading) return loading
-  loading = apiJson<unknown>("/api/intraop/automation")
+async function fetchIntraopAutomation(accountId: string): Promise<Automation> {
+  if (loading?.accountId === accountId) return loading.promise
+  const request = apiJson<unknown>("/api/intraop/automation")
     .then(value => parseIntraopAutomationResponse(value))
-    .finally(() => { loading = null })
-  return loading
+  const promise = request.finally(() => {
+    if (loading?.promise === promise) loading = null
+  })
+  loading = { accountId, promise }
+  return promise
 }
 
 export function parseIntraopAutomationResponse(value: unknown): Automation {
@@ -52,7 +55,8 @@ export function parseIntraopAutomationResponse(value: unknown): Automation {
 }
 
 export function useIntraopAutomation(): Automation & { reload: () => Promise<void> } {
-  const { state: authState } = useAuth()
+  const { state: authState, accountId } = useAuth()
+  const requestVersion = useRef(0)
   const [automation, setAutomation] = useState<Automation>({
     settings: DEFAULT_INTRAOP_AUTOMATION,
     stats: null,
@@ -61,7 +65,8 @@ export function useIntraopAutomation(): Automation & { reload: () => Promise<voi
     unavailable: false,
   })
   const reload = useCallback(async () => {
-    if (authState !== "authenticated") {
+    const version = ++requestVersion.current
+    if (authState !== "authenticated" || !accountId) {
       setAutomation({
         settings: DEFAULT_INTRAOP_AUTOMATION,
         stats: null,
@@ -72,13 +77,18 @@ export function useIntraopAutomation(): Automation & { reload: () => Promise<voi
       return
     }
     try {
-      setAutomation(await fetchIntraopAutomation())
+      const next = await fetchIntraopAutomation(accountId)
+      // A request can outlive logout/login. Never let its response cross an
+      // account boundary or overwrite a newer policy read.
+      if (version === requestVersion.current && authState === "authenticated" && accountId) setAutomation(next)
     } catch {
       // A previously successful policy remains safe to use mid-case, but the
       // initial render must never silently fall back to Core's shared demo default.
-      setAutomation(current => ({ ...current, unavailable: true }))
+      if (version === requestVersion.current && authState === "authenticated" && accountId) {
+        setAutomation(current => ({ ...current, unavailable: true }))
+      }
     }
-  }, [authState])
+  }, [accountId, authState])
   useEffect(() => { void reload() }, [reload])
   return { ...automation, reload }
 }

@@ -13,12 +13,13 @@ import { AirwaySmartPanel, type AirwaySmartChartEvent, type AirwaySmartRequest }
  * suggested sizes and the saving are Core's (airway-smart), as on the web.
  */
 export function AirwaySmart({
-  entries, onChange, onEvent, onAtomicSave, patient, techniques, availableDevices, availableTools, startedAt, now, timeZone, difficultAirway, deviceLabel, toolLabel, describe, timeOf,
+  entries, onChange, onEvent, onAtomicSave, onRemove, patient, techniques, availableDevices, availableTools, startedAt, now, timeZone, difficultAirway, deviceLabel, toolLabel, describe, timeOf,
 }: {
   entries: readonly AirwayDeviceEntry[]
   onChange: (next: AirwayDeviceEntry[]) => void
   onEvent?: (event: AirwaySmartChartEvent) => void
   onAtomicSave?: (next: AirwayDeviceEntry[], event: AirwaySmartChartEvent) => void
+  onRemove?: (entry: AirwayDeviceEntry, next: AirwayDeviceEntry[]) => void
   patient: AirwayPatient
   techniques: readonly string[]
   availableDevices?: readonly string[]
@@ -77,6 +78,12 @@ export function AirwaySmart({
                 onPress={() => setRequest({ device: entry.device, source: "tab", replaces: { id: entry.id, reason: "failed_device" } })}><Text style={{ color: shade("#e2e8f0"), fontWeight: "700", fontSize: 12 }}>{tc("asmReintubate")}</Text></TouchableOpacity> : null}
               {canExchange ? <TouchableOpacity testID={`airway-smart-exchange-${entry.id}`} style={[small, { alignSelf: "flex-start", marginTop: 6 }]}
                 onPress={() => setRequest({ device: entry.device, source: "tab", replaces: { id: entry.id, reason: "planned" } })}><Text style={{ color: shade("#e2e8f0"), fontWeight: "700", fontSize: 12 }}>{tc("asmExchange")}</Text></TouchableOpacity> : null}
+              <TouchableOpacity testID={`airway-smart-remove-${entry.id}`} style={[small, { alignSelf: "flex-start", marginTop: 6, borderColor: shade("#7f1d1d") }]}
+                onPress={() => {
+                  const next = entries.filter(candidate => candidate.id !== entry.id)
+                  if (onRemove) onRemove(entry, next)
+                  else onChange(next)
+                }}><Text style={{ color: shade("#fca5a5"), fontWeight: "700", fontSize: 12 }}>{tc("asmRemove")}</Text></TouchableOpacity>
             </View>
           )
         })}</View>

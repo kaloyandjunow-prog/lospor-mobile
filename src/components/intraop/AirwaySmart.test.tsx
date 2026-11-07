@@ -69,7 +69,7 @@ describe("Smart selection, the Airway tab on the phone (10.2.0)", () => {
     expect(byId(tree, "airway-smart-add")!.props.disabled).toBe(true)
     act(() => { byId(tree, "airway-smart-time-now")!.props.onPress() })
     act(() => { byId(tree, "airway-smart-add")!.props.onPress() })
-    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it("requires an exchange reason before adding a second active primary airway", () => {
@@ -102,6 +102,14 @@ describe("Smart selection, the Airway tab on the phone (10.2.0)", () => {
     act(() => { byId(tree, "airway-smart-card-ORAL_ETT")!.props.onPress() })
     act(() => { byId(tree, "airway-smart-add")!.props.onPress() })
     expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({ label: "Intubated", ts: START, intraopPatch: expect.objectContaining({ airwayDeviceEntries: expect.any(Array) }) }))
+  })
+
+  it("offers an explicit remove action for a recorded device", () => {
+    const entry: AirwayDeviceEntry = { id: "a1", device: "ORAL_ETT", details: { oralTubeSize: 8, oralCuffed: true }, insertedAt: START, status: "in_use" }
+    const onRemove = vi.fn()
+    const { tree } = setup({ entries: [entry], onRemove })
+    act(() => { byId(tree, "airway-smart-remove-a1")!.props.onPress() })
+    expect(onRemove).toHaveBeenCalledWith(entry, [])
   })
 
   it("says so when nothing is in place yet, and leads with what keeps the airway open for sedation", () => {

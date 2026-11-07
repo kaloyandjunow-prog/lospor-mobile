@@ -41,7 +41,13 @@ export function useLikelyEvents({ log, structured, techniques, child, enabled, s
       if (!save || !suggestionId.startsWith("succession:")) return
       if (dismissalInFlight.current.has(suggestionId)) return
       dismissalInFlight.current.add(suggestionId)
-      void save({ id: successionDismissalEventId(suggestionId), type: "prompt_answer", answerKind: SUCCESSION_ANSWER_KIND, answerFor: suggestionId, answer: SUCCESSION_DISMISS_ANSWER, suggestion: suggestionId })
+      try {
+        void save({ id: successionDismissalEventId(suggestionId), type: "prompt_answer", answerKind: SUCCESSION_ANSWER_KIND, answerFor: suggestionId, answer: SUCCESSION_DISMISS_ANSWER, suggestion: suggestionId })
+          .finally(() => dismissalInFlight.current.delete(suggestionId))
+          .catch(() => {})
+      } catch {
+        dismissalInFlight.current.delete(suggestionId)
+      }
     },
   }
 }

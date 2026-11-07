@@ -98,4 +98,28 @@ describe("airway autosave", () => {
     expect(onDevice).toHaveBeenCalledWith("LMA", ["ORAL_ETT"], expect.objectContaining({ airwayDevices: ["ORAL_ETT", "LMA"] }))
     expect(harness.patch).toHaveBeenCalledTimes(1)
   })
+
+  it("reports every newly added legacy device, including a rapid multi-select", async () => {
+    const onDevice = vi.fn()
+    const harness = setup(onDevice)
+    harness.load(hook => { hook.setAwDevices(["ORAL_ETT"]) })
+
+    act(() => harness.hook.setAwDevices(previous => [...previous, "LMA", "FACE_MASK"]))
+    await act(async () => { vi.advanceTimersByTime(600) })
+
+    expect(onDevice.mock.calls.map(call => call[0])).toEqual(["LMA", "FACE_MASK"])
+    expect(onDevice.mock.calls[1]![1]).toEqual(["ORAL_ETT", "LMA"])
+  })
+
+  it("does not let one atomic device hide a second device's section save", async () => {
+    const onDevice = vi.fn((device: string) => device === "LMA")
+    const harness = setup(onDevice)
+    harness.load(hook => { hook.setAwDevices(["ORAL_ETT"]) })
+
+    act(() => harness.hook.setAwDevices(previous => [...previous, "LMA", "FACE_MASK"]))
+    await act(async () => { vi.advanceTimersByTime(600) })
+
+    expect(onDevice).toHaveBeenCalledTimes(2)
+    expect(harness.patch).toHaveBeenCalledTimes(1)
+  })
 })

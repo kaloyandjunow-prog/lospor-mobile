@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Text, TouchableOpacity, View } from "react-native"
+import Ionicons from "@expo/vector-icons/Ionicons"
 import type { FluidStatusTabProps, FluidStatusTotalRow } from "@/components/intraop/tabs/FluidStatusTab"
 import { ClinicalNumberInput } from "@/components/ClinicalNumberInput"
 import { useShade } from "@/theme/shade"
@@ -47,10 +48,11 @@ export function FluidStatusHybrid({
       <SummaryGroup
         testID="fluid-given-toggle"
         label={tc("fluidInputLabel")}
-        value={rowValue(totalIn)}
         open={open === "given"}
         onPress={() => toggle("given")}
         tint={shade("#22d3ee")}
+        expandLabel={tc("fluidExpandDetails")}
+        collapseLabel={tc("fluidCollapseDetails")}
       >
         {[
           [tc("crystalloidsLabel"), crystalloidsMl],
@@ -67,10 +69,11 @@ export function FluidStatusHybrid({
       <SummaryGroup
         testID="fluid-output-toggle"
         label={tc("fluidOutputLabel")}
-        value={urinaryCatheter ? rowValue(urineMl) : "—"}
         open={open === "output"}
         onPress={() => toggle("output")}
         tint={shade("#a78bfa")}
+        expandLabel={tc("fluidExpandDetails")}
+        collapseLabel={tc("fluidCollapseDetails")}
       >
         {urinaryCatheter ? (
           editing === "urine" ? (
@@ -92,10 +95,11 @@ export function FluidStatusHybrid({
       <SummaryGroup
         testID="fluid-losses-toggle"
         label={tc("fluidBloodLossLabel")}
-        value={rowValue(bloodLossMl)}
         open={open === "losses"}
         onPress={() => toggle("losses")}
         tint={shade("#fb7185")}
+        expandLabel={tc("fluidExpandDetails")}
+        collapseLabel={tc("fluidCollapseDetails")}
       >
         {editing === "blood" ? (
           <EditableMeasurement
@@ -126,24 +130,24 @@ function SummaryMetric({ testID, label, value, tint }: { testID?: string; label:
   )
 }
 
-function SummaryGroup({ testID, label, value, open, onPress, tint, children }: {
+function SummaryGroup({ testID, label, open, onPress, tint, expandLabel, collapseLabel, children }: {
   testID: string
   label: string
-  value: string
   open: boolean
   onPress: () => void
   tint: string
+  expandLabel: string
+  collapseLabel: string
   children: React.ReactNode
 }) {
   const shade = useShade()
   return (
     <View style={{ marginBottom: 10, borderRadius: 12, borderWidth: 1, borderColor: shade("#1e2d40"), overflow: "hidden" }}>
-      <TouchableOpacity testID={testID} accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={onPress} style={{ minHeight: 58, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: shade("#0f1621"), flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <View>
+      <TouchableOpacity testID={testID} accessibilityRole="button" accessibilityLabel={`${label}. ${open ? collapseLabel : expandLabel}`} accessibilityState={{ expanded: open }} onPress={onPress} style={{ minHeight: 58, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: shade("#0f1621"), flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+        <View style={{ flex: 1, justifyContent: "center" }}>
           <Text style={{ color: tint, fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.7 }}>{label}</Text>
-          <Text style={{ color: shade("#94a3b8"), fontSize: 11, marginTop: 3 }}>{open ? "⌃" : "⌄"}</Text>
         </View>
-        <Text style={{ color: shade("#f8fafc"), fontSize: 16, fontWeight: "800", fontVariant: ["tabular-nums"] }}>{value}</Text>
+        <Ionicons name={open ? "chevron-up" : "chevron-down"} size={20} color={shade("#94a3b8")} accessibilityElementsHidden />
       </TouchableOpacity>
       {open && <View style={{ paddingHorizontal: 14, paddingVertical: 10, backgroundColor: shade("#0b111b") }}>{children}</View>}
     </View>

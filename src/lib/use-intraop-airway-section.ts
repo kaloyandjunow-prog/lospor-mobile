@@ -10,12 +10,14 @@ type AirwayDeviceConfirmed = (
   previousDevices: readonly string[],
   airwayPatch: Record<string, unknown>,
 ) => boolean | void
+type AirwayDeviceRemoved = (device: string) => void | Promise<void>
 
 export function useIntraopAirwaySection(
   caseLoaded: boolean,
   patchIntraopSection: PatchIntraopSection,
   errorLabel: string,
   onAirwayDeviceConfirmed?: AirwayDeviceConfirmed,
+  onAirwayDeviceRemoved?: AirwayDeviceRemoved,
 ) {
   const { tc } = usePreferences()
   const [awTools, setAwTools] = useState<string[]>([])
@@ -102,11 +104,24 @@ export function useIntraopAirwaySection(
     setAirwaySectionSaving(true)
     try {
       const previous = previousDevicesRef.current ?? []
-      const added = awDevices.find(device => !previous.includes(device))
-      const handledAtomically = added != null && onAirwayDeviceConfirmed
-        ? onAirwayDeviceConfirmed(added, previous, airwayPatch) === true
-        : false
-      if (!handledAtomically) await patchIntraopSection(airwayPatch)
+      const added = awDevices.filter(device => !previous.includes(device))
+      let needsSectionPatch = added.length === 0 || !onAirwayDeviceConfirmed
+      let baseline = [...previous]
+      if (added.length > 0 && onAirwayDeviceConfirmed) {
+        for (const device of added) {
+          // Each device has its own event decision. A mixed batch (for example
+          // an ETT handled atomically and an airway adjunct handled by the
+          // section save) must not let the first `true` suppress the latter.
+          if (onAirwayDeviceConfirmed(device, baseline, airwayPatch) !== true) needsSectionPatch = true
+          baseline = [...baseline, device]
+        }
+      }
+      if (onAirwayDeviceRemoved) {
+        await Promise.all(previous
+          .filter(item => !awDevices.includes(item))
+          .map(device => onAirwayDeviceRemoved(device)))
+      }
+      if (needsSectionPatch) await patchIntraopSection(airwayPatch)
       previousDevicesRef.current = [...awDevices]
       savedAirwayKeyRef.current = JSON.stringify(airwayPatch)
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
@@ -115,7 +130,7 @@ export function useIntraopAirwaySection(
     } finally {
       setAirwaySectionSaving(false)
     }
-  }, [airwayPatch, awDevices, errorLabel, onAirwayDeviceConfirmed, patchIntraopSection, tc])
+  }, [airwayPatch, awDevices, errorLabel, onAirwayDeviceConfirmed, onAirwayDeviceRemoved, patchIntraopSection, tc])
 
   const saveAirwayRef = useRef(saveAirwaySection)
   useEffect(() => { saveAirwayRef.current = saveAirwaySection }, [saveAirwaySection])

@@ -19,7 +19,7 @@ import { DefibrillationHost } from "@/components/intraop/DefibrillationHost"
 import { SuggestionSheetHost } from "@/components/intraop/SuggestionSheetHost"
 import { buildPhoneSuggestionSheets, phoneGateWarnings, tagWithSuggestion } from "@/lib/phone-suggestion-sheets"
 import { MH_HISTORY_WARNING, type SuggestionContext } from "@lospor/core/intraop-suggestions"
-import { confirmAction } from "@/lib/notify"
+import { confirmAction, notify } from "@/lib/notify"
 import { autosaveManager } from "@/lib/autosave-manager"
 import { usePhoneDeathPrompt } from "@/lib/use-phone-death-prompt"
 import { jetSheet } from "@/lib/jet-sheet"
@@ -27,7 +27,7 @@ import { JetHost } from "@/components/intraop/JetHost"
 import { TourniquetHost } from "@/components/intraop/TourniquetHost"
 import { preopAgeDays } from "@lospor/core/vital-questions"
 import { MonitoringSmart } from "@/components/intraop/MonitoringSmart"
-import { addAirwayDevice, airwayClinicalEvent, resolveAirwayTime, suggestedAirwayDetails } from "@lospor/core/airway-smart"
+import { addAirwayDevice, airwayClinicalEvent, resolveAirwayTime, suggestedAirwayDetails, AIRWAY_RECORD_PATCH_KEYS, stripAirwayRecordPatch } from "@lospor/core/airway-smart"
 import { toggleEquipmentFlag } from "@lospor/core/equipment-smart"
 import { parseTechniqueSides, techniqueSidesFor, techniquesAfterTciStart, type TechniqueSide } from "@lospor/core/technique-smart"
 import { TechniqueSmart } from "@/components/intraop/TechniqueSmart"
@@ -45,7 +45,7 @@ import { VascularSmart } from "@/components/intraop/VascularSmart"
 import { VascularSmartPanel } from "@/components/intraop/VascularSmartPanel"
 import { usePhoneVascularEvents } from "@/lib/use-phone-vascular-smart"
 import { Sheet } from "@/components/intraop/Sheet"
-import { airwayDeviceEntriesOf, airwayPrimaryConflict, airwayToolsFromEntries, hasActiveTrachealTube } from "@lospor/core/airway-device-entries"
+import { airwayDeviceEntriesOf, airwayPrimaryConflict, airwayToolsFromEntries, hasActiveTrachealTube, type AirwayDeviceEntry } from "@lospor/core/airway-device-entries"
 import { airwayDeviceSummary } from "@lospor/core/intraop"
 import { resolvedTimeZone } from "@lospor/core/intraop-time"
 import { clinicalRelationForEventLabel } from "@lospor/core/intraop-automation-actions"
@@ -234,6 +234,7 @@ export default function IntraopLiveScreen() {
   const [equipmentPrepared, setEquipmentPrepared] = useState<Record<string, boolean>>({})
   const [expandedRow, setExpandedRow] = useState<number | null>(null)
   const startRef                  = useRef<Date | null>(null)
+  const pendingLegacyAirwayEventsRef = useRef(new Map<string, { previousDevices: string[]; airwayPatch: Record<string, unknown> }>())
   const verticalTimetableRef      = useRef<FlatList<number>>(null)
   const [entryTs, setEntryTs]     = useState<string | null>(null)
   const [slotOpen, setSlotOpen]       = useState(false)
@@ -477,13 +478,28 @@ export default function IntraopLiveScreen() {
     }, event.ts)
   }, [log, save])
   const chartLegacyAirwayDevice = useCallback((device: string, previousDevices: readonly string[], airwayPatch: Record<string, unknown>) => {
+    const insertedAt = resolveAirwayTime("start", { startedAt: startRef.current?.toISOString() ?? null, now: new Date().toISOString() })
+    if (!insertedAt) {
+      pendingLegacyAirwayEventsRef.current.set(device, { previousDevices: [...previousDevices], airwayPatch: { ...airwayPatch } })
+      notify(tc("errorLabel"), tc("airwayMissingStart"))
+      return false
+    }
+    pendingLegacyAirwayEventsRef.current.delete(device)
     const label = airwayClinicalEvent(device, {
       priorTrachealTube: hasActiveTrachealTube(airwayDeviceEntriesOf({ airwayDevices: previousDevices })),
     })
     if (!label) return false
-    chartAirwayEvent({ label, ts: new Date().toISOString(), intraopPatch: airwayPatch })
+    const at = insertedAt
+    chartAirwayEvent({ id: clinicalRecordId("airway-event", at), label, ts: at, intraopPatch: { ...airwayPatch, airwayEventDevice: device } })
     return true
-  }, [chartAirwayEvent])
+  }, [chartAirwayEvent, startRef, tc])
+  const removeLegacyAirwayEvents = async (device: string): Promise<void> => {
+    pendingLegacyAirwayEventsRef.current.delete(device)
+    const ids = log
+      .filter(event => event.type === "clinical_event" && event.intraopPatch?.airwayEventDevice === device)
+      .map(event => event.id)
+    if (ids.length > 0) await syncLog(log.filter(event => !ids.includes(event.id)))
+  }
   const {
     awTools,
     setAwTools,
@@ -523,7 +539,18 @@ export default function IntraopLiveScreen() {
     awNotApplicable,
     setAwNotApplicable,
     saveAirwaySection,
-  } = useIntraopAirwaySection(caseLoaded, patchIntraopSection, tc("errorLabel"), airwayScreen === "legacy" ? chartLegacyAirwayDevice : undefined)
+  } = useIntraopAirwaySection(caseLoaded, patchIntraopSection, tc("errorLabel"), airwayScreen === "legacy" ? chartLegacyAirwayDevice : undefined, airwayScreen === "legacy" ? removeLegacyAirwayEvents : undefined)
+  useEffect(() => {
+    if (!startRef.current || isWatching || airwayScreen !== "legacy" || pendingLegacyAirwayEventsRef.current.size === 0) return
+    const devices = new Set(awDevices)
+    for (const [device, pending] of [...pendingLegacyAirwayEventsRef.current.entries()]) {
+      if (!devices.has(device)) {
+        pendingLegacyAirwayEventsRef.current.delete(device)
+        continue
+      }
+      chartLegacyAirwayDevice(device, pending.previousDevices, pending.airwayPatch)
+    }
+  }, [airwayScreen, awDevices, caseStartTime, chartLegacyAirwayDevice, isWatching, startRef])
   // Keep structured airway entries in the suggestion context as well as the
   // legacy device list. An exchanged tube must not look like a second active
   // primary airway to the induction link.
@@ -682,7 +709,28 @@ export default function IntraopLiveScreen() {
     if (next.length > 0) setAwNotApplicable(() => false)
     airwayExchange.save(next, event)
   }
-  const onNoAirwayInterventionSelected = () => airwayExchange.clear()
+  const onNoAirwayInterventionSelected = () => {
+    const nextLog = log.flatMap(event => {
+      if (event.type !== "clinical_event") return [event]
+      const rawPatch = event.intraopPatch
+      const patch = rawPatch && typeof rawPatch === "object" ? rawPatch as Record<string, unknown> : null
+      const hasAirway = event.clinicalRelation === "airway-record"
+        || AIRWAY_EVENT_COLORS[event.label ?? ""] != null
+        || !!patch && Object.keys(patch).some(key => AIRWAY_RECORD_PATCH_KEYS.includes(key))
+      if (!hasAirway) return [event]
+      if (!patch || Object.keys(stripAirwayRecordPatch(patch)).length === 0) return []
+      return [{ ...event, intraopPatch: stripAirwayRecordPatch(patch) }]
+    })
+    if (nextLog.length !== log.length || nextLog.some((event, index) => event !== log[index])) void syncLog(nextLog)
+    airwayExchange.clear()
+  }
+  const removeSmartAirwayEntry = (entry: AirwayDeviceEntry, next: AirwayDeviceEntry[]) => {
+    saveAirwayEntries(next)
+    if (entry.sourceEventId) {
+      const linked = log.find(event => event.id === entry.sourceEventId)
+      if (linked) void removeEvent(linked)
+    }
+  }
   // Smart selection (10.2.0): the Airway tab that opens on what is in place. What it offers and how
   // it saves is Core's (airway-smart); this hands it the case and writes the result.
   const airwayLabel = (code: string) => [...AIRWAY_DEVICES, ...AIRWAY_TOOLS].find(option => option.code === code)?.label ?? code
@@ -695,7 +743,7 @@ export default function IntraopLiveScreen() {
   }
   const smartClock = (iso: string) => attention?.clockOf?.(iso) ?? iso.slice(11, 16)
   const airwaySmart = airwayScreen === "smart" && !isWatching ? (
-    <AirwaySmart {...smartCase} entries={airwayExchange.entries()} onChange={saveAirwayEntries} onEvent={chartAirwayEvent}
+    <AirwaySmart {...smartCase} entries={airwayExchange.entries()} onChange={saveAirwayEntries} onRemove={removeSmartAirwayEntry} onEvent={chartAirwayEvent}
       onAtomicSave={(next, event) => saveAirwayEntries(next, event)}
       describe={entry => airwayDeviceSummary(entry.device, entry.details, { device: airwayLabel, attribute: code => code }) ?? airwayLabel(entry.device)}
       timeOf={smartClock} />
@@ -815,12 +863,13 @@ export default function IntraopLiveScreen() {
   useEffect(() => {
     if (!caseLoaded) return
     const starts = log.filter(event => event.type === "infusion_start" && event.tciModel)
-    if (seenTciStartIds.current === null) {
-      seenTciStartIds.current = new Set(starts.map(event => event.id))
-      return
-    }
+    if (seenTciStartIds.current === null) seenTciStartIds.current = new Set()
+    // Existing starts matter too: opening the case on a second device, or
+    // mounting after a reload, must still backfill the technique. Watching is
+    // read-only, so leave them unmarked until this screen can write.
+    if (isWatching) return
     const fresh = starts.filter(event => !seenTciStartIds.current!.has(event.id))
-    if (isWatching || fresh.length === 0) return
+    if (fresh.length === 0) return
     for (const event of fresh) seenTciStartIds.current!.add(event.id)
     const next = fresh.reduce((current, event) => techniquesAfterTciStart(current, event.tciModel), techniques)
     if (next.length === techniques.length) return

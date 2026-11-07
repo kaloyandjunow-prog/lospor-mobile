@@ -4,6 +4,9 @@ import { describe, expect, it, vi } from "vitest"
 
 vi.mock("@/theme/shade", () => ({ useShade: () => (value: string) => value }))
 vi.mock("@/components/ClinicalNumberInput", () => ({ ClinicalNumberInput: () => null }))
+vi.mock("@expo/vector-icons/Ionicons", () => ({
+  default: ({ name }: { name: string }) => <>{name}</>,
+}))
 
 import { render } from "@/test/render"
 import { FluidStatusHybrid } from "./FluidStatusHybrid"
@@ -37,5 +40,15 @@ describe("the Hybrid fluid status summary", () => {
     expect(byId("fluid-edit-blood-loss")).toBeUndefined()
     act(() => { byId("fluid-edit-urine")!.props.onPress() })
     expect(byId("fluid-urine-editor")).toBeDefined()
+  })
+
+  it("keeps totals in the summary and uses labelled chevrons for detail groups", () => {
+    const tree = render(<FluidStatusHybrid {...props} />)
+    const byId = (id: string) => tree.root.findAll(node => node.props?.testID === id)[0]
+    const inputGroup = byId("fluid-given-toggle")
+    expect(inputGroup.find(node => node.props?.accessibilityLabel === "fluidInputLabel. fluidExpandDetails")).toBeDefined()
+    expect(JSON.stringify(tree.toJSON())).not.toContain("⌄")
+    expect(JSON.stringify(tree.toJSON())).not.toContain("⌃")
+    expect(inputGroup.props).not.toHaveProperty("value")
   })
 })

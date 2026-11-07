@@ -23,6 +23,8 @@ type AuthState = "loading" | "unauthenticated" | "authenticated"
 
 type AuthContextValue = {
   state: AuthState
+  /** The account identity that owns this session's clinical settings and local stores. */
+  accountId: string | null
   login: (
     credential: LoginCredential,
     password: string,
@@ -40,6 +42,7 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>("loading")
+  const [accountId, setAccountId] = useState<string | null>(null)
 
   useEffect(() => {
     // An expired session never reaches logout(), so the device would otherwise
@@ -49,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // destroy them the way an explicit sign-out is.
     const unsubscribe = onAuthExpired(() => {
       setState("unauthenticated")
+      setAccountId(null)
       setClinicalSyncOwner(null)
       setLocalCaseStoreOwner(null)
       void import("./clinical-preferences-mobile")
@@ -65,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .then(({ clearMobileClinicalPreferences }) => clearMobileClinicalPreferences())
           .catch(() => {})
         setState("unauthenticated")
+        setAccountId(null)
         return
       }
       const accountId = await getAuthenticatedAccountId()
@@ -72,10 +77,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setClinicalSyncOwner(null)
         setLocalCaseStoreOwner(null)
         setState("unauthenticated")
+        setAccountId(null)
         return
       }
       setClinicalSyncOwner(accountId)
       setLocalCaseStoreOwner(accountId)
+      setAccountId(accountId)
       setState("authenticated")
     })
     return unsubscribe
@@ -93,6 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!accountId) throw new Error("Could not establish the signed-in account")
         setClinicalSyncOwner(accountId)
         setLocalCaseStoreOwner(accountId)
+        setAccountId(accountId)
         setState("authenticated")
       }
       return result
@@ -101,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // RESEARCH_ONLY deployments. A rejected clinical-app login must never
       // leave a usable bearer token behind.
       await clearToken().catch(() => {})
+      setAccountId(null)
       setState("unauthenticated")
       throw error
     }
@@ -118,6 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!accountId) throw new Error("Could not establish the signed-in account")
     setClinicalSyncOwner(accountId)
     setLocalCaseStoreOwner(accountId)
+    setAccountId(accountId)
     setState("authenticated")
   }
 
@@ -125,6 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await apiLogout()
     setClinicalSyncOwner(null)
     setLocalCaseStoreOwner(null)
+    setAccountId(null)
     // Native apiLogout clears the token even when its best-effort revocation is
     // offline. PWA apiLogout throws unless the server confirms cookie expiry;
     // in that case this line is intentionally not reached and the UI must not
@@ -135,6 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{
       state,
+      accountId,
       login,
       completeAdministratorMfa,
       finishAdministratorMfaLogin,
