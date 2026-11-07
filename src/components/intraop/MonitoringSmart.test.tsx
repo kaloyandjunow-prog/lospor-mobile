@@ -36,6 +36,18 @@ function setup(over: Partial<Parameters<typeof MonitoringSmart>[0]> = {}) {
 }
 
 describe("Smart selection, the Monitoring tab on the phone (10.2.0)", () => {
+  it("moves an added suggestion into On now in the controlled parent flow", () => {
+    function Controlled() {
+      const [active, setActive] = React.useState<string[]>(STANDARD)
+      return <MonitoringSmart monitoring={active} onChange={setActive} monitoringOpts={OPTS} suggestions={[{ field: "tofMonitor", reason: "relaxant" }, { field: "bis", reason: "tiva" }]} onHide={vi.fn()}
+        lastReading={() => null} onReading={vi.fn()} now={() => NOW} />
+    }
+    const tree = render(<Controlled />)
+    press(tree, "monitoring-add-tofMonitor")
+    expect(present(tree, "monitoring-on-tofMonitor")).toBe(true)
+    expect(present(tree, "monitoring-suggestion-tofMonitor")).toBe(false)
+  })
+
   it("shows standard on and one switch that turns the three off and keeps the others", () => {
     const { tree, onChange } = setup({ monitoring: [...STANDARD, "bis"] })
     expect(byId(tree, "monitoring-standard")!.props.accessibilityState.selected).toBe(true)

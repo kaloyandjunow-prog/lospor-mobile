@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Text, TouchableOpacity, View } from "react-native"
 import type { VascularLine } from "@lospor/core/vascular-access-lines"
-import { suggestedArterialGauge, suggestedPeripheralGauge, vascularChoices, vascularTypeOfSite, type VascularPatient, type VascularType } from "@lospor/core/vascular-smart"
+import { VASCULAR_CATALOG_LEAVES, suggestedArterialGauge, suggestedPeripheralGauge, vascularChoices, vascularTypeOfSite, type VascularPatient, type VascularType } from "@lospor/core/vascular-smart"
 import { usePreferences } from "@/lib/preferences-context"
 import { useShade } from "@/theme/shade"
 import { VascularSmartPanel, type VascularClinicalEvent, type VascularSmartRequest } from "./VascularSmartPanel"
@@ -13,7 +13,7 @@ import { VascularSmartPanel, type VascularClinicalEvent, type VascularSmartReque
  * sizes and the saving are Core's (vascular-smart), as on the web.
  */
 export function VascularSmart({
-  lines, onChange, onEvent, onAtomicSave, patient, techniques, startedAt, now, timeZone, siteLabel, timeOf,
+  lines, onChange, onEvent, onAtomicSave, patient, techniques, startedAt, now, timeZone, siteLabel, timeOf, saving = false, saveError = false,
 }: {
   lines: readonly VascularLine[]
   onChange: (next: VascularLine[]) => void
@@ -26,11 +26,14 @@ export function VascularSmart({
   timeZone: string | null
   siteLabel: (code: string) => string
   timeOf: (iso: string) => string
+  saving?: boolean
+  saveError?: boolean
 }) {
   const shade = useShade()
   const { tc } = usePreferences()
   const [request, setRequest] = useState<VascularSmartRequest | null>(null)
   const [showOther, setShowOther] = useState(false)
+  const [showCatalog, setShowCatalog] = useState(false)
   const choices = vascularChoices(techniques)
   const working = lines.filter(line => !line.failed)
   const ordered = lines.map((line, index) => ({ line, index })).sort((a, b) => Number(!!a.line.failed) - Number(!!b.line.failed) || b.index - a.index)
@@ -41,9 +44,15 @@ export function VascularSmart({
     const selected = request?.type === type && request.replacesIndex == null && !request.ward
     setRequest(selected ? null : { type, source: "tab" })
   }
+  const selectCatalogSite = (site: typeof VASCULAR_CATALOG_LEAVES[number]) => {
+    const selected = request?.site === site.code && request.replacesIndex == null && !request.ward
+    setRequest(selected ? null : { type: site.type, centralType: site.centralType, site: site.code, source: "tab" })
+  }
 
   return (
     <View testID="vascular-smart" style={{ marginBottom: 20 }}>
+      {saving ? <Text testID="vascular-smart-saving" style={{ color: shade("#94a3b8"), fontSize: 12, marginBottom: 6 }}>{tc("draftSaving")}</Text> : null}
+      {saveError ? <Text testID="vascular-smart-save-error" style={{ color: shade("#fca5a5"), fontSize: 12, marginBottom: 6 }}>{tc("draftSaveFailed")}</Text> : null}
       {eyebrow(`${tc("vsmInPlace")}${working.length > 0 ? ` · ${working.length}` : ""}`)}
       {lines.length === 0 ? (
         <View testID="vascular-smart-empty" style={{ borderWidth: 1, borderStyle: "dashed", borderColor: shade("#334155"), borderRadius: 12, padding: 12, marginBottom: 16 }}>
@@ -87,7 +96,7 @@ export function VascularSmart({
         )
       })}</View>
       {request && !request.ward && choices.main.includes(request.type) ? (
-        <VascularSmartPanel key={`main-${request.type}-${request.replacesIndex ?? ""}`} request={request} lines={lines} patient={patient}
+        <VascularSmartPanel key={`main-${request.type}-${request.site ?? ""}-${request.replacesIndex ?? ""}`} request={request} lines={lines} patient={patient}
           startedAt={startedAt} now={now} timeZone={timeZone} siteLabel={siteLabel}
           onSave={(next, event) => {
             setRequest(null)
@@ -101,13 +110,39 @@ export function VascularSmart({
         )) : (
           <TouchableOpacity testID="vascular-smart-more" style={[small, { minHeight: 44, borderColor: "transparent" }]} onPress={() => setShowOther(true)}><Text style={{ color: shade("#a67cff"), fontWeight: "800" }}>{tc("vsmMoreTypes")}</Text></TouchableOpacity>
         )) : null}
+        <TouchableOpacity testID="vascular-smart-catalog" accessibilityState={{ expanded: showCatalog }} style={[small, { minHeight: 44, borderColor: "transparent" }]} onPress={() => setShowCatalog(value => !value)}>
+          <Text style={{ color: shade("#a67cff"), fontWeight: "800" }}>{tc(showCatalog ? "vsmHideAllSites" : "vsmAllSites")}</Text>
+        </TouchableOpacity>
         <TouchableOpacity testID="vascular-smart-ward" style={[small, { minHeight: 44, borderStyle: "dashed", borderColor: shade("#fbbf24") }]} onPress={() => setRequest(request?.ward ? null : { type: "PERIPHERAL", source: "tab", ward: true })}>
           <Text style={{ color: shade("#fbbf24"), fontWeight: "700" }}>{typeName("PERIPHERAL")} · {tc("vsmAlreadyOnArrival")}</Text>
         </TouchableOpacity>
       </View>
 
+      {showCatalog ? (
+        <View testID="vascular-smart-catalog-list" style={{ borderWidth: 1, borderColor: shade("#334155"), borderRadius: 12, padding: 10, gap: 10, marginBottom: 14 }}>
+          {(["PERIPHERAL", "ARTERIAL", "CENTRAL"] as const).map(group => {
+            const sites = VASCULAR_CATALOG_LEAVES.filter(site => site.group === group)
+            return (
+              <View key={group} style={{ gap: 6 }}>
+                <Text style={{ color: shade("#94a3b8"), fontSize: 10, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" }}>{typeName(group)}</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                  {sites.map(site => {
+                    const selected = request?.site === site.code
+                    return (
+                      <TouchableOpacity key={site.code} testID={`vascular-smart-catalog-${site.code}`} accessibilityState={{ selected }} style={[small, { minHeight: 42, borderColor: selected ? shade("#a67cff") : shade("#334155"), backgroundColor: selected ? shade("#a67cff") + "33" : "transparent" }]} onPress={() => selectCatalogSite(site)}>
+                        <Text style={{ color: selected ? shade("#e9ddff") : shade("#e2e8f0"), fontWeight: "700" }}>{siteLabel(site.code)}</Text>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </View>
+              </View>
+            )
+          })}
+        </View>
+      ) : null}
+
       {request && (request.ward || !choices.main.includes(request.type)) ? (
-        <VascularSmartPanel key={`${request.type}-${request.replacesIndex ?? ""}-${request.ward ? "w" : ""}`} request={request} lines={lines} patient={patient}
+        <VascularSmartPanel key={`${request.type}-${request.site ?? ""}-${request.replacesIndex ?? ""}-${request.ward ? "w" : ""}`} request={request} lines={lines} patient={patient}
           startedAt={startedAt} now={now} timeZone={timeZone} siteLabel={siteLabel}
           onSave={(next, event) => {
             setRequest(null)

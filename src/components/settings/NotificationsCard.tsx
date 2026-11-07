@@ -95,6 +95,7 @@ export function NotificationsCard() {
           rightElement={
             <BooleanSwitch
               value={remindersOn}
+              accessibilityLabel={t("caseReminders")}
               onValueChange={setRemindersOn}
               trackColor={{ false: colors.border, true: colors.primarySoft }}
               thumbColor={remindersOn ? colors.primary : colors.textMuted}

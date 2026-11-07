@@ -443,6 +443,7 @@ export default function IntraopLiveScreen() {
   const {
     timingSaving,
     fieldSaving,
+    fieldSaveError,
     vascularSaving,
     saveTiming,
     saveVascularAccesses,
@@ -771,7 +772,8 @@ export default function IntraopLiveScreen() {
   }
   const vascularSmart = vascularScreen === "smart" && !isWatching ? (
     <VascularSmart {...vascularCase} lines={vascularLines()} onChange={applyVascularLines} onEvent={chartVascularEvent}
-      onAtomicSave={(next, event) => applyVascularLines(next, event)} techniques={techniques} timeOf={smartClock} />
+      onAtomicSave={(next, event) => applyVascularLines(next, event)} techniques={techniques} timeOf={smartClock}
+      saving={vascularSaving} saveError={fieldSaveError === "vascular"} />
   ) : undefined
 
   // Smart selection for monitoring (10.2.0): standard in one switch, and the monitors this case calls for.
@@ -806,7 +808,8 @@ export default function IntraopLiveScreen() {
   }
   const monitoringSmart = monitoringScreen === "smart" && !isWatching ? (
     <MonitoringSmart monitoring={monitoring} onChange={applyMonitoring} monitoringOpts={MONITORING_OPTS} suggestions={monitoringSuggestionList}
-      onHide={dismissMonitoringSuggestion} lastReading={lastMonitorReading} onReading={() => openVitals("full")} now={() => new Date().toISOString()} />
+      onHide={dismissMonitoringSuggestion} lastReading={lastMonitorReading} onReading={() => openVitals("full")} now={() => new Date().toISOString()}
+      saving={fieldSaving === "monitoring"} saveError={fieldSaveError === "monitoring"} />
   ) : undefined
 
   // Smart selection for equipment (10.2.0): calculated suggestions compare
@@ -853,7 +856,8 @@ export default function IntraopLiveScreen() {
   }
   const techniqueSmart = techniqueScreen === "smart" && !isWatching ? (
     <TechniqueSmart techniques={techniques} sides={techniqueSides} onChange={applyTechniques} tree={TECHNIQUE_TREE} label={techniqueLabel} color={techniqueColor}
-      planned={preop?.plannedTechniques ?? []} recents={recentTechniques.recents} />
+      planned={preop?.plannedTechniques ?? []} recents={recentTechniques.recents}
+      saving={fieldSaving === "techniques"} saveError={fieldSaveError === "techniques"} />
   ) : undefined
 
   // Starting TCI Propofol or Remifentanil from the timetable documents the

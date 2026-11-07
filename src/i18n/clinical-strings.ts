@@ -196,6 +196,7 @@ export const CLINICAL_STRINGS = {
 
     // Draft status
     draftSaving:         "Saving…",
+    draftSaveFailed:     "Could not save this change. It remains on this device and will retry when connected.",
     draftSaved:          "Draft saved",
     draftLocal:          "Saved locally — syncs when online",
     draftBlocked:        "Not saved — edit the highlighted field",
@@ -709,6 +710,8 @@ export const CLINICAL_STRINGS = {
     vsmArrivedShort: "arrived",
     vsmAddAccess: "Add access",
     vsmMoreTypes: "More types ▾",
+    vsmAllSites: "All sites ▾",
+    vsmHideAllSites: "Hide all sites",
     vsmAlreadyOnArrival: "Already in place on arrival",
     vscrTitle: "Vascular access tab",
     vscrDesc: "How the vascular access section of the intraoperative record looks. You can change it at any time.",
@@ -1787,6 +1790,7 @@ export const CLINICAL_STRINGS = {
 
     // Draft status
     draftSaving:         "Запазва се…",
+    draftSaveFailed:     "Промяната не може да се запази. Остава на това устройство и ще се изпрати при връзка.",
     draftSaved:          "Чернова запазена",
     draftLocal:          "Запазено локално — синхронизира се при връзка",
     draftBlocked:        "Не е запазено — редактирайте маркираното поле",
@@ -2281,6 +2285,8 @@ export const CLINICAL_STRINGS = {
     vsmArrivedShort: "дошъл",
     vsmAddAccess: "Добавяне на съдов достъп",
     vsmMoreTypes: "Още видове ▾",
+    vsmAllSites: "Всички места ▾",
+    vsmHideAllSites: "Скрий всички места",
     vsmAlreadyOnArrival: "Вече поставен при постъпване",
     vscrTitle: "Раздел „Съдов достъп“",
     vscrDesc: "Как изглежда разделът за съдов достъп в интраоперативния запис. Можете да го смените по всяко време.",

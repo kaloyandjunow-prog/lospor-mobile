@@ -295,6 +295,7 @@ export function SettingsPreferencesView({
               <BooleanSwitch
                 testID="setting-vital-episode-auto-log"
                 value={vitalEpisodeAutoLog}
+                accessibilityLabel={t("vitalEpisodeAutoLog")}
                 onValueChange={value => { void setVitalEpisodeAutoLog(value) }}
                 trackColor={{ false: colors.border, true: colors.primarySoft }}
                 thumbColor={vitalEpisodeAutoLog ? colors.primary : colors.textMuted}
@@ -308,6 +309,7 @@ export function SettingsPreferencesView({
             rightElement={
               <BooleanSwitch
                 value={autoFillVitals}
+                accessibilityLabel={t("autoFillVitals")}
                 onValueChange={setAutoFillVitals}
                 trackColor={{ false: colors.border, true: colors.primarySoft }}
                 thumbColor={autoFillVitals ? colors.primary : colors.textMuted}
@@ -322,6 +324,7 @@ export function SettingsPreferencesView({
                 rightElement={
                   <BooleanSwitch
                     value={autoFillBP}
+                    accessibilityLabel={t("autoFillBpHr")}
                     onValueChange={setAutoFillBP}
                     trackColor={{ false: colors.border, true: colors.primarySoft }}
                     thumbColor={autoFillBP ? colors.primary : colors.textMuted}
@@ -335,6 +338,7 @@ export function SettingsPreferencesView({
                 rightElement={
                   <BooleanSwitch
                     value={autoFillBg}
+                    accessibilityLabel={t("backgroundAutoFill")}
                     onValueChange={setAutoFillBg}
                     trackColor={{ false: colors.border, true: colors.primarySoft }}
                     thumbColor={autoFillBg ? colors.primary : colors.textMuted}

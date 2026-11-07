@@ -54,6 +54,7 @@ export function AutomationGroupsCard() {
           <SettingsRow key={key} label={tc(KEYS[key][0])} subtitle={tc(KEYS[key][1])} last={index === offered.length - 1 && offeredLines.length === 0}
             rightElement={
               <BooleanSwitch testID={`setting-automation-${key}`} value={on}
+                accessibilityLabel={tc(KEYS[key][0])}
                 onValueChange={value => { void setAutomationGroups({ ...automationGroups, [key]: value }) }}
                 trackColor={{ false: colors.border, true: colors.primarySoft }} thumbColor={on ? colors.primary : colors.textMuted} />
             } />
@@ -71,6 +72,7 @@ export function AutomationGroupsCard() {
             <SettingsRow label={labelOf(line)} subtitle={detailOf(line)} last={index === offeredLines.length - 1}
               rightElement={
                 <BooleanSwitch testID={`setting-automation-line-${line.id}`} value={on}
+                  accessibilityLabel={labelOf(line)}
                   onValueChange={value => { void setAutomationLines({ ...automationLineOverrides, [line.id]: value }) }}
                   trackColor={{ false: colors.border, true: colors.primarySoft }} thumbColor={on ? colors.primary : colors.textMuted} />
               } />

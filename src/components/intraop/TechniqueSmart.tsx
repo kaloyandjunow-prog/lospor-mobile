@@ -32,7 +32,7 @@ function findNodePath(value: string, nodes: readonly TechniqueNode[], trail: Tec
  * opening in place under four families. Finding, sides and the usual list are Core's (technique-smart);
  * the saved data is still the list of technique codes, with the side beside it by code.
  */
-export function TechniqueSmart({ techniques, sides, onChange, tree, label, color, planned, recents }: {
+export function TechniqueSmart({ techniques, sides, onChange, tree, label, color, planned, recents, saving = false, saveError = false }: {
   techniques: readonly string[]
   sides: Record<string, TechniqueSide>
   /** The new list and sides; the caller saves both together and remembers what was used. */
@@ -43,6 +43,8 @@ export function TechniqueSmart({ techniques, sides, onChange, tree, label, color
   /** Techniques planned at the preop visit. */
   planned: readonly string[]
   recents: readonly string[]
+  saving?: boolean
+  saveError?: boolean
 }) {
   const shade = useShade()
   const { tc } = usePreferences()
@@ -122,6 +124,8 @@ export function TechniqueSmart({ techniques, sides, onChange, tree, label, color
 
   return (
     <View testID="technique-smart">
+      {saving ? <Text testID="technique-smart-saving" style={{ color: shade("#94a3b8"), fontSize: 12, marginBottom: 6 }}>{tc("draftSaving")}</Text> : null}
+      {saveError ? <Text testID="technique-smart-save-error" style={{ color: shade("#fca5a5"), fontSize: 12, marginBottom: 6 }}>{tc("draftSaveFailed")}</Text> : null}
       {eyebrow(`${tc("tchInUse")}${techniques.length > 0 ? ` · ${techniques.length}` : ""}`)}
       {techniques.length === 0 ? (
         <Text testID="technique-empty" style={{ color: shade("#94a3b8"), fontSize: 13 }}>{tc("tchNothing")}</Text>

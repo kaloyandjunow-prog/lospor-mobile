@@ -29,6 +29,7 @@ export function BulgarianNamesCard() {
             <BooleanSwitch
               testID={`bulgarian-names-${key}`}
               value={bulgarianNames[key]}
+              accessibilityLabel={t(LABEL[key])}
               onValueChange={value => void setBulgarianNames({ [key]: value })}
               trackColor={{ false: colors.border, true: colors.primarySoft }}
               thumbColor={bulgarianNames[key] ? colors.primary : colors.textMuted}

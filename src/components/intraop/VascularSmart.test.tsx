@@ -49,6 +49,15 @@ describe("Smart selection, the Vascular access tab on the phone (10.2.0)", () =>
     expect(saved(onChange)[0]).toMatchObject({ site: "VEN_PERIPHERAL", size: "18", sizeUnit: "G", insertedAt: START })
   })
 
+  it("opens the complete legacy site catalogue and carries a selected site into the panel", () => {
+    const { tree } = setup({ techniques: ["REGIONAL_SPINAL"] })
+    press(tree, "vascular-smart-catalog")
+    expect(present(tree, "vascular-smart-catalog-ART_ULNAR")).toBe(true)
+    expect(present(tree, "vascular-smart-catalog-CVK_EJV")).toBe(true)
+    press(tree, "vascular-smart-catalog-CVK_EJV")
+    expect(present(tree, "vascular-smart-site-CVK_EJV")).toBe(true)
+  })
+
   it("offers 24G and 26G and takes the size picked and the time now", () => {
     const { tree, onChange } = setup()
     press(tree, "vascular-smart-card-PERIPHERAL")

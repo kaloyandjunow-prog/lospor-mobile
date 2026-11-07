@@ -37,6 +37,17 @@ function setup(over: Partial<Parameters<typeof TechniqueSmart>[0]> = {}) {
 }
 
 describe("Smart selection, the Technique tab on the phone (10.2.0)", () => {
+  it("moves a searched TCI technique into Used in the controlled parent flow", () => {
+    function Controlled() {
+      const [selected, setSelected] = React.useState<string[]>([])
+      return <TechniqueSmart techniques={selected} sides={{}} onChange={(next, _sides) => setSelected(next)} tree={tree} label={label} color={() => "#3b82f6"} planned={[]} recents={[]} />
+    }
+    const tr = render(<Controlled />)
+    type(tr, "technique-search", "TCI")
+    press(tr, "technique-hit-GENERAL_TCI")
+    expect(present(tr, "technique-chip-GENERAL_TCI")).toBe(true)
+  })
+
   it("shows what is in use with its path, and removes one in a tap", () => {
     const { tr, onChange } = setup()
     expect(present(tr, "technique-chip-GENERAL_BALANCED")).toBe(true)

@@ -20,7 +20,7 @@ const REASON: Record<MonitoringReasonKey, string> = {
  * due is Core's (monitoring-smart); a monitor added here writes the same flag the legacy tab writes.
  */
 export function MonitoringSmart({
-  monitoring, onChange, monitoringOpts, suggestions, onHide, lastReading, onReading, now,
+  monitoring, onChange, monitoringOpts, suggestions, onHide, lastReading, onReading, now, saving = false, saveError = false,
 }: {
   monitoring: readonly string[]
   onChange: (next: string[]) => void
@@ -32,6 +32,8 @@ export function MonitoringSmart({
   /** Opens the vitals entry for this monitor's reading. */
   onReading: (field: string) => void
   now: () => string
+  saving?: boolean
+  saveError?: boolean
 }) {
   const shade = useShade()
   const { language, tc } = usePreferences()
@@ -39,6 +41,9 @@ export function MonitoringSmart({
   const name = (field: string) => displayClinicalCode("option:MONITORING", field, language, { label: monitoringOpts.find(item => item.field === field)?.label ?? field })
   const extras = monitoring.filter(field => !STANDARD_MONITORING.includes(field))
   const availableCount = monitoringOpts.filter(item => !monitoring.includes(item.field)).length
+  // The active list is authoritative; do not leave a just-added suggestion
+  // visible while a parent is persisting the same selection.
+  const visibleSuggestions = suggestions.filter(item => !monitoring.includes(item.field))
   const standard = standardMonitoringOn(monitoring)
   const toggle = (field: string) => onChange(monitoring.includes(field) ? monitoring.filter(item => item !== field) : [...monitoring, field])
   const eyebrow = (text: string) => <Text style={{ color: shade("#94a3b8"), fontSize: 10, fontWeight: "700", letterSpacing: 1.2, textTransform: "uppercase", marginTop: 16, marginBottom: 8 }}>{text}</Text>
@@ -47,6 +52,8 @@ export function MonitoringSmart({
 
   return (
     <View testID="monitoring-smart" style={{ marginBottom: 20 }}>
+      {saving ? <Text testID="monitoring-smart-saving" style={{ color: shade("#94a3b8"), fontSize: 12, marginBottom: 6 }}>{tc("draftSaving")}</Text> : null}
+      {saveError ? <Text testID="monitoring-smart-save-error" style={{ color: shade("#fca5a5"), fontSize: 12, marginBottom: 6 }}>{tc("draftSaveFailed")}</Text> : null}
       <TouchableOpacity testID="monitoring-standard" accessibilityState={{ selected: standard }} onPress={() => onChange(toggleStandardMonitoring(monitoring))}
         style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 14, borderWidth: 2,
           borderColor: standard ? shade("#22c55e") : shade("#2a3140"), backgroundColor: standard ? shade("#0f2a1a") : shade("#171c26") }}>
@@ -87,15 +94,15 @@ export function MonitoringSmart({
       })}
 
       {eyebrow(tc("msmSuggested"))}
-      {suggestions.length === 0 ? (
+      {visibleSuggestions.length === 0 ? (
         <View testID="monitoring-no-suggestions" style={card}><Text style={{ color: shade("#94a3b8") }}>{tc("msmNoSuggestions")}</Text></View>
-      ) : suggestions.map(item => (
+      ) : visibleSuggestions.map(item => (
         <View key={item.field} testID={`monitoring-suggestion-${item.field}`} style={[card, { borderWidth: 1, borderStyle: "dashed", borderColor: shade("#fbbf24") }]}>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={{ color: shade("#f8fafc"), fontWeight: "700", fontSize: 14 }}>{name(item.field)}</Text>
             <Text style={{ color: shade("#fbbf24"), fontSize: 12 }}>{tc(REASON[item.reason] as Parameters<typeof tc>[0])}</Text>
           </View>
-          <TouchableOpacity testID={`monitoring-add-${item.field}`} onPress={() => toggle(item.field)} style={[side, { borderColor: shade("#a67cff"), backgroundColor: shade("#a67cff") + "26" }]}>
+          <TouchableOpacity testID={`monitoring-add-${item.field}`} accessibilityLabel={tc("msmAdd")} accessibilityState={{ selected: monitoring.includes(item.field) }} onPress={() => toggle(item.field)} style={[side, { borderColor: shade("#a67cff"), backgroundColor: shade("#a67cff") + "26" }]}>
             <Text style={{ color: shade("#c4b0ff"), fontWeight: "800" }}>{tc("msmAdd")}</Text>
           </TouchableOpacity>
           <TouchableOpacity testID={`monitoring-hide-${item.field}`} accessibilityLabel={tc("msmHide")} onPress={() => onHide(item)} style={[side, { borderColor: shade("#334155") }]}>
