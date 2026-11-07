@@ -88,16 +88,16 @@ export function TechniqueSmart({ techniques, sides, onChange, tree, label, color
     .map(code => findNodePath(code, tree)?.at(-1))
     .filter((node): node is TechniqueNode => !!node)
 
-  const renderNode = (node: TechniqueNode) => {
+  const renderNode = (node: TechniqueNode, index: number) => {
     if (node.isOther || node.v === "OTHER") {
-      return <TextInput key={node.v} testID="technique-other" value={otherText} onChangeText={setOtherText} onSubmitEditing={addOther} placeholder={label(node.v)} placeholderTextColor={shade("#475569")}
+      return <TextInput key={`${node.v}-${index}`} testID="technique-other" value={otherText} onChangeText={setOtherText} onSubmitEditing={addOther} placeholder={label(node.v)} placeholderTextColor={shade("#475569")}
         style={{ minHeight: 44, borderRadius: 12, borderWidth: 1, borderColor: shade("#2a3140"), backgroundColor: shade("#171c26"), color: shade("#f8fafc"), paddingHorizontal: 12 }} />
     }
     const isLeaf = !node.children?.length
     if (isLeaf) {
       const on = techniques.includes(node.v)
       return (
-        <TouchableOpacity key={node.v} testID={`technique-leaf-${node.v}`} accessibilityLabel={label(node.v)} accessibilityState={{ selected: on }} onPress={() => toggle(node.v)}
+        <TouchableOpacity key={`${node.v}-${index}`} testID={`technique-leaf-${node.v}`} accessibilityLabel={label(node.v)} accessibilityState={{ selected: on }} onPress={() => toggle(node.v)}
           style={{ flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44, borderRadius: 10, borderWidth: 1, paddingHorizontal: 10, marginVertical: 3,
             borderColor: on ? shade("#22c55e") : shade("#2a3140"), backgroundColor: on ? shade("#0f2a1a") : shade("#171c26") }}>
           <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: "center", justifyContent: "center", borderColor: on ? shade("#22c55e") : shade("#334155"), backgroundColor: on ? shade("#22c55e") : "transparent" }}>
@@ -109,7 +109,7 @@ export function TechniqueSmart({ techniques, sides, onChange, tree, label, color
     }
     const count = leavesOf(node).filter(leaf => techniques.includes(leaf.v)).length
     return (
-      <TouchableOpacity key={node.v} testID={`technique-node-${node.v}`} accessibilityLabel={label(node.v)} onPress={() => setBrowsePath(path => [...path, node.v])}
+      <TouchableOpacity key={`${node.v}-${index}`} testID={`technique-node-${node.v}`} accessibilityLabel={label(node.v)} onPress={() => setBrowsePath(path => [...path, node.v])}
         style={{ flexDirection: "row", alignItems: "center", gap: 10, minHeight: 56, borderRadius: 12, borderWidth: 1, borderColor: shade("#2a3140"), backgroundColor: shade("#171c26"), paddingHorizontal: 12, marginVertical: 3 }}>
         <View style={{ width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center", backgroundColor: shade("#222936") }}>
           <Text style={{ color: shade("#94a3b8"), fontSize: 20 }}>›</Text>
@@ -126,11 +126,11 @@ export function TechniqueSmart({ techniques, sides, onChange, tree, label, color
       {techniques.length === 0 ? (
         <Text testID="technique-empty" style={{ color: shade("#94a3b8"), fontSize: 13 }}>{tc("tchNothing")}</Text>
       ) : (
-        <View style={{ gap: 8 }}>{techniques.map(code => {
+        <View style={{ gap: 8 }}>{techniques.map((code, index) => {
           const col = color(code)
           const sided = techniqueHasSide(code)
           return (
-            <View key={code} testID={`technique-chip-${code}`} style={{ borderRadius: 12, borderWidth: 1, borderColor: col + "55", backgroundColor: col + "20", padding: 8 }}>
+            <View key={`${code}-${index}`} testID={`technique-chip-${code}`} style={{ borderRadius: 12, borderWidth: 1, borderColor: col + "55", backgroundColor: col + "20", padding: 8 }}>
               <TouchableOpacity testID={`technique-remove-${code}`} accessibilityLabel={nameOf(code)} onPress={() => toggle(code)} style={{ flexDirection: "row", alignItems: "center", gap: 8, minHeight: 36 }}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: col, fontWeight: "800", fontSize: 14 }}>{nameOf(code)}</Text>
@@ -184,10 +184,10 @@ export function TechniqueSmart({ techniques, sides, onChange, tree, label, color
         <>
           {eyebrow(tc("tchUsual"))}
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {recents.map(code => {
+            {recents.map((code, index) => {
               const on = techniques.includes(code)
               return (
-                <TouchableOpacity key={code} testID={`technique-recent-${code}`} accessibilityState={{ selected: on }} onPress={() => toggle(code)}
+                <TouchableOpacity key={`${code}-${index}`} testID={`technique-recent-${code}`} accessibilityState={{ selected: on }} onPress={() => toggle(code)}
                   style={{ minHeight: 44, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, justifyContent: "center",
                     borderColor: on ? shade("#22c55e") : shade("#2a3140"), backgroundColor: on ? shade("#0f2a1a") : shade("#171c26") }}>
                   <Text style={{ color: on ? shade("#86efac") : shade("#e2e8f0"), fontWeight: "700", fontSize: 13 }}>{pillLabel(code)}</Text>
@@ -204,7 +204,7 @@ export function TechniqueSmart({ techniques, sides, onChange, tree, label, color
             <Text style={{ color: shade("#60a5fa"), fontSize: 12, fontWeight: "700" }}>{tc("tchAll")}</Text>
           </TouchableOpacity>
           {breadcrumb.map((node, index) => (
-            <View key={node.v} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <View key={`${node.v}-${index}`} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
               <Text style={{ color: shade("#475569"), fontSize: 12 }}>›</Text>
               <TouchableOpacity onPress={() => setBrowsePath(path => path.slice(0, index + 1))}>
                 <Text style={{ color: shade("#94a3b8"), fontSize: 12 }}>{node.label}</Text>
@@ -213,7 +213,7 @@ export function TechniqueSmart({ techniques, sides, onChange, tree, label, color
           ))}
         </View>
       ) : null}
-      <View style={{ gap: 1 }}>{currentNodes.map(node => renderNode(node))}</View>
+      <View style={{ gap: 1 }}>{currentNodes.map((node, index) => renderNode(node, index))}</View>
     </View>
   )
 }

@@ -54,7 +54,7 @@ describe("Smart selection, the Monitoring tab on the phone (10.2.0)", () => {
   it("hides a suggestion for the case", () => {
     const { tree, onHide } = setup()
     press(tree, "monitoring-hide-bis")
-    expect(onHide).toHaveBeenCalledWith("bis")
+    expect(onHide).toHaveBeenCalledWith({ field: "bis", reason: "tiva" })
   })
 
   it("shows what is on with a reading shortcut, amber when due, and turns it off", () => {

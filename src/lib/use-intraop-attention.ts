@@ -98,9 +98,10 @@ export function useIntraopAttention({ log, logRef, endedAtRef, syncLog, resyncAc
         suggestions: base ? { ...base, now: serverNow() } : null,
       }, choice)
       if (!next) return
-      // The next queued action must see this local result even before the
-      // server acknowledgement causes a React render.
-      logRef.current = next
+      // syncLog updates logRef synchronously before it awaits the network.
+      // Do not pre-apply here: syncLog needs the old ref to calculate the
+      // durable event mutations. The shared queue makes the next action wait
+      // until that local projection is installed.
       await syncLogRef.current(next)
       resyncActiveRef.current()
     })
@@ -109,7 +110,6 @@ export function useIntraopAttention({ log, logRef, endedAtRef, syncLog, resyncAc
     if (isEmptyIntraopEventOps(ops)) return
     await enqueue(async () => {
       const next = applyIntraopEventOps(logRef.current, ops) as LogEvent[]
-      logRef.current = next
       await syncLogRef.current(next)
       resyncActiveRef.current()
     })
@@ -168,7 +168,6 @@ function useVitalEpisodeClosing(
       const ops = vitalEpisodeOps(current, vitalsRef.current, endedAtRef.current)
       if (isEmptyIntraopEventOps(ops)) return
       const next = applyIntraopEventOps(current, ops) as LogEvent[]
-      logRef.current = next
       await syncLogRef.current(next)
     })
       .finally(() => { closing.current = false })

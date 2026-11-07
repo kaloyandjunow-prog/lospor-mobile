@@ -2,6 +2,7 @@ import React from "react"
 import { describe, expect, it, vi } from "vitest"
 import { parseIntraopAutomation } from "@lospor/core/intraop-automation"
 import type { VitalQuestionContext } from "@lospor/core/vital-questions"
+import { act } from "react-test-renderer"
 import { render } from "@/test/render"
 import type { LogEvent } from "@/lib/intraop-log-event"
 import { useIntraopAttention } from "@/lib/use-intraop-attention"
@@ -36,5 +37,39 @@ describe("closing an episode from the vitals questions", () => {
     const saved = syncLog.mock.calls[0][0]
     expect(saved.map(event => event.id)).toEqual(log.map(event => event.id))
     expect(saved.find(event => event.id === "vq-bradycardia-low-hr")?.endTs).toBe("2026-11-01T06:40:00.000Z")
+  })
+
+  it("passes a newly answered vital question to the durable log save", async () => {
+    const initial: LogEvent[] = [
+      { id: "low-hr-new", type: "vital", ts: "2026-11-01T06:30:00.000Z", heartRate: 44 },
+    ]
+    const logRef = { current: initial }
+    const syncLog = vi.fn(async (next: LogEvent[]) => {
+      logRef.current = next
+      return true
+    })
+    let attention!: ReturnType<typeof useIntraopAttention>
+    function Harness() {
+      attention = useIntraopAttention({
+        log: initial,
+        logRef,
+        endedAtRef: { current: null },
+        syncLog,
+        resyncActiveRef: { current: () => {} },
+        vitals,
+      })
+      return null
+    }
+    render(<Harness />)
+    await act(async () => { await attention.resolve("vital:bradycardia:low-hr-new", "log_complication") })
+
+    expect(syncLog).toHaveBeenCalledTimes(1)
+    expect(syncLog.mock.calls[0][0]).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: "complication",
+        complicationSource: "vitals",
+        triggerReadingId: "low-hr-new",
+      }),
+    ]))
   })
 })
