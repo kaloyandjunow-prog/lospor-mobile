@@ -1,5 +1,6 @@
-import { expect, test, type APIRequestContext, type Page } from "@playwright/test"
-import { ACCOUNTS, API_BASE, signInAs, tokenFor } from "./session"
+import { expect, test } from "@playwright/test"
+import { API_BASE } from "./session"
+import { expectSaved, newStartedCase, openStartRow, savedChart } from "./intraop-helpers"
 
 // The intraop timetable, driven the way a clinician drives it on a phone.
 //
@@ -7,61 +8,6 @@ import { ACCOUNTS, API_BASE, signInAs, tokenFor } from "./session"
 // then charts through the real sheets. What was charted is checked twice: on the
 // screen (the row and the toast), and on the server, because a chart that shows
 // an entry the API never received is the failure that matters most at 2am.
-
-type CaseSession = { caseId: string; authed: Record<string, string>; rowTime: string }
-
-/** The five-minute row the case starts in, as the timetable prints it. */
-function startRowTime(now = new Date()): string {
-  const rounded = new Date(now)
-  rounded.setSeconds(0, 0)
-  rounded.setMinutes(Math.floor(rounded.getMinutes() / 5) * 5)
-  return rounded.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
-}
-
-async function newStartedCase(page: Page, request: APIRequestContext): Promise<CaseSession> {
-  const token = await tokenFor(request, ACCOUNTS.admin)
-  const authed = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
-  const created = await request.post(`${API_BASE}/v1/cases`, {
-    headers: authed,
-    data: {
-      preop: {
-        procedureName: "Timetable e2e", diagnosis: "Timetable e2e", asaClass: 2,
-        age: 54, weight: 78, height: 172, sex: "FEMALE", urgency: "ELECTIVE",
-      },
-    },
-  })
-  expect(created.ok(), `case creation failed: ${created.status()}`).toBe(true)
-  const caseId: string = (await created.json()).id
-
-  await signInAs(page, request, ACCOUNTS.admin)
-  await page.goto(`/cases/intraop/${caseId}`)
-  await expect(page.getByText("Equipment", { exact: true })).toBeVisible({ timeout: 30_000 })
-  const rowTime = startRowTime()
-  await page.getByText("Start now", { exact: false }).first().click()
-  // The header offers Start only until the case has one.
-  await expect(page.getByText("Start now", { exact: false })).toHaveCount(0, { timeout: 15_000 })
-  await page.getByText("Timetable", { exact: true }).click()
-  return { caseId, authed, rowTime }
-}
-
-/** Opens the start row, which is where "Add now" puts an entry. */
-async function openStartRow(page: Page, rowTime: string) {
-  await page.getByText(rowTime, { exact: true }).last().click()
-  await expect(page.getByText("ADD NOW")).toBeVisible()
-}
-
-/** The intraop part of the case as the API holds it, flattened to text for matching. */
-async function savedChart(request: APIRequestContext, session: CaseSession): Promise<string> {
-  const response = await request.get(`${API_BASE}/v1/cases/${session.caseId}`, { headers: session.authed })
-  expect(response.ok()).toBe(true)
-  return JSON.stringify((await response.json()).intraop ?? {})
-}
-
-async function expectSaved(request: APIRequestContext, session: CaseSession, pattern: RegExp, why: string) {
-  await expect
-    .poll(async () => pattern.test(await savedChart(request, session)), { timeout: 20_000, message: why })
-    .toBe(true)
-}
 
 test.describe("the intraop timetable", () => {
   test("starting the case puts the anaesthesia start in the first row and saves it", async ({ page, request }) => {
