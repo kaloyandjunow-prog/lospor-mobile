@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react"
-import { View, Text, Pressable, Modal, PanResponder, useWindowDimensions } from "react-native"
+import { View, Text, Pressable, Modal, PanResponder, useWindowDimensions, type ViewInstance } from "react-native"
 import { hapticKey, hapticTick } from "@/lib/haptic"
 import { usePreferences } from "@/lib/preferences-context"
 import { formatMessage } from "@/i18n/locale"
@@ -46,7 +46,7 @@ export function VitalStepper({ value, onChange, min, max, manualMax = max, step 
   const [limitNotice, setLimitNotice] = useState<string | null>(null)
   const [anchor, setAnchor] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
   const [trackWidth, setTrackWidth] = useState(1)
-  const fieldRef = useRef<View>(null)
+  const fieldRef = useRef<ViewInstance>(null)
   const trackXRef = useRef(0)
   const { height: screenHeight, width: screenWidth } = useWindowDimensions()
 

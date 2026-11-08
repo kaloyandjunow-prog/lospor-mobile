@@ -683,7 +683,7 @@ export default function DashboardScreen() {
                   </Text>
                 )}
               </TouchableOpacity>
-            ) : null
+            ) : undefined
           }
         />
       )}

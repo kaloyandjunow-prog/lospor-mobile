@@ -1,5 +1,5 @@
 import { memo, type RefObject, type MutableRefObject } from "react"
-import { View, Text, ScrollView, TouchableOpacity } from "react-native"
+import { View, Text, TouchableOpacity, type ScrollViewInstance } from "react-native"
 import type { ClinicalStringKey } from "@/lib/preferences-context"
 import { INTRAOP_TAB_KEYS, type IntraopTab } from "@/lib/intraop-tabs"
 import { useShade } from "@/theme/shade"
@@ -13,7 +13,7 @@ function IntraopTabBarComponent({ tab, onSelect, tc, screenWidth, railRef, layou
   onSelect: (t: IntraopTab) => void
   tc: (key: ClinicalStringKey) => string
   screenWidth: number
-  railRef: RefObject<ScrollView | null>
+  railRef: RefObject<ScrollViewInstance | null>
   layouts: MutableRefObject<Partial<Record<string, { x: number; width: number }>>>
 }) {
   const shade = useShade()

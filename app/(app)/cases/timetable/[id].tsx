@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ScrollView, Text, TouchableOpacity, View } from "react-native"
+import { ScrollView, type ScrollViewInstance, Text, TouchableOpacity, View } from "react-native"
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router"
 import { GestureHandlerRootView, GestureDetector, Gesture, ScrollView as GHScrollView } from "react-native-gesture-handler"
 import { planPanels } from "@lospor/core/print"
@@ -83,7 +83,7 @@ export default function TimetableViewerScreen() {
   const step = stepForColW(effColW)
 
   // Track each panel's horizontal offset so zooming keeps the view in place.
-  const scrollRefs = useRef<Record<number, GHScrollView | null>>({})
+  const scrollRefs = useRef<Record<number, ScrollViewInstance | null>>({})
   const offsets = useRef<Record<number, number>>({})
   const applyZoom = useCallback((next: number) => {
     setColW(prev => {
@@ -187,7 +187,7 @@ export default function TimetableViewerScreen() {
                   )}
                   <GHScrollView
                     horizontal showsHorizontalScrollIndicator contentContainerStyle={{ padding: 6 }}
-                    ref={(r: GHScrollView | null) => { scrollRefs.current[pl.index] = r }}
+                    ref={(r: ScrollViewInstance | null) => { scrollRefs.current[pl.index] = r }}
                     onScroll={e => { offsets.current[pl.index] = e.nativeEvent.contentOffset.x }}
                     scrollEventThrottle={32}
                   >

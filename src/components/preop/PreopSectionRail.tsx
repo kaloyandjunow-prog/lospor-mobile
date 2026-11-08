@@ -1,4 +1,4 @@
-import { Animated, Pressable, ScrollView, Text, View, type LayoutChangeEvent } from "react-native"
+import { Animated, Pressable, Text, View, type LayoutChangeEvent, type ScrollViewInstance } from "react-native"
 import type { RefObject } from "react"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { colors, withAlpha } from "@/theme/colors"
@@ -8,7 +8,7 @@ import { OverflowCueScrollView } from "@/components/intraop/OverflowCueScrollVie
 export function PreopSectionRail({ labels, activeSection, sectionRailRef, headerAnim, primaryHeaderHeight, insetTop, homeLabel, onHome, onJump, onPillLayout }: {
   labels: { key: PreopSection; label: string }[]
   activeSection: PreopSection
-  sectionRailRef: RefObject<ScrollView | null>
+  sectionRailRef: RefObject<ScrollViewInstance | null>
   headerAnim: Animated.Value
   primaryHeaderHeight: number
   insetTop: number

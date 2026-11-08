@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Modal, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native"
+import { Modal, Pressable, ScrollView, Text, useWindowDimensions, View, type ViewInstance, type ScrollViewInstance } from "react-native"
 import { hapticConfirm, hapticKey, hapticTick } from "@/lib/haptic"
 import { resolveNumberEntry, type ClinicalNumberChange } from "@/lib/clinical-number-entry"
 import { colors, withAlpha } from "@/theme/colors"
@@ -56,8 +56,8 @@ export function ClinicalNumberInput({
   const [visualIndex, setVisualIndex] = useState(0)
   const [anchor, setAnchor] = useState<AnchorRect | null>(null)
   const { height: screenHeight } = useWindowDimensions()
-  const fieldRef = useRef<View>(null)
-  const wheelRef = useRef<ScrollView>(null)
+  const fieldRef = useRef<ViewInstance>(null)
+  const wheelRef = useRef<ScrollViewInstance>(null)
   const wheelIndexRef = useRef(0)
   const momentumActiveRef = useRef(false)
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)

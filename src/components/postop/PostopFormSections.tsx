@@ -1,6 +1,6 @@
 import type { Disposition } from "@lospor/core/case-detail"
 import React, { useCallback, useEffect, useRef, useState } from "react"
-import { View, Text, TouchableOpacity, type LayoutChangeEvent, type ScrollView } from "react-native"
+import { View, Text, TouchableOpacity, type LayoutChangeEvent, type ScrollViewInstance } from "react-native"
 import { useMemo } from "react"
 import { colors, withAlpha, useThemeRefresh } from "@/theme/colors"
 import { usePreferences } from "@/lib/preferences-context"
@@ -26,7 +26,7 @@ export function SectionHeader({ title, onLayout }: { title: string; onLayout?: (
  * scrolls.
  */
 export function usePostopFocusScroll(focus: string | null | undefined) {
-  const ref = useRef<ScrollView>(null)
+  const ref = useRef<ScrollViewInstance>(null)
   const done = useRef(false)
   const mark = useCallback((key: "recovery" | "disposition") => (event: LayoutChangeEvent) => {
     if (done.current || focus !== key) return
