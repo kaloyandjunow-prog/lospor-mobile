@@ -1,20 +1,18 @@
 import { useState } from "react"
-import { View, Text, Linking, Platform } from "react-native"
+import { View, Text, Linking } from "react-native"
 import Constants from "expo-constants"
 import { Stack, useRouter, type Href } from "expo-router"
 import { useAuth } from "@/lib/auth-context"
-import { apiFetch } from "@/lib/api"
-import { notify, confirmAction } from "@/lib/notify"
-import { clearLocalClinicalCache } from "@/lib/local-clinical-cache"
+import { notify } from "@/lib/notify"
 import { usePreferences } from "@/lib/preferences-context"
 import { BooleanSwitch, Card, SectionHeader, SettingsRow } from "@/components/ui"
 import { colors } from "@/theme/colors"
 import { AppHeader } from "@/components/AppHeader"
 import { useOptionLibrary } from "@/lib/use-option-library"
 import { resolveOptionPreferenceLabels } from "@lospor/core/option-contracts"
-import { formatMessage } from "@/i18n/locale"
 import { legalDocumentUrl } from "@/lib/legal-links"
 import { FavouritePicker } from "@/components/SettingsPickers"
+import { useSettingsDangerActions } from "./useSettingsDangerActions"
 import { NotificationsCard } from "./NotificationsCard"
 import { DiagnosticsCard, type DiagState } from "./DiagnosticsCard"
 import { BulgarianNamesCard } from "./BulgarianNamesCard"
@@ -84,20 +82,7 @@ export function SettingsPreferencesView({
     favouriteInfusions,
   )
 
-  async function clearClinicalCache() {
-    const run = async () => {
-      const cleared = await clearLocalClinicalCache()
-      await refreshDiagnostics()
-      const detail = formatMessage(t("localCacheClearedBody"), { drafts: cleared.drafts, patches: cleared.patches, queues: cleared.intraopQueues })
-      notify(t("localCacheCleared"), detail)
-    }
-    if (Platform.OS === "web") { await run(); return }
-    void confirmAction(
-      t("clearLocalCacheTitle"),
-      t("clearLocalCacheBody"),
-      { destructive: true, confirmLabel: t("clearCacheConfirm"), cancelLabel: t("cancel") },
-    ).then(ok => { if (ok) run() })
-  }
+  const { clearClinicalCache, handleDeleteAccount } = useSettingsDangerActions({ t: t as never, refreshDiagnostics, logout })
 
   // -- Automation setters -------------------------------------------------------
   function setAutoFillVitals(v: boolean) {
@@ -136,20 +121,6 @@ export function SettingsPreferencesView({
     }
   }
 
-  function handleDeleteAccount() {
-    void confirmAction(t("deleteAccountTitle"), t("deleteAccountMsg"), { destructive: true, confirmLabel: t("deleteAccountConfirm"), cancelLabel: t("cancel") })
-      .then(ok => { if (ok) confirmDeleteAccount() })
-  }
-
-  async function confirmDeleteAccount() {
-    try {
-      const res = await apiFetch("/api/user/delete", { method: "POST" })
-      if (!res.ok) throw new Error()
-      await logout()
-    } catch {
-      notify(t("error"), t("deleteAccountError"))
-    }
-  }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>

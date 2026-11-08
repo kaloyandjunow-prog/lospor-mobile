@@ -31,7 +31,7 @@ import {
   type DrugPickerOption,
   type DrugPickerSearchResult,
 } from "@/components/intraop/DrugPickerMenu"
-import { fallbackRange, type DoseCalc, type DoseSurface, type Range } from "@/components/intraop/drug-sheet-types"
+import { fallbackRange, pediatricSliderLimits, type DoseCalc, type DoseSurface, type Range } from "@/components/intraop/drug-sheet-types"
 import { createDrugDraftBuilders } from "@/components/intraop/drug-sheet-drafts"
 import { customStrengthLabel } from "@lospor/core/strength-entry"
 import { doseConfirmProblem } from "@lospor/core/infusion-entry"
@@ -251,12 +251,7 @@ export function DrugSheet({
         ? Array.from(new Set(pediatricProfilesForDrug.map(profile => canonicalRoute(profile.route) ?? profile.route)))
       : canonicalRoutes(drugPick.name)
     : []
-  const pediatricStep = selectedPediatricProfile?.roundTo ?? (activeUnit === "mcg" ? 1 : 0.1)
-  const pediatricMax = Math.max(
-    selectedPediatricProfile?.maximumAmount ?? 0,
-    pediatricAmount != null ? pediatricAmount * 2 : 0,
-    pediatricStep * 10,
-  )
+  const { step: pediatricStep, max: pediatricMax } = pediatricSliderLimits(selectedPediatricProfile, pediatricAmount, activeUnit)
   const activeRange = !prospectiveGuidanceEnabled || searchOnlySelection
     ? { min: 0, max: 100_000, step: 0.1 }
     : structuredPediatricSurface

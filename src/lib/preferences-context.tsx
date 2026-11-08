@@ -9,6 +9,7 @@ import React, {
 } from "react"
 import * as SecureStore from "expo-secure-store"
 import { Platform } from "react-native"
+import { LEGACY_LANGUAGE_KEY, POSTOP_LAYOUT_KEY, PREOP_LAYOUT_KEY, PRE_AUTH_LANGUAGE_KEY, THEME_KEY, loadStoredAppearance } from "@/lib/preferences-storage"
 import { applyUiScale, loadUiScale } from "@/lib/ui-scale"
 import { setColorScheme, type ColorScheme } from "@/theme/colors"
 import { ThemeSchemeContext } from "@/theme/theme-context"
@@ -44,11 +45,6 @@ export type { AppLanguage } from "@/i18n/locale"
 export type { HeightUnit, WeightUnit, TemperatureUnit, Etco2Unit, CvpUnit } from "./preferences-context-types"
 import type { ClinicalStringsMap, PreferencesContextValue, TranslationKey } from "./preferences-context-types"
 
-const PRE_AUTH_LANGUAGE_KEY = "lospor_pre_auth_locale_v1"
-const LEGACY_LANGUAGE_KEY = "lospor_language"
-const THEME_KEY = "lospor_theme"
-const PREOP_LAYOUT_KEY = "lospor_preop_layout"
-const POSTOP_LAYOUT_KEY = "lospor_postop_layout"
 
 export type { ClinicalStringKey, TranslationKey }
 
@@ -106,19 +102,13 @@ export function PreferencesProvider({
   }, [])
 
   useEffect(() => {
-    void Promise.all([
-      SecureStore.getItemAsync(THEME_KEY),
-      SecureStore.getItemAsync(PREOP_LAYOUT_KEY),
-      SecureStore.getItemAsync(POSTOP_LAYOUT_KEY),
-    ]).then(([storedTheme, storedLayout, storedPostop]) => {
-      if (storedPostop === "sections" || storedPostop === "scroll") setPostopLayoutState(storedPostop)
-      if (storedTheme === "dark" || storedTheme === "light") {
+    void loadStoredAppearance().then(({ theme: storedTheme, preopLayout: storedLayout, postopLayout: storedPostop }) => {
+      if (storedPostop) setPostopLayoutState(storedPostop)
+      if (storedTheme) {
         setThemeState(storedTheme)
         setColorScheme(storedTheme)
       }
-      if (storedLayout === "sections" || storedLayout === "scroll") {
-        setPreopLayoutState(storedLayout)
-      }
+      if (storedLayout) setPreopLayoutState(storedLayout)
     }).catch(() => {})
   }, [])
 

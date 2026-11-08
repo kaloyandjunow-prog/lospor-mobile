@@ -7,6 +7,7 @@ import { usePreferences } from "@/lib/preferences-context"
 import { OverflowCueScrollView } from "@/components/intraop/OverflowCueScrollView"
 import { parseClinicalNumber } from "@/lib/clinical-number"
 import { HoldRepeatPressable } from "./HoldRepeatPressable"
+import { clamp, formatValue } from "@/lib/clinical-number-format"
 export { parseClinicalNumber } from "@/lib/clinical-number"
 
 type Props = {
@@ -21,15 +22,6 @@ type Props = {
   quickValues?: number[]
   placeholder?: string
   showSteppers?: boolean
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value))
-}
-
-function formatValue(value: number | null | undefined, precision: number) {
-  if (value == null) return ""
-  return precision > 0 ? value.toFixed(precision).replace(/\.0+$/, "") : String(Math.round(value))
 }
 
 const WHEEL_ROW_HEIGHT = 42

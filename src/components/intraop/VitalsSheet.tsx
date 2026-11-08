@@ -1,10 +1,11 @@
 import type { RefObject } from "react"
 import { Platform, Text, TextInput, View } from "react-native"
 import { FeedbackPressable } from "./FeedbackPressable"
+import { MonitorScanButton } from "./MonitorScanButton"
+import { vitalFeedbackText } from "./vitals-feedback-text"
 import { Sheet } from "./Sheet"
 import { usePreferences } from "@/lib/preferences-context"
 import { formatMessage } from "@/i18n/locale"
-import { capabilityMessageKey, useClinicalAiCapabilities } from "@/lib/deployment-capabilities"
 import type { IntraopVitalKey } from "@lospor/core/intraop-vitals"
 import type { VitalEntryFeedback } from "@/lib/intraop-vital-entry"
 import { useShade } from "@/theme/shade"
@@ -109,30 +110,7 @@ export function VitalsSheet({
 }: Props) {
   const shade = useShade()
   const { tc } = usePreferences()
-  const clinicalAi = useClinicalAiCapabilities()
-  function feedbackText(field: IntraopVitalKey): { text: string; error: boolean } | null {
-    if (feedback.errors[field]) {
-      const text = field === "bis" ? tc("vsErrorBis")
-        : field === "tofRatio" ? tc("vsErrorTofRatio")
-        : field === "spO2" ? tc("vsErrorSpo2")
-        : field === "systolic" || field === "diastolic" || field === "heartRate"
-          ? tc("vsErrorWholeNonnegative")
-          : field === "etco2" ? tc("vsErrorNonnegative")
-          : tc("vsErrorNumber")
-      return { text, error: true }
-    }
-    const warning = feedback.warnings[field]
-    if (!warning) return null
-    const low = warning === "low"
-    const key = field === "systolic" ? (low ? "vsWarningSysLow" : "vsWarningSysHigh")
-      : field === "diastolic" ? "vsWarningDiaHigh"
-      : field === "heartRate" ? (low ? "vsWarningHeartLow" : "vsWarningHeartHigh")
-      : field === "spO2" ? "vsWarningSpo2Low"
-      : field === "etco2" ? (low ? "vsWarningEtco2Low" : "vsWarningEtco2High")
-      : field === "temp" ? (low ? "vsWarningTempLow" : "vsWarningTempHigh")
-      : null
-    return key ? { text: tc(key), error: false } : null
-  }
+  const feedbackText = (field: IntraopVitalKey) => vitalFeedbackText(feedback, field, tc as never)
   function renderFeedback(field: IntraopVitalKey) {
     const message = feedbackText(field)
     return message ? (
@@ -155,30 +133,7 @@ export function VitalsSheet({
   const showExtendedFields = mode === "full" || hasExtendedHardError
   return (
     <Sheet visible={visible} onClose={onClose} title={title} full>
-      {clinicalAi.monitorOcr.enabled ? (
-        <>
-          <FeedbackPressable
-            onPress={onScan}
-            disabled={scanBusy}
-            style={{ flexDirection:"row", alignItems:"center", justifyContent:"center", gap:8,
-              paddingVertical:10, paddingHorizontal:16, borderRadius:12, marginBottom:16,
-              backgroundColor: scanBusy ? shade("#1e2d40") : shade("#0f2a1a"),
-              borderWidth:1, borderColor: scanBusy ? shade("#2a3a50") : shade("#22c55e55") }}>
-            <Text style={{ color: scanBusy ? shade("#64748b") : shade("#86efac"), fontSize:13, fontWeight:"700" }}>
-              {scanBusy ? tc("vsReadingMonitor") : tc("vsScanMonitor")}
-            </Text>
-          </FeedbackPressable>
-          {!scanBusy ? (
-            <Text style={{ color:shade("#475569"), fontSize:10, marginBottom:14, lineHeight:14 }}>
-              {tc("vsScanPrivacyNote")}
-            </Text>
-          ) : null}
-        </>
-      ) : (
-        <Text style={{ color:shade("#64748b"), fontSize:11, marginBottom:14, lineHeight:16 }}>
-          {tc(capabilityMessageKey(clinicalAi.monitorOcr.reason))}
-        </Text>
-      )}
+      <MonitorScanButton onScan={onScan} busy={scanBusy} />
       <Text style={{ color:shade("#ef4444"), fontSize:11, fontWeight:"700", letterSpacing:1,
         textTransform:"uppercase", marginBottom:8 }}>{showIbp ? tc("vsNibp") : tc("vsBloodPressure")}</Text>
       <View style={{ flexDirection:"row", gap:10, marginBottom:18, alignItems:"flex-start" }}>

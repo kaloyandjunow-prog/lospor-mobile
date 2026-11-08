@@ -2,12 +2,13 @@ import { memo } from "react"
 import { LabDrawDetail, LabDrawPill, mergeRowLabDraws } from "@/components/intraop/LabDrawCell"
 import type { IntraopLabDraw } from "@lospor/core/labs"
 import { View, Text, TouchableOpacity } from "react-native"
-import { colors, useShade } from "@/theme/colors"
+import { useShade } from "@/theme/colors"
 import { timeAtCol, formatDateHHMM } from "@/lib/intraop-projection"
 import type { LogEvent, ActiveInfusion, ActiveFluid, ActiveGasSettings } from "@/lib/intraop-log-event"
 import type { ActiveAgent } from "@/lib/intraop-active-state"
 import type { RunningItem, RowSummary } from "@/lib/intraop-running"
 import type { IntraopAttentionAction } from "@lospor/core/intraop-attention"
+import { SaveStateBadge, SaveStateDot } from "./SaveStateMarks"
 import { AttentionAnswers } from "./AttentionAnswers"
 import { eventsSaveState, type ItemSaveState } from "@lospor/core/intraop-save-state"
 import { useChartSaveState } from "@/lib/use-case-save-state"
@@ -336,29 +337,6 @@ function TimetableRowComponent({
         ))}
       </View>
     </TouchableOpacity>
-  )
-}
-
-/**
- * Not yet saved, saving, or refused (9.13.0). A clock and words, never a
- * dashed outline: dashes already mean planned on this chart.
- */
-function SaveStateBadge({ state }: { state: ItemSaveState }) {
-  const { tc } = usePreferences()
-  const color = state === "refused" ? colors.danger : colors.warning
-  const label = state === "refused" ? tc("refusedShort") : state === "sending" ? tc("sendingShort") : tc("queuedShort")
-  return (
-    <Text testID={`row-save-${state}`} style={{ color, fontSize: 9, fontWeight: "800", lineHeight: 12 }}>
-      {state === "refused" ? "✕" : "◷"} {label}
-    </Text>
-  )
-}
-
-function SaveStateDot({ state }: { state: ItemSaveState }) {
-  return (
-    <Text testID={`item-save-${state}`} style={{ color: state === "refused" ? colors.danger : colors.warning, fontSize: 12, marginRight: 6 }}>
-      {state === "refused" ? "✕" : "◷"}
-    </Text>
   )
 }
 

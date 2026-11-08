@@ -1,8 +1,8 @@
 import type { ReactNode, RefObject } from "react"
-import { Alert, View, Text, TouchableOpacity, TextInput } from "react-native"
+import { View, Text, TouchableOpacity, TextInput } from "react-native"
 import { CL_GRADES } from "@/lib/airway-ventilation"
 import { usePreferences } from "@/lib/preferences-context"
-import { airwayAbsentReason } from "@lospor/core/intraop"
+import { AirwayAbsentToggles } from "./AirwayAbsentToggles"
 import { AirwayDevicePanels } from "./AirwayDevicePanels"
 import { VentilationModeSection } from "./VentilationModeSection"
 import { useIntraopHeaderScroll } from "../IntraopHeaderCollapse"
@@ -70,50 +70,11 @@ export function AirwayTab({
 
   return (
     <OverflowCueScrollView style={{ flex:1 }} scrollViewStyle={{ flex:1 }} contentContainerStyle={{ padding:16, paddingBottom:40 }} onScroll={onScroll} scrollEventThrottle={scrollEventThrottle}>
-      {/* Why there is no airway device of this team's own. First, because both
-          answers change what the rest of this tab means, and finding that out
-          after scrolling through tools and devices is the wrong order.
-          Independent, not exclusive: a patient can arrive from the ICU already
-          intubated AND have no airway intervention here, which is both of them
-          at once. */}
-      <View style={{ flexDirection:"row", flexWrap:"wrap", gap:8, marginBottom:20 }}>
-        {([
-          { key: "presents", on: awPresentsIntubated, label: tc("awPresentsIntubated") },
-          { key: "na", on: awNotApplicable, label: tc("awNotApplicable") },
-        ] as const).map(option => (
-          <TouchableOpacity
-            key={option.key}
-            onPress={() => {
-              // The exclusivity rule lives in core, so web and mobile cannot
-              // disagree about it the way they did when each had its own.
-              const next = airwayAbsentReason(
-                option.key === "presents" ? "presentsIntubated" : "airwayNotApplicable",
-                { presentsIntubated: awPresentsIntubated, airwayNotApplicable: awNotApplicable },
-              )
-              const apply = () => {
-                setAwPresentsIntubated(() => next.presentsIntubated)
-                setAwNotApplicable(() => next.airwayNotApplicable)
-                if (next.airwayNotApplicable) onNoAirwayInterventionSelected()
-              }
-              if (next.airwayNotApplicable && (awDevices.length > 0 || awTools.length > 0)) {
-                Alert.alert(tc("awClearTitle"), tc("awClearMessage"), [
-                  { text: tc("cancelLabel"), style: "cancel" },
-                  { text: tc("awClearConfirm"), style: "destructive", onPress: apply },
-                ])
-                return
-              }
-              apply()
-            }}
-            style={{ paddingHorizontal:14, paddingVertical:10, borderRadius:12,
-              backgroundColor: option.on ? shade("#3f2d1a") : shade("#111111"),
-              borderWidth:1, borderColor: option.on ? shade("#f59e0b") : shade("#1e2d40") }}
-          >
-            <Text style={{ color: option.on ? shade("#fcd34d") : shade("#64748b"), fontSize:12, fontWeight:"700" }}>
-              {option.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <AirwayAbsentToggles
+        presentsIntubated={awPresentsIntubated} setPresentsIntubated={setAwPresentsIntubated}
+        notApplicable={awNotApplicable} setNotApplicable={setAwNotApplicable}
+        hasRecordedAirway={awDevices.length > 0 || awTools.length > 0}
+        onNoAirwayInterventionSelected={onNoAirwayInterventionSelected} />
 
       {smart}
       {smart ? null : (
