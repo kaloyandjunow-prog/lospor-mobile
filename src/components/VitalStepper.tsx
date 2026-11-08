@@ -1,5 +1,7 @@
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { View, Text, Pressable, Modal, PanResponder, useWindowDimensions, type ViewInstance } from "react-native"
+import { createGestureHandle } from "@/lib/gesture-lock"
+import { HELD_CONTROL_STYLE } from "@/lib/gesture-style"
 import { hapticKey, hapticTick } from "@/lib/haptic"
 import { usePreferences } from "@/lib/preferences-context"
 import { formatMessage } from "@/i18n/locale"
@@ -70,6 +72,8 @@ export function VitalStepper({ value, onChange, min, max, manualMax = max, step 
     commit(min + ratio * (max - min))
   }, [commit, max, min, trackWidth])
 
+  const hold = useMemo(createGestureHandle, [])
+  useEffect(() => hold.end, [hold])
   const panResponder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
@@ -77,9 +81,11 @@ export function VitalStepper({ value, onChange, min, max, manualMax = max, step 
     // takes the gesture mid-drag and changes tab while a value is being set.
     onPanResponderTerminationRequest: () => false,
     onShouldBlockNativeResponder: () => true,
-    onPanResponderGrant: (event) => { setFromPageX(event.nativeEvent.pageX) },
+    onPanResponderGrant: (event) => { hold.start(); setFromPageX(event.nativeEvent.pageX) },
     onPanResponderMove: (_, gesture) => { setFromPageX(gesture.moveX) },
-  }), [setFromPageX])
+    onPanResponderRelease: () => hold.end(),
+    onPanResponderTerminate: () => hold.end(),
+  }), [hold, setFromPageX])
 
   function openKeypad() {
     if (disabled) return
@@ -128,6 +134,7 @@ export function VitalStepper({ value, onChange, min, max, manualMax = max, step 
     <View style={{ gap: 9 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
         <HoldRepeatPressable
+          testID="stepper-minus"
           disabled={disabled}
           onStep={() => nudge(-1)}
           style={{ width: 44, height: 44, borderRadius: 12, borderCurve: "continuous", alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border, opacity: disabled ? 0.45 : 1 }}
@@ -139,7 +146,7 @@ export function VitalStepper({ value, onChange, min, max, manualMax = max, step 
             half-width field is only ~61px and "130 mmHg" needed 88. */}
         <View ref={fieldRef} collapsable={false} style={{ flex: 1 }}>
           <Pressable disabled={disabled} onPress={openKeypad} style={{ minHeight: 44, alignItems: "center", justifyContent: "center", borderBottomWidth: 2, borderBottomColor: colors.borderStrong, opacity: disabled ? 0.65 : 1 }}>
-            <Text numberOfLines={1} style={{ color: value == null ? colors.textMuted : colors.textPrimary, fontSize: 19, fontWeight: "900", fontVariant: ["tabular-nums"] }}>
+            <Text testID="stepper-value" numberOfLines={1} style={{ color: value == null ? colors.textMuted : colors.textPrimary, fontSize: 19, fontWeight: "900", fontVariant: ["tabular-nums"] }}>
               {value == null ? placeholder : formatClinicalValue(value, precision)}
             </Text>
           </Pressable>
@@ -151,6 +158,7 @@ export function VitalStepper({ value, onChange, min, max, manualMax = max, step 
         </View>
 
         <HoldRepeatPressable
+          testID="stepper-plus"
           disabled={disabled}
           onStep={() => nudge(1)}
           style={{ width: 44, height: 44, borderRadius: 12, borderCurve: "continuous", alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border, opacity: disabled ? 0.45 : 1 }}
@@ -165,7 +173,8 @@ export function VitalStepper({ value, onChange, min, max, manualMax = max, step 
           node.measureInWindow((x) => { trackXRef.current = x })
         }}
         onLayout={(event) => setTrackWidth(Math.max(1, event.nativeEvent.layout.width))}
-        style={{ height: 28, justifyContent: "center" }}
+        testID="stepper-track"
+        style={[{ height: 28, justifyContent: "center" }, HELD_CONTROL_STYLE]}
         {...(disabled ? {} : panResponder.panHandlers)}
       >
         <View style={{ height: 5, borderRadius: 999, backgroundColor: colors.borderStrong }} />

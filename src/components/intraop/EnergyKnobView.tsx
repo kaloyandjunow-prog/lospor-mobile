@@ -1,4 +1,6 @@
-import { useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
+import { createGestureHandle } from "@/lib/gesture-lock"
+import { HELD_CONTROL_STYLE } from "@/lib/gesture-style"
 import { PanResponder, View } from "react-native"
 import Svg, { Circle, Defs, G, Line, Path, RadialGradient, Rect, Stop, Text as SvgText } from "react-native-svg"
 import {
@@ -55,12 +57,19 @@ export function EnergyKnobView({ skin, energy, onChange, size = 240, testID = "d
   skinRef.current = skin
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
+  const hold = useMemo(createGestureHandle, [])
+  useEffect(() => hold.end, [hold])
   const responder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: event => onChangeRef.current(knobEnergyAt(skinRef.current, event.nativeEvent.locationX, event.nativeEvent.locationY, size)),
+    // Turning the knob is a horizontal gesture too; the tab swipe above must not take it over halfway.
+    onPanResponderTerminationRequest: () => false,
+    onShouldBlockNativeResponder: () => true,
+    onPanResponderGrant: event => { hold.start(); onChangeRef.current(knobEnergyAt(skinRef.current, event.nativeEvent.locationX, event.nativeEvent.locationY, size)) },
     onPanResponderMove: event => onChangeRef.current(knobEnergyAt(skinRef.current, event.nativeEvent.locationX, event.nativeEvent.locationY, size)),
-  }), [size])
+    onPanResponderRelease: () => hold.end(),
+    onPanResponderTerminate: () => hold.end(),
+  }), [hold, size])
   const c = size / 2
   const angle = knobAngle(skin, energy)
   const knob = size * 0.27
@@ -69,7 +78,7 @@ export function EnergyKnobView({ skin, energy, onChange, size = 240, testID = "d
 
   return (
     <View {...responder.panHandlers} testID={testID} accessibilityLabel={label} accessibilityRole="adjustable"
-      accessibilityValue={{ min: 1, max: 360, now: energy ?? undefined }} style={{ width: size, height: size }}>
+      accessibilityValue={{ min: 1, max: 360, now: energy ?? undefined }} style={[{ width: size, height: size }, HELD_CONTROL_STYLE]}>
       <Svg width={size} height={size}>
         <Defs>
           <RadialGradient id="knobDark" cx="38%" cy="30%" r="70%">
