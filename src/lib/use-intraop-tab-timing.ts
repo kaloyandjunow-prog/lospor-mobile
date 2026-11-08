@@ -11,6 +11,9 @@ export function useIntraopTabTiming(focus: string | undefined, pendingSaves: () 
   const [tab, setTab] = useState<IntraopTab>(() => intraopTabForFocus(focus) ?? "timing")
   const tabSwitchStartedAt = useRef<number | null>(null)
   const tabRenderStartedAt = useRef<number | null>(null)
+  // Read when the tab changes, never a reason to re-run the effect.
+  const pendingSavesRef = useRef(pendingSaves)
+  useEffect(() => { pendingSavesRef.current = pendingSaves })
   const selectTab = useCallback((next: React.SetStateAction<IntraopTab>) => {
     tabSwitchStartedAt.current = Date.now()
     tabRenderStartedAt.current = null
@@ -33,10 +36,9 @@ export function useIntraopTabTiming(focus: string | undefined, pendingSaves: () 
       tab,
       blockedMs: renderStartedAt - startedAt,
       renderMs: now - renderStartedAt,
-      pendingSaves: pendingSaves(),
+      pendingSaves: pendingSavesRef.current(),
       renderPhases: takeRenderPhases(),
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- fires once per tab change; the save count is read at that moment
   }, [tab])
   return { tab, selectTab }
 }
