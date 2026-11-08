@@ -48,7 +48,7 @@ export default function TimetableViewerScreen() {
 
   const load = useCallback(async () => {
     try {
-      setCaseData(await apiJson<CaseData>(`/api/cases/${id}?deleted=1`))
+      setCaseData(await apiJson<CaseData>(`/api/cases/${id}?view=timetable&deleted=1`))
     } catch {
       setError(tc("caseLoadFailed"))
     }
