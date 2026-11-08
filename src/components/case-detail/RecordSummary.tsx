@@ -41,7 +41,7 @@ export function RecordTimetableCard({ keyEvents, clock, onPress, actionLabel }: 
   const model = useRecordModel(keyEvents, clock)
   const R = recordLabels(language)
   const labelWidth = language === "bg" ? 112 : 92
-  const width = Math.max(screenWidth - 24, labelWidth + (model.lastCol + 1) * 7)
+  const width = Math.max(screenWidth - 48, labelWidth + (model.lastCol + 1) * 7)
   const scene = useMemo(() => layoutRecordChart(model, { width, labelWidth, fontSize: 10, graphHeight: 150, ink: P.lbl, faint: P.grid }), [model, width, labelWidth, P.lbl, P.grid])
   if (model.vitals.length === 0 && model.lanes.length === 0) return null
   return (
