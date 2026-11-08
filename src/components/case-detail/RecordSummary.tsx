@@ -3,10 +3,10 @@ import { ScrollView, Text, TouchableOpacity, View, useWindowDimensions } from "r
 import Svg, { Line, Path, Rect, Text as SvgText } from "react-native-svg"
 import { buildRecordEpisodes, buildRecordEventLog } from "@lospor/core/record-log"
 import { recordLabels } from "@lospor/core/record-labels"
-import { layoutRecordChart, type SceneItem } from "@lospor/core/record-chart-layout"
+import { layoutRecordChart, type ChartScene, type SceneItem } from "@lospor/core/record-chart-layout"
 import { buildRecordTimetable, type RecordClock } from "@lospor/core/record-timetable"
 import { usePreferences } from "@/lib/preferences-context"
-import { PALETTES } from "@/components/case-detail/SummaryTimetable"
+import { PALETTES } from "@/components/case-detail/record-palettes"
 
 /**
  * The case summary on the phone and in the PWA (mock E): the same record the web and the print show, from the
@@ -33,6 +33,15 @@ function SceneNode({ item }: { item: SceneItem }) {
   }
 }
 
+/** The chart's drawing instructions as react-native-svg, shared by the summary card and the timetable viewer. */
+export function RecordChartSvg({ scene }: { scene: ChartScene }) {
+  return (
+    <Svg width={scene.width} height={scene.height} viewBox={`0 0 ${scene.width} ${scene.height}`}>
+      {scene.items.map((item, index) => <SceneNode key={index} item={item} />)}
+    </Svg>
+  )
+}
+
 /** The whole case on one chart. It scrolls sideways when the case is longer than the screen is wide. */
 export function RecordTimetableCard({ keyEvents, clock, onPress, actionLabel }: { keyEvents: unknown; clock: Clock; onPress?: () => void; actionLabel?: string }) {
   const { theme, language } = usePreferences()
@@ -49,9 +58,7 @@ export function RecordTimetableCard({ keyEvents, clock, onPress, actionLabel }: 
       style={{ backgroundColor: P.card, borderRadius: 14, borderWidth: 1, borderColor: P.grid, padding: 10, marginBottom: 12 }}>
       <Text style={{ color: P.title, fontSize: 10, fontWeight: "800", letterSpacing: 1.2, marginBottom: 6 }}>{R.timetable.toUpperCase()}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <Svg width={scene.width} height={scene.height} viewBox={`0 0 ${scene.width} ${scene.height}`}>
-          {scene.items.map((item, index) => <SceneNode key={index} item={item} />)}
-        </Svg>
+        <RecordChartSvg scene={scene} />
       </ScrollView>
       {onPress && actionLabel ? <Text style={{ color: P.title, fontSize: 12, fontWeight: "700", marginTop: 6, textAlign: "right" }}>{actionLabel}</Text> : null}
     </TouchableOpacity>
@@ -90,12 +97,12 @@ export function RecordEventLog({ keyEvents, deletedEvents, timeZone }: { keyEven
 }
 
 /** The vitals every five minutes, shut until asked for: on a phone a hundred rows is a screen of scrolling. */
-export function RecordVitalsTable({ keyEvents, clock }: { keyEvents: unknown; clock: Clock }) {
+export function RecordVitalsTable({ keyEvents, clock, defaultOpen = false }: { keyEvents: unknown; clock: Clock; defaultOpen?: boolean }) {
   const { theme, language } = usePreferences()
   const P = theme === "dark" ? PALETTES.dark : PALETTES.light
   const R = recordLabels(language)
   const model = useRecordModel(keyEvents, clock)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultOpen)
   if (model.vitals.length === 0) return null
   const cell = (text: string | number | undefined, width: number, bad = false) => (
     <Text style={{ color: bad ? P.sbp : P.ink, fontSize: 11, width, fontVariant: ["tabular-nums"], fontWeight: bad ? "700" : "400" }}>{text ?? "—"}</Text>

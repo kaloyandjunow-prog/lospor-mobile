@@ -3,7 +3,7 @@ import { Text } from "react-native"
 import { describe, expect, it, vi } from "vitest"
 
 vi.mock("@/lib/preferences-context", () => ({ usePreferences: () => ({ language: "en", theme: "dark", tc: (key: string) => key }) }))
-vi.mock("@/components/case-detail/SummaryTimetable", () => ({
+vi.mock("@/components/case-detail/record-palettes", () => ({
   PALETTES: { dark: { card: "#000", grid: "#111", title: "#222", muted: "#333", ink: "#444", sbp: "#f00", faint: "#555", lbl: "#666" }, light: {} },
 }))
 vi.mock("react-native-svg", () => ({ __esModule: true, default: "Svg", Line: "Line", Path: "Path", Rect: "Rect", Text: "SvgText" }))
