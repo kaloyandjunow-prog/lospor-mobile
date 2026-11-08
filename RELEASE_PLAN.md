@@ -74,7 +74,7 @@ Status legend: ⬜ pending · 🔄 in progress · ✅ done
 
 ## Notes
 
-- `eas.json` dev profile has `192.168.0.107:3000` hardcoded — decide before push whether to replace with placeholder
+- `eas.json` dev profile has a LAN address hardcoded — decide before push whether to replace with placeholder
 - `google-play-service-account.json` is gitignored, must be created separately
 - `patches/react-native-css-interop+0.2.4.patch` MUST be included in git commit
 - EAS project ID already configured: `4b87b715-f0c9-4c6f-b40c-4ade6693b77d`
