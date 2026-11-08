@@ -42,9 +42,9 @@ export type PhoneSuggestionSheets = {
   clockOf: (iso: string) => string
   openDrug: (args: { name: string; mode: "bolus" | "infusion"; amount: number | "catalogue" | null; unit?: string; route?: string; suggestion: string }) => void
   openFluid: (args: { name?: string; category?: string; amount: number | "catalogue" | null; mode?: "VOLUME" | "RATE"; suggestion: string }) => void
-  openShock: () => void
+  openShock: (suggestion: string) => void
   openLab: () => void
-  openGas: (fio2: number, fgf: number, air: boolean) => void
+  openGas: (fio2: number, fgf: number, air: boolean, suggestion: string) => void
   deepenTargets: () => { key: string; label: string; open: () => void }[]
   stop: (event: LogEvent, suggestion: string) => void
   displayName: (event: LogEvent) => string
@@ -149,8 +149,8 @@ function CardSheet({ card, complication, attention, sheets, onClose }: {
       case "drug": if (prefill?.drug) openInline(row.id, () => sheets.openDrug({ name: prefill.drug!, mode: "bolus", amount: prefill.amount, unit: prefill.unit, route: prefill.route, suggestion: tag })); return
       case "infusion": if (prefill?.drug) openInline(row.id, () => sheets.openDrug({ name: prefill.drug!, mode: "infusion", amount: prefill.amount, unit: prefill.unit, suggestion: tag })); return
       case "fluid": openInline(row.id, () => sheets.openFluid({ name: prefill?.fluid, category: prefill?.category, amount: prefill?.amount ?? null, mode: prefill?.mode, suggestion: tag })); return
-      case "gas": { const gas = row.def; openInline(row.id, () => sheets.openGas(gas.fio2, gas.fgf, !!gas.stopNitrous)); return }
-      case "shock": onClose(); sheets.openShock(); return
+      case "gas": { const gas = row.def; openInline(row.id, () => sheets.openGas(gas.fio2, gas.fgf, !!gas.stopNitrous, tag)); return }
+      case "shock": onClose(); sheets.openShock(tag); return
       case "lab": onClose(); sheets.openLab(); return
       case "airway": onClose(); sheets.openAirway?.(complication); return
       case "deepen": setInline(inline?.row.id === row.id ? null : { kind: "deepen", row }); return

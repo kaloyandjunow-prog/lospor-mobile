@@ -82,9 +82,9 @@ export function buildPhoneSuggestionSheets(deps: PhoneSheetDeps): PhoneSuggestio
         deps.setFlVol(String(amount))
       }
     },
-    openShock: deps.openShock,
+    openShock: suggestion => { deps.pending.current = suggestion; deps.openShock() },
     openLab: deps.openLab,
-    openGas: deps.openGas,
+    openGas: (fio2, fgf, air, suggestion) => { deps.pending.current = suggestion; deps.openGas(fio2, fgf, air) },
     deepenTargets: deps.deepenTargets,
     stop: (event, suggestion) => {
       if (event.type === "infusion_start" && event.infId) deps.saveEvent({ type: "infusion_stop", infId: event.infId, name: event.name, color: event.color, suggestion })
@@ -99,7 +99,7 @@ export function buildPhoneSuggestionSheets(deps: PhoneSheetDeps): PhoneSuggestio
 /** The event a sheet saves, with the suggestion it was opened from, once. */
 export function tagWithSuggestion<T extends { type: string }>(event: T, pending: { current: string | null }): T & { suggestion?: string } {
   const tag = pending.current
-  if (!tag || !["drug", "infusion_start", "fluid_start"].includes(event.type)) return event
+  if (!tag || !["drug", "infusion_start", "fluid_start", "gas_start", "gas_change", "defibrillation"].includes(event.type)) return event
   pending.current = null
   return { ...event, suggestion: tag }
 }

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
  
 import {
   View, ScrollView, FlatList,
@@ -357,14 +357,17 @@ export default function IntraopLiveScreen() {
     flEndRate, setFlEndRate, changeFluidRate,
     openFluid, confirmFluid, openFluidEnd, confirmFluidEnd, stopFluidDirect,
   } = useFluidEntry(saveTagged, setEntryTs, setActiveFluids, stampFor)
-  useEffect(() => { if (!drugOpen && !infOpen && !flOpen) pendingSuggestion.current = null }, [drugOpen, infOpen, flOpen])
+  // (Cleared below, once the gas and shock sheets are known: a card can open those too.)
 
   // Agent sheet
   const { agOpen, setAgOpen, agPick, setAgPick, agPercent, setAgPercent, openAgent, confirmAgent, stopAgent } =
     useAgentEntry(saveTagged, setEntryTs, activeAgents, setActiveAgents)
   // Gas settings sheet (FGF/carrier gas/FiO2) - event-based gas_start/gas_change/gas_stop.
   const { gasOpen, setGasOpen, gasFgf, setGasFgf, gasCarrierGas, setGasCarrierGas, gasFio2, setGasFio2, openGasSettings, confirmGasSettings, stopGasSettings } =
-    useGasSettingsEntry(save, setEntryTs, activeGas, setActiveGas)
+    useGasSettingsEntry(saveTagged, setEntryTs, activeGas, setActiveGas)
+  // A card can open the gas and shock sheets too: leave no tag behind when every sheet is closed unsaved.
+  const defibOpen = useSyncExternalStore(defibrillationSheet.subscribe, defibrillationSheet.current, defibrillationSheet.current) != null
+  useEffect(() => { if (!drugOpen && !infOpen && !flOpen && !gasOpen && !defibOpen) pendingSuggestion.current = null }, [drugOpen, infOpen, flOpen, gasOpen, defibOpen])
   const { favouriteDrugs, favouriteInfusions } = useIntraopFavourites()
 
   const {
@@ -1165,7 +1168,7 @@ export default function IntraopLiveScreen() {
           sheet needs only the draw list and the case id, and passing it through
           that props object would add six more names to a list that is already
           the reason this screen is hard to read. */}
-      <DefibrillationHost log={log} save={save} preop={preop} />
+      <DefibrillationHost log={log} save={saveTagged} preop={preop} />
       {!isWatching ? <JetHost log={log} save={save} clockOf={attention?.clockOf ?? (iso => iso.slice(11, 16))} /> : null}
       {!isWatching ? <TourniquetHost log={log} save={save} sex={preop?.sex} clockOf={attention?.clockOf ?? (iso => iso.slice(11, 16))}
         ageDays={preopAgeDays(preop ? { ageValue: preop.ageValue, ageUnit: preop.ageUnit, ageYears: preop.age, ageApproxDays: preop.ageApproxDays } : null)} /> : null}
