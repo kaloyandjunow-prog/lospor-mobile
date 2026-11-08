@@ -18,8 +18,7 @@ import { STATUS_META, statusLabel } from "@/components/ui"
 import { colors, withAlpha } from "@/theme/colors"
 import { usePreferences } from "@/lib/preferences-context"
 import { AirwayCard, IntraopCard, LabCard, MedicalHistoryCard, PostopCard, PreopCard } from "@/components/case-detail/CaseDetailCards"
-import { SummaryTimetable } from "@/components/case-detail/SummaryTimetable"
-import { WrittenEventList } from "@/components/case-detail/WrittenEventList"
+import { RecordEpisodes, RecordEventLog, RecordTimetableCard, RecordVitalsTable } from "@/components/case-detail/RecordSummary"
 import { CaseStatusMeta } from "@/components/case-detail/CaseStatusMeta"
 import {
   computedDisplayStatus,
@@ -44,7 +43,7 @@ export default function CaseSummaryScreen() {
   const loadCase = useCallback(async () => {
     try {
       setError(null)
-      const data = await apiJson<CaseData>(`/api/cases/${id}`)
+      const data = await apiJson<CaseData>(`/api/cases/${id}?deleted=1`)
       setCaseData(data)
     } catch {
       setError(tc("caseLoadFailed"))
@@ -54,6 +53,13 @@ export default function CaseSummaryScreen() {
   }, [id, tc])
 
   useEffect(() => { loadCase() }, [loadCase])
+
+  // What fixes column zero of the chart in time: the saved start instant and zone, else the legacy start.
+  const intraopStart = caseData?.intraop as { startedAt?: string | null; startTime?: string | null; timezone?: string | null } | null | undefined
+  const recordClock = useMemo(
+    () => ({ startedAt: intraopStart?.startedAt, startISO: intraopStart?.startTime, timezone: intraopStart?.timezone }),
+    [intraopStart?.startedAt, intraopStart?.startTime, intraopStart?.timezone],
+  )
 
   const editWindowOpen = useMemo(() => {
     if (!caseData?.finalizedAt) return true
@@ -360,9 +366,9 @@ export default function CaseSummaryScreen() {
             uses). Ongoing case: tap opens the live intraop cockpit. Finished
             case: tap opens the read-only timetable viewer — the cockpit is an
             editing surface and closed cases are read-only. */}
-        <SummaryTimetable
+        <RecordTimetableCard
           keyEvents={caseData.intraop?.keyEvents}
-          startISO={caseData.intraop?.startTime}
+          clock={recordClock}
           onPress={() => router.push(
             screenActions.timetableReadOnly
               ? `/(app)/cases/timetable/${id}`
@@ -370,7 +376,9 @@ export default function CaseSummaryScreen() {
           )}
           actionLabel={screenActions.timetableReadOnly ? tc("summaryViewTimetable") : undefined}
         />
-        <WrittenEventList keyEvents={caseData.intraop?.keyEvents} timeZone={caseData.intraop?.timezone} />
+        <RecordEventLog keyEvents={caseData.intraop?.keyEvents} deletedEvents={(caseData as { deletedEvents?: unknown }).deletedEvents} timeZone={caseData.intraop?.timezone} />
+        <RecordVitalsTable keyEvents={caseData.intraop?.keyEvents} clock={recordClock} />
+        <RecordEpisodes keyEvents={caseData.intraop?.keyEvents} timeZone={caseData.intraop?.timezone} />
         <IntraopCard intraop={caseData.intraop} preop={caseData.preop} clinicalMode={caseData.clinicalMode} tc={tc} t={t} />
         <PostopCard postop={caseData.postop} tc={tc} t={t} pediatric={caseData.clinicalMode === "PEDIATRIC"} />
         <LabCard labResults={caseData.preop?.labResults ?? undefined} tc={tc} />
