@@ -1354,20 +1354,12 @@ export const CLINICAL_STRINGS = {
     actionPrintCase:     "Print case",
 
     // Case-summary timetable card
-    summaryTtTitle:      "INTRAOPERATIVE TIMETABLE",
-    summaryOpenIntraop:  "Open intraop ›",
     summaryViewTimetable:"View timetable ›",
-    summaryAsPrinted:    "as printed",
-    summaryEvents:       "events",
-    writtenEventsTitle: "EVENTS",
-    writtenEventsOngoing: "ongoing",
-    writtenEventsApproximate: "≈ time approximate (charted afterwards)",
     summaryDrugs:        "drugs",
 
     // Read-only timetable viewer (finished cases)
     viewerTitle:         "Intraop timetable",
     viewerNoData:        "No intraoperative data recorded",
-    viewerDrugLog:       "DRUG ADMINISTRATION LOG",
 
     // Native PDF printing
     printGenerating:     "Generating PDF…",
@@ -2936,20 +2928,12 @@ export const CLINICAL_STRINGS = {
     actionPrintCase:     "Печат на случая",
 
     // Case-summary timetable card
-    summaryTtTitle:      "ИНТРАОПЕРАТИВНА ВРЕМЕВА ЛИНИЯ",
-    summaryOpenIntraop:  "Към интраоп ›",
     summaryViewTimetable:"Преглед на времевата линия ›",
-    summaryAsPrinted:    "като на печат",
-    summaryEvents:       "събития",
-    writtenEventsTitle: "СЪБИТИЯ",
-    writtenEventsOngoing: "продължава",
-    writtenEventsApproximate: "≈ приблизителен час (записан впоследствие)",
     summaryDrugs:        "медикаменти",
 
     // Read-only timetable viewer (finished cases)
     viewerTitle:         "Интраоперативна времева линия",
     viewerNoData:        "Няма записани интраоперативни данни",
-    viewerDrugLog:       "ДНЕВНИК НА МЕДИКАМЕНТИТЕ",
 
     // Native PDF printing
     printGenerating:     "Генериране на PDF…",
