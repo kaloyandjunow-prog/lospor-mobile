@@ -33,6 +33,30 @@
   block sides, unilateral spinal, urinary catheter, failed devices and lines,
   and the expanded event log.
 
+- **The anaesthesia record on the phone and in the PWA:** the case summary shows
+  a timetable card (the vitals graph and a lane for every drug with its doses,
+  bars for infusions, agents, gas and fluids, episode bands), the event log with
+  deleted entries struck through, the vitals every five minutes behind a
+  "View table" button, and the episodes with what was given. The read-only
+  timetable viewer (the 📊 Chart button, and finished cases) draws the same
+  record on one chart, with pinch or − / + zoom that widens it.
+- **Treatment cards and the SPS on the phone:** cards with in-place dosing
+  controls, an arrest card (Give / Now / At with approximate times, re-spread on
+  ROSC or Death from any screen), monitoring reading intervals from Status, and
+  one waiting list with reminders and timed follow-ups.
+- **Warnings:** malignant-hyperthermia-history warning, local anaesthetic
+  maximum, latex banner (each with its own switch), a death in theatre, and the
+  dantrolene vials on the MH card.
+- **Chart entries:** a jet-ventilation lane drawn as a running bar, the
+  tourniquet body picker, an airway picker and failed lines, and fresh gas flow
+  0–20 L/min (typed to 100).
+- **Settings:** defibrillator energy-knob skins and the suggestion switches.
+- **Timed complications, shocks and End at (from the 10.1.0 work):** vitals
+  questions, complications with their own times and shocks, and End at asking
+  about entries after the chosen end in its sheet.
+- **PWA end-to-end coverage:** infusions, agents, gas, labs, undo and remove,
+  suggestion cards, and the hold-and-drag gestures (56 tests).
+
 ### Fixed
 
 - **Airway selection consistency:** selecting «Без намеса в дихателния път»
@@ -60,6 +84,12 @@
   serialized against the latest local event log so one answer cannot erase
   another.
 
+- **Hold and drag controls keep the finger:** sliders and press-and-hold buttons
+  cannot be swiped into a tab change and never select text (PWA).
+- **End case always opens its sheet,** and a chart is kept when an episode closes
+  on load.
+- **Bulgarian names:** blood pressure reads Сис / Диас / САН; Струйна вентилация.
+
 ### Changed
 
 - **Bulgarian UI copy:** the interactive timetable is labelled «Времева линия»,
@@ -69,6 +99,20 @@
   «неуспешен опит» and «подмяна» consistently.
 - **PWA parity:** the phone app and exported PWA use the canonical web/API
   fields and shared Core clinical logic.
+
+- **Expo SDK 58** (React Native 0.88, React 19.3, react-native-gesture-handler 3),
+  merged after the PWA end-to-end run; the native build is not yet exercised on
+  a device.
+- **Reads less:** the timetable viewer asks for the chart alone
+  (`?view=timetable&deleted=1`).
+- **Dependencies** within SDK 56 were updated first; **contact address** in the
+  Play Store listing is support@lospor.org.
+
+### Removed
+
+- **The written event list card, the old summary card and its chart model, the
+  half-case panel viewer and its numbered pins** are replaced by the record
+  above; the old complications tick-list sheet is gone.
 
 ## [10.0.2] - 2026-10-29
 
