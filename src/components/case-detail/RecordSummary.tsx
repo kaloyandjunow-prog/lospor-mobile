@@ -150,3 +150,22 @@ export function RecordEpisodes({ keyEvents, timeZone }: { keyEvents: unknown; ti
     </View>
   )
 }
+
+type IntraopStart = { startedAt?: string | null; startTime?: string | null; timezone?: string | null; keyEvents?: unknown }
+
+/** The four parts of the record in the order the case summary shows them. */
+export function RecordSummary({ intraop, deletedEvents, onOpenTimetable, actionLabel }: { intraop?: IntraopStart | null; deletedEvents?: unknown; onOpenTimetable?: () => void; actionLabel?: string }) {
+  const clock = useMemo<Clock>(
+    () => ({ startedAt: intraop?.startedAt, startISO: intraop?.startTime, timezone: intraop?.timezone }),
+    [intraop?.startedAt, intraop?.startTime, intraop?.timezone],
+  )
+  const keyEvents = intraop?.keyEvents
+  return (
+    <>
+      <RecordTimetableCard keyEvents={keyEvents} clock={clock} onPress={onOpenTimetable} actionLabel={actionLabel} />
+      <RecordEventLog keyEvents={keyEvents} deletedEvents={deletedEvents} timeZone={intraop?.timezone} />
+      <RecordVitalsTable keyEvents={keyEvents} clock={clock} />
+      <RecordEpisodes keyEvents={keyEvents} timeZone={intraop?.timezone} />
+    </>
+  )
+}
