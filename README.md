@@ -13,6 +13,13 @@ LOSPOR API.
 съхраняват през API; локалната опашка служи само за безопасно възстановяване и
 синхронизация.
 
+Резюмето на случая и прегледът на времевата линия показват същия протокол като
+уеб клиента и печата: времева линия с ред за всеки медикамент, дневник на
+събитията (изтритите записи са задраскани), жизнените показатели зад бутон и
+епизодите. Прегледът само за четене се отваря от бутона „📊 Времева линия“ на
+интраоперативния екран и поддържа мащабиране; той чете от случая само нужното
+(`?view=timetable`).
+
 Публична PWA инсталация: [pwa.lospor.org](https://pwa.lospor.org)
 
 Инструкциите за разработка, конфигурация, Expo изграждане, офлайн поведение,
@@ -125,6 +132,24 @@ version is compatible; missing or malformed data fails closed. If an existing
 case is already `PEDIATRIC`, its Pediatric fields remain visible after
 disablement and the preoperative screen explains that Pediatric changes cannot
 be sent until the installation enables the mode again.
+
+## Case summary and timetable viewer
+
+The case summary and the read-only timetable viewer draw the same record as the
+web summary and the print, from the same Core models (`record-timetable`,
+`record-log`, `record-chart-layout`, `record-labels`):
+
+- a timetable card — the vitals graph and a lane for every drug with its doses,
+  bars for infusions, agents, gas and fluids, and the episodes as bands;
+- the event log, with deleted entries struck through and the minute they were
+  deleted (the case is read with `?deleted=1`);
+- the vitals every five minutes, behind a **View table** button on the summary;
+- the episodes, each with what was given during it.
+
+The viewer opens from the **📊 Chart** button on the intraoperative screen (and
+from the summary of a finished case). It shows the whole case on one chart;
+pinch or − / + widens it and it scrolls sideways. Zoom never hides data. It
+reads only what it draws, with `GET /v1/cases/{id}?view=timetable&deleted=1`.
 
 ## Local help and support
 
