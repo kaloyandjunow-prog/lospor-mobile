@@ -113,16 +113,14 @@ test.describe("cards that ask a question", () => {
     })
     expect(posted.ok(), `complication refused: ${posted.status()}`).toBe(true)
     await page.reload()
-    await page.getByText("Timetable", { exact: true }).click()
-    await expect(page.getByText("Waiting for your answer")).toBeVisible({ timeout: 20_000 })
+    // The card opens its own sheet as soon as the case is loaded, on whichever tab the page opens on, so
+    // the sheet is what to wait for. Going to the Timetable tab first would race it (and be blocked by it).
+    await expect(page.getByText(/· Treat now\?$/)).toBeVisible({ timeout: 30_000 })
     return session
   }
 
   test("a charted hypotension asks whether to treat, and an answer is charted as the treatment", async ({ page, request }) => {
     const session = await withHypotension(page, request)
-    await expect(page.getByText(/Hypotension: treat now\?/)).toBeVisible()
-    // The card opens its own sheet when it arrives; "Open" is for coming back to it.
-    await expect(page.getByText(/· Treat now\?$/)).toBeVisible()
     await page.getByText("Ephedrine", { exact: true }).click()
     // The dose sheet opens prefilled with the card's dose.
     await page.getByText("Add Ephedrine 10 mg", { exact: true }).click()
@@ -134,9 +132,11 @@ test.describe("cards that ask a question", () => {
 
   test("Not now sets the question aside without charting anything", async ({ page, request }) => {
     const session = await withHypotension(page, request)
-    await expect(page.getByText(/· Treat now\?$/)).toBeVisible()
     await page.getByText("Not now", { exact: true }).last().click()
-    await expect(page.getByText(/Hypotension: treat now\?/)).toHaveCount(0, { timeout: 15_000 })
+    await expect(page.getByText(/· Treat now\?$/)).toHaveCount(0, { timeout: 15_000 })
+    // The question is gone from the waiting list too, not only from the sheet.
+    await page.getByText("Timetable", { exact: true }).click()
+    await expect(page.getByText(/Hypotension: treat now\?/)).toHaveCount(0)
     expect(await savedChart(request, session)).not.toMatch(/Ephedrine|Phenylephrine|Metaraminol/)
   })
 })
