@@ -13,6 +13,8 @@ import {
   stripIntraopLogSyncStatuses,
 } from "@/lib/pending-intraop-events"
 import { uid, type LogEvent } from "@/lib/intraop-log-event"
+import { applyIntraopEventOps } from "@lospor/core/intraop-timetable-edit"
+import { arrestEndRespace } from "@lospor/core/intraop-suggestions"
 import { removalOf, restoreRemoved } from "@/lib/intraop-removal-undo"
 import { planEventMutations } from "@/lib/intraop-event-mutations"
 import { notify } from "@/lib/notify"
@@ -181,6 +183,8 @@ export function useIntraopEventPersistence({
     const next = logRef.current.some(item => item.id === event.id)
       ? logRef.current.map(item => item.id === event.id ? event : item)
       : [event, ...logRef.current]
+    // ROSC or Death logged from anywhere spreads the doses tapped during that arrest (10.2.0).
+    const respace = arrestEndRespace(logRef.current as never, next as never)
     logRef.current = next
     setLog(next)
     setSyncState("saving")
@@ -213,6 +217,7 @@ export function useIntraopEventPersistence({
       }
     }
     setEntryTs(null)
+    if (respace.update.length) await syncLog(applyIntraopEventOps(logRef.current as never, respace) as LogEvent[])
     return event
   }
 
@@ -223,6 +228,9 @@ export function useIntraopEventPersistence({
     // step can edit right after a save, before the screen re-renders, and a
     // diff against the rendered log re-sent the entry just saved.
     const previousLog = logRef.current
+    // ROSC or Death added or moved in an edit spreads the doses tapped during that arrest (10.2.0).
+    const respace = arrestEndRespace(previousLog as never, edited as never)
+    if (respace.update.length) edited = applyIntraopEventOps(edited as never, respace) as LogEvent[]
     if (refused(previousLog, edited)) return false
     // Re-timed events get a new entry time; a moved stop is a new guess.
     const newLog = stampEnteredEvents(previousLog, edited, serverNow())

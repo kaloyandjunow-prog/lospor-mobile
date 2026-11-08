@@ -21,12 +21,20 @@ const WEB_PREFIX = "lospor_clinical_sync:"
 const OWNER_PREFIX = "lospor_clinical_account:"
 
 // Queued clinical data is usable only after AuthProvider has selected the
-// account that owns it.  Legacy unscoped keys remain on disk for recovery but
-// are deliberately invisible once an account is active.
+// account that owns it. Data queued before account scoping existed (10.2.0)
+// has no owner: the first account to sign in afterwards takes it over, so an
+// edit made offline just before the update is still sent.
 let activeOwnerId: string | null = null
+let adoption: Promise<void> = Promise.resolve()
 
 export function setClinicalSyncOwner(ownerId: string | null): void {
   activeOwnerId = ownerId
+  if (ownerId) adoption = adoptUnscopedClinicalData(ownerId).catch(() => {})
+}
+
+/** Waits for the hand-over of unowned queued data to the signed-in account. */
+export function clinicalSyncOwnerReady(): Promise<void> {
+  return adoption
 }
 
 function scopedKey(key: string): string | null {
@@ -218,6 +226,53 @@ async function migrationComplete(): Promise<boolean> {
   return migrationSucceeded
 }
 
+function mergedValue(scoped: string, unscoped: string): string {
+  // The index and journal keys hold lists: keep both lists' entries.
+  try {
+    const a = JSON.parse(scoped)
+    const b = JSON.parse(unscoped)
+    if (Array.isArray(a) && Array.isArray(b)) {
+      const seen = new Set<string>()
+      return JSON.stringify([...a, ...b].filter(item => {
+        const key = JSON.stringify(item)
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      }))
+    }
+  } catch { /* not a list: the account's own value wins */ }
+  return scoped
+}
+
+async function unscopedKeys(): Promise<string[]> {
+  if (Platform.OS === "web") {
+    const storage = browserStorage()
+    if (!storage) return []
+    const keys: string[] = []
+    for (let index = 0; index < storage.length; index++) {
+      const key = storage.key(index)
+      if (key?.startsWith(WEB_PREFIX) && !key.startsWith(`${WEB_PREFIX}${OWNER_PREFIX}`)) keys.push(key.slice(WEB_PREFIX.length))
+    }
+    return keys
+  }
+  await ensureDir()
+  const files = await FileSystem.readDirectoryAsync(DIR)
+  return files.map(keyFromFile).filter((key): key is string => key !== null && !key.startsWith(OWNER_PREFIX))
+}
+
+/** Move every unowned key under the account, merging lists, then remove the unowned copy. */
+async function adoptUnscopedClinicalData(ownerId: string): Promise<void> {
+  await migrationComplete()
+  const prefix = `${OWNER_PREFIX}${encodeURIComponent(ownerId)}:`
+  for (const key of await unscopedKeys()) {
+    const value = await readFile(key)
+    if (value === null) continue
+    const existing = await readFile(`${prefix}${key}`)
+    await writeFile(`${prefix}${key}`, existing === null ? value : mergedValue(existing, value))
+    await deleteFile(key)
+  }
+}
+
 /**
  * Durable clinical working data belongs in the app's private files, not in
  * Android's small secret store. Reads retain a SecureStore fallback so queued
@@ -225,6 +280,7 @@ async function migrationComplete(): Promise<boolean> {
  */
 export const clinicalSyncKv: KVAdapter = {
   async get(key) {
+    await adoption
     const storageKey = scopedKey(key)
     if (!storageKey) return null
     const migrated = await migrationComplete()
@@ -233,6 +289,7 @@ export const clinicalSyncKv: KVAdapter = {
     return migrated ? null : migrateValue(storageKey)
   },
   async set(key, value) {
+    await adoption
     const storageKey = scopedKey(key)
     if (!storageKey) throw new Error("Clinical sync account is not selected")
     const migrated = await migrationComplete()
@@ -240,6 +297,7 @@ export const clinicalSyncKv: KVAdapter = {
     if (!migrated) await SecureStore.deleteItemAsync(storageKey).catch(() => {})
   },
   async delete(key) {
+    await adoption
     const storageKey = scopedKey(key)
     if (!storageKey) return
     const migrated = await migrationComplete()
@@ -247,6 +305,7 @@ export const clinicalSyncKv: KVAdapter = {
     if (!migrated) await SecureStore.deleteItemAsync(storageKey).catch(() => {})
   },
   async keys(prefix) {
+    await adoption
     if (!activeOwnerId) return []
     await migrationComplete()
     const ownerPrefix = `${OWNER_PREFIX}${encodeURIComponent(activeOwnerId)}:`

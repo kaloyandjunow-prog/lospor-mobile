@@ -9,7 +9,7 @@ vi.mock("@/lib/preferences-context", () => ({
   usePreferences: () => ({ tc: (key: string) => key, t: (key: string) => key, automationGroups: { timers: false }, setAutomationGroups, energyKnobSkin: "A", setEnergyKnobSkin }),
 }))
 vi.mock("@/lib/use-intraop-automation", () => ({
-  useIntraopAutomation: () => ({ settings: parseIntraopAutomation({ enabled: true, groups: { treatmentSuggestions: true, timers: true } }), stats: null }),
+  useIntraopAutomation: () => ({ settings: parseIntraopAutomation({ enabled: true, groups: { treatmentSuggestions: true, timers: true, reverseQuestions: false, readingQuestions: false, labQuestions: false, reminders: false } }), stats: null }),
 }))
 vi.mock("react-native-svg", () => ({ __esModule: true, default: () => null, Circle: () => null, Path: () => null, Defs: () => null, G: () => null, Line: () => null, RadialGradient: () => null, Rect: () => null, Stop: () => null, Text: () => null }))
 

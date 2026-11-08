@@ -27,9 +27,29 @@ export type LocalCaseDraft = {
 }
 
 let activeOwnerId: string | null = null
+let claiming: Promise<void> = Promise.resolve()
 
 export function setLocalCaseStoreOwner(ownerId: string | null): void {
   activeOwnerId = ownerId
+  // Drafts saved before account scoping (10.2.0) carry no owner: the first
+  // account to sign in afterwards takes them, so an offline draft is not lost.
+  if (ownerId) claiming = claimUnownedDrafts(ownerId).catch(() => {})
+}
+
+async function claimUnownedDrafts(ownerId: string): Promise<void> {
+  if (Platform.OS === "web") {
+    for (const draft of await allWebDrafts()) {
+      if (!draft.ownerId) await putWebDraft({ ...draft, ownerId })
+    }
+    return
+  }
+  for (const id of await listNativeDraftIds()) {
+    const path = draftPath(id)
+    const raw = await FileSystem.readAsStringAsync(path).catch(() => "")
+    if (!raw) continue
+    const draft = JSON.parse(raw) as LocalCaseDraft
+    if (!draft.ownerId) await FileSystem.writeAsStringAsync(path, JSON.stringify({ ...draft, ownerId }))
+  }
 }
 
 function belongsToActiveOwner(draft: LocalCaseDraft): boolean {
@@ -142,6 +162,7 @@ export async function saveLocalCaseDraft(
 }
 
 export async function loadLocalCaseDraft(localId: string): Promise<LocalCaseDraft | null> {
+  await claiming
   try {
     const draft = Platform.OS === "web" ? await loadWebDraft(localId) : await (async () => {
       const path = draftPath(localId)
@@ -179,6 +200,7 @@ async function listNativeDraftIds(): Promise<string[]> {
 }
 
 export async function getAllLocalCaseDrafts(): Promise<LocalCaseDraft[]> {
+  await claiming
   if (Platform.OS === "web") {
     try {
       return (await allWebDrafts()).filter(belongsToActiveOwner)
@@ -192,6 +214,7 @@ export async function getAllLocalCaseDrafts(): Promise<LocalCaseDraft[]> {
 }
 
 export async function clearAllLocalCaseDrafts(): Promise<number> {
+  await claiming
   if (Platform.OS === "web") {
     try {
       const drafts = await allWebDrafts()

@@ -26,6 +26,7 @@ import { assignCaseTheatre, dashboardFilterQuery, TheatreChangedError, useOperat
 import { type CancellationReason } from "@lospor/core/case-cancellation"
 import { dashboardMenuActions } from "@/lib/case-actions"
 import { plannedProcedureLabel } from "@lospor/core/procedure-codes"
+import { ageSexLabel } from "@lospor/core/pediatric"
 import { DashboardCaseMenu } from "@/components/dashboard/DashboardCaseMenu"
 import { DashboardSheets } from "@/components/dashboard/DashboardSheets"
 import { OverflowCueScrollView } from "@/components/intraop/OverflowCueScrollView"
@@ -479,6 +480,11 @@ export default function DashboardScreen() {
           </View>
           <StatusBadge status={derivedStatus(item)} />
         </View>
+        {ageSexLabel(item.preop, language === "bg" ? "bg" : "en") ? (
+          <Text testID={`case-age-sex-${item.id}`} style={{ color: colors.textSecondary, fontSize: 13, fontWeight: "700", marginBottom: 4 }}>
+            {ageSexLabel(item.preop, language === "bg" ? "bg" : "en")}
+          </Text>
+        ) : null}
         <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "800", marginBottom: 8 }}>
           {t(nextActionKey(item, hasQueuedIntraop))}
         </Text>

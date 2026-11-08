@@ -37,6 +37,9 @@ export type IntraopPreopSummary = {
   malignantHyperthermiaHistory?: boolean | null
   familyAnesthesiaProblems?: boolean | null
   latexAllergy?: boolean | null
+  /** The preop BP: the hypertension baseline when it was entered. */
+  bpSystolic?: number | null
+  bpDiastolic?: number | null
   apfelScore?: number | null
   apfelPONVHistory?: boolean | null
 }
@@ -87,6 +90,8 @@ export function buildIntraopPreopSummary(
     malignantHyperthermiaHistory: typeof pd.malignantHyperthermiaHistory === "boolean" ? pd.malignantHyperthermiaHistory : null,
     familyAnesthesiaProblems: typeof pd.familyAnesthesiaProblems === "boolean" ? pd.familyAnesthesiaProblems : null,
     latexAllergy: typeof pd.latexAllergy === "boolean" ? pd.latexAllergy : null,
+    bpSystolic: typeof pd.bpSystolic === "number" ? pd.bpSystolic : null,
+    bpDiastolic: typeof pd.bpDiastolic === "number" ? pd.bpDiastolic : null,
     apfelScore: numberOrUndefined(pd.apfelScore) ?? null,
     apfelPONVHistory: typeof pd.apfelPONVHistory === "boolean" ? pd.apfelPONVHistory : null,
   }

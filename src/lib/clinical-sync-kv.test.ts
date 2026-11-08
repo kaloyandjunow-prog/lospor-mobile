@@ -56,24 +56,30 @@ describe("clinical sync file storage", () => {
     expect(secureValues.has("large-clinical-patch")).toBe(false)
   })
 
-  it("migrates legacy SecureStore data without exposing it to a signed-in account", async () => {
+  it("hands data queued before account scoping to the first account that signs in, and only to it", async () => {
     const key = outboxPatchKey("case-legacy", "intraop")
-    const stored = JSON.stringify({
-      payload: { positions: ["SUPINE"], techniques: ["GENERAL_INHALATIONAL"] },
-      baseUpdatedAt: 1,
-    })
-    secureValues.set(
-      OUTBOX_INDEX_KEY,
-      JSON.stringify([{ caseId: "case-legacy", section: "intraop" }]),
-    )
+    const stored = JSON.stringify({ payload: { positions: ["SUPINE"] }, baseUpdatedAt: 1 })
+    secureValues.set(OUTBOX_INDEX_KEY, JSON.stringify([{ caseId: "case-legacy", section: "intraop" }]))
     secureValues.set(key, stored)
 
     const { clinicalSyncKv, setClinicalSyncOwner } = await import("./clinical-sync-kv")
-    setClinicalSyncOwner("test-user")
-    const keys = await clinicalSyncKv.keys?.("lospor_patchq_")
+    setClinicalSyncOwner("first-user")
+    expect(await clinicalSyncKv.get(key)).toBe(stored)
+    expect(await clinicalSyncKv.get(OUTBOX_INDEX_KEY)).toContain("case-legacy")
+    expect(await clinicalSyncKv.keys?.("lospor_patchq_")).toContain(key)
 
-    expect(keys).not.toContain(key)
+    setClinicalSyncOwner("second-user")
     expect(await clinicalSyncKv.get(key)).toBeNull()
+  })
+
+  it("drains legacy SecureStore data out of the secret store while handing it over", async () => {
+    const key = outboxPatchKey("case-legacy-2", "intraop")
+    secureValues.set(OUTBOX_INDEX_KEY, JSON.stringify([{ caseId: "case-legacy-2", section: "intraop" }]))
+    secureValues.set(key, JSON.stringify({ payload: { positions: ["PRONE"] }, baseUpdatedAt: 1 }))
+
+    const { clinicalSyncKv, setClinicalSyncOwner } = await import("./clinical-sync-kv")
+    setClinicalSyncOwner("test-user")
+    expect(await clinicalSyncKv.get(key)).toContain("PRONE")
     expect(secureValues.has(key)).toBe(false)
     expect(secureValues.has(OUTBOX_INDEX_KEY)).toBe(false)
   })

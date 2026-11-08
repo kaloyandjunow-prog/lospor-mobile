@@ -34,7 +34,7 @@ import { TechniqueSmart } from "@/components/intraop/TechniqueSmart"
 import { techniqueColor } from "@/lib/intraop-technique"
 import { useRecentTechniques } from "@/lib/use-recent-techniques"
 import { useLikelyEvents } from "@/lib/use-likely-events"
-import { MONITORING_READINGS, isRelaxant, monitoringAutomationId, monitoringSuggestionKey, monitoringSuggestions, type MonitoringSuggestion } from "@lospor/core/monitoring-smart"
+import { MONITORING_READINGS, asksNibpOff, isRelaxant, monitoringAutomationId, monitoringSuggestionKey, monitoringSuggestions, withoutNibp, type MonitoringSuggestion } from "@lospor/core/monitoring-smart"
 import { monitoringDismissalEventId } from "@lospor/core/intraop-automation-actions"
 import { usePhoneAirwayExchange } from "@/lib/use-phone-airway-exchange"
 import { AirwayExchangeSheet } from "@/components/intraop/AirwayExchangeSheet"
@@ -789,10 +789,22 @@ export default function IntraopLiveScreen() {
   })
   const lastMonitorReading = (field: string) => {
     const key = ({ bisValue: "bis", tofRatio: "tofRatio", cvpMmHg: "cvp", etco2: "etco2", temp: "temp" } as const)[(MONITORING_READINGS[field]?.vital ?? "temp") as "bisValue" | "tofRatio" | "cvpMmHg" | "etco2" | "temp"]
-    const event = [...log].reverse().find(item => item.type === "vital" && typeof item[key] === "number")
+    // A value auto-fill carried forward is not a reading: counting it would keep EtCO2 and temperature from ever falling due.
+    const event = [...log].reverse().find(item => item.type === "vital" && !item.autoFilled && typeof item[key] === "number")
     return event ? { text: String(event[key]), at: event.ts } : null
   }
-  const applyMonitoring = (next: string[]) => { setMonitoring(next); saveMonitoring(next) }
+  // An arterial line going on with the cuff still on asks once whether to turn the cuff off.
+  const askNibpOff = (before: readonly string[], next: string[]) => {
+    if (!asksNibpOff(before, next)) return
+    void confirmAction(tc("msmNibpOffTitle"), undefined, { confirmLabel: tc("msmNibpOffYes"), cancelLabel: tc("msmNibpOffKeep"), labelledOnWeb: true }).then(off => {
+      if (!off) return
+      const without = withoutNibp(next)
+      setMonitoring(without)
+      saveMonitoring(without)
+    })
+  }
+  const applyMonitoring = (next: string[]) => { const before = monitoring; setMonitoring(next); saveMonitoring(next); askNibpOff(before, next) }
+  const saveMonitoringAsking = (next: string[]) => { const before = monitoring; saveMonitoring(next); askNibpOff(before, next) }
   const dismissMonitoringSuggestion = (suggestion: MonitoringSuggestion) => {
     const occurrence = suggestion.key ?? monitoringSuggestionKey(suggestion.field, suggestion.at)
     const nowIso = new Date().toISOString()
@@ -808,7 +820,7 @@ export default function IntraopLiveScreen() {
   }
   const monitoringSmart = monitoringScreen === "smart" && !isWatching ? (
     <MonitoringSmart monitoring={monitoring} onChange={applyMonitoring} monitoringOpts={MONITORING_OPTS} suggestions={monitoringSuggestionList}
-      onHide={dismissMonitoringSuggestion} lastReading={lastMonitorReading} onReading={() => openVitals("full")} now={() => new Date().toISOString()}
+      onHide={dismissMonitoringSuggestion} lastReading={lastMonitorReading} onReading={() => openVitals("full")} now={() => new Date().toISOString()} dueMinutes={suggestionContext?.settings?.monitoringDueMinutes}
       saving={fieldSaving === "monitoring"} saveError={fieldSaveError === "monitoring"} />
   ) : undefined
 
@@ -1084,7 +1096,7 @@ export default function IntraopLiveScreen() {
           saveTechniques, techniqueLabel, otherTechText, setOtherTechText, caseMonthYear,
           setCaseMonthYear, caseStartTime, setCaseStartTime, caseEndTime, setCaseEndTime,
           caseEndNextDay, setCaseEndNextDay, timingSaving, saveTiming, endedAtRef, caseTimezone, positions, setPositions,
-          savePositions, fieldSaving, POSITIONS_LIST, monitoring, setMonitoring, saveMonitoring,
+          savePositions, fieldSaving, POSITIONS_LIST, monitoring, setMonitoring, saveMonitoring: saveMonitoringAsking,
           MONITORING_OPTS, advMonOpen, setAdvMonOpen, awTools, setAwTools, awClGrade,
           setAwClGrade, awDevices, setAwDevices, awLmaSize, setAwLmaSize, awOralTubeSize,
           setAwOralTubeSize, awOralCuffed, setAwOralCuffed, awNasalTubeSize, setAwNasalTubeSize,

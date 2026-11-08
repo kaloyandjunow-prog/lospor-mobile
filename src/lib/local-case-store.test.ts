@@ -24,6 +24,16 @@ describe("local case drafts", () => {
     expect(await getAllLocalCaseDrafts()).toEqual([])
   })
 
+  it("gives a draft saved before account scoping to the first account that signs in", async () => {
+    setLocalCaseStoreOwner(null)
+    const id = makeLocalCaseId()
+    await saveLocalCaseDraft(id, { patient: "before the update" })
+    setLocalCaseStoreOwner("user-a")
+    expect((await loadLocalCaseDraft(id))?.ownerId).toBe("user-a")
+    setLocalCaseStoreOwner("user-b")
+    expect(await loadLocalCaseDraft(id)).toBeNull()
+  })
+
   it("round-trips a draft", async () => {
     const id = makeLocalCaseId()
     expect(await saveLocalCaseDraft(id, { ageYears: 64, sex: "MALE" })).toBe(true)

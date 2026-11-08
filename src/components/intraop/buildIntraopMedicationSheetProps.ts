@@ -72,6 +72,8 @@ export type IntraopMedicationSheetBuilderProps = {
   DRUG_ROUTE_PROFILES: DrugProps["routeProfiles"]
   DRUG_DOSE_CALCS: DrugProps["doseCalcs"]
   preop: IntraopPreopSummary | null
+  /** The case techniques; a unilateral spinal pre-sets the intrathecal dose to hyperbaric. */
+  techniques?: readonly string[]
   pediatricDrugProfiles: DrugProps["pediatricDrugProfiles"]
   pediatricFluidProfiles: FluidProps["pediatricFluidProfiles"]
   pediatricInfusionProfiles: InfusionProps["pediatricInfusionProfiles"]
@@ -225,7 +227,7 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
     DRUG_LA_CONCENTRATIONS, drugConcentration, setDrugConcentration,
     drugCustomConcentration, setDrugCustomConcentration, drugFormulation, setDrugFormulation,
     drugRule, applyDrugSelection, DRUG_BASE_PROFILES,
-    DRUG_ROUTE_PROFILES, DRUG_DOSE_CALCS, preop, pediatricDrugProfiles, pediatricFluidProfiles,
+    DRUG_ROUTE_PROFILES, DRUG_DOSE_CALCS, preop, techniques, pediatricDrugProfiles, pediatricFluidProfiles,
     pediatricInfusionProfiles,
     pediatricDoseProfiles,
     pediatricRulesSource, pediatricRulesCachedAt, pediatricRulesLoading, pediatricRulesError,
@@ -312,6 +314,7 @@ export function buildIntraopMedicationSheetProps(props: IntraopMedicationSheetBu
       patientWeightKg: preop?.weight ?? undefined,
       patientHeightCm: preop?.height ?? undefined,
       patientSex: preop?.sex ?? undefined,
+      techniques,
       pediatricMode,
       pediatricDrugProfiles,
       pediatricDoseProfiles: prospectiveGuidanceEnabled ? pediatricDoseProfiles : [],

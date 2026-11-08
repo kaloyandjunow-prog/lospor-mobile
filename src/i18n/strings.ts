@@ -888,7 +888,7 @@ export const STRINGS = {
     comingSoon: "Очаквайте скоро",
     uiAutomationPrivacySubtitle: "Интерфейс, автоматизация, поверителност и данни",
     uiSection: "Интерфейс",
-    smartFunctionsSection: "Смарт функции",
+    smartFunctionsSection: "Интелигентни функции",
     smartFunctionsDesc: "Настройки за SPS и изгледа на секциите за целия акаунт",
     caseSidebarLayout: "Страничен панел на случая",
     caseSidebarEnabled: "Включен за web и таблет",

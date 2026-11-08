@@ -19,6 +19,7 @@ import { colors, withAlpha } from "@/theme/colors"
 import { usePreferences } from "@/lib/preferences-context"
 import { AirwayCard, IntraopCard, LabCard, MedicalHistoryCard, PostopCard, PreopCard } from "@/components/case-detail/CaseDetailCards"
 import { SummaryTimetable } from "@/components/case-detail/SummaryTimetable"
+import { WrittenEventList } from "@/components/case-detail/WrittenEventList"
 import { CaseStatusMeta } from "@/components/case-detail/CaseStatusMeta"
 import {
   computedDisplayStatus,
@@ -369,6 +370,7 @@ export default function CaseSummaryScreen() {
           )}
           actionLabel={screenActions.timetableReadOnly ? tc("summaryViewTimetable") : undefined}
         />
+        <WrittenEventList keyEvents={caseData.intraop?.keyEvents} timeZone={caseData.intraop?.timezone} />
         <IntraopCard intraop={caseData.intraop} preop={caseData.preop} clinicalMode={caseData.clinicalMode} tc={tc} t={t} />
         <PostopCard postop={caseData.postop} tc={tc} t={t} pediatric={caseData.clinicalMode === "PEDIATRIC"} />
         <LabCard labResults={caseData.preop?.labResults ?? undefined} tc={tc} />

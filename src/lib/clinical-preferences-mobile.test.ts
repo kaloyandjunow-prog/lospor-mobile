@@ -34,22 +34,39 @@ describe("mobile clinical preference synchronization", () => {
     api.apiJson.mockResolvedValue({ preferences: {} })
   })
 
-  it("discards existing device-only settings without an owner", async () => {
+  it("keeps the phone's units and auto-fill from before the update, and only where the account has none", async () => {
     secureStore.values.set("lospor_height_unit", "in")
+    secureStore.values.set("lospor_weight_unit", "lb")
     secureStore.values.set("intraop_autofill_vitals", "on")
     secureStore.values.set("intraop_autofill_bp", "on")
+    // The account already chose kilograms on the web: that is not overwritten.
+    api.apiJson.mockResolvedValue({ preferences: { units: { weight: "kg" } }, preferencesRevision: 3 })
 
-    const { readMobileClinicalPreferences } = await import(
+    const { readMobileClinicalPreferences, syncMobileClinicalPreferences } = await import(
       "./clinical-preferences-mobile"
     )
-    const preferences = await readMobileClinicalPreferences()
-
-    expect(preferences.units.height).toBe(DEFAULT_CLINICAL_PREFERENCES.units.height)
-    expect(preferences.autoFillVitals).toMatchObject({
-      enabled: DEFAULT_CLINICAL_PREFERENCES.autoFillVitals.enabled,
-      includeBloodPressure: DEFAULT_CLINICAL_PREFERENCES.autoFillVitals.includeBloodPressure,
-    })
+    const local = await readMobileClinicalPreferences()
+    expect(local.units.height).toBe("in")
+    expect(local.autoFillVitals).toMatchObject({ enabled: true, includeBloodPressure: true })
     expect(secureStore.values.has("lospor_height_unit")).toBe(false)
+
+    const synced = await syncMobileClinicalPreferences()
+    expect(synced.units).toMatchObject({ height: "in", weight: "kg" })
+    const sent = JSON.parse(api.apiFetch.mock.calls.at(-1)![1].body as string) as { preferences: { units?: Record<string, string> } }
+    expect(sent.preferences.units).toEqual({ height: "in" })
+    // Handed over once: nothing is left for the next account.
+    expect(secureStore.values.has("lospor_clinical_preferences_adopt_v1")).toBe(false)
+  })
+
+  it("never hands personal lists from an unowned copy to the next account", async () => {
+    secureStore.values.set("lospor_clinical_preferences_v1", JSON.stringify({
+      units: { temperature: "F" },
+      intraopFavouriteDrugs: ["Propofol"],
+    }))
+    const { readMobileClinicalPreferences } = await import("./clinical-preferences-mobile")
+    const local = await readMobileClinicalPreferences()
+    expect(local.units.temperature).toBe("F")
+    expect(local.intraopFavouriteDrugs).toEqual(DEFAULT_CLINICAL_PREFERENCES.intraopFavouriteDrugs)
   })
 
   it("keeps an offline edit and retries it at the next sync", async () => {

@@ -20,7 +20,7 @@ const REASON: Record<MonitoringReasonKey, string> = {
  * due is Core's (monitoring-smart); a monitor added here writes the same flag the legacy tab writes.
  */
 export function MonitoringSmart({
-  monitoring, onChange, monitoringOpts, suggestions, onHide, lastReading, onReading, now, saving = false, saveError = false,
+  monitoring, onChange, monitoringOpts, suggestions, onHide, lastReading, onReading, now, dueMinutes, saving = false, saveError = false,
 }: {
   monitoring: readonly string[]
   onChange: (next: string[]) => void
@@ -32,6 +32,8 @@ export function MonitoringSmart({
   /** Opens the vitals entry for this monitor's reading. */
   onReading: (field: string) => void
   now: () => string
+  /** The hospital's reading intervals (Status), per monitor, in minutes. */
+  dueMinutes?: Readonly<Record<string, number>> | null
   saving?: boolean
   saveError?: boolean
 }) {
@@ -72,7 +74,7 @@ export function MonitoringSmart({
         <View testID="monitoring-smart-empty" style={card}><Text style={{ color: shade("#94a3b8") }}>{tc("msmNothingMore")}</Text></View>
       ) : extras.map(field => {
         const reading = MONITORING_READINGS[field] ? lastReading(field) : null
-        const due = !!MONITORING_READINGS[field] && readingDue(field, reading?.at ?? null, null, now())
+        const due = !!MONITORING_READINGS[field] && readingDue(field, reading?.at ?? null, null, now(), dueMinutes)
         return (
           <View key={field} testID={`monitoring-on-${field}`} style={card}>
             <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: shade("#22c55e") }} />

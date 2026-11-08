@@ -45,7 +45,7 @@ export function DrugSheet({
   drugCustomConcentration, setDrugCustomConcentration, drugFormulation, setDrugFormulation,
   drugRule, applyDrugSelection,
   ranges = {}, baseProfiles = {}, routeProfiles = {},
-  doseCalcs, patientWeightKg, patientHeightCm, patientSex, pediatricMode = false,
+  doseCalcs, patientWeightKg, patientHeightCm, patientSex, techniques, pediatricMode = false,
   pediatricDrugProfiles = [], pediatricDoseProfiles = [], patientAge,
   pediatricRulesSource, pediatricRulesCachedAt, pediatricRulesLoading, pediatricRulesError,
   prospectiveGuidanceEnabled = true,
@@ -85,6 +85,8 @@ export function DrugSheet({
   patientWeightKg?: number
   patientHeightCm?: number
   patientSex?: string
+  /** The case techniques; a unilateral spinal pre-sets the intrathecal dose to hyperbaric. */
+  techniques?: readonly string[]
   pediatricMode?: boolean
   pediatricDrugProfiles?: readonly PediatricDrugProfileRule[]
   pediatricDoseProfiles?: readonly PediatricDoseProfile[]
@@ -175,6 +177,7 @@ export function DrugSheet({
     patientWeightKg,
     patientHeightCm,
     patientSex,
+    techniques,
     routes,
     baseProfiles,
     routeProfiles,
@@ -183,7 +186,7 @@ export function DrugSheet({
     doseCalcs,
   }), [
     baseProfiles, doseCalcs, dosePresets, laConcentrations, patientAge, patientHeightCm,
-    patientSex, patientWeightKg, pediatricMode, routeProfiles, routes,
+    patientSex, patientWeightKg, pediatricMode, routeProfiles, routes, techniques,
   ])
 
   function replaceSelection(selection: DrugEntryDraft) {

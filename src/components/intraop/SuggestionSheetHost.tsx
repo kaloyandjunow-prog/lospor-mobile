@@ -18,6 +18,7 @@ import {
   type ResolvedCard,
   type ResolvedRow,
 } from "@lospor/core/intraop-suggestions"
+import { arrestQuickDoseOps, arrestRespaceOps, type ArrestDrug } from "@lospor/core/intraop-suggestions"
 import { intraopAttentionText } from "@lospor/core/intraop-attention"
 import { clinicalDisplayLabel } from "@lospor/core/display"
 import { resolveIntraopEventLabel } from "@lospor/core/clinical-display"
@@ -96,6 +97,7 @@ function CardSheet({ card, complication, attention, sheets, onClose }: {
   const [branch, setBranch] = useState<string | null>(null)
   const [ticked, setTicked] = useState<Record<string, boolean>>({})
   const [resolveTime, setResolveTime] = useState("")
+  const [eventTimes, setEventTimes] = useState<Record<string, string>>({})
   const [inline, setInline] = useState<Inline | null>(null)
   const nowIso = sheets.nowIso
   const write = (ops: Parameters<IntraopAttention["applyOps"]>[0]) => { void attention.applyOps(ops) }
@@ -103,6 +105,18 @@ function CardSheet({ card, complication, attention, sheets, onClose }: {
   const rows = card.rows.filter(row => !row.branches || (branch != null && row.branches.includes(branch)))
   const minutes = Math.max(0, Math.floor((Date.parse(nowIso()) - Date.parse(card.onset)) / 60_000))
   const comp = complication as never
+  // Cardiac arrest (10.2.0): doses are tapped as they are given or afterwards,
+  // written at once and spread across the arrest when ROSC or Death ends it.
+  const isArrest = complication.label === "Cardiac arrest"
+  const arrestDrugOf = (row: ResolvedRow): ArrestDrug | null => isArrest && row.def.kind === "drug"
+    && (row.def.drug === "Epinephrine / Adrenaline" || row.def.drug === "Amiodarone") ? row.def.drug : null
+  const endsArrest = (label: string) => isArrest && (label === "ROSC" || label === "Death (exitus letalis)")
+  function writeEvent(row: ResolvedRow, label: string, at: string) {
+    const ops = cardEventOps(comp, label, row.id, at, nowIso())
+    if (!endsArrest(label)) { write(ops); return }
+    const respaced = arrestRespaceOps(attention.log as never, comp, at)
+    write({ add: ops.add, update: respaced.update, remove: [] })
+  }
   const pill = (tone: "yes" | "no" | "plain") => ({
     minHeight: 40, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, justifyContent: "center" as const,
     backgroundColor: shade("#1c1c1c"),
@@ -176,9 +190,18 @@ function CardSheet({ card, complication, attention, sheets, onClose }: {
             <Text style={pillText("plain")}>{tc("sgAt")}</Text>
           </TouchableOpacity>
         </View>
-      case "event":
-        return <TouchableOpacity testID={`card-event-${row.id}`} style={[pill("yes"), { marginTop: 6, alignSelf: "flex-start" }]}
-          onPress={() => write(cardEventOps(comp, def.label, row.id, nowIso(), nowIso()))}><Text style={pillText("yes")}>{tc("sgNow")}</Text></TouchableOpacity>
+      case "event": {
+        // Now, or the time it really happened: an arrest is often charted afterwards.
+        const typed = eventTimes[row.id] ?? ""
+        return <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 }}>
+          <TouchableOpacity testID={`card-event-${row.id}`} style={pill("yes")} onPress={() => writeEvent(row, def.label, nowIso())}><Text style={pillText("yes")}>{tc("sgNow")}</Text></TouchableOpacity>
+          <TextInput testID={`card-event-time-${row.id}`} value={typed} onChangeText={value => setEventTimes(prev => ({ ...prev, [row.id]: value }))} placeholder={tc("sgTimePlaceholder")} placeholderTextColor={shade("#64748b")} keyboardType="numbers-and-punctuation"
+            style={{ width: 76, minHeight: 40, borderWidth: 1, borderColor: shade("#334155"), borderRadius: 10, color: shade("#f8fafc"), paddingHorizontal: 8 }} />
+          <TouchableOpacity testID={`card-event-at-${row.id}`} disabled={typedInstant(typed) == null} style={pill("plain")} onPress={() => { const at = typedInstant(typed); if (at) writeEvent(row, def.label, at) }}>
+            <Text style={pillText("plain")}>{tc("sgAt")}</Text>
+          </TouchableOpacity>
+        </View>
+      }
       case "stop": {
         const targets = stopRowTargets(row, { log: attention.log as never, patient: attention.suggestions!.patient, preop: attention.suggestions!.preop, complication: comp, tofMonitor: attention.suggestions!.tofMonitor })
         if (targets.length === 0) return <Text style={{ color: shade("#94a3b8"), fontSize: 12, marginTop: 4 }}>{tc("sgNothingRunning")}</Text>
@@ -258,7 +281,13 @@ function CardSheet({ card, complication, attention, sheets, onClose }: {
           )
           return (
             <View key={row.id} testID={`card-row-${row.id}`} style={{ borderWidth: 1, borderColor: shade("#262626"), borderRadius: 12, padding: 10, marginBottom: 8 }}>
-              {opensSheet(row) ? <TouchableOpacity testID={`card-row-open-${row.id}`} onPress={() => onRow(row)} style={{ minHeight: 44 }}>{head}</TouchableOpacity> : head}
+              {opensSheet(row) && !arrestDrugOf(row) ? <TouchableOpacity testID={`card-row-open-${row.id}`} onPress={() => onRow(row)} style={{ minHeight: 44 }}>{head}</TouchableOpacity> : head}
+              {arrestDrugOf(row) && attention.suggestions ? (
+                <TouchableOpacity testID={`card-arrest-give-${row.id}`} style={[pill("yes"), { marginTop: 6, alignSelf: "flex-start" }]}
+                  onPress={() => write(arrestQuickDoseOps(attention.log as never, comp, arrestDrugOf(row)!, attention.suggestions!.patient, nowIso(), cardSuggestionTag(complication.label ?? "", row.id)))}>
+                  <Text style={pillText("yes")}>{tc("sgGive")}</Text>
+                </TouchableOpacity>
+              ) : null}
               {body(row)}
               <InlineSheetSlot id={row.id} />
               {row.def.kind === "drug" && row.def.drug === "Dantrolene" && attention.suggestions ? (

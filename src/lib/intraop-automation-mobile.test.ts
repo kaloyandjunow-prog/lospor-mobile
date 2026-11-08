@@ -10,15 +10,15 @@ import { endCaseInstant } from "@/lib/use-end-case-time"
 import { parseIntraopAutomationResponse } from "@/lib/use-intraop-automation"
 
 describe("the automation the phone reads", () => {
-  it("is the defaults when the API sends nothing usable, as the demo does: the reminders on, the questions off", () => {
-    expect(parseIntraopAutomationResponse(null)).toMatchObject({ settings: { enabled: true, groups: { reminders: true, treatmentSuggestions: false }, vitalQuestions: { enabled: false } }, stats: null })
+  it("is the defaults when the API sends nothing usable, as the demo does: every suggestion and the questions on", () => {
+    expect(parseIntraopAutomationResponse(null)).toMatchObject({ settings: { enabled: true, groups: { reminders: true, treatmentSuggestions: true }, vitalQuestions: { enabled: true } }, stats: null })
     expect(parseIntraopAutomationResponse({ settings: { enabled: "yes" } }).settings.enabled).toBe(false)
   })
 
   it("keeps the counts only while the questions are on", () => {
     const stats = { ADULT: { hr: { min: 60, counts: [1], cases: 1 } } }
     expect(parseIntraopAutomationResponse({ settings: { enabled: true, vitalQuestions: { enabled: true } }, stats }).stats).toEqual(stats)
-    expect(parseIntraopAutomationResponse({ settings: { enabled: true }, stats }).stats).toBeNull()
+    expect(parseIntraopAutomationResponse({ settings: { enabled: true, vitalQuestions: { enabled: false } }, stats }).stats).toBeNull()
   })
 })
 

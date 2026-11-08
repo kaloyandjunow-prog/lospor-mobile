@@ -103,10 +103,12 @@ export function useVitalQuestionContext(preop: IntraopPreopSummary | null, isWat
   const { vitalEpisodeAutoLog, automationGroups, automationLines } = usePreferences()
   const user = useMemo(() => ({ ...automationGroups, automationLines }), [automationGroups, automationLines])
   const ageDays = preopAgeDays(preop ? { ageValue: preop.ageValue, ageUnit: preop.ageUnit, ageYears: preop.age, ageApproxDays: preop.ageApproxDays } : null)
+  const systolic = preop?.bpSystolic ?? null
+  const diastolic = preop?.bpDiastolic ?? null
   return useMemo(() => {
     if (ready === false || isWatching || !vitalQuestionsEnabled(settings, user) || ageDays == null) return null
-    return { settings, user, stats, ageDays, keepLogging: vitalEpisodeAutoLog }
-  }, [ready, isWatching, settings, stats, ageDays, vitalEpisodeAutoLog, user])
+    return { settings, user, stats, ageDays, keepLogging: vitalEpisodeAutoLog, preopPressure: { systolic, diastolic } }
+  }, [ready, isWatching, settings, stats, ageDays, vitalEpisodeAutoLog, user, systolic, diastolic])
 }
 
 /** What the screen knows of the case beyond the preop record. */
