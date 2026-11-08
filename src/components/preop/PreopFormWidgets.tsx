@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react"
-import { Modal, PanResponder, Pressable, Text, useWindowDimensions, View } from "react-native"
+import { Modal, PanResponder, Pressable, Text, useWindowDimensions, View, type ViewInstance } from "react-native"
 import { colors, withAlpha } from "@/theme/colors"
 import type { ClinicalNumberChange } from "@/lib/clinical-number-entry"
 import { hapticKey, hapticTick } from "@/lib/haptic"
@@ -249,7 +249,7 @@ export function VitalStepper({ value, onChange, min, max, step = 1, precision = 
   const [keypadText, setKeypadText] = useState("")
   const [anchor, setAnchor] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
   const [trackWidth, setTrackWidth] = useState(1)
-  const fieldRef = useRef<View>(null)
+  const fieldRef = useRef<ViewInstance>(null)
   const trackXRef = useRef(0)
   const { height: screenHeight, width: screenWidth } = useWindowDimensions()
 

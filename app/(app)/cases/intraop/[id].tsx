@@ -1,9 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
  
-import {
-  View, ScrollView, FlatList,
-  unstable_batchedUpdates, useWindowDimensions,
-} from "react-native"
+import { View, FlatList, unstable_batchedUpdates, useWindowDimensions, type ScrollViewInstance } from "react-native"
 import { useLocalSearchParams, useRouter } from "expo-router"
 import type { VascularEntry } from "@/lib/intraop-types"
 import { formatHHMM } from "@/lib/intraop-format"
@@ -84,7 +81,7 @@ import { useIntraopRunningState } from "@/lib/use-intraop-running-state"
 // on the PWA. React 18+ auto-batches async setState anyway, so the fallback simply
 // runs the updates directly on web while preserving explicit batching on native.
 const runBatched: (fn: () => void) => void =
-  typeof unstable_batchedUpdates === "function" ? unstable_batchedUpdates : (fn) => fn()
+  typeof unstable_batchedUpdates === "function" ? (unstable_batchedUpdates as unknown as (fn: () => void) => void) : (fn) => fn()
 
 // This module holds the screen and nothing else. Colour palettes, value types,
 // the technique tree and the format helpers live in
@@ -157,7 +154,7 @@ export default function IntraopLiveScreen() {
     activeGas, setActiveGas, applyActiveState, resyncActiveRef, endedAtRef, projectTimetable } = useIntraopRunningState(logRef)
 
   const { width: screenWidth } = useWindowDimensions()
-  const tabRailRef  = useRef<ScrollView>(null)
+  const tabRailRef  = useRef<ScrollViewInstance>(null)
   const tabLayouts  = useRef<Partial<Record<string, { x: number; width: number }>>>({})
 
   const { tab, selectTab } = useIntraopTabTiming(focus, () => pendingSaveCountRef.current)

@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import {
-  View, Text, ScrollView, TouchableOpacity, Pressable,
-  ActivityIndicator, KeyboardAvoidingView, Platform, Animated, useWindowDimensions,
-} from "react-native"
+import { View, Text, ScrollView, TouchableOpacity, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, Animated, useWindowDimensions, type ScrollViewInstance } from "react-native"
 import { useLocalSearchParams, useRouter, Stack } from "expo-router"
 import { notify } from "@/lib/notify"
 import { useForm, useWatch } from "react-hook-form"
@@ -426,7 +423,7 @@ export default function PostopFormScreen() {
   const nextSection = paged ? sectionList[sectionList.findIndex(section => section.key === pager.active) + 1] : undefined
   // The open section's pill is kept in view, centred, as preop's are: the last
   // one sat half off the screen (10.0.0).
-  const stripRef = useRef<ScrollView>(null)
+  const stripRef = useRef<ScrollViewInstance>(null)
   const pillX = useRef<Partial<Record<PostopSectionKey, { x: number; width: number }>>>({})
   useEffect(() => {
     const pill = pillX.current[pager.active]
@@ -568,7 +565,7 @@ export default function PostopFormScreen() {
                 borderColor: withAlpha(colors.success, "99"),
                 boxShadow: "0 12px 26px rgba(0, 0, 0, 0.32)",
               }}
-              onPress={handleSubmit(onSubmit)}
+              onPress={() => { void handleSubmit(onSubmit)() }}
               disabled={isWatching || saving}
             >
               {saving ? (

@@ -1,5 +1,5 @@
 import type { RefObject } from "react"
-import { Platform, Text, TextInput, View } from "react-native"
+import { Platform, Text, TextInput, View, type TextInputInstance } from "react-native"
 import { FeedbackPressable } from "./FeedbackPressable"
 import { MonitorScanButton } from "./MonitorScanButton"
 import { vitalFeedbackText } from "./vitals-feedback-text"
@@ -24,15 +24,15 @@ type Props = {
   etco2Unit: string
   cvpUnit: string
   temperatureUnit: string
-  sysRef: RefObject<TextInput | null>
-  diaRef: RefObject<TextInput | null>
-  hrRef: RefObject<TextInput | null>
-  spo2Ref: RefObject<TextInput | null>
-  etco2Ref: RefObject<TextInput | null>
-  tempRef: RefObject<TextInput | null>
-  bisRef: RefObject<TextInput | null>
-  tofRatioRef: RefObject<TextInput | null>
-  cvpRef: RefObject<TextInput | null>
+  sysRef: RefObject<TextInputInstance | null>
+  diaRef: RefObject<TextInputInstance | null>
+  hrRef: RefObject<TextInputInstance | null>
+  spo2Ref: RefObject<TextInputInstance | null>
+  etco2Ref: RefObject<TextInputInstance | null>
+  tempRef: RefObject<TextInputInstance | null>
+  bisRef: RefObject<TextInputInstance | null>
+  tofRatioRef: RefObject<TextInputInstance | null>
+  cvpRef: RefObject<TextInputInstance | null>
   systolic: string
   diastolic: string
   heartRate: string

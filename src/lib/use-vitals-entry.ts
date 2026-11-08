@@ -1,8 +1,7 @@
 import type { SaveIntraopEvent } from "@/lib/intraop-stamp"
 import { useState } from "react"
 import type { RefObject } from "react"
-import { Platform } from "react-native"
-import type { TextInput } from "react-native"
+import { Platform, type TextInputInstance } from "react-native"
 import { apiFetch } from "@/lib/api"
 import { aiScanFailureKey, type ScanFailure } from "@/lib/ai-scan-failure"
 import { notify } from "@/lib/notify"
@@ -208,7 +207,7 @@ export function useVitalsEntry(
     }
   }
 
-  function setAndAdvance(value: string, setter: (v: string) => void, next?: RefObject<TextInput | null>, maxLen = 3) {
+  function setAndAdvance(value: string, setter: (v: string) => void, next?: RefObject<TextInputInstance | null>, maxLen = 3) {
     setter(value)
     if (value.length >= maxLen) next?.current?.focus()
   }

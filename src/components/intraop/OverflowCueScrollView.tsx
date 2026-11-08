@@ -1,15 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react"
-import {
-  Platform,
-  Pressable,
-  ScrollView,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-  type ScrollViewProps,
-  type StyleProp,
-  type ViewStyle,
-} from "react-native"
+import { Platform, Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent, type ScrollViewProps, type StyleProp, type ViewStyle, type ScrollViewInstance } from "react-native"
 import Svg, { Defs, LinearGradient, Path, Rect, Stop } from "react-native-svg"
 import { colors, withAlpha } from "@/theme/colors"
 
@@ -17,7 +7,7 @@ type Props = Omit<ScrollViewProps, "children" | "horizontal" | "onScroll" | "onC
   children: ReactNode
   /** Horizontal rails use left/right cues; vertical sheets use up/down cues. */
   horizontal?: boolean
-  scrollRef?: RefObject<ScrollView | null>
+  scrollRef?: RefObject<ScrollViewInstance | null>
   edgeColor?: string
   cueColor?: string
   startLabel?: string
@@ -72,7 +62,7 @@ export function OverflowCueScrollView({
   const idRef = useRef<number | null>(null)
   if (idRef.current == null) idRef.current = ++cueId
   const id = idRef.current
-  const internalRef = useRef<ScrollView>(null)
+  const internalRef = useRef<ScrollViewInstance>(null)
   const targetRef = scrollRef ?? internalRef
   const [viewport, setViewport] = useState(0)
   const [content, setContent] = useState(0)

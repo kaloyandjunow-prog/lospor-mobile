@@ -1,5 +1,5 @@
 import { createRef, type ComponentProps } from "react"
-import { TextInput } from "react-native"
+import { type TextInputInstance } from "react-native"
 import { describe, expect, it, vi } from "vitest"
 
 vi.mock("@/lib/haptic", () => ({ hapticTick: vi.fn() }))
@@ -14,7 +14,7 @@ import { getByText, pressByText } from "@/test/render"
 import { renderWithPreferences } from "./fluid-sheet-test-fixtures"
 import { VitalsSheet } from "./VitalsSheet"
 
-const inputRef = () => createRef<TextInput>()
+const inputRef = () => createRef<TextInputInstance>()
 
 function props(): ComponentProps<typeof VitalsSheet> {
   return {
