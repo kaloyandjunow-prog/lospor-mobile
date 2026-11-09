@@ -8,11 +8,13 @@ import {
   loadLocalCaseDraft,
   makeLocalCaseId,
   saveLocalCaseDraft,
+  setLocalCaseStoreOwner,
 } from "./local-case-store"
 
 describe("PWA local case drafts", () => {
   beforeEach(async () => {
     Platform.OS = "web"
+    setLocalCaseStoreOwner("user-a")
     await clearAllLocalCaseDrafts()
   })
 
@@ -46,5 +48,13 @@ describe("PWA local case drafts", () => {
     await deleteLocalCaseDraft(first)
     expect(await loadLocalCaseDraft(first)).toBeNull()
     expect(await clearAllLocalCaseDrafts()).toBe(1)
+  })
+
+  it("does not expose another account's IndexedDB draft", async () => {
+    const localId = makeLocalCaseId()
+    await saveLocalCaseDraft(localId, { patient: "A" })
+    setLocalCaseStoreOwner("user-b")
+    expect(await loadLocalCaseDraft(localId)).toBeNull()
+    expect(await getAllLocalCaseDrafts()).toEqual([])
   })
 })

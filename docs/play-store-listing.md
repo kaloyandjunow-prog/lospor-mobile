@@ -5,7 +5,7 @@
 - **App name:** LOSPOR
 - **Category:** Medical
 - **Privacy policy URL:** https://app.lospor.org/privacy
-- **Contact email:** kaloyandjunow@gmail.com
+- **Contact email:** support@lospor.org
 - **Website:** https://lospor.org
 
 ## Short description (max 80 characters)

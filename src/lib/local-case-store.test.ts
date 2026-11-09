@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach } from "vitest"
 import {
   makeLocalCaseId, saveLocalCaseDraft, loadLocalCaseDraft,
   deleteLocalCaseDraft, getAllLocalCaseDrafts, clearAllLocalCaseDrafts,
+  setLocalCaseStoreOwner,
 } from "./local-case-store"
 
 // Offline drafts used to live in SecureStore, which is backed by the Android
@@ -10,7 +11,28 @@ import {
 // as `false`, but the practical result was that offline drafts did not work at
 // all on that platform. They are now files, which have no such ceiling.
 describe("local case drafts", () => {
-  beforeEach(async () => { await clearAllLocalCaseDrafts() })
+  beforeEach(async () => {
+    setLocalCaseStoreOwner("user-a")
+    await clearAllLocalCaseDrafts()
+  })
+
+  it("does not expose another account's local draft", async () => {
+    const id = makeLocalCaseId()
+    await saveLocalCaseDraft(id, { patient: "A" })
+    setLocalCaseStoreOwner("user-b")
+    expect(await loadLocalCaseDraft(id)).toBeNull()
+    expect(await getAllLocalCaseDrafts()).toEqual([])
+  })
+
+  it("gives a draft saved before account scoping to the first account that signs in", async () => {
+    setLocalCaseStoreOwner(null)
+    const id = makeLocalCaseId()
+    await saveLocalCaseDraft(id, { patient: "before the update" })
+    setLocalCaseStoreOwner("user-a")
+    expect((await loadLocalCaseDraft(id))?.ownerId).toBe("user-a")
+    setLocalCaseStoreOwner("user-b")
+    expect(await loadLocalCaseDraft(id)).toBeNull()
+  })
 
   it("round-trips a draft", async () => {
     const id = makeLocalCaseId()
