@@ -59,6 +59,12 @@
 
 ### Fixed
 
+- **Strict lint:** the intraoperative tab timing hook read its save count through an inline
+  lint disable, which `lint:strict` (no inline config) turned into a warning. It reads it
+  through a ref now.
+- **The End at tests no longer depend on the day they run:** they stepped the end date back at
+  most ten days from today to reach the case's start, which stopped being enough after
+  2026-11-08. The date is fixed for those tests.
 - **Airway selection consistency:** selecting «Без намеса в дихателния път»
   clears selected airway devices and instruments, while recording a device
   clears that state; Smart airway uses the same configured option list as
@@ -92,6 +98,8 @@
 
 ### Changed
 
+- **Core comes from its tag:** `@lospor/core` is pinned to `github:…/lospor-core#v10.2.0`
+  again, not `file:../lospor-core`.
 - **Bulgarian UI copy:** the interactive timetable is labelled «Времева линия»,
   vital signs use «жизнени показатели», and Smart/Legacy labels and clinical
   suggestions use the reviewed Bulgarian wording.
