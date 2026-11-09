@@ -6,13 +6,15 @@ import type { PreopSection } from "@/lib/preop-form-schema"
 import { OverflowCueScrollView } from "@/components/intraop/OverflowCueScrollView"
 import { AppHeader } from "@/components/AppHeader"
 
-export function PreopSectionRail({ labels, activeSection, sectionRailRef, headerAnim, primaryHeaderHeight, insetTop, title, homeLabel, onHome, onJump, onPillLayout }: {
+export function PreopSectionRail({ labels, activeSection, sectionRailRef, headerAnim, primaryHeaderHeight, insetTop, headerHidden, title, homeLabel, onHome, onJump, onPillLayout }: {
   labels: { key: PreopSection; label: string }[]
   activeSection: PreopSection
   sectionRailRef: RefObject<ScrollViewInstance | null>
   headerAnim: Animated.Value
   primaryHeaderHeight: number
   insetTop: number
+  /** The primary header has scrolled away: the rail then carries its own Home button. */
+  headerHidden: boolean
   title: string
   homeLabel: string
   onHome: () => void
@@ -26,13 +28,14 @@ export function PreopSectionRail({ labels, activeSection, sectionRailRef, header
     </Animated.View>
     <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 29, backgroundColor: colors.background, paddingTop: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [12, insetTop + 10] }), paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border, transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [primaryHeaderHeight, 0] }) }] }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        {/* Home lives in the header at the top; this copy only takes its place once the header has scrolled away. */}
-        <Animated.View style={{ width: headerAnim.interpolate({ inputRange: [0, 0.9, 1], outputRange: [0, 0, 38] }), marginLeft: headerAnim.interpolate({ inputRange: [0, 0.9, 1], outputRange: [10, 10, 20] }), opacity: headerAnim.interpolate({ inputRange: [0, 0.9, 1], outputRange: [0, 0, 1] }), overflow: "hidden" }} pointerEvents="box-none">
+        {/* Home lives in the header at the top; this copy exists only once the header has scrolled away, so there is never a second Home button on screen. */}
+        {headerHidden ? (
           <Pressable
             onPress={onHome}
             accessibilityRole="button"
             accessibilityLabel={homeLabel}
             style={{
+              marginLeft: 20,
               width: 38,
               height: 38,
               borderRadius: 999,
@@ -45,7 +48,7 @@ export function PreopSectionRail({ labels, activeSection, sectionRailRef, header
           >
             <Ionicons name="home-outline" size={20} color={colors.textSecondary} />
           </Pressable>
-        </Animated.View>
+        ) : <View style={{ width: 10 }} />}
         <OverflowCueScrollView
           horizontal
           scrollRef={sectionRailRef}
