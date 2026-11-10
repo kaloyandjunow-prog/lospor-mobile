@@ -224,11 +224,11 @@ function TimetableRowComponent({
                 onPress={() => onQuickAdd(col, btn.action)}
                 style={{
                   paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
-                  backgroundColor: btn.color + "18",
-                  borderWidth: 1, borderColor: btn.color + "44",
+                  backgroundColor: shade(btn.color) + "18",
+                  borderWidth: 1, borderColor: shade(btn.color) + "44",
                 }}
               >
-                <Text style={{ color: btn.color, fontSize: 12, fontWeight: "700" }}>
+                <Text style={{ color: shade(btn.color), fontSize: 12, fontWeight: "700" }}>
                   {btn.action === "gas" && activeGas ? tc("trRowGasActive") : btn.label}
                 </Text>
               </TouchableOpacity>
