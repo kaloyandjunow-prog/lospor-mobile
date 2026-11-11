@@ -1,5 +1,6 @@
 import { memo, useSyncExternalStore } from "react"
 import { jetSheet } from "@/lib/jet-sheet"
+import { TimetableRowEntries, isRowEntry } from "./TimetableRowEntries"
 import { LabDrawDetail, LabDrawPill, mergeRowLabDraws } from "@/components/intraop/LabDrawCell"
 import type { IntraopLabDraw } from "@lospor/core/labs"
 import { View, Text, TouchableOpacity } from "react-native"
@@ -17,23 +18,6 @@ import type { VitalsEntry } from "@/components/IntraopTimetable"
 import { usePreferences, type ClinicalStringKey } from "@/lib/preferences-context"
 
 export type QuickAddAction = "vital" | "bp" | "drug" | "infusion" | "fluid" | "agent" | "gas" | "jet" | "event" | "lab"
-
-/** What the opened row lists: everything charted in it except an answer to a question, which is never drawn. */
-export const isRowEntry = (event: LogEvent): boolean => event.type !== "prompt_answer"
-
-/** A line's colour: the one the entry carries, else one for its kind. */
-export function rowEntryColor(event: LogEvent): string {
-  if (event.color) return event.color
-  if (event.type === "complication" || event.type === "defibrillation") return "#ef4444"
-  if (event.type === "drug") return "#3b82f6"
-  if (event.type.startsWith("infusion")) return "#a855f7"
-  if (event.type.startsWith("fluid")) return "#06b6d4"
-  if (event.type.startsWith("agent")) return "#f59e0b"
-  if (event.type.startsWith("gas")) return "#818cf8"
-  if (event.type.startsWith("jet")) return "#14b8a6"
-  if (event.type === "vital") return "#22c55e"
-  return "#6366f1"
-}
 
 function quickAddButtons(tc: (key: ClinicalStringKey) => string, jetOn: boolean): { label: string; action: QuickAddAction; color: string }[] {
   return [
@@ -163,34 +147,7 @@ function TimetableRowComponent({
 
         <LabDrawDetail draws={labDraws ?? []} onOpen={onOpenLabs} />
 
-        {/* Everything charted in this five minutes, in the order it happened: the header shows only four drugs and
-            events, so a complication, a shock, an infusion's start, a fluid, a position or a set of vitals was
-            nowhere in the opened row. */}
-        {rowEntries.length > 0 && (
-          <View testID="timetable-row-entries" style={{ paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4 }}>
-            <Text style={{
-              color: shade("#475569"), fontSize: 10, fontWeight: "700",
-              letterSpacing: 1.1, textTransform: "uppercase", marginBottom: 8,
-            }}>{tc("trAllInRow")}</Text>
-            <View style={{ gap: 6 }}>
-              {rowEntries.map(ev => {
-                const color = shade(rowEntryColor(ev))
-                return (
-                  <View key={ev.id} testID={`timetable-row-entry-${ev.type}`} style={{
-                    flexDirection: "row", alignItems: "center", gap: 10,
-                    backgroundColor: color + "12", borderRadius: 8, paddingVertical: 7, paddingHorizontal: 10,
-                    borderLeftWidth: 3, borderLeftColor: color,
-                  }}>
-                    <Text style={{ color: shade("#94a3b8"), fontSize: 11, fontWeight: "700", fontVariant: ["tabular-nums"], width: 38 }}>
-                      {formatDateHHMM(new Date(ev.ts))}
-                    </Text>
-                    <Text style={{ color: shade("#e2e8f0"), fontSize: 13, fontWeight: "600", flex: 1 }}>{labelOf(ev)}</Text>
-                  </View>
-                )
-              })}
-            </View>
-          </View>
-        )}
+        <TimetableRowEntries entries={rowEntries} labelOf={labelOf} col={col} onEditJet={onEditJet} />
 
         {/* Running items */}
         {running.length > 0 && (
