@@ -201,6 +201,8 @@ export type PreopFormData = z.output<typeof preopFormSchema>
 
 export type PreopSection =
   | "patient"
+  /** AI assistance: consent and the advisor, its own section after the patient (10.4.1). */
+  | "ai"
   | "case"
   | "history"
   | "meds"
