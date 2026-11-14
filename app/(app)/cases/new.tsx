@@ -41,7 +41,7 @@ import { isPreopSectionOn } from "@lospor/core/preop-orders"
 import { sideSwipeExitMs, sideSwipeFade, sideSwipeFollow, sideSwipeGate, sideSwipeStep } from "@/lib/side-swipe"
 import { convertedMeasurement } from "@/lib/use-converted-measurement"
 import { LabScanPanel } from "@/components/LabScanPanel"
-import { AiAdvisorPanel } from "@/components/AiAdvisorPanel"
+import { PreopAiSection } from "@/components/preop/PreopAiSection"
 import {
   capabilityMessageKey,
   useDeploymentCapabilities,
@@ -961,24 +961,8 @@ export default function NewCaseScreen() {
               {questionList("demographics")}
             </SectionCard>
 
-            {/* AI assistance: its own section after the patient, only with AI on in Status (10.4.1). */}
-            <SectionCard title={tc("sectionAi")} onLayout={(y) => { sectionY.current.ai = y }} visible={showSection("ai")}>
-              <Controller control={control} name="aiOptIn" render={({ field }) => (
-                <AiAdvisorPanel
-                  adviceAvailable={!pediatricMode && clinicalAi.clinicalAdvice.enabled}
-                  aiOptIn={!!field.value}
-                  onToggleOptIn={field.onChange}
-                  analysing={aiLoading}
-                  streamedText={aiText}
-                  error={aiError}
-                  onRun={runAdvisor}
-                  tc={tc}
-                />
-              )} />
-              {!pediatricMode && !clinicalAi.clinicalAdvice.enabled ? (
-                <Text style={{ color: colors.textMuted, fontSize: 12, lineHeight: 18, marginBottom: 14 }}>{tc(capabilityMessageKey(clinicalAi.clinicalAdvice.reason))}</Text>
-              ) : null}
-            </SectionCard>
+            <PreopAiSection control={control} visible={showSection("ai")} onLayout={(y) => { sectionY.current.ai = y }} pediatric={pediatricMode} clinicalAi={clinicalAi}
+              advisor={{ analysing: aiLoading, text: aiText, error: aiError, onRun: runAdvisor }} tc={tc} />
 
             <SectionCard title={tc("sectionCaseDetails")} onLayout={(y) => { sectionY.current.case = y }} visible={showSection("case")}>
               <Controller control={control} name="diagnoses" render={({ field }) => (
