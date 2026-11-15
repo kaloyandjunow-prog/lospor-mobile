@@ -9,9 +9,13 @@ import { apiFetch } from "./api"
 import { isPreopFormOpen } from "./preop-open-forms"
 import { useLiveRefresh } from "./use-live-refresh"
 
-/** A 4xx the same request cannot get past. Sign-in (401), timeouts and rate limits can. */
+/**
+ * A 4xx the same request cannot get past. Sign-in (401), timeouts (408), an app
+ * too old for paediatric cases (426, gone once the app is updated) and rate
+ * limits (429) can.
+ */
 function isPermanentRefusal(status: number): boolean {
-  return status >= 400 && status < 500 && status !== 401 && status !== 408 && status !== 429
+  return status >= 400 && status < 500 && ![401, 408, 426, 429].includes(status)
 }
 
 export async function flushLocalCaseDrafts(): Promise<void> {

@@ -65,9 +65,11 @@ describe("a new case the server refuses", () => {
     expect(hoisted.apiFetch).toHaveBeenCalledTimes(1)
   })
 
-  it("is retried after a sign-in or rate-limit answer", async () => {
-    hoisted.apiFetch.mockResolvedValueOnce({ ok: false, status: 401 })
-    await flushLocalCaseDrafts()
+  it("is retried after a sign-in, app-update or rate-limit answer", async () => {
+    for (const status of [401, 408, 426, 429]) {
+      hoisted.apiFetch.mockResolvedValueOnce({ ok: false, status })
+      await flushLocalCaseDrafts()
+    }
     expect(hoisted.markLocalCaseDraftRejected).not.toHaveBeenCalled()
   })
 })
