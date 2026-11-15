@@ -8,15 +8,7 @@ import { buildPreopPayload } from "./preop-payload"
 import { apiFetch } from "./api"
 import { isPreopFormOpen } from "./preop-open-forms"
 import { useLiveRefresh } from "./use-live-refresh"
-
-/**
- * A 4xx the same request cannot get past. Sign-in (401), timeouts (408), an app
- * too old for paediatric cases (426, gone once the app is updated) and rate
- * limits (429) can.
- */
-function isPermanentRefusal(status: number): boolean {
-  return status >= 400 && status < 500 && ![401, 408, 426, 429].includes(status)
-}
+import { draftRefusalFrom } from "./draft-refusal"
 
 export async function flushLocalCaseDrafts(): Promise<void> {
   const drafts = await getAllLocalCaseDrafts()
@@ -48,10 +40,11 @@ export async function flushLocalCaseDrafts(): Promise<void> {
       })
       if (res.ok) {
         await deleteLocalCaseDraft(draft.localId)
-      } else if (isPermanentRefusal(res.status)) {
-        // Resending the same payload every 15 s can never succeed; keep the
-        // draft, stop retrying it, and let the dashboard say it was refused.
-        await markLocalCaseDraftRejected(draft, res.status)
+      } else {
+        // Resending the same payload every 15 s can never get past a refusal;
+        // keep the draft, stop retrying it, and let the dashboard say why.
+        const rejected = draftRefusalFrom(res.status, await res.json().catch(() => null))
+        if (rejected) await markLocalCaseDraftRejected(draft, rejected)
       }
     } catch {
       // Network still offline — leave draft in store, try next cycle

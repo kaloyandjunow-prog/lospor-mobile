@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const hoisted = vi.hoisted(() => ({
-  drafts: [] as Array<{ localId: string; serverCaseId?: string; formValues: Record<string, unknown>; rejected?: { status: number; at: string } }>,
+  drafts: [] as Array<{ localId: string; serverCaseId?: string; formValues: Record<string, unknown>; rejected?: { status: number; code: string | null; at: string } }>,
   markLocalCaseDraftRejected: vi.fn(async () => {}),
   apiFetch: vi.fn(),
   saveSection: vi.fn(async () => ({ result: "saved" })),
@@ -55,19 +55,19 @@ describe("a new case the server refuses", () => {
   })
 
   it("is kept and marked, not retried every 15 s forever", async () => {
-    hoisted.apiFetch.mockResolvedValueOnce({ ok: false, status: 422 })
+    hoisted.apiFetch.mockResolvedValueOnce({ ok: false, status: 422, json: async () => ({ error: "PEDIATRIC_AGE_REQUIRED", code: "PEDIATRIC_AGE_REQUIRED" }) })
     await flushLocalCaseDrafts()
-    expect(hoisted.markLocalCaseDraftRejected).toHaveBeenCalledWith(hoisted.drafts[0], 422)
+    expect(hoisted.markLocalCaseDraftRejected).toHaveBeenCalledWith(hoisted.drafts[0], expect.objectContaining({ status: 422, code: "PEDIATRIC_AGE_REQUIRED" }))
     expect(hoisted.deleteLocalCaseDraft).not.toHaveBeenCalled()
 
-    hoisted.drafts = [{ ...hoisted.drafts[0], rejected: { status: 422, at: "2026-11-15T10:00:00Z" } }]
+    hoisted.drafts = [{ ...hoisted.drafts[0], rejected: { status: 422, code: "PEDIATRIC_AGE_REQUIRED", at: "2026-11-15T10:00:00Z" } }]
     await flushLocalCaseDrafts()
     expect(hoisted.apiFetch).toHaveBeenCalledTimes(1)
   })
 
   it("is retried after a sign-in, app-update or rate-limit answer", async () => {
     for (const status of [401, 408, 426, 429]) {
-      hoisted.apiFetch.mockResolvedValueOnce({ ok: false, status })
+      hoisted.apiFetch.mockResolvedValueOnce({ ok: false, status, json: async () => ({}) })
       await flushLocalCaseDrafts()
     }
     expect(hoisted.markLocalCaseDraftRejected).not.toHaveBeenCalled()

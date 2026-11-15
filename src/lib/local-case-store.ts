@@ -1,3 +1,6 @@
+import type { DraftRefusal } from "./draft-refusal"
+// What the dashboard says about a refused draft, beside the drafts it lists.
+export { draftRefusalText } from "./draft-refusal"
 import * as FileSystem from "expo-file-system/legacy"
 import { Platform } from "react-native"
 import { randomHex } from "@/lib/random-id"
@@ -29,7 +32,7 @@ export type LocalCaseDraft = {
    * cannot succeed, so the flusher stops and the dashboard says so; saving the
    * draft again from the form clears it.
    */
-  rejected?: { status: number; at: string }
+  rejected?: DraftRefusal
 }
 
 let activeOwnerId: string | null = null
@@ -186,8 +189,8 @@ export async function loadLocalCaseDraft(localId: string): Promise<LocalCaseDraf
 }
 
 /** Mark a draft the server refused, keeping every value the clinician entered. */
-export async function markLocalCaseDraftRejected(draft: LocalCaseDraft, status: number): Promise<void> {
-  const next: LocalCaseDraft = { ...draft, rejected: { status, at: new Date().toISOString() } }
+export async function markLocalCaseDraftRejected(draft: LocalCaseDraft, rejected: DraftRefusal): Promise<void> {
+  const next: LocalCaseDraft = { ...draft, rejected }
   try {
     if (Platform.OS === "web") await putWebDraft(next)
     else await FileSystem.writeAsStringAsync(draftPath(draft.localId), JSON.stringify(next))
