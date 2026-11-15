@@ -3,15 +3,21 @@ import { AppState } from "react-native"
 import { createBackoffPolicy } from "@lospor/core/sync"
 import { getQueuedCasePatchSummary } from "./offline-case-patches"
 import { autosaveManager, resetAutosaveNetworkBreaker } from "./autosave-manager"
-import { getAllLocalCaseDrafts, deleteLocalCaseDraft } from "./local-case-store"
+import { getAllLocalCaseDrafts, deleteLocalCaseDraft, markLocalCaseDraftRejected } from "./local-case-store"
 import { buildPreopPayload } from "./preop-payload"
 import { apiFetch } from "./api"
 import { isPreopFormOpen } from "./preop-open-forms"
 import { useLiveRefresh } from "./use-live-refresh"
 
+/** A 4xx the same request cannot get past. Sign-in (401), timeouts and rate limits can. */
+function isPermanentRefusal(status: number): boolean {
+  return status >= 400 && status < 500 && status !== 401 && status !== 408 && status !== 429
+}
+
 export async function flushLocalCaseDrafts(): Promise<void> {
   const drafts = await getAllLocalCaseDrafts()
   for (const draft of drafts) {
+    if (draft.rejected && !draft.serverCaseId) continue
     try {
       // Build the normalised payload (includes derived BMI, RCRI, Apfel, STOP-BANG)
       const preop = buildPreopPayload(draft.formValues)
@@ -38,6 +44,10 @@ export async function flushLocalCaseDrafts(): Promise<void> {
       })
       if (res.ok) {
         await deleteLocalCaseDraft(draft.localId)
+      } else if (isPermanentRefusal(res.status)) {
+        // Resending the same payload every 15 s can never succeed; keep the
+        // draft, stop retrying it, and let the dashboard say it was refused.
+        await markLocalCaseDraftRejected(draft, res.status)
       }
     } catch {
       // Network still offline — leave draft in store, try next cycle
