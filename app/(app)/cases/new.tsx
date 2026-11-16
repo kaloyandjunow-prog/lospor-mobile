@@ -18,7 +18,8 @@ import { deleteLocalCaseDraft, makeLocalCaseId, saveLocalCaseDraft } from "@/lib
 import { usePreopFormOpen } from "@/lib/preop-open-forms"
 import { buildPreopPayload } from "@/lib/preop-payload"
 import { preopFormSchemaFor, type PreopFormData as FormData, type PreopFormInput as FormInput, type PreopSection } from "@/lib/preop-form-schema"
-import { preopVitalsRequirementFor } from "@lospor/core/preop-orders"
+import { isTypedMedication, preopVitalsRequirementFor } from "@lospor/core/preop-orders"
+import { formatMessage } from "@/i18n/locale"
 import type { PreopVitalsRequirement } from "@lospor/core/clinical-validation"
 import { buildPreopSectionItems, preopOverviewText } from "@/lib/preop-section-overview"
 import { localizedPreopSectionLabels } from "@/lib/preop-section-labels"
@@ -1015,7 +1016,7 @@ export default function NewCaseScreen() {
 
             <SectionCard title={tc("sectionMeds")} onLayout={(y) => { sectionY.current.meds = y }} visible={showSection("meds")}>
               <Controller control={control} name="currentMedications" render={({ field }) => (
-                <SearchTagInput kind="medication" label={tc("medicationSearch")} value={(field.value ?? []).map((item) => ({ code: item.atcCode ?? item.inn ?? item.label, label: item.label, inn: item.inn, atcCode: item.atcCode }))} onChange={(items) => field.onChange(items.map((item) => ({ label: item.label, inn: item.inn, atcCode: item.atcCode })))} endpoint="/api/search/drugs" placeholder={tc("searchMedications")} onFocus={() => scrollToSection("meds", 60)} error={blockedErrorFor("currentMedications")} />
+                <SearchTagInput kind="medication" label={tc("medicationSearch")} value={(field.value ?? []).map((item) => ({ code: item.atcCode ?? item.inn ?? item.label, label: item.label, inn: item.inn, atcCode: item.atcCode }))} onChange={(items) => field.onChange(items.map((item) => ({ label: item.label, inn: item.inn, atcCode: item.atcCode })))} endpoint="/api/search/drugs" placeholder={tc("searchMedications")} onFocus={() => scrollToSection("meds", 60)} error={blockedErrorFor("currentMedications")} freeTextRow={preopProfile.sectionConfig.medicationsFreeText ? { label: (typed) => formatMessage(tc("medicationAddTyped"), { typed }), typedMark: tc("medicationTypedMark"), isTyped: (item) => isTypedMedication(item) } : undefined} />
               )} />
               {questionList("current_medications")}
             </SectionCard>
