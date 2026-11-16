@@ -10,8 +10,7 @@ import { openPrintCase } from "@/lib/print-case"
 import { caseMetaParts } from "@/lib/case-meta"
 import { useCaseFinalize } from "@/lib/use-case-finalize"
 import { useCaseUnfinalize } from "@/lib/use-case-unfinalize"
-import { CaseReadinessCard, finaliseLabel } from "@/components/CaseReadinessCard"
-import { usePreopProfiles } from "@/lib/use-preop-profile"
+import { CaseReadinessCard, FinaliseLabel } from "@/components/CaseReadinessCard"
 import { AppHeader } from "@/components/AppHeader"
 import { EditWindowBanner } from "@/components/EditWindowBanner"
 import { PendingCloseBanner } from "@/components/PendingCloseBanner"
@@ -38,8 +37,6 @@ export default function CaseSummaryScreen() {
   const router = useRouter()
   const { tc, t, language, shade } = usePreferences()
   const [caseData, setCaseData] = useState<CaseData | null>(null)
-  // The hospital's preop vitals rule for the Finalise count (10.6.0).
-  const preopProfiles = usePreopProfiles()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -298,7 +295,7 @@ export default function CaseSummaryScreen() {
                 }}
               >
                 <Text style={{ color: shade("#fff"), fontSize: 13, fontWeight: "800" }}>
-                  {finalizing ? tc("finalising") : finaliseLabel(tc("actionFinalise"), caseData, refusal, preopProfiles)}
+                  {finalizing ? tc("finalising") : <FinaliseLabel label={tc("actionFinalise")} caseData={caseData} refusal={refusal} />}
                 </Text>
               </TouchableOpacity>
             )}

@@ -124,6 +124,12 @@ export function finaliseLabel(label: string, caseData: CaseLike, refusal: CaseRe
   return count > 0 ? `${label} (${count})` : label
 }
 
+/** finaliseLabel under the hospital's preop vitals rule (10.6.0), for the Finalise button's text. */
+export function FinaliseLabel({ label, caseData, refusal }: { label: string; caseData: CaseLike; refusal: CaseReadiness | null }) {
+  const profiles = usePreopProfiles()
+  return <>{finaliseLabel(label, caseData, refusal, profiles)}</>
+}
+
 /** The screen and part of it a "Go to" opens, as this app routes them. */
 export function readinessRoute(caseId: string, item: ReadinessItem): string {
   const target = item.target
