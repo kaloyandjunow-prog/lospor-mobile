@@ -1,6 +1,6 @@
 {
   "name": "lospor-mobile",
-  "version": "10.4.2",
+  "version": "10.5.0",
   "license": "AGPL-3.0-or-later",
   "main": "expo-router/entry",
   "dependencies": {
@@ -8,7 +8,7 @@
     "@expo/metro-runtime": "~58.0.17",
     "@expo/vector-icons": "^15.1.1",
     "@hookform/resolvers": "^5.9.2",
-    "@lospor/core": "github:kaloyandjunow-prog/lospor-core#v10.4.2",
+    "@lospor/core": "github:kaloyandjunow-prog/lospor-core#v10.5.0",
     "expo": "~58.0.25",
     "expo-constants": "~58.0.16",
     "expo-dev-client": "~58.0.20",
