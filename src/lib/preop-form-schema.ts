@@ -4,6 +4,7 @@ import {
   evaluatePreopReadiness,
   validatePreopPatch,
   type ClinicalValidationResult,
+  type PreopVitalsRequirement,
 } from "@lospor/core/clinical-validation"
 
 const preopNumber = (field: string) => {
@@ -27,7 +28,7 @@ function addCoreIssues(
   }
 }
 
-export const preopFormSchema = z.object({
+const preopFormObject = z.object({
   clinicalMode: z.enum(["ADULT", "PEDIATRIC"]).default("ADULT"),
   // API-owned definition-driven answers. The PWA’s specialized controls
   // round-trip these rows and never invent a second question catalog.
@@ -191,10 +192,21 @@ export const preopFormSchema = z.object({
     takenAt: z.string().datetime().optional(),
   })).default([]),
 })
-  .superRefine((d, ctx) => {
+
+/**
+ * The form schema with the hospital's preop vitals rule for this population
+ * (10.6.0). The rule arrives with the case read, after the form exists, so the
+ * screen builds the schema at validation time. Without one all three vitals
+ * are required, as before.
+ */
+export function preopFormSchemaFor(vitals?: PreopVitalsRequirement) {
+  return preopFormObject.superRefine((d, ctx) => {
     addCoreIssues(validatePreopPatch(d), ctx)
-    addCoreIssues(evaluatePreopReadiness(d), ctx)
+    addCoreIssues(evaluatePreopReadiness(d, vitals), ctx)
   })
+}
+
+export const preopFormSchema = preopFormSchemaFor()
 
 export type PreopFormInput = z.input<typeof preopFormSchema>
 export type PreopFormData = z.output<typeof preopFormSchema>
