@@ -118,10 +118,12 @@ test("a hidden canonical drug is available only as provenance-preserving manual 
   await expect(page.getByTestId("drug-search-only-manual-notice")).toBeVisible()
   await expect(page.getByText("10 mg/mL", { exact: true })).toHaveCount(0)
   await expect(page.getByText(/2 mg\/kg/)).toHaveCount(0)
-  // No range to guide the dose: - / number / + without a slider; the number is typed into the stepper.
-  const manualDose = page.getByTestId("dose-fallback-stepper").locator("input")
-  await manualDose.fill("42")
-  await manualDose.press("Enter")
+  // No range to guide the dose: - / number / + without a slider, and the in-app keypad (never the OS keyboard).
+  await expect(page.getByTestId("stepper-track")).toHaveCount(0)
+  await page.getByTestId("stepper-value").click()
+  await page.getByText("4", { exact: true }).last().click()
+  await page.getByText("2", { exact: true }).last().click()
+  await page.mouse.click(4, 4)
 
   const eventRequest = page.waitForRequest(candidate => (
     candidate.method() === "POST"
@@ -218,7 +220,7 @@ test("a non-production-ready adult baseline cannot prefill any medication value"
   await page.getByTestId("drug-search-input").fill("Propofol")
   await page.getByText("Propofol", { exact: true }).click()
 
-  await expect(page.getByTestId("dose-fallback-stepper").locator("input")).toHaveValue("")
+  await expect(page.getByTestId("stepper-value")).toHaveText("-")
   await expect(page.getByText("10 mg/mL", { exact: true })).toHaveCount(0)
   await expect(page.getByText("50", { exact: true })).toHaveCount(0)
   await expect(page.getByText(/2 mg\/kg/)).toHaveCount(0)
