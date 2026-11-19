@@ -18,7 +18,6 @@ import { usePhoneDeathPrompt } from "@/lib/use-phone-death-prompt"
 import { jetSheet } from "@/lib/jet-sheet"
 import { JetHost } from "@/components/intraop/JetHost"
 import { TourniquetHost } from "@/components/intraop/TourniquetHost"
-import { agentRuleFor } from "@lospor/core/agent-entry"
 import { preopAgeDays } from "@lospor/core/vital-questions"
 import { parseTechniqueSides, type TechniqueSide } from "@lospor/core/technique-smart"
 import { useLikelyEvents } from "@/lib/use-likely-events"
@@ -36,7 +35,7 @@ import { useVitalsEntry } from "@/lib/use-vitals-entry"
 import { COMPLICATION_ITEMS } from "@/lib/intraop-static-options"
 import { applyIntraopChartChange } from "@/lib/apply-intraop-chart-change"
 import { pediatricAgeFromPreop, useAllergyCheck, type IntraopPreopSummary } from "@/lib/intraop-preop-summary"
-import { useIntraopOptionSets } from "@/lib/use-intraop-option-sets"
+import { agentRuleLookup, useIntraopOptionSets } from "@/lib/use-intraop-option-sets"
 import { useIntraopCaseLifecycle, useEventStatePatch } from "@/lib/use-intraop-case-lifecycle"
 import { useIntraopPremedication } from "@/lib/use-intraop-premedication"
 import { useIntraopPremedicationPrefill } from "@/lib/use-intraop-premedication-prefill"
@@ -590,11 +589,7 @@ export default function IntraopLiveScreen() {
           infActConcentration, setInfActConcentration, flOpen, setFlOpen, setFlFluid, setFlVol,
           flEntryMode, setFlEntryMode, flRate, setFlRate, resetFluidDraft,
           setFlConcentration, flRoute, setFlRoute, setFlRule,
-          pediatricFluidProfiles: PEDIATRIC_FLUID_PROFILES,
-          agentRule: (agent: string) => agentRuleFor(agent, {
-            adult: clinicalRulesSnapshot?.adultDoseProfiles ?? [],
-            paediatric: clinicalRulesSnapshot?.pediatricAgentProfiles ?? [],
-          }, pediatricMode),
+          pediatricFluidProfiles: PEDIATRIC_FLUID_PROFILES, agentRule: agentRuleLookup(clinicalRulesSnapshot, pediatricMode),
           pediatricInfusionProfiles: PEDIATRIC_INFUSION_PROFILES,
           FLUID_LIST, flFluid, flVol, confirmFluid, FLUID_QUICK_VOLUMES,
           FLUID_CONCENTRATIONS, FLUID_DEFAULT_CONCENTRATIONS, FLUID_ROUTES, flConcentration, flEndOpen,
