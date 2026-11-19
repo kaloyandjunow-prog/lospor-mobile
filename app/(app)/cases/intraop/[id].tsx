@@ -18,6 +18,7 @@ import { usePhoneDeathPrompt } from "@/lib/use-phone-death-prompt"
 import { jetSheet } from "@/lib/jet-sheet"
 import { JetHost } from "@/components/intraop/JetHost"
 import { TourniquetHost } from "@/components/intraop/TourniquetHost"
+import { agentRuleFor } from "@lospor/core/agent-entry"
 import { preopAgeDays } from "@lospor/core/vital-questions"
 import { parseTechniqueSides, type TechniqueSide } from "@lospor/core/technique-smart"
 import { useLikelyEvents } from "@/lib/use-likely-events"
@@ -109,7 +110,7 @@ export default function IntraopLiveScreen() {
     DRUG_DOSE_CALCS, INFUSION_QUICK_RATES, INFUSION_SUGGESTED_RATES,
     INFUSION_ROUTES, INFUSION_LA_CONCENTRATIONS, INFUSION_RANGES,
     INFUSION_ROUTE_PROFILES, INFUSION_BASE_PROFILES, DRUG_CODES, INFUSION_CODES,
-    AGENT_QUICK_PERCENTS, CLINICAL_EVENT_CATS, PEDIATRIC_DRUG_PROFILES,
+    CLINICAL_EVENT_CATS, PEDIATRIC_DRUG_PROFILES,
     PEDIATRIC_FLUID_PROFILES, PEDIATRIC_INFUSION_PROFILES,
     POSITIONS_LIST, MONITORING_OPTS, TECHNIQUE_TREE, VASC_TREE, AIRWAY_TOOLS, AIRWAY_DEVICES,
     PREMED_LIBRARY, eventLabel, techniqueLabel, INFUSION_WEIGHT_BASIS,
@@ -590,13 +591,17 @@ export default function IntraopLiveScreen() {
           flEntryMode, setFlEntryMode, flRate, setFlRate, resetFluidDraft,
           setFlConcentration, flRoute, setFlRoute, setFlRule,
           pediatricFluidProfiles: PEDIATRIC_FLUID_PROFILES,
+          agentRule: (agent: string) => agentRuleFor(agent, {
+            adult: clinicalRulesSnapshot?.adultDoseProfiles ?? [],
+            paediatric: clinicalRulesSnapshot?.pediatricAgentProfiles ?? [],
+          }, pediatricMode),
           pediatricInfusionProfiles: PEDIATRIC_INFUSION_PROFILES,
           FLUID_LIST, flFluid, flVol, confirmFluid, FLUID_QUICK_VOLUMES,
           FLUID_CONCENTRATIONS, FLUID_DEFAULT_CONCENTRATIONS, FLUID_ROUTES, flConcentration, flEndOpen,
           setFlEndOpen, flEndTarget, flEndCustom, setFlEndCustom, flEndRate, setFlEndRate,
           changeFluidRate, confirmFluidEnd, agOpen,
           setAgOpen, setAgPick, setAgPercent, VOLATILE_AGENTS, agPick, confirmAgent,
-          AGENT_QUICK_PERCENTS, agPercent, editOpen, editEv, editDose, editTime, setEditOpen,
+          agPercent, editOpen, editEv, editDose, editTime, setEditOpen,
           setEditDose, setEditTime, confirmEdit,
           startAtOpen, startAtInput, setStartAtOpen, setStartAtInput,
           startAtDay, startCaseAt, endCaseOpen, setEndCaseOpen, endCaseRunningItems, afterEndItems, resolveAfterEnd, setChosenEndTs, endCaseDecisions,
