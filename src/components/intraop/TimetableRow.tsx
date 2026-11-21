@@ -72,6 +72,13 @@ type TimetableRowProps = {
   onQuickAdd: (col: number, action: QuickAddAction) => void
   /** Answers an unconfirmed stop in its row; absent on a watching screen. */
   onAnswerAttention?: (key: string, action: IntraopAttentionAction) => void
+  /** 10.8.0: a tap on a running item opens its menu here (Stop, Change dose, ...). */
+  onOpenRunning?: (item: RunningItem, col: number) => void
+  /** 10.8.0: a tap on a line of the row opens its menu. */
+  onOpenEvent?: (event: LogEvent) => void
+  /** 10.8.0: items stopped before this row and not started again ("Stopped: ..."). */
+  stopped?: Array<{ id: string; label: string; color: string; at: string }>
+  onOpenStopped?: (id: string, col: number) => void
 }
 
 function TimetableRowComponent({
@@ -79,13 +86,11 @@ function TimetableRowComponent({
   vital, rowEvents, running, summary, labelOf,
   activeInfusions, activeFluids, activeAgents, activeGas,
   onExpand, onCollapse, onManageInfusion, onEndFluid, onEditGas, onEditJet, onStopAgent, onQuickAdd, onAnswerAttention,
+  onOpenRunning, onOpenEvent, stopped, onOpenStopped,
 }: TimetableRowProps) {
   const shade = useShade()
   const { tc } = usePreferences()
   const jetOn = useSyncExternalStore(jetSheet.subscribe, jetSheet.enabled, jetSheet.enabled)
-  const plannedItems = running.filter(item => item.planned || item.plannedStop || item.plannedChange)
-  const plannedPrefix = (item: RunningItem) =>
-    `${tc(item.planned ? "plannedLabel" : item.plannedStop ? "plannedStopLabel" : "plannedChangeLabel")} · `
   const t = timeAtCol(chartStart, col)
   const { criticalParts, normalParts, drugParts, hasCritical } = summary
   const rowEntries = rowEvents.filter(isRowEntry)
@@ -145,11 +150,7 @@ function TimetableRowComponent({
           <Text style={{ color: shade("#475569"), fontSize: 18, fontWeight: "300" }}>×</Text>
         </TouchableOpacity>
 
-        <LabDrawDetail draws={labDraws ?? []} onOpen={onOpenLabs} />
-
-        <TimetableRowEntries entries={rowEntries} labelOf={labelOf} col={col} onEditJet={onEditJet} />
-
-        {/* Running items */}
+        {/* Running items first, then what was charted here, then what stopped earlier (10.8.0). */}
         {running.length > 0 && (
           <View style={{ paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8 }}>
             <Text style={{
@@ -168,14 +169,17 @@ function TimetableRowComponent({
                 // control: a change made here is dated to this row (9.13.1).
                 const marker = !!(item.planned || item.plannedStop || item.plannedChange)
                 const dashed = marker || !!item.projected
-                const canManage = !marker && !!(activeInf || activeFl || runningAgent || (isGasItem && activeGas) || (isJetItem && onEditJet))
+                const legacyManage = !marker && !!(activeInf || activeFl || runningAgent || (isGasItem && activeGas) || (isJetItem && onEditJet))
+                const canOpen = !!onOpenRunning || legacyManage
                 return (
                   <View key={item.id}>
                   <TouchableOpacity
-                    activeOpacity={canManage ? 0.7 : 1}
+                    testID={`timetable-running-${item.id}`}
+                    activeOpacity={canOpen ? 0.7 : 1}
                     onPress={() => {
-                      if (!canManage) return
-                      // Every stop and change is recorded at this row, not the tap time.
+                      // 10.8.0: the item's menu, at this row. Every stop and change is dated to the row.
+                      if (onOpenRunning) { onOpenRunning(item, col); return }
+                      if (!legacyManage) return
                       if (activeInf) onManageInfusion(activeInf, col)
                       else if (activeFl) onEndFluid(activeFl, col)
                       else if (isGasItem && activeGas) onEditGas(col)
@@ -183,25 +187,23 @@ function TimetableRowComponent({
                       else if (runningAgent) onStopAgent(runningAgent.name, col)
                     }}
                     style={{
-                      flexDirection: "row", alignItems: "center",
+                      flexDirection: "row", alignItems: "center", minHeight: 48,
                       backgroundColor: item.color + (dashed ? "08" : "14"),
-                      borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9,
+                      borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
                       borderWidth: 1, borderColor: item.color + "44", borderStyle: dashed ? "dashed" : "solid",
                       borderLeftWidth: 4, borderLeftColor: item.color,
                     }}
                   >
                     {(() => { const state = eventsSaveState(item.eventIds ?? [], saveInput); return state ? <SaveStateDot state={state} /> : null })()}
-                    <Text style={{ color: item.color, fontSize: 13, fontWeight: "700", flex: 1 }}>
+                    <Text style={{ color: item.color, fontSize: 14, fontWeight: "700", flex: 1 }}>
                       {item.planned ? `${tc("plannedLabel")} · ` : item.plannedStop ? `${tc("plannedStopLabel")} · ` : item.plannedChange ? `${tc("plannedChangeLabel")} · ` : ""}{item.label}
                     </Text>
-                    {canManage && (
-                      <Text style={{ color: shade("#64748b"), fontSize: 11 }}>
-                        {activeInf ? tc("trManage") : activeFl ? tc("trEndFluid") : isGasItem || isJetItem ? tc("trEdit") : tc("trStop")} →
-                      </Text>
-                    )}
+                    {/* A stop entered ahead reached this row unconfirmed: answered in the bar under the tabs (10.8.0). */}
+                    {item.stopUnconfirmed ? <Text style={{ color: shade("#fbbf24"), fontSize: 16, fontWeight: "900", marginRight: 8 }}>?</Text> : null}
+                    {canOpen ? <Text style={{ color: shade("#64748b"), fontSize: 18 }}>⋯</Text> : null}
                   </TouchableOpacity>
-                  {/* A stop entered ahead reached this row unconfirmed (9.13.0). */}
-                  {item.stopUnconfirmed && item.stopEventId && onAnswerAttention ? (
+                  {/* Without the menu (older caller): the answers stay in the row. */}
+                  {!onOpenRunning && item.stopUnconfirmed && item.stopEventId && onAnswerAttention ? (
                     <View style={{ marginTop: 6 }}>
                       <Text style={{ color: shade("#fbbf24"), fontSize: 12, fontWeight: "700", marginBottom: 6 }}>{tc("stopUnconfirmedLabel")}</Text>
                       <AttentionAnswers id={item.stopEventId} kind="unconfirmed_stop" onAnswer={onAnswerAttention} />
@@ -213,6 +215,23 @@ function TimetableRowComponent({
             </View>
           </View>
         )}
+
+        <LabDrawDetail draws={labDraws ?? []} onOpen={onOpenLabs} />
+
+        <TimetableRowEntries entries={rowEntries} labelOf={labelOf} col={col} onEditJet={onEditJet} onOpenEvent={onOpenEvent} />
+
+        {/* What stopped before this row and was not started again: one line, each name opens its menu (Resume, ...). */}
+        {stopped && stopped.length > 0 ? (
+          <View testID="timetable-row-stopped" style={{ paddingHorizontal: 14, paddingTop: 10, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+            <Text style={{ color: shade("#64748b"), fontSize: 12, fontWeight: "700" }}>{tc("trStoppedLine")}</Text>
+            {stopped.map(item => (
+              <TouchableOpacity key={item.id} testID={`timetable-row-stopped-${item.id}`} onPress={() => onOpenStopped?.(item.id, col)}
+                style={{ minHeight: 36, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: item.color + "55", justifyContent: "center" }}>
+                <Text style={{ color: item.color, fontSize: 13, fontWeight: "700" }}>{item.label} {item.at}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : null}
 
         {/* Quick-add grid */}
         <View style={{ paddingHorizontal: 14, paddingTop: running.length > 0 ? 4 : 12, paddingBottom: 16 }}>
@@ -325,24 +344,26 @@ function TimetableRowComponent({
             {drugParts.join("  ·  ")}
           </Text>
         )}
-        {/* What is planned for this row, readable without opening it: a stripe
-            in the lane was the only sign (1.4.14 appliance test). */}
-        {plannedItems.length > 0 && (
-          <Text testID="row-planned" style={{ fontSize: 10, lineHeight: 13 }} numberOfLines={1}>
-            {plannedItems.map((item, index) => (
-              <Text key={item.id} style={{ color: item.color }}>{index > 0 ? "  ·  " : ""}{plannedPrefix(item)}{item.label}</Text>
-            ))}
-          </Text>
-        )}
+        {/* 10.8.0: what is planned shows as a dashed strip at the side, not as text here. */}
         <LabDrawPill count={mergeRowLabDraws(labDraws).count} />
         {rowState && <SaveStateBadge state={rowState} />}
       </View>
 
-      {/* Running strips — full height, stacked from right edge inward (5px each) */}
-      <View style={{ flexDirection: "row", alignSelf: "stretch" }}>
-        {running.slice().reverse().map(item => (
-          <View key={item.id} style={{ width: 5, backgroundColor: item.color + (item.planned || item.plannedStop || item.projected ? "33" : "88") }} />
-        ))}
+      {/* Running strips — full height, stacked from right edge inward. Not a control (10.8.0):
+          they say something runs; the row is opened to work with it. Planned start and the
+          way to a planned stop are dashed; a planned dose change is a dot on the strip. */}
+      <View pointerEvents="none" style={{ flexDirection: "row", alignSelf: "stretch", gap: 1 }}>
+        {running.slice().reverse().map(item => {
+          const dashed = !!(item.planned || item.plannedStop || item.towardsPlannedStop)
+          const faint = !dashed && !!item.projected
+          return (
+            <View key={item.id} testID={`row-strip-${item.id}`} style={{ width: 6, alignItems: "center", justifyContent: "center",
+              backgroundColor: dashed ? "transparent" : item.color + (faint ? "33" : "99"),
+              borderLeftWidth: dashed ? 2 : 0, borderRightWidth: dashed ? 2 : 0, borderColor: item.color, borderStyle: dashed ? "dashed" : "solid" }}>
+              {item.plannedChange ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: item.color }} /> : null}
+            </View>
+          )
+        })}
       </View>
     </TouchableOpacity>
   )
@@ -370,7 +391,11 @@ export const TimetableRow = memo(TimetableRowComponent, (prev, next) => {
     prev.onEditJet !== next.onEditJet ||
     prev.onStopAgent !== next.onStopAgent ||
     prev.onQuickAdd !== next.onQuickAdd ||
-    prev.onAnswerAttention !== next.onAnswerAttention
+    prev.onAnswerAttention !== next.onAnswerAttention ||
+    prev.onOpenRunning !== next.onOpenRunning ||
+    prev.onOpenEvent !== next.onOpenEvent ||
+    prev.stopped !== next.stopped ||
+    prev.onOpenStopped !== next.onOpenStopped
   ) {
     return false
   }

@@ -22,6 +22,8 @@ export type RunningItem = {
   plannedChange?: boolean
   /** Running now and still running in this row after now: drawn dashed, and a control (9.13.1). */
   projected?: boolean
+  /** 10.8.0: a row after now on the way to a planned stop: the side strip is dashed. */
+  towardsPlannedStop?: boolean
   /** The row a stop entered ahead reached, not yet confirmed; the stop to answer about. */
   stopUnconfirmed?: boolean
   stopEventId?: string
@@ -44,6 +46,7 @@ function presentRunningItem(item: CoreRunningItem, nameOf: RunningNameOf = store
   if (item.plannedStop) presented.plannedStop = true
   if (item.plannedChange) presented.plannedChange = true
   if (item.projected) presented.projected = true
+  if (item.towardsPlannedStop) presented.towardsPlannedStop = true
   if (item.stopUnconfirmed) presented.stopUnconfirmed = true
   if (item.stopEventId) presented.stopEventId = item.stopEventId
   if (item.eventIds?.length) presented.eventIds = item.eventIds
@@ -52,7 +55,8 @@ function presentRunningItem(item: CoreRunningItem, nameOf: RunningNameOf = store
 
 function presentRunningLabel(item: CoreRunningItem, nameOf: RunningNameOf): RunningItem {
   if (item.kind === "agent") {
-    return { id: item.id, label: nameOf("agent", item.name), color: item.color }
+    // 10.8.0: with the dose in force in this row (it had none, so "Dose" could not be read off the row).
+    return { id: item.id, label: [nameOf("agent", item.name), item.percent != null ? `${item.percent}%` : null].filter(Boolean).join(" "), color: item.color }
   }
   if (item.kind === "jet") {
     // Pressure, rate and FiO2 in force in this row (10.2.0).

@@ -63,6 +63,9 @@ import { useIntraopFavourites } from "@/lib/use-intraop-favourites"
 
 import { useIntraopEventPersistence } from "@/lib/use-intraop-event-persistence"
 import { useIntraopEventActions } from "@/lib/use-intraop-event-actions"
+import { useIntraopCellMenu } from "@/lib/use-intraop-cell-menu"
+import { repeatDrugEventPayload } from "@/lib/intraop-event-actions"
+import { serverNow } from "@/lib/server-clock"
 import { useIntraopLabs } from "@/lib/use-intraop-labs"
 import { LabsSheet } from "@/components/intraop/LabsSheet"
 import { useIntraopRuntimeEffects } from "@/lib/use-intraop-runtime-effects"
@@ -497,6 +500,33 @@ export default function IntraopLiveScreen() {
     cancelLabel: tc("cancelLabel"),
     chartStart, openVitals, openDrug, openInfusion, openFluid, openAgent, openGasSettings, openLabs, setSlotTs, slotTs, setSlotOpen,
   })
+  // 10.8.0: the one menu of the row, the running items and the event log.
+  const cellMenu = useIntraopCellMenu({
+    log, syncLog, chartStart,
+    startedAt: startRef.current, endedAt: endedAtRef.current,
+    timeZone: caseTimezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
+    locale: language === "bg" ? "bg" : "en",
+    readOnly: isWatching || !!caseInfo?.finalizedAt,
+    now: serverNow,
+    sheets: {
+      changeDose: (cell, ts) => {
+        if (cell.kind === "agent") openAgent(ts, cell.key)
+        else if (cell.kind === "gas") { if (activeGas) openGasSettings(ts, activeGas, "change") }
+        else if (cell.kind === "jet") jetSheet.open(ts)
+        else if (cell.kind === "infusion") { const inf = activeInfusions.find(item => item.infId === cell.key); if (inf) { setInfActTs(ts); setInfActTgt(inf); setInfActRate(inf.rate); setInfActOpen(true) } }
+        else { const fluid = activeFluids.find(item => item.fluidId === cell.key); if (fluid) openFluidEnd(fluid, ts) }
+      },
+      changeSyringe: (cell, ts) => { const inf = activeInfusions.find(item => item.infId === cell.key); if (inf) { setInfActTs(ts); setInfActTgt(inf); setInfActRate(inf.rate); setInfActOpen(true) } },
+      switchAgent: (cell, ts) => openAgent(ts, cell.key),
+      stopWithData: (cell, ts) => {
+        if (cell.kind === "infusion") { const inf = activeInfusions.find(item => item.infId === cell.key); if (!inf) return false; setInfActTs(ts); setInfActTgt(inf); setInfActRate(inf.rate); setInfActOpen(true); return true }
+        if (cell.kind === "fluid") { const fluid = activeFluids.find(item => item.fluidId === cell.key); if (!fluid) return false; openFluidEnd(fluid, ts); return true }
+        return false
+      },
+      editPoint: event => eventActions(event),
+      repeatDose: event => { void save({ ...repeatDrugEventPayload(event) }, serverNow().toISOString()) },
+    },
+  })
   const handleChartTimetableChange = (newData: TimetableData) => applyIntraopChartChange({ start: startRef.current, timetable, next: newData, onFluidStart: fluid => setActiveFluids(prev => [...prev, fluid]), save, onChange: setTimetable })
   // ─────────────────────────────── RENDER ───────────────────────────────
   return (
@@ -526,7 +556,7 @@ export default function IntraopLiveScreen() {
           tabBar={{ tab, onSelect: selectTab, tc, screenWidth, railRef: tabRailRef, layouts: tabLayouts }}
         >
         <IntraopRenderSurface {...{
-          screenWidth, tabSwipeResponder, tabMotion, tab, undoEv, chartRows, chartStart, currentCol, attention,
+          cellMenu, screenWidth, tabSwipeResponder, tabMotion, tab, undoEv, chartRows, chartStart, currentCol, attention,
           expandedRow, nowSlotPercent, timetable, eventRows, activeInfusions, activeFluids,
           activeAgent, activeAgents, activeGas, startRef, isWatching, verticalTimetableRef, undoLastEvent,
           setUndoEv, removalUndo, setExpandedRow, eventLabel, setInfActTgt, setInfActRate, setInfActTs,
@@ -606,6 +636,7 @@ export default function IntraopLiveScreen() {
           addSelectedPremedication, continuedPostopItems, router, id,
         }} />
         </IntraopScreenChrome>
+        {cellMenu.overlay}
       </View>
       {/* Rendered here rather than threaded through IntraopRenderSurface: the
           sheet needs only the draw list and the case id, and passing it through

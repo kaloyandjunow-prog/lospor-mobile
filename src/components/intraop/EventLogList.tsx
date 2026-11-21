@@ -1,4 +1,4 @@
-import { Pressable, Text, TouchableOpacity, View } from "react-native"
+import { Text, TouchableOpacity, View } from "react-native"
 import { useState } from "react"
 import { LAB_DRAW_COLOR } from "@/components/intraop/LabDrawCell"
 import { labDrawSummary, type IntraopLabDraw } from "@lospor/core/labs"
@@ -94,9 +94,12 @@ function LabRow({ draw, onPress, tc, shade }: { draw: IntraopLabDraw; onPress: (
   return <TouchableOpacity testID="event-log-lab-draw" accessibilityRole="button" onPress={onPress} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: shade("#1a2030") }}><Text style={{ color: shade("#64748b"), fontSize: 11, width: 42, fontVariant: ["tabular-nums"] }}>{formatTs(draw.takenAt)}</Text><View style={{ width: 3, height: 36, borderRadius: 2, backgroundColor: LAB_DRAW_COLOR, marginHorizontal: 12 }} /><View style={{ flex: 1 }}><Text style={{ color: shade("#e2e8f0"), fontSize: 13, fontWeight: "600" }}>{formatMessage(tc("labsPill"), { count: draw.results.length })}</Text><Text style={{ color: shade("#94a3b8"), fontSize: 11, marginTop: 1 }} numberOfLines={2}>{labDrawSummary(draw)}</Text></View></TouchableOpacity>
 }
 
-function EventRow({ ev, previous, eventLabel, onAction, onDelete, tc, shade }: { ev: LogEvent; previous?: LogEvent; eventLabel: (event: LogEvent, previousVital?: LogEvent) => EventLabel; onAction: () => void; onDelete: () => void; tc: (key: ClinicalStringKey) => string; shade: (hex: string) => string }) {
+// 10.8.0: a tap opens the same menu the entry has on the chart. The hidden
+// long-press menu and the "Remove" link on every line are gone: delete is in
+// the menu, and a long press found by nobody is not a way in.
+function EventRow({ ev, previous, eventLabel, onAction, tc: _tc, shade }: { ev: LogEvent; previous?: LogEvent; eventLabel: (event: LogEvent, previousVital?: LogEvent) => EventLabel; onAction: () => void; onDelete: () => void; tc: (key: ClinicalStringKey) => string; shade: (hex: string) => string }) {
   const { text, color, sub } = eventLabel(ev, previous)
-  return <TouchableOpacity accessibilityRole="button" onLongPress={onAction} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: shade("#1a2030") }}><Text style={{ color: shade("#64748b"), fontSize: 11, width: 42, fontVariant: ["tabular-nums"] }}>{formatTs(ev.ts)}</Text><View style={{ width: 3, height: 36, borderRadius: 2, backgroundColor: color, marginHorizontal: 12 }} /><View style={{ flex: 1 }}><Text style={{ color: shade("#e2e8f0"), fontSize: 13, fontWeight: "600" }}>{text}</Text>{!!sub && <Text style={{ color: shade("#94a3b8"), fontSize: 11, marginTop: 1 }}>{sub}</Text>}</View><Pressable accessibilityRole="button" accessibilityLabel={tc("deleteEventTitle")} onPress={onDelete} hitSlop={8} style={{ minHeight: 36, paddingHorizontal: 8, alignItems: "center", justifyContent: "center" }}><Text style={{ color: shade("#94a3b8"), fontSize: 11, fontWeight: "800" }}>{tc("removeEventLabel")}</Text></Pressable></TouchableOpacity>
+  return <TouchableOpacity testID={`event-log-row-${ev.id}`} accessibilityRole="button" onPress={onAction} style={{ flexDirection: "row", alignItems: "center", minHeight: 56, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: shade("#1a2030") }}><Text style={{ color: shade("#64748b"), fontSize: 12, width: 44, fontVariant: ["tabular-nums"] }}>{formatTs(ev.ts)}</Text><View style={{ width: 3, height: 36, borderRadius: 2, backgroundColor: color, marginHorizontal: 12 }} /><View style={{ flex: 1 }}><Text style={{ color: shade("#e2e8f0"), fontSize: 14, fontWeight: "600" }}>{text}</Text>{!!sub && <Text style={{ color: shade("#94a3b8"), fontSize: 12, marginTop: 1 }}>{sub}</Text>}</View><Text style={{ color: shade("#64748b"), fontSize: 18, paddingHorizontal: 8 }}>⋯</Text></TouchableOpacity>
 }
 
 function mergeLogWithLabDraws(log: LogEvent[], draws: IntraopLabDraw[]): EventLogEntry[] {

@@ -11,7 +11,8 @@ import { displayedCatalogName } from "@lospor/core/display"
 import { TimetableFooter } from "./TimetableFooter"
 import { TimetableRow, type QuickAddAction } from "./TimetableRow"
 import { IntraopUndoBar } from "./IntraopUndoBar"
-import { plannedRowTime } from "@/lib/intraop-projection"
+import { formatDateHHMM, plannedRowTime, timeAtCol } from "@/lib/intraop-projection"
+import { intraopStoppedItemsAt } from "@lospor/core/intraop-edits"
 import { IntraopAttentionBanner, type IntraopAttentionView } from "./IntraopAttentionBanner"
 import type { IntraopAttentionAction } from "@lospor/core/intraop-attention"
 import { CaseSaveStateContext } from "@/lib/use-case-save-state"
@@ -61,6 +62,12 @@ type Props = {
   onEndCase: () => void
   /** Opens the read-only chart view. Optional so the tab still renders without it. */
   onViewChart?: () => void
+  /** 10.8.0: the saved log, for the `"Stopped: ...`" line of an opened row. */
+  log?: LogEvent[]
+  /** 10.8.0: the menu of a running item at a row, of an entry, and of an item stopped earlier. */
+  onOpenRunning?: (item: RunningItem, col: number) => void
+  onOpenEvent?: (event: LogEvent) => void
+  onOpenStopped?: (id: string, col: number) => void
 }
 
 const NO_SAVE_STATE = { queuedEventIds: [], sendingEventId: null, refused: [], queuedSections: [], dismissRefused: () => {} }
@@ -105,6 +112,10 @@ export function IntraopTimetableTab({
   onJumpToNow,
   onEndCase,
   onViewChart,
+  log,
+  onOpenRunning,
+  onOpenEvent,
+  onOpenStopped,
 }: Props) {
   // Running agents, infusions and fluids by the names the reader chose (Settings → UI).
   const { language, bulgarianNames } = usePreferences()
@@ -149,6 +160,22 @@ export function IntraopTimetableTab({
     return byCol
   }, [labDraws])
 
+  // The items stopped before the opened row and not started again (10.8.0): only that row asks.
+  const stoppedForExpanded = useMemo(() => {
+    if (expandedRow === null || !log) return undefined
+    const rowStart = timeAtCol(chartStart, expandedRow)
+    return intraopStoppedItemsAt(log, rowStart.getTime() - 1).map(item => {
+      const start = [...log].reverse().find(event => event.ts <= item.stopEvent.ts && (event.infId === item.key || event.fluidId === item.key || event.name === item.key) && event.type.endsWith("_start"))
+      const kind = item.kind === "gas" || item.kind === "jet" ? null : item.kind
+      return {
+        id: `${item.kind}:${item.key}`,
+        label: kind ? nameOf(kind, start?.name ?? item.key) : item.kind === "gas" ? "FGF" : "Jet",
+        color: start?.color ?? "#94a3b8",
+        at: formatDateHHMM(new Date(item.stopEvent.ts)),
+      }
+    })
+  }, [chartStart, expandedRow, log, nameOf])
+
   const collapseExpandedRow = useCallback(() => onSetExpandedRow(null), [onSetExpandedRow])
   const resolveAttention = attention?.resolve
   const answerAttention = useMemo(
@@ -191,6 +218,10 @@ export function IntraopTimetableTab({
         onStopAgent={onStopAgent}
         onQuickAdd={onQuickAdd}
         onAnswerAttention={answerAttention}
+        onOpenRunning={isWatching ? undefined : onOpenRunning}
+        onOpenEvent={isWatching ? undefined : onOpenEvent}
+        stopped={col === expandedRow ? stoppedForExpanded : undefined}
+        onOpenStopped={isWatching ? undefined : onOpenStopped}
       />
     )
   }, [
@@ -217,6 +248,11 @@ export function IntraopTimetableTab({
     onStopAgent,
     rowDataByCol,
     rowHeight,
+    isWatching,
+    onOpenRunning,
+    onOpenEvent,
+    onOpenStopped,
+    stoppedForExpanded,
   ])
 
   return (

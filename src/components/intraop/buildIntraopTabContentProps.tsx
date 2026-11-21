@@ -34,7 +34,25 @@ type EventsProps = ContentFor<"events">
 type FluidsProps = ContentFor<"fluids">
 type VascularProps = ComponentProps<typeof VascularTab>
 
+/** 10.8.0: the one menu of the chart, the row and the event log (useIntraopCellMenu). */
+export type IntraopCellMenuApi = {
+  openContinuous: (cell: { kind: "agent" | "gas" | "jet" | "infusion" | "fluid"; key: string; col: number; title: string }) => void
+  openEvent: (event: LogEvent, title: string) => void
+}
+
+/** The kind and key a drawn running item stands for, from its id. */
+export function runningItemRef(id: string, activeAgents: { name: string }[]): { kind: "agent" | "gas" | "jet" | "infusion" | "fluid"; key: string } | null {
+  if (id.startsWith("inf-")) return { kind: "infusion", key: id.slice(4) }
+  if (id.startsWith("fluid-")) return { kind: "fluid", key: id.slice(6) }
+  if (id.startsWith("agent-")) return { kind: "agent", key: id.slice(6) }
+  if (id === "jet" || id.startsWith("jet-")) return { kind: "jet", key: "jet" }
+  if (id.startsWith("gas")) return { kind: "gas", key: "gas" }
+  const agent = activeAgents.find(candidate => id.includes(candidate.name))
+  return agent ? { kind: "agent", key: agent.name } : null
+}
+
 export type IntraopTabContentBuilderProps = {
+  cellMenu?: IntraopCellMenuApi
   screenWidth: LogProps["screenWidth"]
   caseEnded: boolean // ended: nothing runs on in the chart after the end
   attention?: LogProps["attention"] // Core intraop-attention, shown above the chart
@@ -271,6 +289,17 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
       onJumpToNow: jumpVerticalTimetableToNow,
       onEndCase: openEndCase,
       onViewChart: openChartView,
+      // 10.8.0: a tap on anything in an opened row opens its menu.
+      log,
+      onOpenRunning: props.cellMenu ? (item, col) => {
+        const ref = runningItemRef(item.id, activeAgents)
+        if (ref) props.cellMenu?.openContinuous({ ...ref, col, title: item.label })
+      } : undefined,
+      onOpenEvent: props.cellMenu ? (event: LogEvent) => props.cellMenu?.openEvent(event, eventLabel(event).text) : undefined,
+      onOpenStopped: props.cellMenu ? (id: string, col: number) => {
+        const [kind, ...key] = id.split(":")
+        props.cellMenu?.openContinuous({ kind: kind as "agent", key: key.join(":"), col, title: key.join(":") })
+      } : undefined,
     } }
 
     case "equipment": return { tab, content: {
@@ -373,7 +402,8 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
       onComplicationsNotesChange: setComplicationsNotes,
       onComplicationsNotesBlur: () => { if (formatComplications(selectedComplications, complicationsNotes) !== null) saveComplications() },
       onRemoveLegacyComplication: removeLegacyComplication,
-      onEventActions: eventActions,
+      // 10.8.0: a tap on a line opens the same menu it has on the chart.
+      onEventActions: props.cellMenu ? (event: LogEvent) => props.cellMenu?.openEvent(event, eventLabel(event).text) : eventActions,
       onPromptDelete: promptDelete,
       eventLabel,
       previousVitalFor: prevVitalFor,
