@@ -26,7 +26,7 @@ export function VentilationModeSection({
           const on = awVentModes.includes("Spontaneous")
           return (
             <TouchableOpacity onPress={() => setAwVentModes(prev => prev.includes("Spontaneous") ? prev.filter(m => m !== "Spontaneous") : [...prev, "Spontaneous"])}
-              style={{ paddingHorizontal:14, paddingVertical:10, borderRadius:12,
+              style={{ paddingHorizontal:14, paddingVertical:10, minHeight:44, justifyContent:"center", borderRadius:12,
                 backgroundColor: on ? shade("#0f2a1a") : shade("#111111"),
                 borderWidth:1, borderColor: on ? shade("#22c55e") : shade("#1e2d40") }}>
               <Text style={{ color: on ? shade("#86efac") : shade("#64748b"), fontSize:12, fontWeight:"700" }}>{tc("ventSpontaneous")}</Text>
@@ -39,7 +39,7 @@ export function VentilationModeSection({
           const open = awVentExpanded === "assisted"
           return (
             <TouchableOpacity onPress={() => setAwVentExpanded(open ? null : "assisted")}
-              style={{ paddingHorizontal:14, paddingVertical:10, borderRadius:12,
+              style={{ paddingHorizontal:14, paddingVertical:10, minHeight:44, justifyContent:"center", borderRadius:12,
                 backgroundColor: hasAny || open ? shade("#0f2a1a") : shade("#111111"),
                 borderWidth:1, borderColor: hasAny || open ? shade("#22c55e") : shade("#1e2d40"),
                 flexDirection:"row", alignItems:"center", gap:4 }}>
@@ -54,7 +54,7 @@ export function VentilationModeSection({
           const open = awVentExpanded === "controlled"
           return (
             <TouchableOpacity onPress={() => setAwVentExpanded(open ? null : "controlled")}
-              style={{ paddingHorizontal:14, paddingVertical:10, borderRadius:12,
+              style={{ paddingHorizontal:14, paddingVertical:10, minHeight:44, justifyContent:"center", borderRadius:12,
                 backgroundColor: hasAny || open ? shade("#0f2a1a") : shade("#111111"),
                 borderWidth:1, borderColor: hasAny || open ? shade("#22c55e") : shade("#1e2d40"),
                 flexDirection:"row", alignItems:"center", gap:4 }}>
@@ -68,7 +68,7 @@ export function VentilationModeSection({
           const on = awVentModes.includes("Jet")
           return (
             <TouchableOpacity onPress={() => setAwVentModes(prev => prev.includes("Jet") ? prev.filter(m => m !== "Jet") : [...prev, "Jet"])}
-              style={{ paddingHorizontal:14, paddingVertical:10, borderRadius:12,
+              style={{ paddingHorizontal:14, paddingVertical:10, minHeight:44, justifyContent:"center", borderRadius:12,
                 backgroundColor: on ? shade("#0f2a1a") : shade("#111111"),
                 borderWidth:1, borderColor: on ? shade("#22c55e") : shade("#1e2d40") }}>
               <Text style={{ color: on ? shade("#86efac") : shade("#64748b"), fontSize:12, fontWeight:"700" }}>{tc("ventJet")}</Text>

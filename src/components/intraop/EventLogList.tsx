@@ -65,7 +65,7 @@ export function EventLogTimelineStream({ log, labDraws, onOpenLabs, selectedComp
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7, marginBottom: 12 }}>
         {FILTERS.map(([value, label]) => {
           const selected = filter === value
-          return <TouchableOpacity key={value} testID={`event-log-filter-${value}`} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => setFilter(value)} style={{ paddingHorizontal: 10, paddingVertical: 7, minHeight: 44, justifyContent: "center", borderRadius: 999, borderWidth: 1, borderColor: selected ? shade("#35627e") : shade("#203149"), backgroundColor: selected ? shade("#152d43") : "transparent" }}><Text style={{ color: selected ? shade("#e7eef7") : shade("#8ea2ba"), fontSize: 12, fontWeight: "800" }}>{tc(label)}</Text></TouchableOpacity>
+          return <TouchableOpacity key={value} testID={`event-log-filter-${value}`} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => setFilter(value)} style={{ paddingHorizontal: 10, paddingVertical: 7, minHeight: 44, minWidth: 44, justifyContent: "center", alignItems: "center", borderRadius: 999, borderWidth: 1, borderColor: selected ? shade("#35627e") : shade("#203149"), backgroundColor: selected ? shade("#152d43") : "transparent" }}><Text style={{ color: selected ? shade("#e7eef7") : shade("#8ea2ba"), fontSize: 12, fontWeight: "800" }}>{tc(label)}</Text></TouchableOpacity>
         })}
       </View>
       <Text style={{ color: shade("#60758f"), fontSize: 12, marginBottom: 8 }}>{formatMessage(tc("eventLogShowing"), { count: entries.length })}</Text>

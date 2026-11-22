@@ -128,7 +128,7 @@ export function AirwayDevicePanels({
               <TouchableOpacity key={dev.code} onPress={() => {
                 if (!sel) onAirwayInterventionSelected()
                 setAwDevices(prev => sel ? prev.filter(x => x !== dev.code) : [...prev, dev.code])
-              }} style={{ paddingHorizontal:14, paddingVertical:10, borderRadius:12,
+              }} style={{ paddingHorizontal:14, paddingVertical:10, minHeight:44, justifyContent:"center", borderRadius:12,
                 backgroundColor: sel ? shade("#1e3a5f") : shade("#111111"),
                 borderWidth:1, borderColor: sel ? shade("#3b82f6") : shade("#1e2d40") }}>
                 <Text style={{ color: sel ? shade("#93c5fd") : shade("#64748b"), fontSize:12, fontWeight:"700" }}>{dev.label}</Text>
@@ -144,7 +144,7 @@ export function AirwayDevicePanels({
             <TouchableOpacity key={dev.code}
               onPress={() => isExpanded ? setAwExpandedDevice(null) : expandDevice(dev.code)}
               onLongPress={() => removeDevice(dev.code)}
-              style={{ paddingHorizontal:14, paddingVertical:10, borderRadius:12,
+              style={{ paddingHorizontal:14, paddingVertical:10, minHeight:44, justifyContent:"center", borderRadius:12,
                 backgroundColor: confirmed ? (summary && !isExpanded ? shade("#1a2e5a") : shade("#1e3a5f")) : (inProgress ? shade("#0d1a2d") : shade("#111111")),
                 borderWidth:1, borderStyle: inProgress ? "dashed" : "solid",
                 borderColor: confirmed ? shade("#3b82f6") : (inProgress ? shade("#3b82f699") : shade("#1e2d40")) }}>

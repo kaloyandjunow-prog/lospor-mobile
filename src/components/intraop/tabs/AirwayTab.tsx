@@ -89,7 +89,7 @@ export function AirwayTab({
             <TouchableOpacity key={tool.code} onPress={() => {
               if (!sel) onAirwayInterventionSelected()
               setAwTools(prev => sel ? prev.filter(x => x !== tool.code) : [...prev, tool.code])
-            }} style={{ paddingHorizontal:14, paddingVertical:10, borderRadius:12,
+            }} style={{ paddingHorizontal:14, paddingVertical:10, minHeight:44, justifyContent:"center", borderRadius:12,
               backgroundColor: sel ? shade("#1e3a5f") : shade("#111111"),
               borderWidth:1, borderColor: sel ? shade("#3b82f6") : shade("#1e2d40") }}>
               <Text style={{ color: sel ? shade("#93c5fd") : shade("#64748b"), fontSize:12, fontWeight:"700" }}>{tool.label}</Text>
