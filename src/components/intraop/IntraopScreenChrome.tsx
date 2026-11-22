@@ -9,6 +9,7 @@ import { WatchingOverlay } from "@/components/WatchingOverlay"
 import { CaseEndedBanner } from "@/components/intraop/CaseEndedBanner"
 import { IntraopMonitorHeader } from "@/components/intraop/IntraopMonitorHeader"
 import { IntraopTabBar } from "@/components/intraop/IntraopTabBar"
+import { CasePresenceBanner } from "@/components/CasePresenceBanner"
 import { usePreferences } from "@/lib/preferences-context"
 import { colors, withAlpha } from "@/theme/colors"
 import { IntraopHeaderCollapseProvider, useIntraopHeaderCollapse } from "./IntraopHeaderCollapse"
@@ -128,6 +129,7 @@ function IntraopScreenChromeBody({
         <EditWindowBanner finalizedAt={finalizedAt} caseId={caseId} showBackButton />
       ) : null}
       {isWatching ? <WatchingOverlay onTakeover={onTakeover} /> : null}
+      <CasePresenceBanner caseId={caseId} />
       {ended ? <CaseEndedBanner {...ended} /> : null}
       <IntraopTabBar {...tabBar} />
       {children}

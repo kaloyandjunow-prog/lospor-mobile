@@ -15,7 +15,7 @@ export type LockState = "idle" | "acquiring" | "held" | "watching"
 
 const DEVICE_ID_KEY = "lospor_device_id"
 
-async function getDeviceId(): Promise<string> {
+export async function getDeviceId(): Promise<string> {
   let id = await SecureStore.getItemAsync(DEVICE_ID_KEY)
   if (!id) {
     id = `mob-${randomHex(16)}`

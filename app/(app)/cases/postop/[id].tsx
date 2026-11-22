@@ -15,6 +15,7 @@ import { EditWindowBanner } from "@/components/EditWindowBanner"
 import { colors, withAlpha } from "@/theme/colors"
 import { useCaseLock } from "@/lib/use-case-lock"
 import { WatchingOverlay } from "@/components/WatchingOverlay"
+import { CasePresenceBanner } from "@/components/CasePresenceBanner"
 import { usePreferences } from "@/lib/preferences-context"
 import { usePostopProcedurePrefill } from "@/lib/use-postop-procedure-prefill"
 import { useRangeSpec } from "@/lib/use-option-library"
@@ -476,6 +477,7 @@ export default function PostopFormScreen() {
         <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "800" }}>{t("backToIntraop")}</Text>
       </TouchableOpacity>
       {isWatching && <WatchingOverlay onTakeover={takeover} />}
+      <CasePresenceBanner caseId={id} />
       <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: colors.background }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
