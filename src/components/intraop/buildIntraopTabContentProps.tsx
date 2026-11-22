@@ -404,7 +404,8 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
       onRemoveLegacyComplication: removeLegacyComplication,
       // 10.8.0: a tap on a line opens the same menu it has on the chart.
       onEventActions: props.cellMenu ? (event: LogEvent) => props.cellMenu?.openEvent(event, eventLabel(event).text) : eventActions,
-      onPromptDelete: promptDelete,
+      // 10.8.0: no "Sure?" -- removing goes through the same menu, with Undo.
+      onPromptDelete: props.cellMenu ? (event: LogEvent) => props.cellMenu?.openEvent(event, eventLabel(event).text) : promptDelete,
       eventLabel,
       previousVitalFor: prevVitalFor,
       eventLogScreen: eventLogScreen ?? "smart",

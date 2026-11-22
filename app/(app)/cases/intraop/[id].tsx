@@ -489,7 +489,7 @@ export default function IntraopLiveScreen() {
   })
 
   const {
-    editOpen, setEditOpen, editEv, editDose, setEditDose, editTime, setEditTime, eventActions, confirmEdit, promptDelete, openRowQuickAdd,
+    editOpen, setEditOpen, editEv, editDose, setEditDose, editTime, setEditTime, eventActions, editEvent, confirmEdit, promptDelete, openRowQuickAdd,
     openSlotEvent,
   } = useIntraopEventActions({
     log,
@@ -523,7 +523,7 @@ export default function IntraopLiveScreen() {
         if (cell.kind === "fluid") { const fluid = activeFluids.find(item => item.fluidId === cell.key); if (!fluid) return false; openFluidEnd(fluid, ts); return true }
         return false
       },
-      editPoint: event => eventActions(event),
+      editPoint: event => editEvent(event),
       // 10.8.0: the dose picker opens with this drug and dose, at now; nothing is saved until confirmed.
       repeatDose: event => {
         if (event.type !== "drug" || !event.name) { void save({ ...repeatDrugEventPayload(event) }, serverNow().toISOString()); return }
