@@ -2518,7 +2518,7 @@ export const CLINICAL_STRINGS = {
     dmYear:              "Година",
     dmNurseRole:         "Сестра",
     dmCaseNurses:        "Анестезиологични сестри",
-    dmTheatreNurses:     "Сестри по зали",
+    dmTheatreNurses:     "Сестри по операционни",
     dmIAmHere:           "Тук съм днес",
     dmRemove:            "Махни",
     attentionCollapse:   "По-малко",

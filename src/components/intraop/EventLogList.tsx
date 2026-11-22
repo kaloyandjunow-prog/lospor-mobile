@@ -42,7 +42,7 @@ export function LegacyEventLogList({ log, labDraws, onOpenLabs, onEventActions, 
   const shade = useShade()
   return (
     <>
-      <Text style={{ color: shade("#94a3b8"), fontSize: 10, fontWeight: "700", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 10 }}>{tc("eventLog")}</Text>
+      <Text style={{ color: shade("#94a3b8"), fontSize: 12, fontWeight: "700", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 10 }}>{tc("eventLog")}</Text>
       {log.length === 0 && labDraws.length === 0 ? <EmptyLog tc={tc} shade={shade} /> : mergeLogWithLabDraws(log, labDraws).map(entry => {
         if (entry.kind === "lab") return <LabRow key={`lab-${entry.draw.takenAt}`} draw={entry.draw} onPress={() => onOpenLabs?.(entry.draw.takenAt)} tc={tc} shade={shade} />
         const { ev, idx } = entry
@@ -65,10 +65,10 @@ export function EventLogTimelineStream({ log, labDraws, onOpenLabs, selectedComp
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7, marginBottom: 12 }}>
         {FILTERS.map(([value, label]) => {
           const selected = filter === value
-          return <TouchableOpacity key={value} testID={`event-log-filter-${value}`} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => setFilter(value)} style={{ paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: selected ? shade("#35627e") : shade("#203149"), backgroundColor: selected ? shade("#152d43") : "transparent" }}><Text style={{ color: selected ? shade("#e7eef7") : shade("#8ea2ba"), fontSize: 10, fontWeight: "800" }}>{tc(label)}</Text></TouchableOpacity>
+          return <TouchableOpacity key={value} testID={`event-log-filter-${value}`} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => setFilter(value)} style={{ paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: selected ? shade("#35627e") : shade("#203149"), backgroundColor: selected ? shade("#152d43") : "transparent" }}><Text style={{ color: selected ? shade("#e7eef7") : shade("#8ea2ba"), fontSize: 12, fontWeight: "800" }}>{tc(label)}</Text></TouchableOpacity>
         })}
       </View>
-      <Text style={{ color: shade("#60758f"), fontSize: 10, marginBottom: 8 }}>{formatMessage(tc("eventLogShowing"), { count: entries.length })}</Text>
+      <Text style={{ color: shade("#60758f"), fontSize: 12, marginBottom: 8 }}>{formatMessage(tc("eventLogShowing"), { count: entries.length })}</Text>
       {entries.length === 0 ? <EmptyLog tc={tc} shade={shade} /> : entries.map(entry => {
         if (entry.kind === "lab") return <LabRow key={`lab-${entry.draw.takenAt}`} draw={entry.draw} onPress={() => onOpenLabs?.(entry.draw.takenAt)} tc={tc} shade={shade} />
         const prev = entry.ev.type === "vital" ? previousVitalFor(entry.idx) : undefined
@@ -91,7 +91,7 @@ function EmptyLog({ tc, shade }: { tc: (key: ClinicalStringKey) => string; shade
 }
 
 function LabRow({ draw, onPress, tc, shade }: { draw: IntraopLabDraw; onPress: () => void; tc: (key: ClinicalStringKey) => string; shade: (hex: string) => string }) {
-  return <TouchableOpacity testID="event-log-lab-draw" accessibilityRole="button" onPress={onPress} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: shade("#1a2030") }}><Text style={{ color: shade("#64748b"), fontSize: 11, width: 42, fontVariant: ["tabular-nums"] }}>{formatTs(draw.takenAt)}</Text><View style={{ width: 3, height: 36, borderRadius: 2, backgroundColor: LAB_DRAW_COLOR, marginHorizontal: 12 }} /><View style={{ flex: 1 }}><Text style={{ color: shade("#e2e8f0"), fontSize: 13, fontWeight: "600" }}>{formatMessage(tc("labsPill"), { count: draw.results.length })}</Text><Text style={{ color: shade("#94a3b8"), fontSize: 11, marginTop: 1 }} numberOfLines={2}>{labDrawSummary(draw)}</Text></View></TouchableOpacity>
+  return <TouchableOpacity testID="event-log-lab-draw" accessibilityRole="button" onPress={onPress} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: shade("#1a2030") }}><Text style={{ color: shade("#64748b"), fontSize: 12, width: 42, fontVariant: ["tabular-nums"] }}>{formatTs(draw.takenAt)}</Text><View style={{ width: 3, height: 36, borderRadius: 2, backgroundColor: LAB_DRAW_COLOR, marginHorizontal: 12 }} /><View style={{ flex: 1 }}><Text style={{ color: shade("#e2e8f0"), fontSize: 13, fontWeight: "600" }}>{formatMessage(tc("labsPill"), { count: draw.results.length })}</Text><Text style={{ color: shade("#94a3b8"), fontSize: 12, marginTop: 1 }} numberOfLines={2}>{labDrawSummary(draw)}</Text></View></TouchableOpacity>
 }
 
 // 10.8.0: a tap opens the same menu the entry has on the chart. The hidden

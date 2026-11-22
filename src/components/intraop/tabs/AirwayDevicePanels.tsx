@@ -117,7 +117,7 @@ export function AirwayDevicePanels({
 
   return (
     <>
-      <Text style={{ color:shade("#94a3b8"), fontSize:10, fontWeight:"700", letterSpacing:1.2,
+      <Text style={{ color:shade("#94a3b8"), fontSize:12, fontWeight:"700", letterSpacing:1.2,
         textTransform:"uppercase", marginBottom:10 }}>{tc("awDeviceUsed")}</Text>
       <View style={{ flexDirection:"row", flexWrap:"wrap", gap:8, marginBottom:12 }}>
         {airwayDevices.map(dev => {
@@ -159,7 +159,7 @@ export function AirwayDevicePanels({
         <View style={{ backgroundColor:shade("#0d1a2d"), borderRadius:12, borderWidth:1,
           borderColor:shade("#1e3a5f"), padding:12, marginBottom:12 }}>
           <Text style={{ color:shade("#93c5fd"), fontSize:12, fontWeight:"700", marginBottom:10 }}>{deviceName("LMA")}</Text>
-          <Text style={{ color:shade("#64748b"), fontSize:10, fontWeight:"700", textTransform:"uppercase",
+          <Text style={{ color:shade("#64748b"), fontSize:12, fontWeight:"700", textTransform:"uppercase",
             letterSpacing:1, marginBottom:6 }}>{tc("awSize")}</Text>
           <OverflowCueScrollView horizontal edgeColor={shade("#0d1a2d")} cueColor={shade("#93c5fd")}>
             <View style={{ flexDirection:"row", gap:6 }}>
@@ -181,7 +181,7 @@ export function AirwayDevicePanels({
         <View style={{ backgroundColor:shade("#0d1a2d"), borderRadius:12, borderWidth:1,
           borderColor:shade("#1e3a5f"), padding:12, marginBottom:12 }}>
           <Text style={{ color:shade("#93c5fd"), fontSize:12, fontWeight:"700", marginBottom:10 }}>{deviceName("ORAL_ETT")}</Text>
-          <Text style={{ color:shade("#64748b"), fontSize:10, fontWeight:"700", textTransform:"uppercase",
+          <Text style={{ color:shade("#64748b"), fontSize:12, fontWeight:"700", textTransform:"uppercase",
             letterSpacing:1, marginBottom:6 }}>{tc("awTubeSizeMmId")}</Text>
           <OverflowCueScrollView horizontal edgeColor={shade("#0d1a2d")} cueColor={shade("#93c5fd")} style={{ marginBottom:10 }}>
             <View style={{ flexDirection:"row", gap:6 }}>
@@ -195,7 +195,7 @@ export function AirwayDevicePanels({
               ))}
             </View>
           </OverflowCueScrollView>
-          <Text style={{ color:shade("#64748b"), fontSize:10, fontWeight:"700", textTransform:"uppercase",
+          <Text style={{ color:shade("#64748b"), fontSize:12, fontWeight:"700", textTransform:"uppercase",
             letterSpacing:1, marginBottom:6 }}>{tc("awCuff")}</Text>
           <View style={{ flexDirection:"row", gap:8 }}>
             {[{ v:true, label:tc("awCuffed") },{ v:false, label:tc("awUncuffed") }].map(opt => (
@@ -216,7 +216,7 @@ export function AirwayDevicePanels({
         <View style={{ backgroundColor:shade("#0d1a2d"), borderRadius:12, borderWidth:1,
           borderColor:shade("#1e3a5f"), padding:12, marginBottom:12 }}>
           <Text style={{ color:shade("#93c5fd"), fontSize:12, fontWeight:"700", marginBottom:10 }}>{deviceName("NASAL_ETT")}</Text>
-          <Text style={{ color:shade("#64748b"), fontSize:10, fontWeight:"700", textTransform:"uppercase",
+          <Text style={{ color:shade("#64748b"), fontSize:12, fontWeight:"700", textTransform:"uppercase",
             letterSpacing:1, marginBottom:6 }}>{tc("awTubeSizeMmId")}</Text>
           <OverflowCueScrollView horizontal edgeColor={shade("#0d1a2d")} cueColor={shade("#93c5fd")} style={{ marginBottom:10 }}>
             <View style={{ flexDirection:"row", gap:6 }}>
@@ -230,7 +230,7 @@ export function AirwayDevicePanels({
               ))}
             </View>
           </OverflowCueScrollView>
-          <Text style={{ color:shade("#64748b"), fontSize:10, fontWeight:"700", textTransform:"uppercase",
+          <Text style={{ color:shade("#64748b"), fontSize:12, fontWeight:"700", textTransform:"uppercase",
             letterSpacing:1, marginBottom:6 }}>{tc("awCuff")}</Text>
           <View style={{ flexDirection:"row", gap:8 }}>
             {[{ v:true, label:tc("awCuffed") },{ v:false, label:tc("awUncuffed") }].map(opt => (
@@ -251,7 +251,7 @@ export function AirwayDevicePanels({
         <View style={{ backgroundColor:shade("#0d1a2d"), borderRadius:12, borderWidth:1,
           borderColor:shade("#1e3a5f"), padding:12, marginBottom:12 }}>
           <Text style={{ color:shade("#93c5fd"), fontSize:12, fontWeight:"700", marginBottom:10 }}>{deviceName("DOUBLE_LUMEN_TUBE")}</Text>
-          <Text style={{ color:shade("#64748b"), fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{tc("awDltType")}</Text>
+          <Text style={{ color:shade("#64748b"), fontSize:12, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{tc("awDltType")}</Text>
           <View style={{ flexDirection:"row", gap:8, marginBottom:10 }}>
             {DLT_TYPES.map(t => (
               <TouchableOpacity key={t} onPress={() => setAwDltType(awDltType === t ? null : t)}
@@ -262,7 +262,7 @@ export function AirwayDevicePanels({
               </TouchableOpacity>
             ))}
           </View>
-          <Text style={{ color:shade("#64748b"), fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{tc("awDltSide")}</Text>
+          <Text style={{ color:shade("#64748b"), fontSize:12, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{tc("awDltSide")}</Text>
           <View style={{ flexDirection:"row", gap:8, marginBottom:10 }}>
             {DLT_SIDES.map(s => (
               <TouchableOpacity key={s} onPress={() => setAwDltSide(awDltSide === s ? null : s)}
@@ -273,7 +273,7 @@ export function AirwayDevicePanels({
               </TouchableOpacity>
             ))}
           </View>
-          <Text style={{ color:shade("#64748b"), fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{tc("awSizeFr")}</Text>
+          <Text style={{ color:shade("#64748b"), fontSize:12, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{tc("awSizeFr")}</Text>
           <OverflowCueScrollView horizontal edgeColor={shade("#0d1a2d")} cueColor={shade("#93c5fd")}>
             <View style={{ flexDirection:"row", gap:6 }}>
               {DLT_SIZES.map(sz => (
@@ -294,7 +294,7 @@ export function AirwayDevicePanels({
         <View style={{ backgroundColor:shade("#0d1a2d"), borderRadius:12, borderWidth:1,
           borderColor:shade("#1e3a5f"), padding:12, marginBottom:12 }}>
           <Text style={{ color:shade("#93c5fd"), fontSize:12, fontWeight:"700", marginBottom:10 }}>{deviceName("ENDOBRONCHIAL_TUBE")}</Text>
-          <Text style={{ color:shade("#64748b"), fontSize:10, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{tc("awSizeMmId")}</Text>
+          <Text style={{ color:shade("#64748b"), fontSize:12, fontWeight:"700", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{tc("awSizeMmId")}</Text>
           <OverflowCueScrollView horizontal edgeColor={shade("#0d1a2d")} cueColor={shade("#93c5fd")}>
             <View style={{ flexDirection:"row", gap:6 }}>
               {ENDOBRONCHIAL_SIZES.map(sz => (

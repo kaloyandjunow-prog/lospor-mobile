@@ -46,7 +46,7 @@ export const CELL_MENU_COPY: Record<CellMenuLocale, {
     },
     pair: { question: "Има и „Турникет отпуснат“. Изтриване и на двете?", both: "Изтрий и двете", onlyThis: "Само поставен" },
     wheel: { hours: "Часове", minutes: "Минути" },
-    stillRunning: { question: (title, time) => `${title} от ${time} — още тече ли?`, running: "Тече", stopped: "Спря…" },
+    stillRunning: { question: (title, time) => `${title} от ${time} — още тече ли?`, running: "Тече", stopped: "Спряно…" },
     undo: "Отмени", undone: "Отменено", redo: "Повтори", redone: "Повторено", cancel: "Отказ", confirm: "Готово",
   },
   en: {

@@ -149,7 +149,7 @@ export function OverflowCueScrollView({
 
   const fadeStyle = Platform.OS === "web" ? ({ transition: "opacity 220ms ease" } as object) : null
   const gradientId = `overflow-cue-${id}`
-  const edgeSize = horizontal ? 34 : 36
+  const edgeSize = horizontal ? 44 : 44
   const fade = horizontal
     ? { width: edgeSize, top: 0, bottom: 0 }
     : { height: edgeSize, left: 0, right: 0 }

@@ -18,7 +18,7 @@ export function VentilationModeSection({
 
   return (
     <>
-      <Text style={{ color:shade("#94a3b8"), fontSize:10, fontWeight:"700", letterSpacing:1.2,
+      <Text style={{ color:shade("#94a3b8"), fontSize:12, fontWeight:"700", letterSpacing:1.2,
         textTransform:"uppercase", marginBottom:10 }}>{tc("ventilationMode")}</Text>
       <View style={{ flexDirection:"row", flexWrap:"wrap", gap:8, marginBottom:8 }}>
         {/* Spontaneous */}
@@ -44,7 +44,7 @@ export function VentilationModeSection({
                 borderWidth:1, borderColor: hasAny || open ? shade("#22c55e") : shade("#1e2d40"),
                 flexDirection:"row", alignItems:"center", gap:4 }}>
               <Text style={{ color: hasAny || open ? shade("#86efac") : shade("#64748b"), fontSize:12, fontWeight:"700" }}>{tc("ventAssisted")}</Text>
-              <Text style={{ color:shade("#475569"), fontSize:10 }}>{open ? "▲" : "▼"}</Text>
+              <Text style={{ color:shade("#475569"), fontSize:12 }}>{open ? "▲" : "▼"}</Text>
             </TouchableOpacity>
           )
         })()}
@@ -59,7 +59,7 @@ export function VentilationModeSection({
                 borderWidth:1, borderColor: hasAny || open ? shade("#22c55e") : shade("#1e2d40"),
                 flexDirection:"row", alignItems:"center", gap:4 }}>
               <Text style={{ color: hasAny || open ? shade("#86efac") : shade("#64748b"), fontSize:12, fontWeight:"700" }}>{tc("ventControlled")}</Text>
-              <Text style={{ color:shade("#475569"), fontSize:10 }}>{open ? "▲" : "▼"}</Text>
+              <Text style={{ color:shade("#475569"), fontSize:12 }}>{open ? "▲" : "▼"}</Text>
             </TouchableOpacity>
           )
         })()}
@@ -91,7 +91,7 @@ export function VentilationModeSection({
                 style={{ paddingHorizontal:12, paddingVertical:7, borderRadius:10,
                   backgroundColor: on ? shade("#0f2a1a") : shade("#111111"),
                   borderWidth:1, borderColor: on ? shade("#22c55e") : shade("#1e2d40") }}>
-                <Text style={{ color: on ? shade("#86efac") : shade("#64748b"), fontSize:11, fontWeight:"700" }}>{displayClinicalCode("ventilationMode", v, language, { label })}</Text>
+                <Text style={{ color: on ? shade("#86efac") : shade("#64748b"), fontSize:12, fontWeight:"700" }}>{displayClinicalCode("ventilationMode", v, language, { label })}</Text>
               </TouchableOpacity>
             )
           })}
@@ -112,7 +112,7 @@ export function VentilationModeSection({
                 style={{ paddingHorizontal:12, paddingVertical:7, borderRadius:10,
                   backgroundColor: on ? shade("#0f2a1a") : shade("#111111"),
                   borderWidth:1, borderColor: on ? shade("#22c55e") : shade("#1e2d40") }}>
-                <Text style={{ color: on ? shade("#86efac") : shade("#64748b"), fontSize:11, fontWeight:"700" }}>{displayClinicalCode("ventilationMode", v, language, { label })}</Text>
+                <Text style={{ color: on ? shade("#86efac") : shade("#64748b"), fontSize:12, fontWeight:"700" }}>{displayClinicalCode("ventilationMode", v, language, { label })}</Text>
               </TouchableOpacity>
             )
           })}

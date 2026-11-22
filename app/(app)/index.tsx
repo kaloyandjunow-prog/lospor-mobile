@@ -497,11 +497,11 @@ export default function DashboardScreen() {
           {isComplete && <DispositionBadge disposition={item.postop?.disposition} />}
           {item.theatre?.name ? (
             <View style={{ backgroundColor: withAlpha(colors.primary, "16"), borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
-              <Text style={{ color: colors.primary, fontSize: 11, fontWeight: "800" }} numberOfLines={1}>{item.theatre.name}</Text>
+              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "800" }} numberOfLines={1}>{item.theatre.name}</Text>
             </View>
           ) : null}
-          {item.user?.name ? <Text style={{ color: colors.textMuted, fontSize: 11 }}>{item.user.name}</Text> : null}
-          <Text style={{ color: colors.textMuted, fontSize: 11, fontVariant: ["tabular-nums"] }}>{item.caseCode}</Text>
+          {item.user?.name ? <Text style={{ color: colors.textMuted, fontSize: 12 }}>{item.user.name}</Text> : null}
+          <Text style={{ color: colors.textMuted, fontSize: 12, fontVariant: ["tabular-nums"] }}>{item.caseCode}</Text>
         </View>
       </TouchableOpacity>
       </Animated.View>
@@ -553,12 +553,12 @@ export default function DashboardScreen() {
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                         <View style={{ backgroundColor: colors.warning, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
-                          <Text style={{ color: shade("#000"), fontSize: 9, fontWeight: "900" }}>{t("localBadge")}</Text>
+                          <Text style={{ color: shade("#000"), fontSize: 12, fontWeight: "900" }}>{t("localBadge")}</Text>
                         </View>
                         <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: "800" }} numberOfLines={1}>{diag}</Text>
                       </View>
-                      {subtitle ? <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 3 }}>{subtitle} · {date}</Text> : null}
-                      {draft.rejected ? <Text style={{ color: colors.danger, fontSize: 11, fontWeight: "800", marginTop: 3 }}>{draftRefusalText(draft.rejected, language)}</Text> : null}
+                      {subtitle ? <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 3 }}>{subtitle} · {date}</Text> : null}
+                      {draft.rejected ? <Text style={{ color: colors.danger, fontSize: 12, fontWeight: "800", marginTop: 3 }}>{draftRefusalText(draft.rejected, language)}</Text> : null}
                     </View>
                     <Text style={{ color: colors.textMuted, fontSize: 18 }}>›</Text>
                   </TouchableOpacity>
@@ -606,7 +606,7 @@ export default function DashboardScreen() {
                   { labelKey: "month" as const, value: tabCounts.Month, tab: "Month" as FilterTab },
                 ].map((stat) => (
                   <TouchableOpacity key={stat.tab} onPress={() => setActiveTab(stat.tab)} style={{ backgroundColor: activeTab === stat.tab ? colors.primarySoft : colors.surface, borderRadius: 12, borderCurve: "continuous", flex: 1, padding: 12, borderWidth: 1, borderColor: activeTab === stat.tab ? withAlpha(colors.primary, "88") : colors.border, boxShadow: activeTab === stat.tab ? `0 8px 22px ${withAlpha(colors.primary, "18")}` : undefined }}>
-                    <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 3 }}>{t(stat.labelKey)}</Text>
+                    <Text style={{ color: colors.textMuted, fontSize: 12, marginBottom: 3 }}>{t(stat.labelKey)}</Text>
                     <Text style={{ color: colors.textPrimary, fontSize: 22, fontWeight: "900", fontVariant: ["tabular-nums"] }}>{stat.value}</Text>
                   </TouchableOpacity>
                 ))}

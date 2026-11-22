@@ -61,7 +61,7 @@ export function AppHeader({ eyebrow = "LOSPOR", title, showNewCase = true, compa
           <Text style={{ color: colors.textSecondary, fontSize: compact ? 14 : 17, fontWeight: "900", letterSpacing: 0 }} numberOfLines={1}>
             {eyebrow}
           </Text>
-          <Text style={{ color: colors.textMuted, fontSize: compact ? 10 : 12, fontWeight: "800", marginTop: 2 }} numberOfLines={1}>
+          <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: "800", marginTop: 2 }} numberOfLines={1}>
             {title}
           </Text>
         </View>

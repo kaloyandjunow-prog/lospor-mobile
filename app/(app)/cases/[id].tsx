@@ -216,7 +216,7 @@ export default function CaseSummaryScreen() {
                   backgroundColor: withAlpha(colors.primary, "11"),
                   borderWidth: 1, borderColor: withAlpha(colors.primary, "33"),
                 }}>
-                  <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: "600" }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: "600" }}>
                     {part}
                   </Text>
                 </View>
@@ -258,7 +258,7 @@ export default function CaseSummaryScreen() {
           {/* Edit row */}
           {canEdit && (
             <View style={{ flexDirection: "row", padding: 12, paddingBottom: 8, gap: 8 }}>
-              <Text style={{ color: colors.textMuted, fontSize: 11, alignSelf: "center", marginRight: 2 }}>
+              <Text style={{ color: colors.textMuted, fontSize: 12, alignSelf: "center", marginRight: 2 }}>
                 {tc("editLabel")}
               </Text>
               {(isNurse ? ["Intraop", "Postop"] as const : ["Preop", "Intraop", "Postop"] as const).map((section) => {

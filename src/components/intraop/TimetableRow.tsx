@@ -130,7 +130,7 @@ function TimetableRowComponent({
           <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 4, paddingHorizontal: 8 }}>
             {vital && (
               <View style={{ backgroundColor: shade("#1a3028"), borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 }}>
-                <Text style={{ color: hasCritical ? shade("#ef4444") : shade("#22c55e"), fontSize: 11, fontWeight: "700", fontVariant: ["tabular-nums"] }}>
+                <Text style={{ color: hasCritical ? shade("#ef4444") : shade("#22c55e"), fontSize: 12, fontWeight: "700", fontVariant: ["tabular-nums"] }}>
                   {criticalParts.length > 0 ? criticalParts.join("  ") : normalParts.slice(0, 2).join("  ")}
                 </Text>
               </View>
@@ -141,7 +141,7 @@ function TimetableRowComponent({
                 borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2,
                 borderWidth: 1, borderColor: (ev.color ?? shade("#3b82f6")) + "55",
               }}>
-                <Text style={{ color: ev.color ?? shade("#3b82f6"), fontSize: 11, fontWeight: "600" }}>
+                <Text style={{ color: ev.color ?? shade("#3b82f6"), fontSize: 12, fontWeight: "600" }}>
                   {labelOf(ev)}
                 </Text>
               </View>
@@ -154,7 +154,7 @@ function TimetableRowComponent({
         {running.length > 0 && (
           <View style={{ paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8 }}>
             <Text style={{
-              color: shade("#475569"), fontSize: 10, fontWeight: "700",
+              color: shade("#475569"), fontSize: 12, fontWeight: "700",
               letterSpacing: 1.1, textTransform: "uppercase", marginBottom: 8,
             }}>{tc("trRunning")}</Text>
             <View style={{ gap: 7 }}>
@@ -230,7 +230,7 @@ function TimetableRowComponent({
             <Text style={{ color: shade("#64748b"), fontSize: 12, fontWeight: "700" }}>{tc("trStoppedLine")}</Text>
             {stopped.map(item => (
               <TouchableOpacity key={item.id} testID={`timetable-row-stopped-${item.id}`} onPress={() => onOpenStopped?.(item.id, col)}
-                style={{ minHeight: 36, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: item.color + "55", justifyContent: "center" }}>
+                style={{ minHeight: 44, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: item.color + "55", justifyContent: "center" }}>
                 <Text style={{ color: item.color, fontSize: 13, fontWeight: "700" }}>{item.label} {item.at}</Text>
               </TouchableOpacity>
             ))}
@@ -240,7 +240,7 @@ function TimetableRowComponent({
         {/* Quick-add grid */}
         <View style={{ paddingHorizontal: 14, paddingTop: running.length > 0 ? 4 : 12, paddingBottom: 16 }}>
           <Text style={{
-            color: shade("#475569"), fontSize: 10, fontWeight: "700",
+            color: shade("#475569"), fontSize: 12, fontWeight: "700",
             letterSpacing: 1.1, textTransform: "uppercase", marginBottom: 10,
           }}>{tc("trAddNow")}</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -301,7 +301,7 @@ function TimetableRowComponent({
       <View style={{ width: 54, alignItems: "flex-end", paddingRight: 8, justifyContent: "center" }}>
         <Text style={{
           color: isNow ? shade("#fb923c") : isQuarter ? shade("#cbd5e1") : shade("#475569"),
-          fontSize: isNow || isQuarter ? 12 : 11,
+          fontSize: 12,
           fontWeight: isNow || isQuarter ? "700" : "500",
           fontVariant: ["tabular-nums"],
         }}>
@@ -336,7 +336,7 @@ function TimetableRowComponent({
         {normalParts.length > 0 && (
           <Text style={{
             color: hasCritical ? shade("#64748b") : shade("#94a3b8"),
-            fontSize: hasCritical ? 10 : 12,
+            fontSize: 12,
             fontVariant: ["tabular-nums"],
             lineHeight: hasCritical ? 14 : 16,
           }} numberOfLines={1}>
@@ -344,7 +344,7 @@ function TimetableRowComponent({
           </Text>
         )}
         {drugParts.length > 0 && (
-          <Text style={{ color: shade("#4a5c6e"), fontSize: 10, lineHeight: 13 }} numberOfLines={1}>
+          <Text style={{ color: shade("#4a5c6e"), fontSize: 12, lineHeight: 13 }} numberOfLines={1}>
             {drugParts.join("  ·  ")}
           </Text>
         )}

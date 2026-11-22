@@ -29,7 +29,7 @@ export function IntraopUndoBar({ text, plannedAt = null, removed = false, onUndo
       <TouchableOpacity onPress={onUndo}
         style={{ paddingHorizontal:10, paddingVertical:6, borderRadius:8,
           backgroundColor:colors.primarySoft, borderWidth:1, borderColor:colors.primary }}>
-        <Text style={{ color:colors.primary, fontSize:11, fontWeight:"900" }}>{tc("ubUndo")}</Text>
+        <Text style={{ color:colors.primary, fontSize:12, fontWeight:"900" }}>{tc("ubUndo")}</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={onDismiss} hitSlop={{ top:8, bottom:8, left:8, right:8 }}>
         <Text style={{ color:colors.textMuted, fontSize:13, fontWeight:"800" }}>{tc("ubDismiss")}</Text>

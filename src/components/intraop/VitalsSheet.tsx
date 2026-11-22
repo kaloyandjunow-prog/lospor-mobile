@@ -114,7 +114,7 @@ export function VitalsSheet({
   function renderFeedback(field: IntraopVitalKey) {
     const message = feedbackText(field)
     return message ? (
-      <Text style={{ color: message.error ? shade("#f87171") : shade("#f59e0b"), fontSize:10, marginTop:6, lineHeight:14 }}>
+      <Text style={{ color: message.error ? shade("#f87171") : shade("#f59e0b"), fontSize:12, marginTop:6, lineHeight:14 }}>
         {message.text}
       </Text>
     ) : null
@@ -134,7 +134,7 @@ export function VitalsSheet({
   return (
     <Sheet visible={visible} onClose={onClose} title={title} full>
       <MonitorScanButton onScan={onScan} busy={scanBusy} />
-      <Text style={{ color:shade("#ef4444"), fontSize:11, fontWeight:"700", letterSpacing:1,
+      <Text style={{ color:shade("#ef4444"), fontSize:12, fontWeight:"700", letterSpacing:1,
         textTransform:"uppercase", marginBottom:8 }}>{showIbp ? tc("vsNibp") : tc("vsBloodPressure")}</Text>
       <View style={{ flexDirection:"row", gap:10, marginBottom:18, alignItems:"flex-start" }}>
         <View style={{ flex:1, minWidth:0 }}>
@@ -182,10 +182,10 @@ export function VitalsSheet({
 
       {showIbp ? (
         <View testID="vitals-ibp">
-          <Text style={{ color:shade("#f97316"), fontSize:11, fontWeight:"700", letterSpacing:1, textTransform:"uppercase", marginBottom:8 }}>{tc("vsIbp")}</Text>
+          <Text style={{ color:shade("#f97316"), fontSize:12, fontWeight:"700", letterSpacing:1, textTransform:"uppercase", marginBottom:8 }}>{tc("vsIbp")}</Text>
           <View style={{ flexDirection:"row", gap:10, marginBottom:18 }}>
             <View style={{ flex:1, minWidth:0 }}>
-              <Text style={{ color:shade("#f97316"), fontSize:11, fontWeight:"700", marginBottom:6 }}>{tc("vsSys")}</Text>
+              <Text style={{ color:shade("#f97316"), fontSize:12, fontWeight:"700", marginBottom:6 }}>{tc("vsSys")}</Text>
               <View style={{ position: "relative" }}><TextInput testID="vitals-ibp-systolic" style={{ backgroundColor:shade("#111111"), color:shade("#f97316"), borderRadius:10, padding: Platform.OS === "web" ? 8 : 10,
                 fontSize: Platform.OS === "web" ? 16 : 20, fontWeight:"700", borderWidth:1, borderColor:feedback.errors.ibpSystolic ? shade("#f87171") : shade("#f9731644"), textAlign:"center" }}
                 placeholder="-" placeholderTextColor={shade("#3e3e3e")} keyboardType="number-pad" value={ibp.ibpSystolic} onChangeText={value => onIbpChange("ibpSystolic", value)} />
@@ -193,7 +193,7 @@ export function VitalsSheet({
               {renderFeedback("ibpSystolic")}
             </View>
             <View style={{ flex:1, minWidth:0 }}>
-              <Text style={{ color:shade("#fb923c"), fontSize:11, fontWeight:"700", marginBottom:6 }}>{tc("vsDia")}</Text>
+              <Text style={{ color:shade("#fb923c"), fontSize:12, fontWeight:"700", marginBottom:6 }}>{tc("vsDia")}</Text>
               <View style={{ position: "relative" }}><TextInput testID="vitals-ibp-diastolic" style={{ backgroundColor:shade("#111111"), color:shade("#fb923c"), borderRadius:10, padding: Platform.OS === "web" ? 8 : 10,
                 fontSize: Platform.OS === "web" ? 16 : 20, fontWeight:"700", borderWidth:1, borderColor:feedback.errors.ibpDiastolic ? shade("#f87171") : shade("#fb923c44"), textAlign:"center" }}
                 placeholder="-" placeholderTextColor={shade("#3e3e3e")} keyboardType="number-pad" value={ibp.ibpDiastolic} onChangeText={value => onIbpChange("ibpDiastolic", value)} />
@@ -201,7 +201,7 @@ export function VitalsSheet({
               {renderFeedback("ibpDiastolic")}
             </View>
             <View style={{ flex:1, minWidth:0 }}>
-              <Text style={{ color:shade("#fdba74"), fontSize:11, fontWeight:"700", marginBottom:6 }}>{tc("vsMap")}</Text>
+              <Text style={{ color:shade("#fdba74"), fontSize:12, fontWeight:"700", marginBottom:6 }}>{tc("vsMap")}</Text>
               <View style={{ position: "relative" }}><TextInput testID="vitals-ibp-map" style={{ backgroundColor:shade("#111111"), color:shade("#fdba74"), borderRadius:10, padding: Platform.OS === "web" ? 8 : 10,
                 fontSize: Platform.OS === "web" ? 16 : 20, fontWeight:"700", borderWidth:1, borderColor:feedback.errors.ibpMap ? shade("#f87171") : shade("#fdba7444"), textAlign:"center" }}
                 placeholder="-" placeholderTextColor={shade("#3e3e3e")} keyboardType="number-pad" value={ibp.ibpMap} onChangeText={value => onIbpChange("ibpMap", value)} />
@@ -215,7 +215,7 @@ export function VitalsSheet({
         <>
           <View style={{ flexDirection:"row", gap:10, marginBottom:14 }}>
             <View style={{ flex:1, minWidth:0 }}>
-              <Text style={{ color:shade("#22c55e"), fontSize:11, fontWeight:"700", marginBottom:6 }}>{tc("vsHeartRate")}</Text>
+              <Text style={{ color:shade("#22c55e"), fontSize:12, fontWeight:"700", marginBottom:6 }}>{tc("vsHeartRate")}</Text>
               <View style={{ position: "relative" }}><TextInput
                 style={{ backgroundColor:shade("#111111"), color:shade("#22c55e"), borderRadius:10,
                   padding: Platform.OS === "web" ? 9 : 12,
@@ -232,7 +232,7 @@ export function VitalsSheet({
               {renderFeedback("heartRate")}
             </View>
             <View style={{ flex:1, minWidth:0 }}>
-              <Text style={{ color:shade("#06b6d4"), fontSize:11, fontWeight:"700", marginBottom:6 }}>SpO₂ %</Text>
+              <Text style={{ color:shade("#06b6d4"), fontSize:12, fontWeight:"700", marginBottom:6 }}>SpO₂ %</Text>
               <View style={{ position: "relative" }}><TextInput
                 style={{ backgroundColor:shade("#111111"), color:shade("#06b6d4"), borderRadius:10,
                   padding: Platform.OS === "web" ? 9 : 12,
@@ -253,7 +253,7 @@ export function VitalsSheet({
           {(showEtco2 || feedback.errors.etco2) && (
             <View style={{ flexDirection:"row", gap:10, marginBottom:14 }}>
               <View style={{ flex:1, minWidth:0 }}>
-                <Text style={{ color:shade("#f59e0b"), fontSize:11, fontWeight:"700", marginBottom:6 }}>EtCO₂</Text>
+                <Text style={{ color:shade("#f59e0b"), fontSize:12, fontWeight:"700", marginBottom:6 }}>EtCO₂</Text>
                 <View style={{ position: "relative" }}><TextInput
                   style={{ backgroundColor:shade("#111111"), color:shade("#f59e0b"), borderRadius:10,
                     padding: Platform.OS === "web" ? 8 : 10,
@@ -267,7 +267,7 @@ export function VitalsSheet({
                   onChangeText={onEtco2Change}
                 />
 <VitalClear value={etco2} onClear={() => onEtco2Change("")} /></View>
-                <Text style={{ color:shade("#64748b"), fontSize:10, marginTop:6 }}>
+                <Text style={{ color:shade("#64748b"), fontSize:12, marginTop:6 }}>
                   {formatMessage(tc("vsCurrentUnit"), { unit: etco2Unit })}
                 </Text>
                 {renderFeedback("etco2")}
@@ -278,7 +278,7 @@ export function VitalsSheet({
           {(showTemperature || feedback.errors.temp) && (
             <View style={{ flexDirection:"row", gap:10, marginBottom:14 }}>
               <View style={{ flex:1, minWidth:0 }}>
-                <Text style={{ color:shade("#a78bfa"), fontSize:11, fontWeight:"700", marginBottom:6 }}>{tc("vsTemp")}</Text>
+                <Text style={{ color:shade("#a78bfa"), fontSize:12, fontWeight:"700", marginBottom:6 }}>{tc("vsTemp")}</Text>
                 <View style={{ position: "relative" }}><TextInput
                   style={{ backgroundColor:shade("#111111"), color:shade("#a78bfa"), borderRadius:10,
                     padding: Platform.OS === "web" ? 8 : 10,
@@ -292,7 +292,7 @@ export function VitalsSheet({
                   onChangeText={onTemperatureChange}
                 />
 <VitalClear value={temperature} onClear={() => onTemperatureChange("")} /></View>
-                <Text style={{ color:shade("#64748b"), fontSize:10, marginTop:6 }}>
+                <Text style={{ color:shade("#64748b"), fontSize:12, marginTop:6 }}>
                   {formatMessage(tc("vsCurrentUnit"), { unit: `°${temperatureUnit}` })}
                 </Text>
                 {renderFeedback("temp")}
@@ -303,7 +303,7 @@ export function VitalsSheet({
           {(showBis || feedback.errors.bis) && (
             <View style={{ flexDirection:"row", gap:10, marginBottom:14 }}>
               <View style={{ flex:1, minWidth:0 }}>
-                <Text style={{ color:shade("#e879f9"), fontSize:11, fontWeight:"700", marginBottom:6 }}>BIS</Text>
+                <Text style={{ color:shade("#e879f9"), fontSize:12, fontWeight:"700", marginBottom:6 }}>BIS</Text>
                 <View style={{ position: "relative" }}><TextInput
                   style={{ backgroundColor:shade("#111111"), color:shade("#e879f9"), borderRadius:10,
                     padding: Platform.OS === "web" ? 8 : 10,
@@ -325,7 +325,7 @@ export function VitalsSheet({
           {(showTofRatio || feedback.errors.tofRatio) && (
             <View style={{ flexDirection:"row", gap:10, marginBottom:14 }}>
               <View style={{ flex:1, minWidth:0 }}>
-                <Text style={{ color:shade("#fb923c"), fontSize:11, fontWeight:"700", marginBottom:6 }}>TOF</Text>
+                <Text style={{ color:shade("#fb923c"), fontSize:12, fontWeight:"700", marginBottom:6 }}>TOF</Text>
                 <View style={{ position: "relative" }}><TextInput
                   style={{ backgroundColor:shade("#111111"), color:shade("#fb923c"), borderRadius:10,
                     padding: Platform.OS === "web" ? 8 : 10,
@@ -339,7 +339,7 @@ export function VitalsSheet({
                   onChangeText={onTofRatioChange}
                 />
 <VitalClear value={tofRatio} onClear={() => onTofRatioChange("")} /></View>
-                <Text style={{ color:shade("#64748b"), fontSize:10, marginTop:6 }}>{tc("vsTofRatioHint")}</Text>
+                <Text style={{ color:shade("#64748b"), fontSize:12, marginTop:6 }}>{tc("vsTofRatioHint")}</Text>
                 {renderFeedback("tofRatio")}
               </View>
             </View>
@@ -348,7 +348,7 @@ export function VitalsSheet({
           {(showCvp || feedback.errors.cvp) && (
             <View style={{ flexDirection:"row", gap:10, marginBottom:14 }}>
               <View style={{ flex:1, minWidth:0 }}>
-                <Text style={{ color:shade("#38bdf8"), fontSize:11, fontWeight:"700", marginBottom:6 }}>CVP</Text>
+                <Text style={{ color:shade("#38bdf8"), fontSize:12, fontWeight:"700", marginBottom:6 }}>CVP</Text>
                 <View style={{ position: "relative" }}><TextInput
                   style={{ backgroundColor:shade("#111111"), color:shade("#38bdf8"), borderRadius:10,
                     padding: Platform.OS === "web" ? 8 : 10,
@@ -362,7 +362,7 @@ export function VitalsSheet({
                   onChangeText={onCvpChange}
                 />
 <VitalClear value={cvp} onClear={() => onCvpChange("")} /></View>
-                <Text style={{ color:shade("#64748b"), fontSize:10, marginTop:6 }}>{formatMessage(tc("vsCurrentUnit"), { unit: cvpUnit })}</Text>
+                <Text style={{ color:shade("#64748b"), fontSize:12, marginTop:6 }}>{formatMessage(tc("vsCurrentUnit"), { unit: cvpUnit })}</Text>
                 {renderFeedback("cvp")}
               </View>
             </View>
@@ -374,7 +374,7 @@ export function VitalsSheet({
       {mode === "bp" && !showExtendedFields && (
         <View style={{ flexDirection:"row", gap:10, marginBottom:18 }}>
           <View style={{ flex:1 }}>
-            <Text style={{ color:shade("#22c55e"), fontSize:11, fontWeight:"700", marginBottom:6 }}>{tc("vsHeartRate")}</Text>
+            <Text style={{ color:shade("#22c55e"), fontSize:12, fontWeight:"700", marginBottom:6 }}>{tc("vsHeartRate")}</Text>
             <View style={{ position: "relative" }}><TextInput
               style={{ backgroundColor:shade("#111111"), color:shade("#22c55e"), borderRadius:10,
                 padding: Platform.OS === "web" ? 9 : 12,

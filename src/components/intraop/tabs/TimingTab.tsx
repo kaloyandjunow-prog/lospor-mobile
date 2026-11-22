@@ -100,7 +100,7 @@ export function TimingTab({
     <OverflowCueScrollView style={{ flex:1 }} scrollViewStyle={{ flex:1 }} contentContainerStyle={{ padding:16, paddingBottom:40 }} onScroll={onScroll} scrollEventThrottle={scrollEventThrottle}>
 
       {/* Start time */}
-      <Text style={{ color:shade("#94a3b8"), fontSize:10, fontWeight:"700", letterSpacing:1.2,
+      <Text style={{ color:shade("#94a3b8"), fontSize:12, fontWeight:"700", letterSpacing:1.2,
         textTransform:"uppercase", marginBottom:8 }}>{tc("anesthesiaStartTime")}<Text style={{ color:shade("#ef4444") }}> *</Text></Text>
       {!startRef.current ? (
         <DayStepper value={startDayKey} onChange={setStartDayKey} todayKey={todayKey} min={shiftDateKey(todayKey, -14)} max={todayKey}
@@ -113,7 +113,7 @@ export function TimingTab({
             borderWidth:1, borderColor:shade("#1e2d40"), alignItems:"center", flexDirection:"row", gap:8 }}>
             <Text style={{ flex:1, color:shade("#f8fafc"), fontSize:22, fontWeight:"700",
               fontVariant:["tabular-nums"], textAlign:"center" }} testID="intraop-start-locked">{startKey ? `${formatDay(startKey)} · ` : ""}{caseStartTime}</Text>
-            <Text style={{ color:shade("#475569"), fontSize:10, fontWeight:"700" }}>{tc("timingLocked")}</Text>
+            <Text style={{ color:shade("#475569"), fontSize:12, fontWeight:"700" }}>{tc("timingLocked")}</Text>
           </View>
         ) : (
           <>
@@ -131,7 +131,7 @@ export function TimingTab({
       </View>
 
       {/* End time */}
-      <Text style={{ color:shade("#94a3b8"), fontSize:10, fontWeight:"700", letterSpacing:1.2,
+      <Text style={{ color:shade("#94a3b8"), fontSize:12, fontWeight:"700", letterSpacing:1.2,
         textTransform:"uppercase", marginBottom:8 }}>{tc("anesthesiaEndTime")}<Text style={{ color:shade("#ef4444") }}> *</Text></Text>
       <View style={{ flexDirection:"row", gap:10, marginBottom:8 }}>
         <TimeWheelField testID="timing-end" value={caseEndTime} placeholder="14:30" labels={wheelLabels}
@@ -184,14 +184,14 @@ export function TimingTab({
       {durationStr ? (
         <View style={{ backgroundColor:shade("#0f1a2e"), borderRadius:12, padding:14,
           borderWidth:1, borderColor:shade("#1e3a5f"), alignItems:"center" }}>
-          <Text style={{ color:shade("#64748b"), fontSize:10, fontWeight:"700",
+          <Text style={{ color:shade("#64748b"), fontSize:12, fontWeight:"700",
             textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>{tc("duration")}</Text>
           <Text style={{ color:shade("#93c5fd"), fontSize:24, fontWeight:"700" }}>{durationStr}</Text>
         </View>
       ) : null}
 
       {timingSaving && (
-        <Text style={{ color:shade("#64748b"), fontSize:11, textAlign:"center", marginTop:12 }}>{tc("draftSaving")}</Text>
+        <Text style={{ color:shade("#64748b"), fontSize:12, textAlign:"center", marginTop:12 }}>{tc("draftSaving")}</Text>
       )}
     </OverflowCueScrollView>
   )
