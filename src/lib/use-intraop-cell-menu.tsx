@@ -164,7 +164,7 @@ export function useIntraopCellMenu({ log, syncLog, chartStart, startedAt, endedA
     switch (action) {
       case "stop":
       case "plan_stop": {
-        if ((cell.kind === "infusion" || cell.kind === "fluid") && sheets.stopWithData(cell, ts)) return
+        if (action === "stop" && (cell.kind === "infusion" || cell.kind === "fluid") && sheets.stopWithData(cell, ts)) return // a planned stop asks when it comes
         const recordedAt = now().toISOString()
         const stop: LogEvent = cell.kind === "infusion" ? { id: uid(), ts, type: "infusion_stop", infId: cell.key, recordedAt }
           : cell.kind === "fluid" ? { id: uid(), ts, type: "fluid_end", fluidId: cell.key, recordedAt }

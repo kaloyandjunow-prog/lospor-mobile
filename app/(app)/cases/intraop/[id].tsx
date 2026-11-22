@@ -519,8 +519,9 @@ export default function IntraopLiveScreen() {
       changeSyringe: (cell, ts) => { const inf = activeInfusions.find(item => item.infId === cell.key); if (inf) { setInfActTs(ts); setInfActTgt(inf); setInfActRate(inf.rate); setInfActOpen(true) } },
       switchAgent: (cell, ts) => openAgent(ts, cell.key),
       stopWithData: (cell, ts) => {
-        if (cell.kind === "infusion") { const inf = activeInfusions.find(item => item.infId === cell.key); if (!inf) return false; setInfActTs(ts); setInfActTgt(inf); setInfActRate(inf.rate); setInfActOpen(true); return true }
-        if (cell.kind === "fluid") { const fluid = activeFluids.find(item => item.fluidId === cell.key); if (!fluid) return false; openFluidEnd(fluid, ts); return true }
+        // 10.8.0: only a TCI infusion (the pump's total) and a fluid entered as a bag (how much ran) ask; the rest stop at once.
+        if (cell.kind === "infusion") { const inf = activeInfusions.find(item => item.infId === cell.key); if (!inf || !inf.tciModel) return false; setInfActTs(ts); setInfActTgt(inf); setInfActRate(inf.rate); setInfActOpen(true); return true }
+        if (cell.kind === "fluid") { const fluid = activeFluids.find(item => item.fluidId === cell.key); if (!fluid || fluid.fluidEntryMode === "RATE") return false; openFluidEnd(fluid, ts); return true }
         return false
       },
       editPoint: event => editEvent(event),
