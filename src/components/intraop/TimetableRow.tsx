@@ -250,7 +250,7 @@ function TimetableRowComponent({
                 testID={`timetable-quick-add-${btn.action}`}
                 onPress={() => onQuickAdd(col, btn.action)}
                 style={{
-                  paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
+                  paddingHorizontal: 14, paddingVertical: 8, minHeight: 44, justifyContent: "center", borderRadius: 10,
                   backgroundColor: shade(btn.color) + "18",
                   borderWidth: 1, borderColor: shade(btn.color) + "44",
                 }}

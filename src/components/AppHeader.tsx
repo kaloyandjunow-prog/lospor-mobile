@@ -33,8 +33,8 @@ function HeaderButton({ kind, onPress, active = false, testID }: { kind: "home" 
       accessibilityRole="button"
       accessibilityLabel={label}
       style={{
-        width: 38,
-        height: 38,
+        width: 44,
+        height: 44,
         flexShrink: 0,
         borderRadius: 999,
         alignItems: "center",
@@ -72,7 +72,7 @@ export function AppHeader({ eyebrow = "LOSPOR", title, showNewCase = true, compa
               accessibilityRole="button"
               accessibilityLabel={t("back")}
               style={{
-                width: 38, height: 38, borderRadius: 999,
+                width: 44, height: 44, borderRadius: 999,
                 alignItems: "center", justifyContent: "center",
                 backgroundColor: colors.surfaceRaised,
                 borderWidth: 1, borderColor: colors.border,
