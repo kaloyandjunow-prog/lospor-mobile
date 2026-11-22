@@ -29,6 +29,11 @@ const ANSWERS: Record<IntraopAttentionKind, { action: IntraopAttentionAction; la
   tourniquet_open: [
     { action: "tourniquet_off", label: "tourniquetOffAtEnd", tone: "yes", testId: "attention-tourniquet-off" },
   ],
+  // 10.8.0: an event logged from a reading that was then corrected.
+  auto_event_stale: [
+    { action: "keep_auto_event", label: "autoEventKeep", tone: "no", testId: "attention-auto-keep" },
+    { action: "remove_auto_event", label: "autoEventRemove", tone: "yes", testId: "attention-auto-remove" },
+  ],
   // 10.2.0: a suggestion -- a card, follow-up or reminder opens; a question logs.
   suggestion: [
     { action: "not_now", label: "vitalNotNow", tone: "no", testId: "attention-suggestion-not-now" },
