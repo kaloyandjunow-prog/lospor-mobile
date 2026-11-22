@@ -524,6 +524,7 @@ export default function IntraopLiveScreen() {
         return false
       },
       editPoint: event => editEvent(event),
+      openSection: section => selectTab(section),
       // 10.8.0: the dose picker opens with this drug and dose, at now; nothing is saved until confirmed.
       repeatDose: event => {
         if (event.type !== "drug" || !event.name) { void save({ ...repeatDrugEventPayload(event) }, serverNow().toISOString()); return }

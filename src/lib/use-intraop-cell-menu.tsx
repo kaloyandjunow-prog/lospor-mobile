@@ -7,6 +7,7 @@ import {
   intraopDeleteWhole,
   intraopFixBoundary,
   intraopMoveEvent,
+  intraopLinkedSection,
   intraopRunEventIds,
   intraopStillRunningQuestion,
   intraopStopAt,
@@ -40,6 +41,8 @@ export type CellMenuSheets = {
   /** Infusion and fluid stops ask for a volume or the pump's total; true when a sheet took it. */
   stopWithData: (cell: ContinuousCell, ts: string) => boolean
   editPoint: (event: LogEvent) => void
+  /** 10.8.0: an entry made in the Airway or Vascular section is edited in that section. */
+  openSection: (section: "airway" | "vascular") => void
   repeatDose: (event: LogEvent) => void
 }
 
@@ -215,7 +218,10 @@ export function useIntraopCellMenu({ log, syncLog, chartStart, startedAt, endedA
   const runPoint = useCallback((action: IntraopMenuAction, event: LogEvent, title: string) => {
     switch (action) {
       case "repeat_dose": return sheets.repeatDose(event)
-      case "edit": return sheets.editPoint(event)
+      case "edit": {
+        const linked = intraopLinkedSection(event)
+        return linked ? sheets.openSection(linked) : sheets.editPoint(event)
+      }
       case "move":
         openWheel(`${copy.labels.move} · ${title}`, new Date(event.ts), instant => {
           const result = intraopMoveEvent(logRef.current, event.id, instant, editContext())
