@@ -19,6 +19,8 @@ export const CELL_MENU_COPY: Record<CellMenuLocale, {
   wheel: { hours: string; minutes: string }
   undo: string
   undone: string
+  /** 10.8.0: a start charted in an earlier cell is asked about at once (as on the web). */
+  stillRunning: { question: (title: string, time: string) => string; running: string; stopped: string }
   cancel: string
   confirm: string
 }> = {
@@ -42,6 +44,7 @@ export const CELL_MENU_COPY: Record<CellMenuLocale, {
     },
     pair: { question: "Има и „Турникет отпуснат“. Изтриване и на двете?", both: "Изтрий и двете", onlyThis: "Само поставен" },
     wheel: { hours: "Часове", minutes: "Минути" },
+    stillRunning: { question: (title, time) => `${title} от ${time} — още тече ли?`, running: "Тече", stopped: "Спря…" },
     undo: "Отмени", undone: "Отменено", cancel: "Отказ", confirm: "Готово",
   },
   en: {
@@ -64,6 +67,7 @@ export const CELL_MENU_COPY: Record<CellMenuLocale, {
     },
     pair: { question: "Tourniquet off is recorded too. Delete both?", both: "Delete both", onlyThis: "Only Tourniquet on" },
     wheel: { hours: "Hours", minutes: "Minutes" },
+    stillRunning: { question: (title, time) => `${title} from ${time} — still running?`, running: "Running", stopped: "Stopped…" },
     undo: "Undo", undone: "Undone", cancel: "Cancel", confirm: "Done",
   },
 }

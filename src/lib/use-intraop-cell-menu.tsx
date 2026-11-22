@@ -8,6 +8,8 @@ import {
   intraopFixBoundary,
   intraopMoveEvent,
   intraopRunEventIds,
+  intraopStillRunningQuestion,
+  intraopStopAt,
   type IntraopEditRefusal,
 } from "@lospor/core/intraop-edits"
 import { intraopItemRef, intraopStampForColumn, type IntraopItemKind } from "@lospor/core/intraop-commands"
@@ -108,6 +110,29 @@ export function useIntraopCellMenu({ log, syncLog, chartStart, startedAt, endedA
     const [hour, minute] = (localTimeOf(at, timeZone) ?? "00:00").split(":").map(Number)
     setWheel({ title, hour, minute, reference: at, apply })
   }, [timeZone])
+
+  // 10.8.0 (rule 3): a start charted in an earlier cell is asked about at once -- Core's rule, as on the web.
+  const [openedAt] = useState(() => now().toISOString())
+  const [knownIds] = useState(() => new Set(log.map(event => event.id)))
+  const askedIds = useRef(new Set<string>())
+  const stillRunning = readOnly ? null
+    : intraopStillRunningQuestion(log, { knownIds, answeredIds: askedIds.current, now: now(), chartStart, enteredSince: openedAt })
+  const stillRunningId = stillRunning?.id ?? null
+  useEffect(() => {
+    const start = stillRunningId ? logRef.current.find(event => event.id === stillRunningId) : null
+    if (!start || askedIds.current.has(start.id)) return
+    askedIds.current.add(start.id)
+    const title = start.name ?? start.label ?? ""
+    actionSheet(copy.stillRunning.question(title, timeOf(start.ts)), undefined, [
+      { label: copy.stillRunning.running },
+      { label: copy.stillRunning.stopped, destructive: true, onPress: () => openWheel(copy.stillRunning.stopped, now(), instant => {
+        const result = intraopStopAt(logRef.current, start.id, instant, editContext())
+        if (!result.ok) return result.refusal
+        commit(result.events, copy.done.stopped(title, timeOf(instant)))
+        return null
+      }) },
+    ])
+  }, [commit, copy, editContext, now, openWheel, stillRunningId, timeOf])
 
   const lastStartOf = useCallback((cell: ContinuousCell) => [...sortIntraopEvents(logRef.current)].reverse()
     .find(event => { const ref = intraopItemRef(event); return ref?.role === "start" && ref.kind === cell.kind && ref.key === cell.key && Date.parse(event.ts) < cellOf(cell.col).end }), [cellOf])
