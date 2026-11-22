@@ -29,6 +29,8 @@ export type RunningItem = {
   stopEventId?: string
   /** The events the item came from, for its save state. */
   eventIds?: string[]
+  /** 10.8.0: the column it started in, for how long it has run (the web chart's total). */
+  startCol?: number
 }
 
 /** How a running agent, infusion or fluid is named in its row; the stored name by default. */
@@ -50,6 +52,7 @@ function presentRunningItem(item: CoreRunningItem, nameOf: RunningNameOf = store
   if (item.stopUnconfirmed) presented.stopUnconfirmed = true
   if (item.stopEventId) presented.stopEventId = item.stopEventId
   if (item.eventIds?.length) presented.eventIds = item.eventIds
+  if (item.startCol != null) presented.startCol = item.startCol
   return presented
 }
 

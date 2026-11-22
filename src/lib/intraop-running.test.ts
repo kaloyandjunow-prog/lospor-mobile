@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { runningItemsAt, runningItemsByCol, vitalSummary, buildRowSummary } from "./intraop-running"
+import { runningItemsAt as runningItemsWithStart, runningItemsByCol, vitalSummary, buildRowSummary } from "./intraop-running"
+
+// 10.8.0: items carry their start column (for their running total); these checks are about the rest.
+const runningItemsAt = (...args: Parameters<typeof runningItemsWithStart>) =>
+  runningItemsWithStart(...args).map(({ startCol: _startCol, ...rest }) => rest)
 import type { TimetableData } from "@/components/IntraopTimetable"
 import type { LogEvent } from "@/lib/intraop-log-event"
 
@@ -14,6 +18,7 @@ describe("runningItemsAt", () => {
     const withUnit = tt({ infusions: [{ id: "i2", name: "Ropivacaine 0.2%", rate: "0.208", unit: "mL/kg/hr", color: "#a5f", startCol: 0, endCol: 5 }] })
     expect(runningItemsAt(withUnit, 1)[0]?.label).toBe("Ropivacaine 0.2% 0.208 mL/kg/hr")
     expect(runningItemsAt(t, 6)).toEqual([]) // past endCol
+    expect(runningItemsWithStart(t, 3)[0]?.startCol).toBe(0) // 10.8.0: for its running total
   })
 
   it("includes fluids and agents within their spans", () => {
@@ -55,10 +60,10 @@ describe("runningItemsAt", () => {
       agents: [{ name: "Sevo", color: "#a5f", startCol: 2, endCol: 4 }],
     })
     const byCol = runningItemsByCol(t, [1, 2, 4, 6])
-    expect(byCol.get(1)).toEqual(runningItemsAt(t, 1))
-    expect(byCol.get(2)).toEqual(runningItemsAt(t, 2))
-    expect(byCol.get(4)).toEqual(runningItemsAt(t, 4))
-    expect(byCol.get(6)).toEqual(runningItemsAt(t, 6))
+    expect(byCol.get(1)).toEqual(runningItemsWithStart(t, 1))
+    expect(byCol.get(2)).toEqual(runningItemsWithStart(t, 2))
+    expect(byCol.get(4)).toEqual(runningItemsWithStart(t, 4))
+    expect(byCol.get(6)).toEqual(runningItemsWithStart(t, 6))
   })
 })
 
