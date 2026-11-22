@@ -23,6 +23,7 @@ const answerTestIds = {
   log_complication: "attention-vital-log",
   open: "attention-suggestion-open",
   dismiss: "attention-suggestion-dismiss",
+  tourniquet_off: "attention-tourniquet-off",
 } as const satisfies Record<import("@lospor/core/intraop-attention").IntraopAttentionAction, string>
 
 // 10.8.0: one reminder shows, the rest behind "+N"; these tests read them all.

@@ -16,6 +16,8 @@ export type EndCaseStopContext = {
   administeredVolumeMl?: number
   /** A TCI infusion: the pump's own total, when entered (2026-10-19). */
   pump?: { value: number; unit: PumpTotalUnit }
+  /** 10.8.0: stopped on the record at the end, going on after the case (recovery, ICU). */
+  continuesAfterEnd?: boolean
 }
 
 export type EndCaseCleanupItem = {
@@ -213,15 +215,16 @@ export function EndCaseSheet({
             // Run all stops concurrently instead of one full round-trip at a
             // time — each item's local optimistic update no longer needs to
             // wait for the previous item's network save to finish.
-            // Only items marked "stop" get a stop, at the end time. Items continued
-            // postoperatively keep running; the chart and every total stop at the end.
-            await Promise.all(items.filter(item => decisions[item.key] === "stop").map(item => {
-              if (!item.fluidVolume) return item.onStop({ endTs, ...(pumpTotals[item.key] ? { pump: pumpTotals[item.key] } : {}) })
+            // 10.8.0: everything stops on the record at the end time; what goes on after
+            // the case (recovery, ICU) is marked so, the same as on the web.
+            await Promise.all(items.filter(item => decisions[item.key] === "stop" || decisions[item.key] === "continue").map(item => {
+              const goesOn = decisions[item.key] === "continue" ? { continuesAfterEnd: true } : {}
+              if (!item.fluidVolume) return item.onStop({ endTs, ...goesOn, ...(pumpTotals[item.key] ? { pump: pumpTotals[item.key] } : {}) })
               const edited = fluidActualVolumes[item.key]
               const administeredVolumeMl = edited === undefined
                 ? item.fluidVolume.atEnd(endTs)
                 : Number(edited)
-              return item.onStop({ endTs, administeredVolumeMl })
+              return item.onStop({ endTs, administeredVolumeMl, ...goesOn })
             }))
             const continued = items
               .filter(item => decisions[item.key] === "continue")
