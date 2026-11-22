@@ -16,7 +16,7 @@ import { intraopItemRef, intraopStampForColumn, type IntraopItemKind } from "@lo
 import { INTRAOP_COLUMN_MS, sortIntraopEvents } from "@lospor/core/intraop-engine"
 import { instantForTimeInCase } from "@lospor/core/time-entry"
 import { localTimeOf } from "@lospor/core/intraop-time"
-import { EMPTY_INTRAOP_HISTORY, intraopHistoryPush, intraopHistoryUndo, intraopUndoEntry, type IntraopHistory } from "@lospor/core/intraop-undo"
+import { EMPTY_INTRAOP_HISTORY, intraopHistoryPush, intraopHistoryRedo, intraopHistoryUndo, intraopUndoEntry, type IntraopHistory } from "@lospor/core/intraop-undo"
 import type { LogEvent } from "@/lib/intraop-log-event"
 import { actionSheet } from "@/lib/notify"
 import { useShade } from "@/theme/colors"
@@ -95,6 +95,15 @@ export function useIntraopCellMenu({ log, syncLog, chartStart, startedAt, endedA
     setHistory(result.history)
     showBar(`${copy.undone}: ${result.entry.label}`)
   }, [copy.undone, history, showBar, syncLog])
+
+  // 10.8.0: Redo, as on the web ("Повтори").
+  const redo = useCallback(() => {
+    const result = intraopHistoryRedo(history, logRef.current)
+    if (!result) return
+    void syncLog(result.events)
+    setHistory(result.history)
+    showBar(`${copy.redone}: ${result.entry.label}`)
+  }, [copy.redone, history, showBar, syncLog])
 
   const timeOf = useCallback((value: Date | string) => localTimeOf(new Date(value), timeZone) ?? "", [timeZone])
   const cellOf = useCallback((col: number) => {
@@ -262,8 +271,10 @@ export function useIntraopCellMenu({ log, syncLog, chartStart, startedAt, endedA
       wheel={wheel}
       bar={bar}
       canUndo={history.done.length > 0}
+      canRedo={history.undone.length > 0}
       copy={copy}
       onUndo={undo}
+      onRedo={redo}
       onCloseWheel={() => setWheel(null)}
       onConfirmWheel={(hour, minute) => {
         if (!wheel) return
@@ -274,17 +285,19 @@ export function useIntraopCellMenu({ log, syncLog, chartStart, startedAt, endedA
         else setWheel(null)
       }}
     />
-  ), [bar, copy, endedAt, history.done.length, refuse, startedAt, timeZone, undo, wheel])
+  ), [bar, copy, endedAt, history.done.length, history.undone.length, redo, refuse, startedAt, timeZone, undo, wheel])
 
-  return { openContinuous, openEvent, overlay, undo, canUndo: history.done.length > 0 }
+  return { openContinuous, openEvent, overlay, undo, redo, canUndo: history.done.length > 0, canRedo: history.undone.length > 0 }
 }
 
-function CellMenuOverlay({ wheel, bar, canUndo, copy, onUndo, onCloseWheel, onConfirmWheel }: {
+function CellMenuOverlay({ wheel, bar, canUndo, canRedo, copy, onUndo, onRedo, onCloseWheel, onConfirmWheel }: {
   wheel: Wheel | null
   bar: string | null
   canUndo: boolean
+  canRedo: boolean
   copy: (typeof CELL_MENU_COPY)["bg"]
   onUndo: () => void
+  onRedo: () => void
   onCloseWheel: () => void
   onConfirmWheel: (hour: number, minute: number) => void
 }) {
@@ -295,7 +308,7 @@ function CellMenuOverlay({ wheel, bar, canUndo, copy, onUndo, onCloseWheel, onCo
     <>
       {wheel ? (
         <Modal transparent animationType="fade" visible onRequestClose={onCloseWheel}>
-          <Pressable style={{ flex: 1, backgroundColor: "#00000088", justifyContent: "flex-end" }} onPress={onCloseWheel}>
+          <Pressable style={{ flex: 1, backgroundColor: shade("#000000") + "88", justifyContent: "flex-end" }} onPress={onCloseWheel}>
             <Pressable style={{ backgroundColor: shade("#0f172a"), borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 32 }} onPress={() => {}}>
               <Text style={{ color: shade("#f8fafc"), fontSize: 16, fontWeight: "800", marginBottom: 12 }}>{wheel.title}</Text>
               <TimeWheel hour={value.hour} minute={value.minute} onChange={setValue} labels={copy.wheel} />
@@ -304,7 +317,7 @@ function CellMenuOverlay({ wheel, bar, canUndo, copy, onUndo, onCloseWheel, onCo
                   <Text style={{ color: shade("#cbd5e1"), fontWeight: "700", fontSize: 15 }}>{copy.cancel}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity testID="time-wheel-confirm" onPress={() => onConfirmWheel(value.hour, value.minute)} style={{ flex: 1, minHeight: 48, borderRadius: 12, backgroundColor: shade("#2563eb"), alignItems: "center", justifyContent: "center" }}>
-                  <Text style={{ color: "#ffffff", fontWeight: "800", fontSize: 15 }}>{copy.confirm}</Text>
+                  <Text style={{ color: shade("#ffffff"), fontWeight: "800", fontSize: 15 }}>{copy.confirm}</Text>
                 </TouchableOpacity>
               </View>
             </Pressable>
@@ -317,6 +330,11 @@ function CellMenuOverlay({ wheel, bar, canUndo, copy, onUndo, onCloseWheel, onCo
           {canUndo ? (
             <TouchableOpacity testID="cell-menu-undo" onPress={onUndo} style={{ minHeight: 44, minWidth: 44, paddingHorizontal: 14, alignItems: "center", justifyContent: "center" }}>
               <Text style={{ color: shade("#fbbf24"), fontWeight: "800", fontSize: 15 }}>{copy.undo}</Text>
+            </TouchableOpacity>
+          ) : null}
+          {canRedo ? (
+            <TouchableOpacity testID="cell-menu-redo" onPress={onRedo} style={{ minHeight: 44, minWidth: 44, paddingHorizontal: 14, alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ color: shade("#93c5fd"), fontWeight: "800", fontSize: 15 }}>{copy.redo}</Text>
             </TouchableOpacity>
           ) : null}
         </View>
