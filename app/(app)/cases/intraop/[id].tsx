@@ -524,7 +524,12 @@ export default function IntraopLiveScreen() {
         return false
       },
       editPoint: event => eventActions(event),
-      repeatDose: event => { void save({ ...repeatDrugEventPayload(event) }, serverNow().toISOString()) },
+      // 10.8.0: the dose picker opens with this drug and dose, at now; nothing is saved until confirmed.
+      repeatDose: event => {
+        if (event.type !== "drug" || !event.name) { void save({ ...repeatDrugEventPayload(event) }, serverNow().toISOString()); return }
+        setEntryTs(null)
+        openDrugPreset(event.name, event.dose != null ? String(event.dose) : "")
+      },
     },
   })
   const handleChartTimetableChange = (newData: TimetableData) => applyIntraopChartChange({ start: startRef.current, timetable, next: newData, onFluidStart: fluid => setActiveFluids(prev => [...prev, fluid]), save, onChange: setTimetable })

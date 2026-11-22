@@ -127,6 +127,8 @@ export default function DashboardScreen() {
   const { t, tc, language, shade } = usePreferences()
 
   const [cases, setCases] = useState<CaseItem[]>([])
+  // Every case says whether its reader is an anaesthesia nurse (capabilities.isNurse, 10.8.0).
+  const viewerIsNurse = cases.some(item => (item as { capabilities?: { isNurse?: boolean } }).capabilities?.isNurse === true)
   // The theatre and anaesthesiologist filters (10.0.0), applied by the API.
   const [filter, setFilter] = useState<DashboardFilter>({ theatre: null, assignee: null })
   const [filterSheet, setFilterSheet] = useState<"theatre" | "assignee" | null>(null)
@@ -148,7 +150,7 @@ export default function DashboardScreen() {
   const [queuedIntraopCaseIds, setQueuedIntraopCaseIds] = useState<Set<string>>(new Set())
   const [searchOpen, setSearchOpen] = useState(false)
   const [menuCase, setMenuCase] = useState<CaseItem | null>(null)
-  const [menuMode, setMenuMode] = useState<"menu" | "assign" | "theatre" | "cancel" | "confirmDelete">("menu")
+  const [menuMode, setMenuMode] = useState<"menu" | "assign" | "theatre" | "cancel" | "confirmDelete" | "plannedDate" | "nurseHandover">("menu")
   // A cancelled procedure (10.0.0): the reason chosen, and a note for "Other".
   const [cancelReason, setCancelReason] = useState<CancellationReason | null>(null)
   const [cancelNote, setCancelNote] = useState("")
@@ -409,6 +411,7 @@ export default function DashboardScreen() {
   const menuActions = dashboardMenuActions({
     status: menuCase?.status, intraop: menuCase?.intraop, writable: menuCaseWritable,
     pendingTransfer: menuCasePending, theatreChangeable: menuCaseTheatreChangeable,
+    nurse: (menuCase as { capabilities?: { isNurse?: boolean } } | null)?.capabilities?.isNurse === true,
   })
 
   async function handleWithdrawHandover() {
@@ -688,7 +691,8 @@ export default function DashboardScreen() {
         />
       )}
 
-      <TouchableOpacity
+      {/* 10.8.0: an anaesthesia nurse does not open cases (the server refuses it too). */}
+      {viewerIsNurse ? null : <TouchableOpacity
         style={{
           position: "absolute",
           bottom: 32,
@@ -708,7 +712,7 @@ export default function DashboardScreen() {
       >
         <Text style={{ color: shade("#fff"), fontSize: 22, fontWeight: "800", lineHeight: 24 }}>＋</Text>
         <Text style={{ color: shade("#fff"), fontSize: 13, fontWeight: "900" }}>{t("newCase")}</Text>
-      </TouchableOpacity>
+      </TouchableOpacity>}
 
       <DashboardCaseMenu
         menuCase={menuCase}
@@ -738,6 +742,7 @@ export default function DashboardScreen() {
         cancelNote={cancelNote}
         setCancelNote={setCancelNote}
         theatres={theatreConfig.theatres}
+        onPlanned={() => { closeMenu(); void loadCases() }}
       />
       <DashboardSheets
         filterSheet={filterSheet}
