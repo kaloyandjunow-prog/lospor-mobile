@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity } from "react-native"
+import { View, Text, TouchableOpacity } from "react-native"
 import { useState, type RefObject } from "react"
 import {
   daysBetweenDateKeys,
@@ -14,6 +14,8 @@ import {
   shiftDateKey,
 } from "@lospor/core/intraop-time"
 import { DayStepper } from "@/components/DayStepper"
+import { TimeWheelField } from "@/components/TimeWheel"
+import { CELL_MENU_COPY } from "@/lib/intraop-cell-menu-copy"
 import { EndCorrectionReasons } from "@/components/intraop/EndCorrectionReasons"
 import { usePreferences } from "@/lib/preferences-context"
 import type { ClinicalStringKey } from "@/lib/preferences-context"
@@ -44,6 +46,8 @@ export function TimingTab({
 }) {
   const shade = useShade()
   const { language } = usePreferences()
+  const menuCopy = CELL_MENU_COPY[language === "bg" ? "bg" : "en"]
+  const wheelLabels = { ...menuCopy.wheel, cancel: menuCopy.cancel, confirm: menuCopy.confirm }
   const { onScroll, scrollEventThrottle } = useIntraopHeaderScroll()
   // Dates in the case's zone. Left at "Today", a typed start keeps the old
   // rule (a time ahead of now means yesterday); a stepped date places it on
@@ -113,16 +117,8 @@ export function TimingTab({
           </View>
         ) : (
           <>
-            <TextInput
-              style={{ flex:1, minWidth:0, backgroundColor:shade("#111111"), color:shade("#f8fafc"), borderRadius:10, padding:12,
-                fontSize:22, fontWeight:"700", borderWidth:1, borderColor:shade("#2a3a4a"), textAlign:"center",
-                fontVariant:["tabular-nums"] }}
-              placeholder="08:00"
-              placeholderTextColor={shade("#475569")}
-              value={caseStartTime}
-              onChangeText={setCaseStartTime}
-              onBlur={() => saveTiming({ startTime: caseStartTime, startDayKey })}
-            />
+            <TimeWheelField testID="timing-start" value={caseStartTime} placeholder="08:00" labels={wheelLabels}
+              onCommit={hhmm => { setCaseStartTime(hhmm); saveTiming({ startTime: hhmm, startDayKey }) }} />
             <TouchableOpacity
               onPress={() => { setStartDayKey(todayKey); setCaseStartTime(nowHHMM); saveTiming({ startTime: nowHHMM }) }}
               style={{ paddingHorizontal:14, paddingVertical:12, borderRadius:10,
@@ -138,16 +134,8 @@ export function TimingTab({
       <Text style={{ color:shade("#94a3b8"), fontSize:10, fontWeight:"700", letterSpacing:1.2,
         textTransform:"uppercase", marginBottom:8 }}>{tc("anesthesiaEndTime")}<Text style={{ color:shade("#ef4444") }}> *</Text></Text>
       <View style={{ flexDirection:"row", gap:10, marginBottom:8 }}>
-        <TextInput
-          style={{ flex:1, minWidth:0, backgroundColor:shade("#111111"), color:shade("#f8fafc"), borderRadius:10, padding:12,
-            fontSize:22, fontWeight:"700", borderWidth:1, borderColor:shade("#2a3a4a"), textAlign:"center",
-            fontVariant:["tabular-nums"] }}
-          placeholder="14:30"
-          placeholderTextColor={shade("#475569")}
-          value={caseEndTime}
-          onChangeText={setCaseEndTime}
-          onBlur={() => saveEnd({ endTime: caseEndTime })}
-        />
+        <TimeWheelField testID="timing-end" value={caseEndTime} placeholder="14:30" labels={wheelLabels}
+          onCommit={hhmm => { setCaseEndTime(hhmm); saveEnd({ endTime: hhmm }) }} />
         <TouchableOpacity
           onPress={() => {
             const offset = startKey ? Math.max(0, daysBetweenDateKeys(startKey, todayKey) ?? 0) : 0
