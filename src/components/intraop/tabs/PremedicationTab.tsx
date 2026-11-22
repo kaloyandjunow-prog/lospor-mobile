@@ -36,12 +36,12 @@ export function PremedicationTab({
               <View style={{ flexDirection:"row", gap:8 }}>
                 <TouchableOpacity
                   onPress={() => { const next = "N/A"; setPremedEveningText(next); setTimeout(() => savePremedication({ evening: next }), 100) }}
-                  style={{ paddingHorizontal:10, paddingVertical:5, borderRadius:8, backgroundColor:shade("#1e2d40"), borderWidth:1, borderColor:shade("#2a3a50") }}>
+                  style={{ paddingHorizontal:10, paddingVertical:5, minHeight:44, justifyContent:"center", borderRadius:8, backgroundColor:shade("#1e2d40"), borderWidth:1, borderColor:shade("#2a3a50") }}>
                   <Text style={{ color:shade("#64748b"), fontSize:12, fontWeight:"700" }}>{tc("notApplicableShort")}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => openPremedPicker("evening")}
-                  style={{ paddingHorizontal:10, paddingVertical:5, borderRadius:8, backgroundColor:shade("#1e3a5f"), borderWidth:1, borderColor:shade("#3b82f644") }}>
+                  style={{ paddingHorizontal:10, paddingVertical:5, minHeight:44, justifyContent:"center", borderRadius:8, backgroundColor:shade("#1e3a5f"), borderWidth:1, borderColor:shade("#3b82f644") }}>
                   <Text style={{ color:shade("#93c5fd"), fontSize:12, fontWeight:"700" }}>{tc("premedAddFromLibrary")}</Text>
                 </TouchableOpacity>
               </View>
@@ -79,12 +79,12 @@ export function PremedicationTab({
               <View style={{ flexDirection:"row", gap:8 }}>
                 <TouchableOpacity
                   onPress={() => { const next = "N/A"; setPremedMorningText(next); setTimeout(() => savePremedication({ morning: next }), 100) }}
-                  style={{ paddingHorizontal:10, paddingVertical:5, borderRadius:8, backgroundColor:shade("#1e2d40"), borderWidth:1, borderColor:shade("#2a3a50") }}>
+                  style={{ paddingHorizontal:10, paddingVertical:5, minHeight:44, justifyContent:"center", borderRadius:8, backgroundColor:shade("#1e2d40"), borderWidth:1, borderColor:shade("#2a3a50") }}>
                   <Text style={{ color:shade("#64748b"), fontSize:12, fontWeight:"700" }}>{tc("notApplicableShort")}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => openPremedPicker("morning")}
-                  style={{ paddingHorizontal:10, paddingVertical:5, borderRadius:8, backgroundColor:shade("#1e3a5f"), borderWidth:1, borderColor:shade("#3b82f644") }}>
+                  style={{ paddingHorizontal:10, paddingVertical:5, minHeight:44, justifyContent:"center", borderRadius:8, backgroundColor:shade("#1e3a5f"), borderWidth:1, borderColor:shade("#3b82f644") }}>
                   <Text style={{ color:shade("#93c5fd"), fontSize:12, fontWeight:"700" }}>{tc("premedAddFromLibrary")}</Text>
                 </TouchableOpacity>
               </View>

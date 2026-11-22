@@ -27,9 +27,10 @@ async function audit(page: Page) {
   })
 }
 
+// Every screen is measured before the test says anything, so one run lists all that is wrong.
+const problems: string[] = []
 async function report(page: Page, name: string) {
-  const unique = [...new Set(await audit(page))]
-  expect(unique, `${name}\n${unique.slice(0, 40).map(item => `  ${item}`).join("\n")}`).toEqual([])
+  for (const item of new Set(await audit(page))) problems.push(`${name}: ${item}`)
 }
 
 test.use({ viewport: { width: 412, height: 860 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true })
@@ -61,4 +62,5 @@ test("the phone's screens have 44 px targets and 12 px text", async ({ page, req
   } finally {
     await request.delete(`${API_BASE}/v1/cases/${caseId}`, { headers: authed }).catch(() => {})
   }
+  expect(problems).toEqual([])
 })

@@ -50,7 +50,7 @@ function IntraopSyncRow({
         // disabled rather than pointerEvents: TouchableOpacity has no
         // pointerEvents prop, and a hidden control must not be pressable.
         disabled={pendingCount === 0}
-        style={{ paddingHorizontal:10, paddingVertical:6, borderRadius:10,
+        style={{ paddingHorizontal:10, paddingVertical:6, minHeight:44, justifyContent:"center", borderRadius:10,
           borderWidth:1, borderColor:colors.warning, backgroundColor:shade("#2a210f"),
           opacity: pendingCount > 0 ? 1 : 0 }}>
         <Text style={{ color:colors.warning, fontSize:12, fontWeight:"800" }}>{tc("mhRetrySync")}</Text>
