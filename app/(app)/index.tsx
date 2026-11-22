@@ -27,6 +27,7 @@ import { type CancellationReason } from "@lospor/core/case-cancellation"
 import { dashboardMenuActions } from "@/lib/case-actions"
 import { plannedProcedureLabel } from "@lospor/core/procedure-codes"
 import { ageSexLabel } from "@lospor/core/pediatric"
+import { TheatreNurseShiftsButton } from "@/components/dashboard/TheatreNurseShiftsSheet"
 import { DashboardCaseMenu } from "@/components/dashboard/DashboardCaseMenu"
 import { DashboardSheets } from "@/components/dashboard/DashboardSheets"
 import { OverflowCueScrollView } from "@/components/intraop/OverflowCueScrollView"
@@ -657,6 +658,8 @@ export default function DashboardScreen() {
                   selected={filter.assignee !== null}
                   onPress={() => void openFilterSheet("assignee")}
                 />
+                {/* 10.8.0: nurses by theatre for a day, as on the web dashboard. */}
+                {theatreConfig.enabled ? <TheatreNurseShiftsButton theatres={theatreConfig.theatres} isNurse={viewerIsNurse} tc={tc} /> : null}
                 {filter.theatre || filter.assignee ? (
                   <WorkflowPill label={`× ${t("clearFilters")}`} selected={false} onPress={() => setFilter({ theatre: null, assignee: null })} />
                 ) : null}
