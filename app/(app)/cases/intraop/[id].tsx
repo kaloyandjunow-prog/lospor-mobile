@@ -1,4 +1,3 @@
-import { intraopApplyRateChange } from "@lospor/core/intraop-edits"
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
  
 import { View, FlatList, unstable_batchedUpdates, useWindowDimensions, type ScrollViewInstance } from "react-native"
@@ -226,13 +225,7 @@ export default function IntraopLiveScreen() {
     infActOpen, setInfActOpen, infActTgt, setInfActTgt, infActRate, setInfActRate,
     infActConcentration, setInfActConcentration, infActTs, setInfActTs,
     openInfusion, confirmInfusion, stopInfusion, changeRate,
-  } = useInfusionEntry(saveTagged, setEntryTs, setActiveInfusions, INFUSION_CODES, INFUSION_WEIGHT_BASIS, allergyCheck, (infId, atTs, fields) => {
-    // 10.8.0: Core's rule -- the start's own dose, or that cell's change, is edited in place, so nothing is written twice.
-    const next = atTs ? intraopApplyRateChange(logRef.current, { infId, at: atTs, chartStart, fields }) : null
-    if (!next) return false
-    void syncLog(next)
-    return true
-  })
+  } = useInfusionEntry(saveTagged, setEntryTs, setActiveInfusions, INFUSION_CODES, INFUSION_WEIGHT_BASIS, allergyCheck)
 
   // Drug sheet
   const {

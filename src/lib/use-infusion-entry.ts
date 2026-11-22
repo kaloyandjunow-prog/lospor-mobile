@@ -33,8 +33,6 @@ export function useInfusionEntry(
   weightBasis: WeightBasisMap = DEFAULT_INFUSION_WEIGHT_BASIS,
   /** The case's recorded allergies, checked before an infusion starts (1.5.0). */
   allergyCheck: AllergyCheck = NO_ALLERGY_CHECK,
-  /** 10.8.0: the one dose-change rule (Core): true when it edited the start or an existing change in that cell. */
-  editRateInCell: (infId: string, atTs: string | null, fields: { rate: string; unit: string; concentration?: string; volumeRateMlPerHour?: number; calculationWeightKg?: number }) => boolean = () => false,
 ) {
   const [infOpen, setInfOpen] = useState(false)
   const [infDrug, setInfDrug] = useState<InfusionOption | null>(null)
@@ -123,8 +121,6 @@ export function useInfusionEntry(
     setActiveInfusions(prev => prev.map(x => x.infId === inf.infId ? { ...x, rate, unit, concentration: concentration ?? x.concentration } : x))
     const atTs = infActTs
     setInfActOpen(false); setInfActTgt(null); setInfActRate(""); setInfActConcentration(undefined); setInfActTs(null)
-    // In the cell it started in, the dose replaces the start's own; in a cell with a change, that change (Core).
-    if (editRateInCell(inf.infId, atTs, { rate, unit, concentration: concentration ?? inf.concentration, ...(record?.volumeRateMlPerHour != null ? { volumeRateMlPerHour: record.volumeRateMlPerHour } : {}), ...(record?.calculationWeightKg != null ? { calculationWeightKg: record.calculationWeightKg } : {}) })) return
     // Stamp the rate change at the timetable column the user was editing (infActTs)
     // so the split lands there, not at wall-clock "now". Falls back to now when
     // opened without a column context (real-time charting).
