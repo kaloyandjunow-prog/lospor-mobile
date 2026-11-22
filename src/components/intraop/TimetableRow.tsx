@@ -1,5 +1,4 @@
 import { memo, useSyncExternalStore } from "react"
-import { intraopRunDurationLabel } from "@lospor/core/intraop-summary"
 import { jetSheet } from "@/lib/jet-sheet"
 import { TimetableRowEntries, isRowEntry } from "./TimetableRowEntries"
 import { LabDrawDetail, LabDrawPill, mergeRowLabDraws } from "@/components/intraop/LabDrawCell"
@@ -196,12 +195,14 @@ function TimetableRowComponent({
                     }}
                   >
                     {(() => { const state = eventsSaveState(item.eventIds ?? [], saveInput); return state ? <SaveStateDot state={state} /> : null })()}
-                    <Text style={{ color: item.color, fontSize: 14, fontWeight: "700", flex: 1 }}>
-                      {item.planned ? `${tc("plannedLabel")} · ` : item.plannedStop ? `${tc("plannedStopLabel")} · ` : item.plannedChange ? `${tc("plannedChangeLabel")} · ` : ""}{item.label}
-                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: item.color, fontSize: 14, fontWeight: "700" }}>
+                        {item.planned ? `${tc("plannedLabel")} · ` : item.plannedStop ? `${tc("plannedStopLabel")} · ` : item.plannedChange ? `${tc("plannedChangeLabel")} · ` : ""}{item.label}
+                      </Text>
+                      {/* 10.8.0: what it has come to -- amount, volume with time and rate, or how long (Core, as the web lane's total). */}
+                      {item.total ? <Text testID={`running-total-${item.id}`} style={{ color: shade("#94a3b8"), fontSize: 12, fontWeight: "700", marginTop: 2, fontVariant: ["tabular-nums"] }}>Σ {item.total}</Text> : null}
+                    </View>
                     {/* A stop entered ahead reached this row unconfirmed: answered in the bar under the tabs (10.8.0). */}
-                    {/* 10.8.0: how long it has run to this row, as the web chart's total says. */}
-                    {!marker && item.startCol != null && col >= item.startCol ? <Text testID={`running-total-${item.id}`} style={{ color: shade("#94a3b8"), fontSize: 12, fontWeight: "700", marginRight: 8, fontVariant: ["tabular-nums"] }}>Σ {intraopRunDurationLabel(item.startCol, col)}</Text> : null}
                     {item.stopUnconfirmed ? <Text style={{ color: shade("#fbbf24"), fontSize: 16, fontWeight: "900", marginRight: 8 }}>?</Text> : null}
                     {canOpen ? <Text style={{ color: shade("#64748b"), fontSize: 18 }}>⋯</Text> : null}
                   </TouchableOpacity>

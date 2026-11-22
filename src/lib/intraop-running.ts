@@ -1,3 +1,4 @@
+import { intraopRunTotalLabel, type RunTotalContext } from "@lospor/core/intraop-run-totals"
 import type { TciPatient } from "@lospor/core/tci"
 import type { TimetableData, VitalsEntry } from "@/components/IntraopTimetable"
 import type { LogEvent } from "@/lib/intraop-log-event"
@@ -31,6 +32,8 @@ export type RunningItem = {
   eventIds?: string[]
   /** 10.8.0: the column it started in, for how long it has run (the web chart's total). */
   startCol?: number
+  /** 10.8.0: what it has come to -- amount, volume with time and rate, or how long (Core, the same words as the web lane's total). */
+  total?: string
 }
 
 /** How a running agent, infusion or fluid is named in its row; the stored name by default. */
@@ -109,13 +112,18 @@ export function runningItemsByCol(
   cols: number[],
   // The live chart of a case not yet ended: running items also show in the
   // rows after now, where a change can be planned on them (Core, 9.13.1).
-  options: { projectRunning?: boolean; nameOf?: RunningNameOf; colorOf?: RunningColorOf; tciPatient?: TciPatient | null } = {},
+  options: { projectRunning?: boolean; nameOf?: RunningNameOf; colorOf?: RunningColorOf; tciPatient?: TciPatient | null; totals?: Omit<RunTotalContext, "tciPatient"> } = {},
 ): Map<number, RunningItem[]> {
   const coreRows = runningItemsByColumn(timetable, cols, options)
   return new Map(
     [...coreRows].map(([col, items]) => [
       col,
-      items.map(item => presentRunningItem(item, options.nameOf, options.colorOf)),
+      items.map(item => {
+        const presented = presentRunningItem(item, options.nameOf, options.colorOf)
+        const total = options.totals && !item.planned && !item.plannedStop && !item.plannedChange
+          ? intraopRunTotalLabel(timetable, presented.id, col, { ...options.totals, tciPatient: options.tciPatient ?? null }) : null
+        return total ? { ...presented, total } : presented
+      }),
     ]),
   )
 }

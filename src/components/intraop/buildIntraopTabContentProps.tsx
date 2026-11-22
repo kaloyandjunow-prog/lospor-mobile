@@ -265,6 +265,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
       activeAgents,
       activeGas,
       started: !!startRef.current, projectRunning: !caseEnded, tciPatient: tciPatientFromPreop(preop),
+      runTotals: { ibw: caseIbw, tbw: caseTbw, bodySurfaceAreaM2: caseBsa, weightBasis: infusionWeightBasis },
       isWatching,
       listRef: verticalTimetableRef,
       onUndo: undoLastEvent,

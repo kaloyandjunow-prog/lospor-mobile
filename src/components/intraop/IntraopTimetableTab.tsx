@@ -1,3 +1,4 @@
+import type { WeightBasisMap } from "@lospor/core/intraop-totals"
 import type { TciPatient } from "@lospor/core/tci"
 import { useCallback, useMemo, type RefObject } from "react"
 import type { IntraopLabDraw } from "@lospor/core/labs"
@@ -22,6 +23,8 @@ type Props = {
   screenWidth: number
   /** For a running TCI infusion's predicted value in each row (2026-10-18). */
   tciPatient?: TciPatient | null
+  /** 10.8.0: the patient's weights, for each running item's total in the open row. */
+  runTotals?: { ibw: number | null; tbw: number | null; bodySurfaceAreaM2?: number | null; weightBasis?: WeightBasisMap }
   /** Questions the timeline is waiting on (Core intraop-attention). */
   attention?: IntraopAttentionView
   undoEvent: LogEvent | null
@@ -77,6 +80,7 @@ const RUNNING_CATEGORY = { agent: "INHALATIONAL_AGENT", infusion: "INTRAOP_INFUS
 export function IntraopTimetableTab({
   screenWidth,
   tciPatient = null,
+  runTotals,
   attention,
   undoEvent,
   chartRows,
@@ -132,7 +136,7 @@ export function IntraopTimetableTab({
     [activeInfusions, drugColors],
   )
   const rowDataByCol = useMemo(() => {
-    const runningByCol = runningItemsByCol(timetable, chartRows, { projectRunning, nameOf, colorOf, tciPatient })
+    const runningByCol = runningItemsByCol(timetable, chartRows, { projectRunning, nameOf, colorOf, tciPatient, totals: runTotals ? { ...runTotals, now: new Date(), language: language === "bg" ? "bg" : "en" } : undefined })
     const data = new Map<number, {
       vital: VitalsEntry | undefined
       rowEvents: LogEvent[]
@@ -152,7 +156,7 @@ export function IntraopTimetableTab({
       })
     }
     return data
-  }, [buildSummary, chartRows, colorOf, eventRows, nameOf, projectRunning, tciPatient, timetable])
+  }, [buildSummary, chartRows, colorOf, eventRows, language, nameOf, projectRunning, runTotals, tciPatient, timetable])
 
   const labDrawsByCol = useMemo(() => {
     const byCol = new Map<number, IntraopLabDraw[]>()
