@@ -75,3 +75,45 @@ export function NurseHandoverStep({ caseId, tc, onDone, onBack }: {
     </View>
   )
 }
+
+/** The case's anaesthesia nurses (10.8.0), as the web row menu sets them. */
+export function CaseNursesStep({ caseId, tc, onDone, onBack }: {
+  caseId: string
+  tc: (key: ClinicalStringKey) => string
+  onDone: () => void
+  onBack: () => void
+}) {
+  const [nurses, setNurses] = useState<Nurse[] | null>(null)
+  const [assigned, setAssigned] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    void Promise.all([
+      apiFetch("/api/users/nurses").then(response => response.ok ? response.json() : { nurses: [] }),
+      apiFetch(`/api/cases/${caseId}/nurses`).then(response => response.ok ? response.json() : { nurses: [] }),
+    ]).then(([list, current]) => {
+      setNurses(list.nurses ?? [])
+      setAssigned(new Set((current.nurses ?? []).map((row: { userId: string }) => row.userId)))
+    }, () => setNurses([]))
+  }, [caseId])
+  const toggle = async (id: string) => {
+    const response = await apiFetch(`/api/cases/${caseId}/nurses`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(assigned.has(id) ? { remove: id } : { assign: id }) })
+    if (!response.ok) return
+    const next = await response.json()
+    setAssigned(new Set((next.nurses ?? []).map((row: { userId: string }) => row.userId)))
+  }
+  return (
+    <View>
+      <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "800", marginBottom: 12 }}>{tc("dmCaseNurses")}</Text>
+      {nurses === null ? <ActivityIndicator color={colors.primary} />
+        : nurses.length === 0 ? <Text style={{ color: colors.textMuted, fontSize: 14 }}>{tc("dmNoNurses")}</Text>
+          : nurses.map(nurse => (
+            <TouchableOpacity key={nurse.id} testID={`case-nurse-${nurse.id}`} accessibilityRole="checkbox" accessibilityState={{ checked: assigned.has(nurse.id) }}
+              style={{ ...row, flexDirection: "row", alignItems: "center", gap: 12 }} onPress={() => { void toggle(nurse.id) }}>
+              <Text style={{ color: assigned.has(nurse.id) ? colors.primary : colors.textMuted, fontSize: 20, fontWeight: "800" }}>{assigned.has(nurse.id) ? "☑" : "☐"}</Text>
+              <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "700" }}>{nameOf(nurse)}</Text>
+            </TouchableOpacity>
+          ))}
+      <TouchableOpacity style={{ ...row, alignItems: "center" }} onPress={onDone}><Text style={{ color: colors.primary, fontSize: 16, fontWeight: "800" }}>{tc("dmSave")}</Text></TouchableOpacity>
+      <TouchableOpacity style={{ ...row, alignItems: "center" }} onPress={onBack}><Text style={{ color: colors.textSecondary, fontSize: 16 }}>{tc("back")}</Text></TouchableOpacity>
+    </View>
+  )
+}

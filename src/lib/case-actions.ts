@@ -34,6 +34,8 @@ export type DashboardMenuActions = {
   plannedDate: boolean
   /** 10.8.0: a nurse passes her place in the case to another nurse. */
   handOverToNurse: boolean
+  /** 10.8.0: the case's anaesthesia nurses (a doctor's decision). */
+  assignNurses: boolean
 }
 
 export function dashboardMenuActions(input: CaseActionInput): DashboardMenuActions {
@@ -44,7 +46,7 @@ export function dashboardMenuActions(input: CaseActionInput): DashboardMenuActio
   if (input.nurse) {
     // A nurse never cancels, deletes, moves theatres or hands to a doctor (rules N1-N6).
     return { print: input.status === "COMPLETE", cancel: null, undoCancel: false, remove: false, theatre: false, handOver: false,
-      withdrawHandover: false, plannedDate: false, handOverToNurse: !closed && input.writable }
+      withdrawHandover: false, plannedDate: false, handOverToNurse: !closed && input.writable, assignNurses: false }
   }
   return {
     print: input.status === "COMPLETE",
@@ -56,6 +58,7 @@ export function dashboardMenuActions(input: CaseActionInput): DashboardMenuActio
     withdrawHandover: input.pendingTransfer === true,
     plannedDate: !closed && input.writable,
     handOverToNurse: false,
+    assignNurses: !closed && input.writable && input.status !== "CANCELLED",
   }
 }
 

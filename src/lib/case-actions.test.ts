@@ -8,7 +8,7 @@ describe("the dashboard's long-press menu", () => {
   it("offers an open case everything an editor needs", () => {
     expect(menu({ status: "DRAFT" })).toEqual({
       print: false, cancel: "available", undoCancel: false, remove: true, theatre: false, handOver: true, withdrawHandover: false,
-      plannedDate: true, handOverToNurse: false,
+      plannedDate: true, handOverToNurse: false, assignNurses: true,
     })
   })
 
@@ -16,7 +16,7 @@ describe("the dashboard's long-press menu", () => {
   it("offers a nurse nothing but the hand-over to another nurse", () => {
     expect(menu({ status: "IN_PROGRESS", nurse: true })).toEqual({
       print: false, cancel: null, undoCancel: false, remove: false, theatre: false, handOver: false, withdrawHandover: false,
-      plannedDate: false, handOverToNurse: true,
+      plannedDate: false, handOverToNurse: true, assignNurses: false,
     })
   })
 

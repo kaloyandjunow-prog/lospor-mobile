@@ -65,6 +65,8 @@ export default function CaseSummaryScreen() {
   // A cancelled procedure is closed like a finished case (10.0.0): read, printed, not edited.
   const screenActions = caseScreenActions({ status: caseData?.status, writable: caseIsWritable(caseData) })
   const canEdit = screenActions.edit
+  // 10.8.0: an anaesthesia nurse edits intraop and postop only, never closes, reopens or deletes (as on the web).
+  const isNurse = (caseData as { capabilities?: { isNurse?: boolean } } | null)?.capabilities?.isNurse === true
 
   const { unfinalizing, handleUnfinalize } = useCaseUnfinalize(id, t, tc, loadCase)
 
@@ -259,7 +261,7 @@ export default function CaseSummaryScreen() {
               <Text style={{ color: colors.textMuted, fontSize: 11, alignSelf: "center", marginRight: 2 }}>
                 {tc("editLabel")}
               </Text>
-              {(["Preop", "Intraop", "Postop"] as const).map((section) => {
+              {(isNurse ? ["Intraop", "Postop"] as const : ["Preop", "Intraop", "Postop"] as const).map((section) => {
                 const onPress = () => {
                   if (section === "Preop")   router.push(`/(app)/cases/new?continue=${id}`)
                   if (section === "Intraop") router.push(`/(app)/cases/intraop/${id}`)
@@ -284,7 +286,7 @@ export default function CaseSummaryScreen() {
 
           {/* Action row */}
           <View style={{ flexDirection: "row", flexWrap: "wrap", padding: 12, paddingTop: canEdit ? 0 : 12, gap: 8 }}>
-            {canEdit && (
+            {canEdit && !isNurse && (
               <TouchableOpacity
                 onPress={handleFinalize}
                 disabled={finalizing}
@@ -316,7 +318,7 @@ export default function CaseSummaryScreen() {
             </TouchableOpacity>
 
             {/* status alone left this visible past the undo window and for a read-only creator. */}
-            {caseData.status === "COMPLETE" && editWindowOpen && caseIsWritable(caseData) && (
+            {caseData.status === "COMPLETE" && editWindowOpen && caseIsWritable(caseData) && !isNurse && (
               <TouchableOpacity
                 onPress={handleUnfinalize}
                 disabled={unfinalizing}
@@ -333,7 +335,7 @@ export default function CaseSummaryScreen() {
               </TouchableOpacity>
             )}
 
-            {canEdit && (
+            {canEdit && !isNurse && (
               <TouchableOpacity
                 onPress={handleDelete}
                 style={{
