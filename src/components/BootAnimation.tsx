@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   subtitle: {
     color: AMBER,
     fontFamily: "Roboto_500Medium",
-    fontSize: 10,
+    fontSize: 12,
     letterSpacing: 0,
     marginTop: 8,
   },

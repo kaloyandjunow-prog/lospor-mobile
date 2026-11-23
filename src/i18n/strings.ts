@@ -625,6 +625,7 @@ export const STRINGS = {
     institutionsLoading: "Loading institutions…",
     institutionsLoadFailed: "Institutions could not be loaded. Check your connection and try again.",
     unnamedCase: "Unnamed case",
+    caseMenu: "Case menu",
   },
   bg: {
     appTagline: "ГОЛЯМ ПЕРИОПЕРАТИВЕН РЕГИСТЪР С ОТВОРЕН КОД",
@@ -1249,5 +1250,6 @@ export const STRINGS = {
     institutionsLoading: "Зареждат се лечебните заведения…",
     institutionsLoadFailed: "Лечебните заведения не могат да бъдат заредени. Проверете връзката и опитайте отново.",
     unnamedCase: "Случай без име",
+    caseMenu: "Меню на случая",
   },
 } as const
