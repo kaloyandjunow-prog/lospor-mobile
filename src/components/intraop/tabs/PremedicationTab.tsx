@@ -36,7 +36,7 @@ export function PremedicationTab({
               <View style={{ flexDirection:"row", gap:8 }}>
                 <TouchableOpacity
                   onPress={() => { const next = "N/A"; setPremedEveningText(next); setTimeout(() => savePremedication({ evening: next }), 100) }}
-                  style={{ paddingHorizontal:10, paddingVertical:5, minHeight:44, justifyContent:"center", borderRadius:8, backgroundColor:shade("#1e2d40"), borderWidth:1, borderColor:shade("#2a3a50") }}>
+                  style={{ paddingHorizontal:10, paddingVertical:5, minHeight:44, minWidth:44, justifyContent:"center", borderRadius:8, backgroundColor:shade("#1e2d40"), borderWidth:1, borderColor:shade("#2a3a50") }}>
                   <Text style={{ color:shade("#64748b"), fontSize:12, fontWeight:"700" }}>{tc("notApplicableShort")}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -79,7 +79,7 @@ export function PremedicationTab({
               <View style={{ flexDirection:"row", gap:8 }}>
                 <TouchableOpacity
                   onPress={() => { const next = "N/A"; setPremedMorningText(next); setTimeout(() => savePremedication({ morning: next }), 100) }}
-                  style={{ paddingHorizontal:10, paddingVertical:5, minHeight:44, justifyContent:"center", borderRadius:8, backgroundColor:shade("#1e2d40"), borderWidth:1, borderColor:shade("#2a3a50") }}>
+                  style={{ paddingHorizontal:10, paddingVertical:5, minHeight:44, minWidth:44, justifyContent:"center", borderRadius:8, backgroundColor:shade("#1e2d40"), borderWidth:1, borderColor:shade("#2a3a50") }}>
                   <Text style={{ color:shade("#64748b"), fontSize:12, fontWeight:"700" }}>{tc("notApplicableShort")}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity

@@ -4,8 +4,9 @@ import {
   ActivityIndicator,
 } from "react-native"
 import { useLocalSearchParams, useRouter, Stack } from "expo-router"
-import { apiFetch, apiJson } from "@/lib/api"
+import { apiJson } from "@/lib/api"
 import { notify, confirmAction } from "@/lib/notify"
+import { useCaseDelete } from "@/lib/use-case-delete"
 import { openPrintCase } from "@/lib/print-case"
 import { caseMetaParts } from "@/lib/case-meta"
 import { useCaseFinalize } from "@/lib/use-case-finalize"
@@ -70,18 +71,7 @@ export default function CaseSummaryScreen() {
 
   const { unfinalizing, handleUnfinalize } = useCaseUnfinalize(id, t, tc, loadCase)
 
-  const handleDelete = useCallback(() => {
-    void confirmAction(t("deleteCaseTitle"), t("deleteCaseMsg"), { destructive: true, confirmLabel: tc("actionDelete"), cancelLabel: tc("cancelLabel") })
-      .then(async ok => {
-        if (!ok) return
-        try {
-          await apiFetch(`/api/cases/${id}`, { method: "DELETE" })
-          router.back()
-        } catch {
-          notify(tc("errorLabel"), t("couldNotDelete"))
-        }
-      })
-  }, [id, router, t, tc])
+  const handleDelete = useCaseDelete(id, router.back, t, tc)
 
   const [printing, setPrinting] = useState(false)
   const handlePrint = useCallback(async () => {

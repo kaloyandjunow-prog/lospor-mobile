@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { isNurseAccountRole } from "@lospor/core/clinical-roles"
+import { assignTheatreFromMenu, nurseFacts, takeCase, useViewerIsNurse } from "@/lib/dashboard-menu-actions"
+import { CaseMenuButton } from "@/components/dashboard/CaseMenuButton"
 import { ActivityIndicator, Animated, FlatList, RefreshControl, Text, TouchableOpacity, View } from "react-native"
 import { Stack, useRouter, type Href } from "expo-router"
 import { ApiError, apiFetch, apiJson } from "@/lib/api"
@@ -24,7 +25,7 @@ import { useDashboardPagination } from "@/lib/use-dashboard-pagination"
 import { caseIsWritable } from "@lospor/core/case-capabilities"
 import { isSameCalendarDay, isSameCalendarMonth } from "@lospor/core/dashboard-date-scope"
 import type { CaseTheatreView } from "@lospor/core/operating-theatres"
-import { assignCaseTheatre, dashboardFilterQuery, TheatreChangedError, useOperatingTheatres, type DashboardFilter } from "@/lib/use-operating-theatres"
+import { dashboardFilterQuery, useOperatingTheatres, type DashboardFilter } from "@/lib/use-operating-theatres"
 import { type CancellationReason } from "@lospor/core/case-cancellation"
 import { dashboardMenuActions } from "@/lib/case-actions"
 import { plannedProcedureLabel } from "@lospor/core/procedure-codes"
@@ -130,16 +131,7 @@ export default function DashboardScreen() {
   const { t, tc, language, shade } = usePreferences()
 
   const [cases, setCases] = useState<CaseItem[]>([])
-  // Every case says whether its reader is an anaesthesia nurse (capabilities.isNurse, 10.8.0).
-  // The role comes from the account, not from the cases: a nurse who is not on a theatre yet has none in her list,
-  // and must still see the nurse's dashboard ("I am here"), not a doctor's.
-  const [viewerRole, setViewerRole] = useState<string | null>(null)
-  useEffect(() => {
-    let alive = true
-    apiFetch("/api/user").then(response => response.ok ? response.json() : null).then(account => { if (alive && account?.role) setViewerRole(String(account.role)) }).catch(() => {})
-    return () => { alive = false }
-  }, [])
-  const viewerIsNurse = isNurseAccountRole(viewerRole) || cases.some(item => (item as { capabilities?: { isNurse?: boolean } }).capabilities?.isNurse === true)
+  const viewerIsNurse = useViewerIsNurse(cases)
   // The theatre and anaesthesiologist filters (10.0.0), applied by the API.
   const [filter, setFilter] = useState<DashboardFilter>({ theatre: null, assignee: null })
   const [filterSheet, setFilterSheet] = useState<"theatre" | "assignee" | null>(null)
@@ -333,28 +325,7 @@ export default function DashboardScreen() {
     if (!await loadColleagues()) setMenuMode("menu")
   }
 
-  // The case's theatre (10.0.0): anyone who can open it, until intraop starts.
-  async function handleAssignTheatre(theatreId: string | null) {
-    if (!menuCase) return
-    setActionLoading(true)
-    try {
-      await assignCaseTheatre(menuCase.id, theatreId, menuCase.theatre?.id ?? null)
-      closeMenu()
-      await loadCases()
-    } catch (err) {
-      if (err instanceof TheatreChangedError) {
-        // Someone chose another meanwhile: show it, keep the list open, say who.
-        const theatreName = err.current?.name ?? t("noTheatre")
-        setMenuCase(prev => prev && prev.theatre ? { ...prev, theatre: { ...prev.theatre, id: err.current?.id ?? null, name: err.current?.name ?? null } } : prev)
-        notify(t("theatreLabel"), (err.changedBy ? t("theatreChangedMeanwhileBy").replace("{name}", err.changedBy) : t("theatreChangedMeanwhile")).replace("{theatre}", theatreName))
-        void loadCases()
-        return
-      }
-      notify(t("error"), err instanceof Error && err.message ? err.message : t("theatreChangeFailed"))
-    } finally {
-      setActionLoading(false)
-    }
-  }
+  const handleAssignTheatre = (theatreId: string | null) => assignTheatreFromMenu({ menuCase, theatreId, setActionLoading, closeMenu, loadCases, setMenuCase, t })
 
   async function handleCancelProcedure() {
     if (!menuCase || !cancelReason || (cancelReason === "OTHER" && !cancelNote.trim())) return
@@ -422,24 +393,13 @@ export default function DashboardScreen() {
   const menuActions = dashboardMenuActions({
     status: menuCase?.status, intraop: menuCase?.intraop, writable: menuCaseWritable,
     pendingTransfer: menuCasePending, theatreChangeable: menuCaseTheatreChangeable,
-    nurse: (menuCase as { capabilities?: { isNurse?: boolean } } | null)?.capabilities?.isNurse === true,
-    canAssignNurses: (menuCase as { capabilities?: { canAssignNurses?: boolean } } | null)?.capabilities?.canAssignNurses,
-    nursesOnCase: (menuCase as { nurses?: unknown[] } | null)?.nurses?.length,
+    ...nurseFacts(menuCase),
   })
 
   async function handleTakeCase() {
     if (!menuCase) return
-    try {
-      const response = await apiFetch(`/api/cases/${menuCase.id}/nurses`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ take: true }) })
-      if (!response.ok) {
-        // Another nurse may have been put on meanwhile: say why, and show the list as it is now.
-        notify(t("error"), await refusalReason(response) ?? t("actionFailed"))
-        void loadCases()
-        return
-      }
-      closeMenu()
-      void loadCases()
-    } catch { notify(t("error"), t("actionFailed")) }
+    if (await takeCase(menuCase.id, t)) closeMenu()
+    void loadCases()
   }
 
   async function handleWithdrawHandover() {
@@ -511,12 +471,7 @@ export default function DashboardScreen() {
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
             <StatusBadge status={derivedStatus(item)} />
-            {/* The case's menu (Delete, Share, ...) by a tap, not only a long press. */}
-            <TouchableOpacity accessibilityRole="button" accessibilityLabel={t("caseMenu")} testID={`case-menu-${item.id}`}
-              onPress={() => handleLongPress(item)} hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-              style={{ minWidth: 44, minHeight: 44, marginVertical: -12, marginRight: -10, alignItems: "center", justifyContent: "center" }}>
-              <Text style={{ color: colors.textSecondary, fontSize: 20, fontWeight: "800" }}>⋯</Text>
-            </TouchableOpacity>
+            <CaseMenuButton caseId={item.id} label={t("caseMenu")} onPress={() => handleLongPress(item)} />
           </View>
         </View>
         {ageSexLabel(item.preop, language === "bg" ? "bg" : "en") ? (

@@ -5,6 +5,7 @@ import { LabDrawDetail, LabDrawPill, mergeRowLabDraws } from "@/components/intra
 import type { IntraopLabDraw } from "@lospor/core/labs"
 import { View, Text, TouchableOpacity } from "react-native"
 import { useShade } from "@/theme/colors"
+import { RowStopped, RunningStrips } from "./TimetableRowParts"
 import { timeAtCol, formatDateHHMM } from "@/lib/intraop-projection"
 import type { LogEvent, ActiveInfusion, ActiveFluid, ActiveGasSettings } from "@/lib/intraop-log-event"
 import type { ActiveAgent } from "@/lib/intraop-active-state"
@@ -225,17 +226,7 @@ function TimetableRowComponent({
         <TimetableRowEntries entries={rowEntries} labelOf={labelOf} col={col} onEditJet={onEditJet} onOpenEvent={onOpenEvent} />
 
         {/* What stopped before this row and was not started again: one line, each name opens its menu (Resume, ...). */}
-        {stopped && stopped.length > 0 ? (
-          <View testID="timetable-row-stopped" style={{ paddingHorizontal: 14, paddingTop: 10, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
-            <Text style={{ color: shade("#64748b"), fontSize: 12, fontWeight: "700" }}>{tc("trStoppedLine")}</Text>
-            {stopped.map(item => (
-              <TouchableOpacity key={item.id} testID={`timetable-row-stopped-${item.id}`} onPress={() => onOpenStopped?.(item.id, col, item.label)}
-                style={{ minHeight: 44, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: item.color + "55", justifyContent: "center" }}>
-                <Text style={{ color: item.color, fontSize: 13, fontWeight: "700" }}>{item.label} {item.at}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        ) : null}
+        {stopped && stopped.length > 0 ? <RowStopped stopped={stopped} col={col} label={tc("trStoppedLine")} onOpen={onOpenStopped} /> : null}
 
         {/* Quick-add grid */}
         <View style={{ paddingHorizontal: 14, paddingTop: running.length > 0 ? 4 : 12, paddingBottom: 16 }}>
@@ -356,19 +347,7 @@ function TimetableRowComponent({
       {/* Running strips — full height, stacked from right edge inward. Not a control (10.8.0):
           they say something runs; the row is opened to work with it. Planned start and the
           way to a planned stop are dashed; a planned dose change is a dot on the strip. */}
-      <View pointerEvents="none" style={{ flexDirection: "row", alignSelf: "stretch", gap: 1 }}>
-        {running.slice().reverse().map(item => {
-          const dashed = !!(item.planned || item.plannedStop || item.towardsPlannedStop)
-          const faint = !dashed && !!item.projected
-          return (
-            <View key={item.id} testID={`row-strip-${item.id}`} style={{ width: 6, alignItems: "center", justifyContent: "center",
-              backgroundColor: dashed ? "transparent" : item.color + (faint ? "33" : "99"),
-              borderLeftWidth: dashed ? 2 : 0, borderRightWidth: dashed ? 2 : 0, borderColor: item.color, borderStyle: dashed ? "dashed" : "solid" }}>
-              {item.plannedChange ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: item.color }} /> : null}
-            </View>
-          )
-        })}
-      </View>
+      <RunningStrips running={running} />
     </TouchableOpacity>
   )
 }

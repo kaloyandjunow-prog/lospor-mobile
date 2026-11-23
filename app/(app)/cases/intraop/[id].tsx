@@ -11,14 +11,11 @@ import { emptyTimetable, type TimetableData } from "@/components/IntraopTimetabl
 import { colors } from "@/theme/colors"
 import { useCaseLock } from "@/lib/use-case-lock"
 import { useSuggestionContext, useVitalQuestionContext } from "@/lib/use-intraop-automation"
-import { DefibrillationHost } from "@/components/intraop/DefibrillationHost"
 import { confirmAction } from "@/lib/notify"
 import { autosaveManager } from "@/lib/autosave-manager"
 import { usePhoneDeathPrompt } from "@/lib/use-phone-death-prompt"
 import { jetSheet } from "@/lib/jet-sheet"
-import { JetHost } from "@/components/intraop/JetHost"
-import { TourniquetHost } from "@/components/intraop/TourniquetHost"
-import { preopAgeDays } from "@lospor/core/vital-questions"
+import { IntraopClinicalHosts } from "@/components/intraop/IntraopClinicalHosts"
 import { parseTechniqueSides, type TechniqueSide } from "@lospor/core/technique-smart"
 import { useLikelyEvents } from "@/lib/use-likely-events"
 import { usePhoneAirwayExchange } from "@/lib/use-phone-airway-exchange"
@@ -63,12 +60,13 @@ import { useIntraopFavourites } from "@/lib/use-intraop-favourites"
 
 import { useIntraopEventPersistence } from "@/lib/use-intraop-event-persistence"
 import { useIntraopEventActions } from "@/lib/use-intraop-event-actions"
-import { useIntraopCellMenu } from "@/lib/use-intraop-cell-menu"
+import { cellMenuSheets, useIntraopCellMenu } from "@/lib/use-intraop-cell-menu"
 import { repeatDrugEventPayload } from "@/lib/intraop-event-actions"
 import { serverNow } from "@/lib/server-clock"
 import { useIntraopLabs } from "@/lib/use-intraop-labs"
 import { LabsSheet } from "@/components/intraop/LabsSheet"
 import { useIntraopRuntimeEffects } from "@/lib/use-intraop-runtime-effects"
+import { useAdvancedMonitoringOpen } from "@/lib/use-advanced-monitoring-open"
 import { useIntraopCaseLoader } from "@/lib/use-intraop-case-loader"
 import { useIntraopAutofillPreferences } from "@/lib/use-intraop-autofill-preferences"
 import { useIntraopClinicalViewState } from "@/lib/use-intraop-clinical-view-state"
@@ -385,21 +383,13 @@ export default function IntraopLiveScreen() {
   const { noteVitals } = useCaseReminders(!caseEnded)
   noteVitalsRef.current = noteVitals
 
-  // Monitoring advanced section
-  const [advMonOpen, setAdvMonOpen] = useState(false)
-  useEffect(() => {
-    if (clinicalPreferencesReady && defaultMonitoring === "advanced") {
-      setAdvMonOpen(true)
-    }
-  }, [clinicalPreferencesReady, defaultMonitoring])
+  const [advMonOpen, setAdvMonOpen] = useAdvancedMonitoringOpen(clinicalPreferencesReady, defaultMonitoring)
   const { autoFillVitals, autoFillBP, autoFillBg } = useIntraopAutofillPreferences()
 
   // Carry vitals forward as the timetable advances, when enabled in Settings.
   useIntraopAutofillVitals(caseLoaded, autoFillVitals, autoFillBP, autoFillBg, log, logRef, startRef, save, { endedAtRef, onEndCase: openEndCase })
 
-  const onAirwayInterventionSelected = () => {
-    if (awNotApplicable) setAwNotApplicable(() => false)
-  }
+  const onAirwayInterventionSelected = () => { if (awNotApplicable) setAwNotApplicable(() => false) }
   const clinicalModeTyped = clinicalMode as "ADULT" | "PEDIATRIC"
   const { saveAirwayEntries, onNoAirwayInterventionSelected, airwaySmart, smartCase, smartClock, airwayLabel } = usePhoneAirwaySmart({
     airwayScreen, isWatching, airwayExchange, setAwNotApplicable, log, syncLog, removeEvent, chartAirwayEvent, preop, clinicalMode: clinicalModeTyped,
@@ -500,39 +490,17 @@ export default function IntraopLiveScreen() {
     cancelLabel: tc("cancelLabel"),
     chartStart, openVitals, openDrug, openInfusion, openFluid, openAgent, openGasSettings, openLabs, setSlotTs, slotTs, setSlotOpen,
   })
-  // 10.8.0: the one menu of the row, the running items and the event log.
   const cellMenu = useIntraopCellMenu({
-    log, syncLog, chartStart,
-    startedAt: startRef.current, endedAt: endedAtRef.current,
-    timeZone: caseTimezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
-    locale: language === "bg" ? "bg" : "en",
+    log, syncLog, chartStart, startedAt: startRef.current, endedAt: endedAtRef.current, now: serverNow,
+    timeZone: caseTimezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone, locale: language === "bg" ? "bg" : "en",
     readOnly: isWatching || !!caseInfo?.finalizedAt,
-    now: serverNow,
-    sheets: {
-      changeDose: (cell, ts) => {
-        if (cell.kind === "agent") openAgent(ts, cell.key)
-        else if (cell.kind === "gas") { if (activeGas) openGasSettings(ts, activeGas, "change") }
-        else if (cell.kind === "jet") jetSheet.open(ts)
-        else if (cell.kind === "infusion") { const inf = activeInfusions.find(item => item.infId === cell.key); if (inf) { setInfActTs(ts); setInfActTgt(inf); setInfActRate(inf.rate); setInfActOpen(true) } }
-        else { const fluid = activeFluids.find(item => item.fluidId === cell.key); if (fluid) openFluidEnd(fluid, ts) }
-      },
-      changeSyringe: (cell, ts) => { const inf = activeInfusions.find(item => item.infId === cell.key); if (inf) { setInfActTs(ts); setInfActTgt(inf); setInfActRate(inf.rate); setInfActOpen(true) } },
-      switchAgent: (cell, ts) => openAgent(ts, cell.key),
-      stopWithData: (cell, ts) => {
-        // 10.8.0: only a TCI infusion (the pump's total) and a fluid entered as a bag (how much ran) ask; the rest stop at once.
-        if (cell.kind === "infusion") { const inf = activeInfusions.find(item => item.infId === cell.key); if (!inf || !inf.tciModel) return false; setInfActTs(ts); setInfActTgt(inf); setInfActRate(inf.rate); setInfActOpen(true); return true }
-        if (cell.kind === "fluid") { const fluid = activeFluids.find(item => item.fluidId === cell.key); if (!fluid || fluid.fluidEntryMode === "RATE") return false; openFluidEnd(fluid, ts); return true }
-        return false
-      },
-      editPoint: event => editEvent(event),
-      openSection: section => selectTab(section),
-      // 10.8.0: the dose picker opens with this drug and dose, at now; nothing is saved until confirmed.
-      repeatDose: event => {
-        if (event.type !== "drug" || !event.name) { void save({ ...repeatDrugEventPayload(event) }, serverNow().toISOString()); return }
-        setEntryTs(null)
-        openDrugPreset(event.name, event.dose != null ? String(event.dose) : "")
-      },
-    },
+    sheets: cellMenuSheets({
+      openAgent, openGas: ts => { if (activeGas) openGasSettings(ts, activeGas, "change") }, openJet: ts => jetSheet.open(ts),
+      infusions: activeInfusions, openInfusion: (inf, ts) => { setInfActTs(ts); setInfActTgt(inf); setInfActRate(inf.rate); setInfActOpen(true) },
+      fluids: activeFluids, openFluidEnd, editEvent, selectTab,
+      repeatSave: event => { void save({ ...repeatDrugEventPayload(event) }, serverNow().toISOString()) },
+      repeatPick: (name, dose) => { setEntryTs(null); openDrugPreset(name, dose) },
+    }),
   })
   const handleChartTimetableChange = (newData: TimetableData) => applyIntraopChartChange({ start: startRef.current, timetable, next: newData, onFluidStart: fluid => setActiveFluids(prev => [...prev, fluid]), save, onChange: setTimetable })
   // ─────────────────────────────── RENDER ───────────────────────────────
@@ -645,14 +613,7 @@ export default function IntraopLiveScreen() {
         </IntraopScreenChrome>
         {cellMenu.overlay}
       </View>
-      {/* Rendered here rather than threaded through IntraopRenderSurface: the
-          sheet needs only the draw list and the case id, and passing it through
-          that props object would add six more names to a list that is already
-          the reason this screen is hard to read. */}
-      <DefibrillationHost log={log} save={saveTagged} preop={preop} />
-      {!isWatching ? <JetHost log={log} save={save} clockOf={attention?.clockOf ?? (iso => iso.slice(11, 16))} /> : null}
-      {!isWatching ? <TourniquetHost log={log} save={save} sex={preop?.sex} clockOf={attention?.clockOf ?? (iso => iso.slice(11, 16))}
-        ageDays={preopAgeDays(preop ? { ageValue: preop.ageValue, ageUnit: preop.ageUnit, ageYears: preop.age, ageApproxDays: preop.ageApproxDays } : null)} /> : null}
+      <IntraopClinicalHosts log={log} save={save} saveTagged={saveTagged} preop={preop} isWatching={isWatching} clockOf={attention?.clockOf ?? (iso => iso.slice(11, 16))} />
       <IntraopSmartSheets {...{ isWatching, vascularEvents, vascularCase, vascularLines, applyVascularLines, airwayExchange, smartCase, airwayLabel, saveAirwayEntries, AIRWAY_DEVICES }} tc={tc as never} />
       <PhoneSuggestionSheetsHost {...{ attention, isWatching, pendingSuggestion, openLabs, openGasSettings, openAgent, eventLabel, setInfActTgt, setInfActRate, setInfActOpen, save, airwayExchange, vascularAccesses, setVascularAccesses, saveVascularAccesses }}
         active={{ activeGas, activeAgents, activeInfusions }}

@@ -345,3 +345,48 @@ function CellMenuOverlay({ wheel, bar, canUndo, canRedo, copy, onUndo, onRedo, o
     </>
   )
 }
+
+/**
+ * The sheets the menu opens for what needs a question: which one is up to the screen's own openers, which are given here
+ * (10.8.0). Only a TCI infusion (the pump's total) and a fluid entered as a bag (how much ran) ask when stopped; the rest stop at once.
+ */
+export function cellMenuSheets<I extends { infId: string; tciModel?: unknown }, F extends { fluidId: string; fluidEntryMode?: string }>(d: {
+  openAgent: (ts?: string, agentName?: string) => void
+  openGas: (ts: string) => void
+  openJet: (ts: string) => void
+  infusions: I[]
+  openInfusion: (infusion: I, ts: string) => void
+  fluids: F[]
+  openFluidEnd: (fluid: F, ts: string) => void
+  editEvent: (event: LogEvent) => void
+  selectTab: (section: "airway" | "vascular") => void
+  /** An entry with no dose to pick is saved again at once. */
+  repeatSave: (event: LogEvent) => void
+  /** The dose picker opens with this drug and dose, at now; nothing is saved until confirmed. */
+  repeatPick: (name: string, dose: string) => void
+}): CellMenuSheets {
+  const infusion = (cell: ContinuousCell) => d.infusions.find(item => item.infId === cell.key)
+  const fluid = (cell: ContinuousCell) => d.fluids.find(item => item.fluidId === cell.key)
+  return {
+    changeDose: (cell, ts) => {
+      if (cell.kind === "agent") d.openAgent(ts, cell.key)
+      else if (cell.kind === "gas") d.openGas(ts)
+      else if (cell.kind === "jet") d.openJet(ts)
+      else if (cell.kind === "infusion") { const inf = infusion(cell); if (inf) d.openInfusion(inf, ts) }
+      else { const fl = fluid(cell); if (fl) d.openFluidEnd(fl, ts) }
+    },
+    changeSyringe: (cell, ts) => { const inf = infusion(cell); if (inf) d.openInfusion(inf, ts) },
+    switchAgent: (cell, ts) => d.openAgent(ts, cell.key),
+    stopWithData: (cell, ts) => {
+      if (cell.kind === "infusion") { const inf = infusion(cell); if (!inf || !inf.tciModel) return false; d.openInfusion(inf, ts); return true }
+      if (cell.kind === "fluid") { const fl = fluid(cell); if (!fl || fl.fluidEntryMode === "RATE") return false; d.openFluidEnd(fl, ts); return true }
+      return false
+    },
+    editPoint: d.editEvent,
+    openSection: d.selectTab,
+    repeatDose: event => {
+      if (event.type !== "drug" || !event.name) { d.repeatSave(event); return }
+      d.repeatPick(event.name, event.dose != null ? String(event.dose) : "")
+    },
+  }
+}

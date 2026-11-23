@@ -17,6 +17,7 @@ import type { LogEvent } from "@/lib/intraop-log-event"
 import type { VitalsEntry } from "@/components/IntraopTimetable"
 import { formatMessage } from "@/i18n/locale"
 import { projectLabDraws, type LabResult } from "@lospor/core/labs"
+import { rowMenuHandlers, type IntraopCellMenuApi } from "@/lib/intraop-cell-menu-ref"
 
 type Host = IntraopTabContentHostProps
 
@@ -33,23 +34,6 @@ type PremedicationProps = ContentFor<"premedication">
 type EventsProps = ContentFor<"events">
 type FluidsProps = ContentFor<"fluids">
 type VascularProps = ComponentProps<typeof VascularTab>
-
-/** 10.8.0: the one menu of the chart, the row and the event log (useIntraopCellMenu). */
-export type IntraopCellMenuApi = {
-  openContinuous: (cell: { kind: "agent" | "gas" | "jet" | "infusion" | "fluid"; key: string; col: number; title: string }) => void
-  openEvent: (event: LogEvent, title: string) => void
-}
-
-/** The kind and key a drawn running item stands for, from its id. */
-export function runningItemRef(id: string, activeAgents: { name: string }[]): { kind: "agent" | "gas" | "jet" | "infusion" | "fluid"; key: string } | null {
-  if (id.startsWith("inf-")) return { kind: "infusion", key: id.slice(4) }
-  if (id.startsWith("fluid-")) return { kind: "fluid", key: id.slice(6) }
-  if (id.startsWith("agent-")) return { kind: "agent", key: id.slice(6) }
-  if (id === "jet" || id.startsWith("jet-")) return { kind: "jet", key: "jet" }
-  if (id.startsWith("gas")) return { kind: "gas", key: "gas" }
-  const agent = activeAgents.find(candidate => id.includes(candidate.name))
-  return agent ? { kind: "agent", key: agent.name } : null
-}
 
 export type IntraopTabContentBuilderProps = {
   cellMenu?: IntraopCellMenuApi
@@ -292,16 +276,7 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
       onViewChart: openChartView,
       // 10.8.0: a tap on anything in an opened row opens its menu.
       log,
-      onOpenRunning: props.cellMenu ? (item, col) => {
-        const ref = runningItemRef(item.id, activeAgents)
-        if (ref) props.cellMenu?.openContinuous({ ...ref, col, title: item.label })
-      } : undefined,
-      onOpenEvent: props.cellMenu ? (event: LogEvent) => props.cellMenu?.openEvent(event, eventLabel(event).text) : undefined,
-      onOpenStopped: props.cellMenu ? (id: string, col: number, title?: string) => {
-        const [kind, ...key] = id.split(":")
-        // The chip's own name, not the item's key (an infusion's key is its id).
-        props.cellMenu?.openContinuous({ kind: kind as "agent", key: key.join(":"), col, title: title ?? key.join(":") })
-      } : undefined,
+      ...rowMenuHandlers(props.cellMenu, activeAgents, event => eventLabel(event).text),
     } }
 
     case "equipment": return { tab, content: {
