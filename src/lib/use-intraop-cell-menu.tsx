@@ -13,7 +13,8 @@ import {
   intraopStopAt,
   type IntraopEditRefusal,
 } from "@lospor/core/intraop-edits"
-import { intraopItemRef, intraopStampForColumn, type IntraopItemKind } from "@lospor/core/intraop-commands"
+import { intraopItemRef, intraopMenuStopEvent, intraopStampForColumn, type IntraopItemKind } from "@lospor/core/intraop-commands"
+import { randomHex } from "@/lib/random-id"
 import { INTRAOP_COLUMN_MS, sortIntraopEvents } from "@lospor/core/intraop-engine"
 import { instantForTimeInCase } from "@lospor/core/time-entry"
 import { localTimeOf } from "@lospor/core/intraop-time"
@@ -48,12 +49,8 @@ export type CellMenuSheets = {
 
 type Wheel = { title: string; hour: number; minute: number; reference: Date; apply: (instant: Date) => IntraopEditRefusal | null }
 
-const STOP_TYPE = { agent: "agent_stop", gas: "gas_stop", jet: "jet_stop" } as const
-
 function uid(): string {
-  const bytes = new Uint8Array(16)
-  globalThis.crypto.getRandomValues(bytes)
-  return [...bytes].map(byte => byte.toString(16).padStart(2, "0")).join("")
+  return randomHex(16)
 }
 
 export function useIntraopCellMenu({ log, syncLog, chartStart, startedAt, endedAt, timeZone, locale, readOnly, now, sheets }: {
@@ -165,11 +162,9 @@ export function useIntraopCellMenu({ log, syncLog, chartStart, startedAt, endedA
       case "stop":
       case "plan_stop": {
         if (action === "stop" && (cell.kind === "infusion" || cell.kind === "fluid") && sheets.stopWithData(cell, ts)) return // a planned stop asks when it comes
-        const recordedAt = now().toISOString()
-        const stop: LogEvent = cell.kind === "infusion" ? { id: uid(), ts, type: "infusion_stop", infId: cell.key, recordedAt }
-          : cell.kind === "fluid" ? { id: uid(), ts, type: "fluid_end", fluidId: cell.key, recordedAt }
-            : { id: uid(), ts, type: STOP_TYPE[cell.kind], ...(cell.kind === "agent" ? { name: cell.key, agentMode: "concurrent" as const } : {}), recordedAt }
-        commit([...logRef.current, stop], copy.done.stopped(cell.title, timeOf(ts)))
+        // Core builds it, the same as on the web: at the cell's time, never before the start it ends.
+        const stop = { id: uid(), ...intraopMenuStopEvent(logRef.current, { kind: cell.kind, key: cell.key }, ts, now()) } as LogEvent
+        commit([...logRef.current, stop], copy.done.stopped(cell.title, timeOf(stop.ts)))
         return
       }
       case "change_dose":

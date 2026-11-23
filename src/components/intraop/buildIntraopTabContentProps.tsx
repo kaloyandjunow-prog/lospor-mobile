@@ -297,9 +297,10 @@ export function buildIntraopTabContentProps(props: IntraopTabContentBuilderProps
         if (ref) props.cellMenu?.openContinuous({ ...ref, col, title: item.label })
       } : undefined,
       onOpenEvent: props.cellMenu ? (event: LogEvent) => props.cellMenu?.openEvent(event, eventLabel(event).text) : undefined,
-      onOpenStopped: props.cellMenu ? (id: string, col: number) => {
+      onOpenStopped: props.cellMenu ? (id: string, col: number, title?: string) => {
         const [kind, ...key] = id.split(":")
-        props.cellMenu?.openContinuous({ kind: kind as "agent", key: key.join(":"), col, title: key.join(":") })
+        // The chip's own name, not the item's key (an infusion's key is its id).
+        props.cellMenu?.openContinuous({ kind: kind as "agent", key: key.join(":"), col, title: title ?? key.join(":") })
       } : undefined,
     } }
 

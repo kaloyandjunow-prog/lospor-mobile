@@ -78,7 +78,7 @@ type TimetableRowProps = {
   onOpenEvent?: (event: LogEvent) => void
   /** 10.8.0: items stopped before this row and not started again ("Stopped: ..."). */
   stopped?: Array<{ id: string; label: string; color: string; at: string }>
-  onOpenStopped?: (id: string, col: number) => void
+  onOpenStopped?: (id: string, col: number, title?: string) => void
 }
 
 function TimetableRowComponent({
@@ -229,7 +229,7 @@ function TimetableRowComponent({
           <View testID="timetable-row-stopped" style={{ paddingHorizontal: 14, paddingTop: 10, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
             <Text style={{ color: shade("#64748b"), fontSize: 12, fontWeight: "700" }}>{tc("trStoppedLine")}</Text>
             {stopped.map(item => (
-              <TouchableOpacity key={item.id} testID={`timetable-row-stopped-${item.id}`} onPress={() => onOpenStopped?.(item.id, col)}
+              <TouchableOpacity key={item.id} testID={`timetable-row-stopped-${item.id}`} onPress={() => onOpenStopped?.(item.id, col, item.label)}
                 style={{ minHeight: 44, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: item.color + "55", justifyContent: "center" }}>
                 <Text style={{ color: item.color, fontSize: 13, fontWeight: "700" }}>{item.label} {item.at}</Text>
               </TouchableOpacity>

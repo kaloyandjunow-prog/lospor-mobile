@@ -23,16 +23,20 @@ export function PlannedDateStep({ caseId, value, tc, onDone, onBack }: {
 }) {
   const [date, setDate] = useState<CalendarDate>(() => parseCalendarDateKey(value) ?? parseCalendarDateKey(calendarDayKey(new Date()))!)
   const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState(false)
   const save = async (plannedSurgeryDate: string | null) => {
     setBusy(true)
-    const response = await apiFetch(`/api/cases/${caseId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plannedSurgeryDate }) })
-    setBusy(false)
-    if (response.ok) onDone()
+    setFailed(false)
+    try {
+      const response = await apiFetch(`/api/cases/${caseId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plannedSurgeryDate }) })
+      if (response.ok) onDone(); else setFailed(true)
+    } catch { setFailed(true) } finally { setBusy(false) }
   }
   return (
     <View>
       <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "800", marginBottom: 12 }}>{tc("dmPlannedDate")}</Text>
       <DateWheel value={date} onChange={setDate} labels={{ day: tc("dmDay"), month: tc("dmMonth"), year: tc("dmYear") }} />
+      {failed ? <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 14, marginTop: 8 }}>{tc("dmFailed")}</Text> : null}
       <TouchableOpacity testID="planned-date-save" style={{ marginTop: 16, minHeight: 48, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" }} onPress={() => { void save(calendarDateKey(date)) }} disabled={busy}>
         {busy ? <ActivityIndicator color={colors.textPrimary} /> : <Text style={{ color: colors.background, fontSize: 16, fontWeight: "800" }}>{tc("dmSave")}</Text>}
       </TouchableOpacity>
@@ -53,16 +57,20 @@ export function NurseHandoverStep({ caseId, tc, onDone, onBack }: {
 }) {
   const [nurses, setNurses] = useState<Nurse[] | null>(null)
   const [done, setDone] = useState(false)
+  const [failed, setFailed] = useState(false)
   useEffect(() => {
     void apiFetch("/api/users/nurses").then(response => response.ok ? response.json() : { nurses: [] }).then(body => setNurses(body.nurses ?? []), () => setNurses([]))
   }, [])
   const handOver = async (id: string) => {
-    const response = await apiFetch(`/api/cases/${caseId}/nurses`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ handoverTo: id }) })
-    if (response.ok) { setDone(true); setTimeout(onDone, 700) }
+    setFailed(false)
+    let response: Response
+    try { response = await apiFetch(`/api/cases/${caseId}/nurses`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ handoverTo: id }) }) } catch { setFailed(true); return }
+    if (response.ok) { setDone(true); setTimeout(onDone, 700) } else setFailed(true)
   }
   return (
     <View>
       <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "800", marginBottom: 12 }}>{tc("dmHandToNurse")}</Text>
+      {failed ? <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 14, marginBottom: 8 }}>{tc("dmFailed")}</Text> : null}
       {done ? <Text style={{ color: colors.success, fontSize: 15, fontWeight: "800" }}>{tc("dmHandedOver")}</Text>
         : nurses === null ? <ActivityIndicator color={colors.primary} />
           : nurses.length === 0 ? <Text style={{ color: colors.textMuted, fontSize: 14 }}>{tc("dmNoNurses")}</Text>
@@ -85,6 +93,7 @@ export function CaseNursesStep({ caseId, tc, onDone, onBack }: {
 }) {
   const [nurses, setNurses] = useState<Nurse[] | null>(null)
   const [assigned, setAssigned] = useState<Set<string>>(new Set())
+  const [failed, setFailed] = useState(false)
   useEffect(() => {
     void Promise.all([
       apiFetch("/api/users/nurses").then(response => response.ok ? response.json() : { nurses: [] }),
@@ -95,14 +104,17 @@ export function CaseNursesStep({ caseId, tc, onDone, onBack }: {
     }, () => setNurses([]))
   }, [caseId])
   const toggle = async (id: string) => {
-    const response = await apiFetch(`/api/cases/${caseId}/nurses`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(assigned.has(id) ? { remove: id } : { assign: id }) })
-    if (!response.ok) return
+    let response: Response
+    try { response = await apiFetch(`/api/cases/${caseId}/nurses`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(assigned.has(id) ? { remove: id } : { assign: id }) }) } catch { setFailed(true); return }
+    if (!response.ok) { setFailed(true); return }
+    setFailed(false)
     const next = await response.json()
     setAssigned(new Set((next.nurses ?? []).map((row: { userId: string }) => row.userId)))
   }
   return (
     <View>
       <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "800", marginBottom: 12 }}>{tc("dmCaseNurses")}</Text>
+      {failed ? <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 14, marginBottom: 8 }}>{tc("dmFailed")}</Text> : null}
       {nurses === null ? <ActivityIndicator color={colors.primary} />
         : nurses.length === 0 ? <Text style={{ color: colors.textMuted, fontSize: 14 }}>{tc("dmNoNurses")}</Text>
           : nurses.map(nurse => (

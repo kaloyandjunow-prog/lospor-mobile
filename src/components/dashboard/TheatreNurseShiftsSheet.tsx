@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { ActivityIndicator, Modal, ScrollView, Text, TouchableOpacity, View } from "react-native"
 import { calendarDayKey } from "@lospor/core/dashboard-date-scope"
 import { calendarDateKey, parseCalendarDateKey, type CalendarDate } from "@lospor/core/time-entry"
@@ -27,20 +27,31 @@ export function TheatreNurseShiftsButton({ theatres, isNurse, tc }: { theatres: 
   const [shifts, setShifts] = useState<Shift[] | null>(null)
   const [nurses, setNurses] = useState<Person[]>([])
   const { accountId: me } = useAuth()
+  // Only the newest question's answer is shown: a slower, earlier one (another day) is dropped.
+  const latest = useRef(0)
   if (theatres.length === 0) return null
   const today = calendarDateKey(date) === calendarDayKey(new Date())
 
   const load = async (key: string) => {
-    const response = await apiFetch(`/api/operating-theatres/shifts?date=${key}`)
-    setShifts(response.ok ? (await response.json()).shifts ?? [] : [])
+    const mine = ++latest.current
+    try {
+      const response = await apiFetch(`/api/operating-theatres/shifts?date=${key}`)
+      const body = response.ok ? await response.json() : null
+      if (mine === latest.current) setShifts(body?.shifts ?? [])
+    } catch { if (mine === latest.current) setShifts([]) }
   }
   const post = async (body: Record<string, unknown>) => {
-    const response = await apiFetch("/api/operating-theatres/shifts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, date: calendarDateKey(date) }) })
-    if (response.ok) setShifts((await response.json()).shifts ?? [])
+    const mine = ++latest.current
+    let response: Response
+    try { response = await apiFetch("/api/operating-theatres/shifts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, date: calendarDateKey(date) }) }) } catch { return }
+    if (response.ok) { const answer = await response.json(); if (mine === latest.current) setShifts(answer.shifts ?? []) }
   }
   const openSheet = () => {
     setOpen(true)
-    void load(calendarDateKey(date))
+    // A nurse's day is today, whenever the screen was first opened (past midnight it must not be yesterday).
+    const todayDate = parseCalendarDateKey(calendarDayKey(new Date()))!
+    if (isNurse) setDate(todayDate)
+    void load(calendarDateKey(isNurse ? todayDate : date))
     void apiFetch("/api/users/nurses").then(response => response.ok ? response.json() : { nurses: [] }).then(body => setNurses(body.nurses ?? []), () => setNurses([]))
   }
 

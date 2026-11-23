@@ -83,6 +83,7 @@ export function TimeWheel({ hour, minute, onChange, labels }: {
       testID="time-wheel-typed"
       accessibilityLabel={labels.typed ?? labels.hours}
       keyboardType="number-pad"
+      selectTextOnFocus
       value={typed ? typedTimeProgress(typed) : formatClockTime({ hour, minute })}
       onFocus={() => setTyped("")}
       onBlur={() => setTyped("")}

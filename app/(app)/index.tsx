@@ -129,7 +129,15 @@ export default function DashboardScreen() {
 
   const [cases, setCases] = useState<CaseItem[]>([])
   // Every case says whether its reader is an anaesthesia nurse (capabilities.isNurse, 10.8.0).
-  const viewerIsNurse = cases.some(item => (item as { capabilities?: { isNurse?: boolean } }).capabilities?.isNurse === true)
+  // The role comes from the account, not from the cases: a nurse who is not on a theatre yet has none in her list,
+  // and must still see the nurse's dashboard ("I am here"), not a doctor's.
+  const [viewerRole, setViewerRole] = useState<string | null>(null)
+  useEffect(() => {
+    let alive = true
+    apiFetch("/api/user").then(response => response.ok ? response.json() : null).then(account => { if (alive && account?.role) setViewerRole(String(account.role)) }).catch(() => {})
+    return () => { alive = false }
+  }, [])
+  const viewerIsNurse = viewerRole === "ANAESTHESIA_NURSE" || cases.some(item => (item as { capabilities?: { isNurse?: boolean } }).capabilities?.isNurse === true)
   // The theatre and anaesthesiologist filters (10.0.0), applied by the API.
   const [filter, setFilter] = useState<DashboardFilter>({ theatre: null, assignee: null })
   const [filterSheet, setFilterSheet] = useState<"theatre" | "assignee" | null>(null)

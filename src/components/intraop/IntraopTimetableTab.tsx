@@ -1,3 +1,4 @@
+import { useShade } from "@/theme/shade"
 import type { WeightBasisMap } from "@lospor/core/intraop-totals"
 import type { TciPatient } from "@lospor/core/tci"
 import { useCallback, useMemo, type RefObject } from "react"
@@ -70,7 +71,7 @@ type Props = {
   /** 10.8.0: the menu of a running item at a row, of an entry, and of an item stopped earlier. */
   onOpenRunning?: (item: RunningItem, col: number) => void
   onOpenEvent?: (event: LogEvent) => void
-  onOpenStopped?: (id: string, col: number) => void
+  onOpenStopped?: (id: string, col: number, title?: string) => void
 }
 
 const NO_SAVE_STATE = { queuedEventIds: [], sendingEventId: null, refused: [], queuedSections: [], dismissRefused: () => {} }
@@ -127,6 +128,11 @@ export function IntraopTimetableTab({
   const nameOf = useCallback<RunningNameOf>((kind, name) => displayedCatalogName(RUNNING_CATEGORY[kind], name, language, bulgarianNames), [bulgarianNames, language])
   // Infusions in the colours in use, the hospital's own included (10.0.0).
   const drugColors = useCurrentDrugColors()
+  // The totals' inputs by value: the object arrives new on every render of the screen, and the rows (every running item of every
+  // column) were worked out again each time.
+  const hasTotals = runTotals != null
+  const { ibw: totalsIbw, tbw: totalsTbw, bodySurfaceAreaM2: totalsBsa, weightBasis: totalsBasis } = runTotals ?? {}
+  const stableTotals = useMemo(() => hasTotals ? { ibw: totalsIbw ?? null, tbw: totalsTbw ?? null, bodySurfaceAreaM2: totalsBsa, weightBasis: totalsBasis } : undefined, [hasTotals, totalsIbw, totalsTbw, totalsBsa, totalsBasis])
   const colorOf = useCallback<RunningColorOf>((kind, name) => kind === "infusion" ? drugColors.infusion(name) : undefined, [drugColors])
   const shownInfusions = useMemo(
     () => activeInfusions.map(infusion => {
@@ -136,7 +142,7 @@ export function IntraopTimetableTab({
     [activeInfusions, drugColors],
   )
   const rowDataByCol = useMemo(() => {
-    const runningByCol = runningItemsByCol(timetable, chartRows, { projectRunning, nameOf, colorOf, sameGroup: { groupOf: drugColors.infusionGroup, shade: drugColors.later }, tciPatient, totals: runTotals ? { ...runTotals, now: new Date(), language: language === "bg" ? "bg" : "en" } : undefined })
+    const runningByCol = runningItemsByCol(timetable, chartRows, { projectRunning, nameOf, colorOf, sameGroup: { groupOf: drugColors.infusionGroup, shade: drugColors.later }, tciPatient, totals: stableTotals ? { ...stableTotals, now: new Date(), language: language === "bg" ? "bg" : "en" } : undefined })
     const data = new Map<number, {
       vital: VitalsEntry | undefined
       rowEvents: LogEvent[]
@@ -156,7 +162,7 @@ export function IntraopTimetableTab({
       })
     }
     return data
-  }, [buildSummary, chartRows, colorOf, drugColors, eventRows, language, nameOf, projectRunning, runTotals, tciPatient, timetable])
+  }, [buildSummary, chartRows, colorOf, drugColors, eventRows, language, nameOf, projectRunning, stableTotals, tciPatient, timetable])
 
   const labDrawsByCol = useMemo(() => {
     const byCol = new Map<number, IntraopLabDraw[]>()
@@ -165,6 +171,7 @@ export function IntraopTimetableTab({
   }, [labDraws])
 
   // The items stopped before the opened row and not started again (10.8.0): only that row asks.
+  const shade = useShade()
   const stoppedForExpanded = useMemo(() => {
     if (expandedRow === null || !log) return undefined
     const rowStart = timeAtCol(chartStart, expandedRow)
@@ -174,11 +181,11 @@ export function IntraopTimetableTab({
       return {
         id: `${item.kind}:${item.key}`,
         label: kind ? nameOf(kind, start?.name ?? item.key) : item.kind === "gas" ? "FGF" : "Jet",
-        color: start?.color ?? "#94a3b8",
+        color: start?.color ?? shade("#94a3b8"),
         at: formatDateHHMM(new Date(item.stopEvent.ts)),
       }
     })
-  }, [chartStart, expandedRow, log, nameOf])
+  }, [chartStart, expandedRow, log, nameOf, shade])
 
   const collapseExpandedRow = useCallback(() => onSetExpandedRow(null), [onSetExpandedRow])
   const resolveAttention = attention?.resolve
