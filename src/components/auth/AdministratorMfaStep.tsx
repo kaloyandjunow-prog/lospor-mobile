@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Linking,
@@ -50,6 +50,17 @@ export function AdministratorMfaStep({
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null)
   const [acknowledged, setAcknowledged] = useState(false)
   const [saveStatus, setSaveStatus] = useState<"saved" | "failed" | null>(null)
+
+  // Web (the PWA): no browser menu on the code field, though the sign-in screens keep theirs.
+  const codeRef = useRef<HTMLElement | null>(null)
+  useEffect(() => {
+    if (Platform.OS !== "web") return
+    const node = codeRef.current as unknown as HTMLElement | null
+    if (!node?.addEventListener) return
+    const block = (event: Event) => event.preventDefault()
+    node.addEventListener("contextmenu", block)
+    return () => node.removeEventListener("contextmenu", block)
+  }, [])
 
   useEffect(() => {
     const timer = setInterval(() => setRemaining(secondsRemaining(challenge.expiresAt)), 1_000)
@@ -204,6 +215,7 @@ export function AdministratorMfaStep({
       )}
 
       <TextInput
+        ref={node => { codeRef.current = node as unknown as HTMLElement | null }}
         accessibilityLabel={entryKind === "authenticator" ? t("mfaAuthenticatorCode") : t("mfaRecoveryCode")}
         value={code}
         onChangeText={setCode}
