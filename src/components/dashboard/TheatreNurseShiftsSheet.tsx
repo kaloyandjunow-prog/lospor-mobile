@@ -4,6 +4,7 @@ import { calendarDayKey } from "@lospor/core/dashboard-date-scope"
 import { calendarDateKey, parseCalendarDateKey, type CalendarDate } from "@lospor/core/time-entry"
 import { apiFetch } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
+import { refusalReason } from "@/lib/server-message"
 import { DateWheel } from "@/components/DateWheel"
 import { colors } from "@/theme/colors"
 import type { ClinicalStringKey } from "@/lib/preferences-context"
@@ -26,6 +27,7 @@ export function TheatreNurseShiftsButton({ theatres, isNurse, tc }: { theatres: 
   const [date, setDate] = useState<CalendarDate>(() => parseCalendarDateKey(calendarDayKey(new Date()))!)
   const [shifts, setShifts] = useState<Shift[] | null>(null)
   const [nurses, setNurses] = useState<Person[]>([])
+  const [failed, setFailed] = useState<string | null>(null)
   const { accountId: me } = useAuth()
   // Only the newest question's answer is shown: a slower, earlier one (another day) is dropped.
   const latest = useRef(0)
@@ -43,11 +45,17 @@ export function TheatreNurseShiftsButton({ theatres, isNurse, tc }: { theatres: 
   const post = async (body: Record<string, unknown>) => {
     const mine = ++latest.current
     let response: Response
-    try { response = await apiFetch("/api/operating-theatres/shifts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, date: calendarDateKey(date) }) }) } catch { return }
-    if (response.ok) { const answer = await response.json(); if (mine === latest.current) setShifts(answer.shifts ?? []) }
+    try { response = await apiFetch("/api/operating-theatres/shifts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, date: calendarDateKey(date) }) }) } catch { setFailed(tc("dmFailed")); void load(calendarDateKey(date)); return }
+    if (response.ok) { const answer = await response.json(); if (mine === latest.current) { setShifts(answer.shifts ?? []); setFailed(null) } return }
+    // Refused: say why (a nurse with no hospital, a date that is no day, a theatre that is gone), and show the day as it is.
+    const why = await refusalReason(response)
+    setFailed(why ? `${tc("dmNotSaved")} ${why}` : tc("dmNotSaved"))
+    void load(calendarDateKey(date))
   }
   const openSheet = () => {
     setOpen(true)
+    setFailed(null)
+    setShifts(null)
     // A nurse's day is today, whenever the screen was first opened (past midnight it must not be yesterday).
     const todayDate = parseCalendarDateKey(calendarDayKey(new Date()))!
     if (isNurse) setDate(todayDate)
@@ -65,6 +73,7 @@ export function TheatreNurseShiftsButton({ theatres, isNurse, tc }: { theatres: 
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "flex-end" }}>
           <View style={{ maxHeight: "90%", backgroundColor: colors.surfaceRaised, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20 }}>
             <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "800", marginBottom: 8 }}>{tc("dmTheatreNurses")}</Text>
+            {failed ? <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 14, marginBottom: 8 }}>{failed}</Text> : null}
             <ScrollView>
               {!isNurse ? <DateWheel value={date} onChange={next => { setDate(next); void load(calendarDateKey(next)) }} labels={{ day: tc("dmDay"), month: tc("dmMonth"), year: tc("dmYear") }} /> : null}
               {shifts === null ? <ActivityIndicator color={colors.primary} /> : theatres.map(theatre => {

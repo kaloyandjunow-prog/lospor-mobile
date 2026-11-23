@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react"
 import { ActivityIndicator, FlatList, RefreshControl, Text, TouchableOpacity, View } from "react-native"
 import { Stack } from "expo-router"
 import { ApiError, apiFetch, apiJson } from "@/lib/api"
+import { serverMessage } from "@/lib/server-message"
 import { notify, confirmAction } from "@/lib/notify"
 import { usePreferences } from "@/lib/preferences-context"
 import { displayClinicalCode } from "@/lib/clinical-display"
@@ -122,11 +123,11 @@ export default function AdminScreen() {
       const res = await apiFetch(path, init)
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.error ?? "Action failed")
+        throw new Error(typeof body.error === "string" && body.error ? serverMessage(body.error) : "")
       }
       success()
-    } catch {
-      notify(t("error"), t("actionFailed"))
+    } catch (err) {
+      notify(t("error"), err instanceof Error && err.message ? err.message : t("actionFailed"))
     } finally {
       setActing(null)
     }

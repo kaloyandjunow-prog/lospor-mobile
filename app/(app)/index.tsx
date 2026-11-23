@@ -3,6 +3,7 @@ import { isNurseAccountRole } from "@lospor/core/clinical-roles"
 import { ActivityIndicator, Animated, FlatList, RefreshControl, Text, TouchableOpacity, View } from "react-native"
 import { Stack, useRouter, type Href } from "expo-router"
 import { ApiError, apiFetch, apiJson } from "@/lib/api"
+import { refusalReason } from "@/lib/server-message"
 import { notify } from "@/lib/notify"
 import { useCaseHandover } from "@/lib/use-case-handover"
 import { PendingHandovers, type PendingTransfer } from "@/components/PendingHandovers"
@@ -315,13 +316,13 @@ export default function DashboardScreen() {
     setActionLoading(true)
     try {
       const res = await apiFetch(`/api/cases/${menuCase.id}`, { method: "DELETE" })
-      if (!res.ok) throw new Error()
+      if (!res.ok) throw new Error(await refusalReason(res) ?? "")
       // Clear any queued offline patches for this case so the badge disappears immediately
       await clearAllQueuedPatchesForCase(menuCase.id)
       closeMenu()
       await loadCases()
-    } catch {
-      notify(t("error"), t("actionFailed"))
+    } catch (err) {
+      notify(t("error"), err instanceof Error && err.message ? err.message : t("actionFailed"))
     } finally {
       setActionLoading(false)
     }
@@ -430,7 +431,12 @@ export default function DashboardScreen() {
     if (!menuCase) return
     try {
       const response = await apiFetch(`/api/cases/${menuCase.id}/nurses`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ take: true }) })
-      if (!response.ok) { notify(t("error"), t("actionFailed")); return }
+      if (!response.ok) {
+        // Another nurse may have been put on meanwhile: say why, and show the list as it is now.
+        notify(t("error"), await refusalReason(response) ?? t("actionFailed"))
+        void loadCases()
+        return
+      }
       closeMenu()
       void loadCases()
     } catch { notify(t("error"), t("actionFailed")) }
