@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { isNurseAccountRole } from "@lospor/core/clinical-roles"
 import { ActivityIndicator, Animated, FlatList, RefreshControl, Text, TouchableOpacity, View } from "react-native"
 import { Stack, useRouter, type Href } from "expo-router"
 import { ApiError, apiFetch, apiJson } from "@/lib/api"
@@ -137,7 +138,7 @@ export default function DashboardScreen() {
     apiFetch("/api/user").then(response => response.ok ? response.json() : null).then(account => { if (alive && account?.role) setViewerRole(String(account.role)) }).catch(() => {})
     return () => { alive = false }
   }, [])
-  const viewerIsNurse = viewerRole === "ANAESTHESIA_NURSE" || cases.some(item => (item as { capabilities?: { isNurse?: boolean } }).capabilities?.isNurse === true)
+  const viewerIsNurse = isNurseAccountRole(viewerRole) || cases.some(item => (item as { capabilities?: { isNurse?: boolean } }).capabilities?.isNurse === true)
   // The theatre and anaesthesiologist filters (10.0.0), applied by the API.
   const [filter, setFilter] = useState<DashboardFilter>({ theatre: null, assignee: null })
   const [filterSheet, setFilterSheet] = useState<"theatre" | "assignee" | null>(null)
@@ -421,7 +422,19 @@ export default function DashboardScreen() {
     status: menuCase?.status, intraop: menuCase?.intraop, writable: menuCaseWritable,
     pendingTransfer: menuCasePending, theatreChangeable: menuCaseTheatreChangeable,
     nurse: (menuCase as { capabilities?: { isNurse?: boolean } } | null)?.capabilities?.isNurse === true,
+    canAssignNurses: (menuCase as { capabilities?: { canAssignNurses?: boolean } } | null)?.capabilities?.canAssignNurses,
+    nursesOnCase: (menuCase as { nurses?: unknown[] } | null)?.nurses?.length,
   })
+
+  async function handleTakeCase() {
+    if (!menuCase) return
+    try {
+      const response = await apiFetch(`/api/cases/${menuCase.id}/nurses`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ take: true }) })
+      if (!response.ok) { notify(t("error"), t("actionFailed")); return }
+      closeMenu()
+      void loadCases()
+    } catch { notify(t("error"), t("actionFailed")) }
+  }
 
   async function handleWithdrawHandover() {
     if (!menuCase) return
@@ -752,6 +765,7 @@ export default function DashboardScreen() {
         onShowAssign={() => { void handleShowAssign() }}
         onAssignTo={id => { void handleAssignTo(id) }}
         onWithdraw={() => { void handleWithdrawHandover() }}
+        onTakeCase={() => { void handleTakeCase() }}
         onCancelProcedure={() => { void handleCancelProcedure() }}
         onUndoCancellation={() => { void handleUndoCancellation() }}
         onAssignTheatre={id => { void handleAssignTheatre(id) }}

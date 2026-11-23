@@ -167,7 +167,7 @@ export default function AdminScreen() {
     }, () => setMoveRequests((prev) => prev.filter((r) => r.id !== req.id)))
   }
 
-  function changeRole(user: UserRow, role: "MEMBER" | "ANAESTHESIA_NURSE" | "HEAD_OF_DEPT") {
+  function changeRole(user: UserRow, role: "MEMBER" | "ANAESTHESIA_NURSE" | "ANAESTHESIA_SENIOR_NURSE" | "HEAD_OF_DEPT") {
     request(`/api/admin/users/${user.id}`, {
       method: "PATCH",
       body: JSON.stringify({ role }),
@@ -268,9 +268,14 @@ export default function AdminScreen() {
                   </>
                 ) : (
                   <>
-                    <AdminButton label={t("member")} color={colors.primary} onPress={() => changeRole(user, "MEMBER")} disabled={user.role === "MEMBER" || !!rowActing} outline={user.role !== "MEMBER"} />
+                    {!(user.role === "ANAESTHESIA_NURSE" || user.role === "ANAESTHESIA_SENIOR_NURSE") ? (
+                      <AdminButton label={t("member")} color={colors.primary} onPress={() => changeRole(user, "MEMBER")} disabled={user.role === "MEMBER" || !!rowActing} outline={user.role !== "MEMBER"} />
+                    ) : null}
                     <AdminButton label={tc("dmNurseRole")} color={colors.primary} onPress={() => changeRole(user, "ANAESTHESIA_NURSE")} disabled={user.role === "ANAESTHESIA_NURSE" || !!rowActing} outline={user.role !== "ANAESTHESIA_NURSE"} />
-                    <AdminButton label={t("hod")} color={colors.warning} onPress={() => changeRole(user, "HEAD_OF_DEPT")} disabled={user.role === "HEAD_OF_DEPT" || !!rowActing} outline={user.role !== "HEAD_OF_DEPT"} />
+                    <AdminButton label={tc("dmSeniorNurseRole")} color={colors.primary} onPress={() => changeRole(user, "ANAESTHESIA_SENIOR_NURSE")} disabled={user.role === "ANAESTHESIA_SENIOR_NURSE" || !!rowActing} outline={user.role !== "ANAESTHESIA_SENIOR_NURSE"} />
+                    {!(user.role === "ANAESTHESIA_NURSE" || user.role === "ANAESTHESIA_SENIOR_NURSE") ? (
+                      <AdminButton label={t("hod")} color={colors.warning} onPress={() => changeRole(user, "HEAD_OF_DEPT")} disabled={user.role === "HEAD_OF_DEPT" || !!rowActing} outline={user.role !== "HEAD_OF_DEPT"} />
+                    ) : null}
                   </>
                 )}
               </View>

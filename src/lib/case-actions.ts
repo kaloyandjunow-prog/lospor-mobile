@@ -18,6 +18,10 @@ export type CaseActionInput = {
   theatreChangeable?: boolean
   /** 10.8.0: the viewer is an anaesthesia nurse (capabilities.isNurse). */
   nurse?: boolean
+  /** 2026-11-23: the viewer may put nurses on this case (capabilities.canAssignNurses: the head, the administrator, the case's doctor, a senior nurse). */
+  canAssignNurses?: boolean
+  /** How many nurses the case has: a nurse may put herself on one that has none. */
+  nursesOnCase?: number
 }
 
 export type CancelOffer = "available" | "inactive" | null
@@ -36,6 +40,8 @@ export type DashboardMenuActions = {
   handOverToNurse: boolean
   /** 10.8.0: the case's anaesthesia nurses (a doctor's decision). */
   assignNurses: boolean
+  /** 2026-11-23: a nurse puts herself on a case that has no nurse. */
+  takeCase: boolean
 }
 
 export function dashboardMenuActions(input: CaseActionInput): DashboardMenuActions {
@@ -45,8 +51,11 @@ export function dashboardMenuActions(input: CaseActionInput): DashboardMenuActio
       : closed ? null : "inactive"
   if (input.nurse) {
     // A nurse never cancels, deletes, moves theatres or hands to a doctor (rules N1-N6).
+    // A senior nurse also places nurses; a nurse hands her own place on, or takes a case that has none.
+    const assigns = !closed && input.canAssignNurses === true
     return { print: input.status === "COMPLETE", cancel: null, undoCancel: false, remove: false, theatre: false, handOver: false,
-      withdrawHandover: false, plannedDate: false, handOverToNurse: !closed && input.writable, assignNurses: false }
+      withdrawHandover: false, plannedDate: false, handOverToNurse: !closed && input.writable && !assigns, assignNurses: assigns,
+      takeCase: !closed && input.nursesOnCase === 0 }
   }
   return {
     print: input.status === "COMPLETE",
@@ -58,7 +67,8 @@ export function dashboardMenuActions(input: CaseActionInput): DashboardMenuActio
     withdrawHandover: input.pendingTransfer === true,
     plannedDate: !closed && input.writable,
     handOverToNurse: false,
-    assignNurses: !closed && input.writable && input.status !== "CANCELLED",
+    assignNurses: !closed && input.writable && input.status !== "CANCELLED" && input.canAssignNurses !== false,
+    takeCase: false,
   }
 }
 
