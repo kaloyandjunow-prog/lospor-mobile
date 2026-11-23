@@ -5,10 +5,10 @@ import { dashboardMenuActions } from "@/lib/case-actions"
 import { colors, withAlpha } from "@/theme/colors"
 import type { ClinicalStringKey, TranslationKey } from "@/lib/preferences-context"
 import { OverflowCueScrollView } from "@/components/intraop/OverflowCueScrollView"
-import { CaseNursesStep, NurseHandoverStep, PlannedDateStep } from "./DashboardCasePlanning"
+import { CaseNursesStep, CaseTeamStep, NurseHandoverStep, PlannedDateStep } from "./DashboardCasePlanning"
 
 type MenuCase = { caseCode: string; theatre?: { id: string | null; name: string | null } | null; plannedSurgeryDate?: string | null }
-type MenuMode = "menu" | "assign" | "theatre" | "cancel" | "confirmDelete" | "plannedDate" | "nurseHandover" | "caseNurses"
+type MenuMode = "menu" | "assign" | "theatre" | "cancel" | "confirmDelete" | "plannedDate" | "nurseHandover" | "caseNurses" | "team"
 type MenuActions = ReturnType<typeof dashboardMenuActions>
 
 export function DashboardCaseMenu({ menuCase, menuMode, menuActions, caseLabel, language, t, tc, closeMenu, setMenuMode, actionLoading, handoverBusy, loadingColleagues, colleagues, onPrint, onDelete, onShowAssign, onAssignTo, onWithdraw, onCancelProcedure, onUndoCancellation, onAssignTheatre, onConfirmDelete, cancelReason, setCancelReason, cancelNote, setCancelNote, theatres, onPlanned, onTakeCase }: {
@@ -62,8 +62,10 @@ export function DashboardCaseMenu({ menuCase, menuMode, menuActions, caseLabel, 
           {menuActions.theatre ? <TouchableOpacity style={{ paddingVertical: 16, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: "row", justifyContent: "space-between" }} onPress={() => setMenuMode("theatre")} disabled={actionLoading || handoverBusy}><Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "700" }}>{t("assignTheatre")}…</Text><Text style={{ color: colors.textMuted, fontSize: 14 }} numberOfLines={1}>{menuCase?.theatre?.name ?? ""} ›</Text></TouchableOpacity> : null}
           {menuActions.handOver ? <TouchableOpacity style={{ paddingVertical: 16, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: "row", justifyContent: "space-between" }} onPress={onShowAssign} disabled={actionLoading || handoverBusy}><Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "700" }}>{t("handOver")}…</Text><Text style={{ color: colors.textMuted, fontSize: 18 }}>›</Text></TouchableOpacity> : null}
           {menuActions.withdrawHandover ? <TouchableOpacity style={{ paddingVertical: 16, borderTopWidth: 1, borderTopColor: colors.border }} onPress={onWithdraw} disabled={actionLoading || handoverBusy}><Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "700" }}>{t("withdrawHandover")}</Text></TouchableOpacity> : null}
+          <TouchableOpacity testID="menu-team" style={{ paddingVertical: 16, borderTopWidth: 1, borderTopColor: colors.border }} onPress={() => setMenuMode("team")}><Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "600" }}>{tc("dmTeam")}</Text></TouchableOpacity>
           <TouchableOpacity style={{ paddingVertical: 16, borderTopWidth: 1, borderTopColor: colors.border, alignItems: "center" }} onPress={closeMenu}><Text style={{ color: colors.textSecondary, fontSize: 16 }}>{t("cancel")}</Text></TouchableOpacity>
         </> : menuMode === "plannedDate" && menuCase ? <PlannedDateStep caseId={menuCase.id} value={menuCase.plannedSurgeryDate?.slice(0, 10) ?? null} tc={tc} onDone={onPlanned} onBack={() => setMenuMode("menu")} />
+        : menuMode === "team" && menuCase ? <CaseTeamStep caseId={menuCase.id} tc={tc} onBack={() => setMenuMode("menu")} />
         : menuMode === "caseNurses" && menuCase ? <CaseNursesStep caseId={menuCase.id} tc={tc} onDone={onPlanned} onBack={() => setMenuMode("menu")} />
         : menuMode === "nurseHandover" && menuCase ? <NurseHandoverStep caseId={menuCase.id} tc={tc} onDone={onPlanned} onBack={() => setMenuMode("menu")} />
         : menuMode === "assign" ? <>

@@ -161,7 +161,7 @@ export default function DashboardScreen() {
   const [queuedIntraopCaseIds, setQueuedIntraopCaseIds] = useState<Set<string>>(new Set())
   const [searchOpen, setSearchOpen] = useState(false)
   const [menuCase, setMenuCase] = useState<CaseItem | null>(null)
-  const [menuMode, setMenuMode] = useState<"menu" | "assign" | "theatre" | "cancel" | "confirmDelete" | "plannedDate" | "nurseHandover" | "caseNurses">("menu")
+  const [menuMode, setMenuMode] = useState<"menu" | "assign" | "theatre" | "cancel" | "confirmDelete" | "plannedDate" | "nurseHandover" | "caseNurses" | "team">("menu")
   // A cancelled procedure (10.0.0): the reason chosen, and a note for "Other".
   const [cancelReason, setCancelReason] = useState<CancellationReason | null>(null)
   const [cancelNote, setCancelNote] = useState("")

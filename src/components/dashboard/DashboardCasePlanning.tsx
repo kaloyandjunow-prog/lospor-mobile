@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native"
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "react-native"
 import { calendarDayKey } from "@lospor/core/dashboard-date-scope"
 import { calendarDateKey, parseCalendarDateKey, type CalendarDate } from "@lospor/core/time-entry"
 import { apiFetch } from "@/lib/api"
@@ -132,6 +132,54 @@ export function CaseNursesStep({ caseId, tc, onDone, onBack }: {
             </TouchableOpacity>
           ))}
       <TouchableOpacity style={{ ...row, alignItems: "center" }} onPress={onDone}><Text style={{ color: colors.primary, fontSize: 16, fontWeight: "800" }}>{tc("dmSave")}</Text></TouchableOpacity>
+      <TouchableOpacity style={{ ...row, alignItems: "center" }} onPress={onBack}><Text style={{ color: colors.textSecondary, fontSize: 16 }}>{tc("back")}</Text></TouchableOpacity>
+    </View>
+  )
+}
+type StaffRow = {
+  id: string
+  kind: "DOCTOR" | "NURSE"
+  action: "JOINED" | "LEFT"
+  reason: string
+  at: string
+  user: { id: string; name: string; firstName?: string | null; lastName?: string | null; title?: string | null }
+  by: { id: string; name: string; firstName?: string | null; lastName?: string | null; title?: string | null } | null
+}
+
+/** The anaesthesia team of the case over time (2026-11-23): who joined and left, and when. Read-only; never changed. */
+export function CaseTeamStep({ caseId, tc, onBack }: { caseId: string; tc: (key: ClinicalStringKey) => string; onBack: () => void }) {
+  const [rows, setRows] = useState<StaffRow[] | null>(null)
+  const [failed, setFailed] = useState<string | null>(null)
+  useEffect(() => {
+    void (async () => {
+      let response: Response
+      try { response = await apiFetch(`/api/cases/${caseId}/staff`) } catch { setFailed(tc("dmFailed")); setRows([]); return }
+      if (!response.ok) { setFailed(await notSaved(response, tc)); setRows([]); return }
+      setRows((await response.json()).staff ?? [])
+    })()
+  }, [caseId, tc])
+  const reason = (code: string) => {
+    const key = `dmTeam${code}` as ClinicalStringKey
+    const text = tc(key)
+    return text === key ? code : text
+  }
+  const when = (value: string) => new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "short" }).format(new Date(value))
+  return (
+    <View>
+      <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "800", marginBottom: 12 }}>{tc("dmTeam")}</Text>
+      {failed ? <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 14, marginBottom: 8 }}>{failed}</Text> : null}
+      {rows === null ? <ActivityIndicator color={colors.primary} />
+        : rows.length === 0 ? <Text style={{ color: colors.textMuted, fontSize: 14 }}>{tc("dmTeamNone")}</Text>
+          : <ScrollView style={{ maxHeight: 360 }} testID="case-team-history">
+            {rows.map(entry => (
+              <View key={entry.id} style={{ ...row }}>
+                <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "700" }}>{nameOf(entry.user)} <Text style={{ color: colors.textMuted, fontWeight: "400" }}>· {entry.kind === "DOCTOR" ? tc("dmTeamDoctor") : tc("dmTeamNurse")}</Text></Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 14, marginTop: 2 }}>
+                  {entry.action === "JOINED" ? tc("dmTeamJoined") : tc("dmTeamLeft")} · {when(entry.at)} · {reason(entry.reason)}{entry.by && entry.by.id !== entry.user.id ? ` · ${tc("dmTeamBy")} ${nameOf(entry.by)}` : ""}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>}
       <TouchableOpacity style={{ ...row, alignItems: "center" }} onPress={onBack}><Text style={{ color: colors.textSecondary, fontSize: 16 }}>{tc("back")}</Text></TouchableOpacity>
     </View>
   )
