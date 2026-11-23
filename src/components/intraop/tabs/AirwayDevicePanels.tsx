@@ -106,8 +106,8 @@ export function AirwayDevicePanels({
     setAwExpandedDevice(code)
   }
 
-  // Long-press to remove — mirrors web's right-click-to-remove, since these devices
-  // don't toggle off on tap once confirmed (tap re-opens them for editing instead).
+  // A confirmed device does not toggle off on tap (a tap re-opens it for editing): the ✕ beside it removes it,
+  // as on the web. Nothing needs a long press.
   function removeDevice(code: string) {
     setAwDevices(prev => prev.filter(d => d !== code))
     if (awExpandedDevice === code) setAwExpandedDevice(null)
@@ -141,15 +141,25 @@ export function AirwayDevicePanels({
           const inProgress = !confirmed && isExpanded
           const btnLabel = summary && !isExpanded ? summary : (inProgress ? `${dev.label}…` : dev.label)
           return (
-            <TouchableOpacity key={dev.code}
+            <View key={dev.code} style={{ flexDirection:"row", alignItems:"stretch" }}>
+            <TouchableOpacity
               onPress={() => isExpanded ? setAwExpandedDevice(null) : expandDevice(dev.code)}
-              onLongPress={() => removeDevice(dev.code)}
               style={{ paddingHorizontal:14, paddingVertical:10, minHeight:44, justifyContent:"center", borderRadius:12,
+                ...(confirmed ? { borderTopRightRadius:0, borderBottomRightRadius:0 } : {}),
                 backgroundColor: confirmed ? (summary && !isExpanded ? shade("#1a2e5a") : shade("#1e3a5f")) : (inProgress ? shade("#0d1a2d") : shade("#111111")),
                 borderWidth:1, borderStyle: inProgress ? "dashed" : "solid",
                 borderColor: confirmed ? shade("#3b82f6") : (inProgress ? shade("#3b82f699") : shade("#1e2d40")) }}>
               <Text style={{ color: confirmed ? shade("#93c5fd") : (inProgress ? shade("#60a5fa") : shade("#64748b")), fontSize:12, fontWeight:"700" }}>{btnLabel}</Text>
             </TouchableOpacity>
+            {confirmed && (
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${tc("awRemoveDevice")}: ${dev.label}`} testID={`airway-remove-${dev.code}`}
+                onPress={() => removeDevice(dev.code)}
+                style={{ minWidth:44, minHeight:44, alignItems:"center", justifyContent:"center", borderTopRightRadius:12, borderBottomRightRadius:12,
+                  borderWidth:1, borderLeftWidth:0, borderColor:shade("#3b82f6"), backgroundColor:shade("#1e3a5f") }}>
+                <Text style={{ color:shade("#93c5fd"), fontSize:16, fontWeight:"800" }}>✕</Text>
+              </TouchableOpacity>
+            )}
+            </View>
           )
         })}
       </View>

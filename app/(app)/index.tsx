@@ -482,7 +482,15 @@ export default function DashboardScreen() {
               <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.warning, flexShrink: 0 }} />
             ) : null}
           </View>
-          <StatusBadge status={derivedStatus(item)} />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <StatusBadge status={derivedStatus(item)} />
+            {/* The case's menu (Delete, Share, ...) by a tap, not only a long press. */}
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={t("caseMenu")} testID={`case-menu-${item.id}`}
+              onPress={() => handleLongPress(item)} hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+              style={{ minWidth: 44, minHeight: 44, marginVertical: -12, marginRight: -10, alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 20, fontWeight: "800" }}>⋯</Text>
+            </TouchableOpacity>
+          </View>
         </View>
         {ageSexLabel(item.preop, language === "bg" ? "bg" : "en") ? (
           <Text testID={`case-age-sex-${item.id}`} style={{ color: colors.textSecondary, fontSize: 13, fontWeight: "700", marginBottom: 4 }}>
