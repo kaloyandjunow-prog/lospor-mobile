@@ -136,7 +136,7 @@ export function IntraopTimetableTab({
     [activeInfusions, drugColors],
   )
   const rowDataByCol = useMemo(() => {
-    const runningByCol = runningItemsByCol(timetable, chartRows, { projectRunning, nameOf, colorOf, tciPatient, totals: runTotals ? { ...runTotals, now: new Date(), language: language === "bg" ? "bg" : "en" } : undefined })
+    const runningByCol = runningItemsByCol(timetable, chartRows, { projectRunning, nameOf, colorOf, sameGroup: { groupOf: drugColors.infusionGroup, shade: drugColors.later }, tciPatient, totals: runTotals ? { ...runTotals, now: new Date(), language: language === "bg" ? "bg" : "en" } : undefined })
     const data = new Map<number, {
       vital: VitalsEntry | undefined
       rowEvents: LogEvent[]
@@ -156,7 +156,7 @@ export function IntraopTimetableTab({
       })
     }
     return data
-  }, [buildSummary, chartRows, colorOf, eventRows, language, nameOf, projectRunning, runTotals, tciPatient, timetable])
+  }, [buildSummary, chartRows, colorOf, drugColors, eventRows, language, nameOf, projectRunning, runTotals, tciPatient, timetable])
 
   const labDrawsByCol = useMemo(() => {
     const byCol = new Map<number, IntraopLabDraw[]>()

@@ -151,3 +151,18 @@ describe("running totals in the open row", () => {
     expect(runningItemsByCol(t, [6]).get(6)![0]!.total).toBeUndefined()
   })
 })
+describe("two infusions of one group in a row", () => {
+  const t = tt({ infusions: [
+    { id: "a", name: "Propofol", rate: "6", unit: "mg/kg/hr", color: "#808080", startCol: 0, endCol: 8 },
+    { id: "b", name: "Propofol", rate: "3", unit: "mg/kg/hr", color: "#808080", startCol: 2, endCol: 8 },
+    { id: "c", name: "Fentanyl", rate: "1", unit: "mcg/kg/hr", color: "#808080", startCol: 2, endCol: 8 },
+  ] })
+  const sameGroup = { groupOf: (name: string) => (name === "Fentanyl" ? "Opioids" : "Hypnotics"), shade: (hex: string, index: number) => `${hex}-${index}` }
+  it("tells the second by a shade of the colour and leaves the others as they are", () => {
+    const items = runningItemsByCol(t, [4], { sameGroup }).get(4)!
+    expect(items.map(item => item.color)).toEqual(["#808080", "#808080-1", "#808080"])
+  })
+  it("changes nothing without the rule", () => {
+    expect(runningItemsByCol(t, [4]).get(4)!.map(item => item.color)).toEqual(["#808080", "#808080", "#808080"])
+  })
+})

@@ -40,6 +40,8 @@ export type RunningItem = {
 export type RunningNameOf = (kind: "agent" | "infusion" | "fluid", name: string) => string
 /** Its colour now, if it differs from the one saved (a hospital's drug colours, 10.0.0). */
 export type RunningColorOf = (kind: "agent" | "infusion" | "fluid", name: string) => string | undefined
+/** A second infusion of one group in a row is told apart by a shade of its colour (Core, PRAVILA 13). */
+export type SameGroupShade = { groupOf: (infusionName: string) => string | undefined; shade: (hex: string, index: number) => string }
 
 const storedName: RunningNameOf = (_kind, name) => name
 
@@ -112,7 +114,7 @@ export function runningItemsByCol(
   cols: number[],
   // The live chart of a case not yet ended: running items also show in the
   // rows after now, where a change can be planned on them (Core, 9.13.1).
-  options: { projectRunning?: boolean; nameOf?: RunningNameOf; colorOf?: RunningColorOf; tciPatient?: TciPatient | null; totals?: Omit<RunTotalContext, "tciPatient"> } = {},
+  options: { projectRunning?: boolean; nameOf?: RunningNameOf; colorOf?: RunningColorOf; sameGroup?: SameGroupShade; tciPatient?: TciPatient | null; totals?: Omit<RunTotalContext, "tciPatient"> } = {},
 ): Map<number, RunningItem[]> {
   const coreRows = runningItemsByColumn(timetable, cols, options)
   return new Map(
@@ -120,6 +122,11 @@ export function runningItemsByCol(
       col,
       items.map(item => {
         const presented = presentRunningItem(item, options.nameOf, options.colorOf)
+        if (item.kind === "infusion" && options.sameGroup) {
+          const group = options.sameGroup.groupOf(item.name) ?? item.name
+          const before = items.slice(0, items.indexOf(item)).filter(other => other.kind === "infusion" && (options.sameGroup!.groupOf(other.name) ?? other.name) === group).length
+          if (before > 0) presented.color = options.sameGroup.shade(presented.color, before)
+        }
         const total = options.totals && !item.planned && !item.plannedStop && !item.plannedChange
           ? intraopRunTotalLabel(timetable, presented.id, col, { ...options.totals, tciPatient: options.tciPatient ?? null }) : null
         return total ? { ...presented, total } : presented
