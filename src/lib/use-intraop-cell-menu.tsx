@@ -161,7 +161,9 @@ export function useIntraopCellMenu({ log, syncLog, chartStart, startedAt, endedA
     switch (action) {
       case "stop":
       case "plan_stop": {
-        if (action === "stop" && (cell.kind === "infusion" || cell.kind === "fluid") && sheets.stopWithData(cell, ts)) return // a planned stop asks when it comes
+        // The sheet is given the clamped time too: a stop is never charted before the start it ends.
+        const clampedTs = intraopMenuStopEvent(logRef.current, { kind: cell.kind, key: cell.key }, ts, now()).ts
+        if (action === "stop" && (cell.kind === "infusion" || cell.kind === "fluid") && sheets.stopWithData(cell, clampedTs)) return // a planned stop asks when it comes
         // Core builds it, the same as on the web: at the cell's time, never before the start it ends.
         const stop = { id: uid(), ...intraopMenuStopEvent(logRef.current, { kind: cell.kind, key: cell.key }, ts, now()) } as LogEvent
         commit([...logRef.current, stop], copy.done.stopped(cell.title, timeOf(stop.ts)))
