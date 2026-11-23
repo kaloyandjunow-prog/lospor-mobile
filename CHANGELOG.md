@@ -6,6 +6,11 @@ Released with Core and API 10.8.0.
 
 ### Added
 
+- **Anaesthesia team** in the case's long-press menu: who was on the case and when, doctors and nurses, kept for good.
+- **Senior nurse**: the administration offers the role; a nurse sees every case of her hospital, edits the ones she is on, and
+  "Put me on this case" puts her on a case with no nurse. The menus and sheets say why something was refused.
+- The allergy button says "Give despite allergy to ...". The stop sheet of an infusion or a fluid gets the same clamped time as the web.
+
 - **The chart's menu on the phone**, the same actions as the web's: opening a running item's cell or an entry offers
   Stop, Change dose, Resume, Fix start or end, Delete and the planned ones, with an Undo bar and many steps of Undo and Redo.
   Stopping asks only what it must (a TCI infusion, a fluid entered as a bag).
